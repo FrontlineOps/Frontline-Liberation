@@ -1,0 +1,10 @@
+params ["_vehicle"];
+_vehicle setPylonLoadout [1,"FIR_AIM9X_P_1rnd_M", true];
+_vehicle setPylonLoadout [2,"FIR_APKWS_P_7rnd_M", true];
+_vehicle setPylonLoadout [3,"FIR_APKWS_P_19rnd_M", true];
+_vehicle setPylonLoadout [4,"FIR_Nitehawk_P_1rnd_M", true];
+_vehicle setPylonLoadout [5,"FIR_AWW13_P_1rnd_M", true];
+_vehicle setPylonLoadout [6,"FIR_ASQ173LST_P_1rnd_M", true];
+_vehicle setPylonLoadout [7,"FIR_APKWS_M247_P_19rnd_M", true];
+_vehicle setPylonLoadout [8,"FIR_APKWS_M247_P_7rnd_M", true];
+_vehicle setPylonLoadout [9,"FIR_AIM9X_P_1rnd_M", true];

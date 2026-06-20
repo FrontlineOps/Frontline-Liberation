@@ -1,0 +1,11 @@
+params ["_vehicle"];
+_vehicle setPylonLoadout [1,"FIR_AGM65L_P_1rnd_M", true];
+_vehicle setPylonLoadout [2,"FIR_Hydra_M261_P_7rnd_M", true];
+_vehicle setPylonLoadout [3,"FIR_GBU12_P_3rnd_M", true];
+_vehicle setPylonLoadout [4,"FIR_AGM84H_P_1rnd_M", true];
+_vehicle setPylonLoadout [5,"FIR_Mk84_AIR_P_1rnd_M", true];
+_vehicle setPylonLoadout [6,"FIR_SniperXR_HTS_P_1rnd_M", true];
+_vehicle setPylonLoadout [7,"FIR_AGM88_P_1rnd_M", true];
+_vehicle setPylonLoadout [8,"FIR_CBU100_P_TripleRack_3rnd_M", true];
+_vehicle setPylonLoadout [9,"FIR_Hydra_M261_P_7rnd_M", true];
+_vehicle setPylonLoadout [10,"FIR_AGM65L_P_1rnd_M", true];

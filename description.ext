@@ -1,0 +1,148 @@
+class Header {
+    gameType = "CTI";
+    minPlayers = 1;
+    maxPlayers = 171;
+};
+
+author = "Unknown";
+
+// Mission selection title
+//briefingName = $STR_MISSION_TITLE;
+
+// Mission selection image
+//overviewPicture = "";
+
+// Mission selection text
+//overviewText = "";
+
+// Loading screen title
+//onLoadName = $STR_MISSION_TITLE;
+
+// Loading screen image
+//loadScreen = "";
+
+// Loading screen subtext
+//onLoadMission = "";
+
+// Disallow abort
+respawnButton = 0;
+
+// https://community.bistudio.com/wiki/Arma_3_Respawn#Official_Templates
+respawnTemplates[] = {};
+
+// Type of Respawn
+// 3    "BASE"      Respawn on respawn marker
+respawn = 3;
+
+// Respawn delay (sec)
+respawndelay = 0.1;
+
+// Respawn scoreboard
+respawnDialog = 0;
+
+// Respawn on join
+// -1 - Dont respawn on start. Don't run respawn script on start.
+//  0 - Dont respawn on start. Run respawn script on start.
+//  1 - Respawn on start. Run respawn script on start.
+respawnOnStart = 1;
+
+// Corpse management mode
+// 0 = None
+// 1 = All
+// 2 = None but respawned
+// 3 = All but respawned
+corpseManagerMode = 3;
+
+// Corpse limit
+corpseLimit = 20;
+corpseRemovalMinTime = 120;
+corpseRemovalMaxTime = 300;
+
+// Wreck management mode
+// 0 = None
+// 1 = All
+// 2 = None but respawned
+// 3 = All but respawned
+wreckManagerMode = 3;
+
+// Wreck limit
+wreckLimit = 12;
+wreckRemovalMinTime = 600;
+wreckRemovalMaxTime = 1200;
+
+// Corpse/wreck min distance to remove
+minPlayerDistance = 200;
+
+// Allows functions to log to the RPT file
+allowFunctionsLog = 1;
+
+// Functions are by default protected against rewriting during mission
+// Does not apply when using editor
+allowFunctionsRecompile = "[0, 1] select (is3DENMultiplayer || is3DEN)";
+
+// Disable AI in playable roles
+disabledAI = 1;
+
+// Disable randomization of objects
+disableRandomization[] = {};
+
+// Debug console access
+enableDebugConsole[] = {
+    "76561198343484805",
+    "76561198874160679"	
+};
+
+// Adv flight model mode
+// 0 - client
+// 1 - advanced
+// 2 - default
+forceRotorLibSimulation = 0;
+
+// Auto assign JIP to open role
+joinUnassigned = 1;
+
+// Bypass role selection screen
+skipLobby = 0;
+
+// Show map on mission start
+showMap = 1;
+
+// Enable or disable availability of createVehicleLocal
+unsafeCVL = 1;
+
+// Vanilla task management
+taskManagement_markers2D = 0;
+taskManagement_markers3D = 0;
+taskManagement_propagate = 0;
+taskManagement_drawDist = 0;
+
+// Chat settings  
+// {id, text, voice}
+disableChannels[] = {
+    {0,true,true},
+    {1,false,true},
+    {2,true,true},
+    {3,true,true},
+    {4,true,true},
+    {5,true,true}
+};
+
+class CfgDebriefing {
+    #include "KPLIB_debriefs.hpp"
+};
+
+class CfgFunctions {
+    #include "CfgFunctions.hpp"
+    #include "KP\KPPLM\KPPLM_functions.hpp"
+};
+
+class CfgTaskDescriptions {
+    #include "scripts\client\tutorial\CfgTaskDescriptions.hpp"
+};
+
+#include "ui\liberation_interface.hpp"
+#include "ui\liberation_notifications.hpp"
+#include "ui\mission_params.hpp"
+#include "infiSTAR_AdminMenu.hpp"
+#include "KP\KPGUI\KPGUI_defines.hpp"
+#include "KP\KPPLM\ui\KPPLM_dialog.hpp"

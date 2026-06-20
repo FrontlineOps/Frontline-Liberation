@@ -1,0 +1,11 @@
+params ["_vehicle"];
+_vehicle setPylonLoadout [1,"FIR_AIM120_P_1rnd_M", true];
+_vehicle setPylonLoadout [2,"FIR_AIM9X_P_1rnd_M", true];
+_vehicle setPylonLoadout [3,"FIR_LZuni_P_4rnd_M", true];
+_vehicle setPylonLoadout [4,"FIR_APKWS_P_19rnd_M", true];
+_vehicle setPylonLoadout [5,"FIR_F16C_center_Fueltank_P_1rnd_M", true];
+_vehicle setPylonLoadout [6,"FIR_SniperXR_HTS_P_1rnd_M", true];
+_vehicle setPylonLoadout [7,"FIR_APKWS_P_19rnd_M", true];
+_vehicle setPylonLoadout [8,"FIR_LZuni_P_4rnd_M", true];
+_vehicle setPylonLoadout [9,"FIR_AIM9X_P_1rnd_M", true];
+_vehicle setPylonLoadout [10,"FIR_AIM120_P_1rnd_M", true];

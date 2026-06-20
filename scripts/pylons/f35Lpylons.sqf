@@ -1,0 +1,11 @@
+params ["_vehicle"];
+_vehicle setPylonLoadout [1,"USAF_MISSILE_1Rnd_AIM9X", true];
+_vehicle setPylonLoadout [2,"", true];
+_vehicle setPylonLoadout [3,"", true];
+_vehicle setPylonLoadout [4,"USAF_Missile_1Rnd_AIM120", true];
+_vehicle setPylonLoadout [5,"USAF_MISSILE_1Rnd_AARGMER", true];
+_vehicle setPylonLoadout [6,"USAF_MISSILE_1Rnd_AARGMER", true];
+_vehicle setPylonLoadout [7,"USAF_Missile_1Rnd_AIM120", true];
+_vehicle setPylonLoadout [8,"", true];
+_vehicle setPylonLoadout [9,"", true];
+_vehicle setPylonLoadout [10,"USAF_MISSILE_1Rnd_AIM9X", true];

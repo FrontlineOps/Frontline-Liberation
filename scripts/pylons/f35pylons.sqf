@@ -1,0 +1,11 @@
+params ["_vehicle"];
+_vehicle setPylonLoadout [1,"USAF_Missile_1Rnd_AIM120", true];
+_vehicle setPylonLoadout [2,"USAF_PylonRack_1Rnd_GBU24", true];
+_vehicle setPylonLoadout [3,"USAF_PylonRack_3Rnd_GBU12", true];
+_vehicle setPylonLoadout [4,"USAF_Missile_1Rnd_AIM120", true];
+_vehicle setPylonLoadout [5,"USAF_PylonRack_1Rnd_AGM154A", true];
+_vehicle setPylonLoadout [6,"USAF_PylonRack_1Rnd_AGM154A", true];
+_vehicle setPylonLoadout [7,"USAF_Missile_1Rnd_AIM120", true];
+_vehicle setPylonLoadout [8,"USAF_PylonRack_3Rnd_GBU12", true];
+_vehicle setPylonLoadout [9,"USAF_PylonRack_1Rnd_GBU24", true];
+_vehicle setPylonLoadout [10,"USAF_Missile_1Rnd_AIM120", true];

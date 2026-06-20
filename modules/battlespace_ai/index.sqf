@@ -1,0 +1,129 @@
+[] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\config.sqf";
+[] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\networked_sectors\index.sqf";
+[] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\sams\index.sqf";
+[] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\defenders\index.sqf";
+[] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\artillery\index.sqf";
+[] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\index.sqf";
+[] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\logistics\index.sqf";
+
+if (!isNil { BATTLESPACE_LOCAL_TESTING }) then {
+	KPLIB_fnc_getLessLoadedHC = {
+
+		private _hcArray = [];
+		private _hc = objNull;
+
+		{
+			_hc = _x;
+			_hcArray pushBack [count (allUnits select {(owner _x) isEqualTo (owner _hc)}), _hc];
+		} forEach (entities "HeadlessClient_F");
+
+		if !(_hcArray isEqualTo []) then {
+			_hcArray sort true;
+			(_hcArray select 0) select 1
+		} else {
+			objNull
+		};
+		
+	};
+	KPLIB_fnc_addObjectInit = {};
+	// Depth and Length in actuality adds up to 2x the listed value
+	// Length / Depth should be a multiple of the Gap
+	BATTLESPACE_AT_MINE_LENGTH = 50;
+	BATTLESPACE_AT_MINE_DEPTH = 20;
+	BATTLESPACE_AT_MINE_GAP = 10;
+
+	BATTLESPACE_AP_MINE_LENGTH = 96;
+	BATTLESPACE_AP_MINE_DEPTH = 40;
+	BATTLESPACE_AP_MINE_GAP = 8;
+	air_weight = 0;
+	infantry_weight = 0;
+	armor_weight = 0;
+	combat_readiness = 0;
+	BATTLESPACE_UNIT_CAP = 200;
+	GRLIB_battlegroup_cap = BATTLESPACE_UNIT_CAP;
+	GRLIB_side_enemy = east;
+	GRLIB_side_friendly = west;
+	GRLIB_side_guerilla = resistance;
+	GRLIB_side_civilian = civilian;
+
+	sectors_airspawn = [];
+	sectors_allSectors = [];
+	sectors_bigtown = [];
+	sectors_capture = [];
+	sectors_factory = [];
+	sectors_military = [];
+	sectors_opfor = [];
+	sectors_tower = [];
+
+	civilians = [
+		"UK3CB_ADC_C_CIV_ISL_01", 
+		"UK3CB_ADC_C_HUNTER_CHR", 
+		"UK3CB_ADC_C_CIT", 
+		"UK3CB_ADC_C_WOOD", 
+		"UK3CB_ADC_C_DOC_ISL", 
+		"UK3CB_ADC_C_LABOURER_ISL", 
+		"UK3CB_ADC_C_CIV_ISL", 
+		"UK3CB_ADC_C_SPOT_ISL", 
+		"UK3CB_TKC_C_CIV", 
+		"UK3CB_TKC_C_SPOT", 
+		"UK3CB_TKC_C_WORKER"
+	];
+
+	civilians_lower = civilian apply {toLower _x};
+
+
+	{
+		switch (true) do {
+			case (_x find "bigtown" == 0): {sectors_bigtown pushBack _x; sectors_allSectors pushBack _x;};
+			case (_x find "capture" == 0): {sectors_capture pushBack _x; sectors_allSectors pushBack _x;};
+			case (_x find "factory" == 0): {sectors_factory pushBack _x; sectors_allSectors pushBack _x;};
+			case (_x find "military" == 0): {sectors_military pushBack _x; sectors_allSectors pushBack _x;};
+			case (_x find "opfor_airspawn" == 0): {sectors_airspawn pushBack _x;};
+			case (_x find "opfor_point" == 0): {sectors_opfor pushBack _x;};
+			case (_x find "tower" == 0): {sectors_tower pushBack _x; if (isServer) then {_x setMarkerText format ["%1 %2",markerText _x, mapGridPosition (markerPos _x)];}; sectors_allSectors pushBack _x;};
+		};
+	} forEach allMapMarkers;
+
+
+	blufor_sectors = ["startbase_marker", "capture_2"];
+
+	sector_to_blufor = createHashMap;
+
+	{
+		sector_to_blufor set [_x, true];
+	} forEach blufor_sectors;
+};
+// Module that evaluates battlespace conditions and determines to
+// Send resupply of manpower / resources / whatever to a sector
+// Send battlegroups
+// Send patrols
+// Initialize defending / reinforcing a town with static defenses
+// Create and spawn SAM sites when it detects blufor presence
+
+// Each sector has a pool of resources
+// Manpower = infantry
+// Specific SAM launchers
+// Specific SAM radars
+// Specific SAM missile
+// Classes of vehicles (i.e. MBT, scout car, IFV, APC)
+// Upon activating a sector normally, the defenders would be spawned by pulling from a pool of resources
+
+// Once a sector falls below a certain threshold, the AI requests a resupply to head towards the sector, with a respawn timer in case its been intercepted before to prevent spam.
+// If a sector is a frontline sector
+// if it reaches above a certain threshold, it rolls to determine if it should consume resources to send out a battlegroup to try and capture the BLUFOR sector it is linked to
+// if it reaches above a certain threshold, it rolls to determine if it should send out a patrol towards the BLUFOR sector and neighboring area
+
+// If a sector is a backline sector
+// If it reaches above a certain threshold and a frontline sector it is linked to comes under attack, it rolls to determine if it should consume resources to send reinforcements.
+// If it reaches above a certain threshold, it rolls to determine if it should consume resources to send out resupply / reinforcement convoys on its own
+
+
+
+
+// Every half hr, re-evaluate the conditions of sectors and adjust accordingly
+// This general tick is usually for sending emergency resupplies, or transferring supplies, or battlegroups / patrols.
+// Reinforcements are independently handled as an event when a sector goes live and begins to take casualties as part of the "Sector Defender" AI decision.
+// Rearming of SAM or Artillery groups will pull from the nearest sector's resource pool to replenish their ammunition expenditure.
+// If ammo is all expended, usually a request for resupply will be sent, and other sectors may decide to send a portion of their own stocks to resupply.
+
+// Calculate every 30 minutes for macro scale logistics and offensive actions

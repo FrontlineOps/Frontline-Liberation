@@ -1,0 +1,11 @@
+params ["_vehicle"];
+_vehicle setPylonLoadout [1,"FIR_AIM120_P_1rnd_M", true];
+_vehicle setPylonLoadout [2,"FIR_AIM120_P_1rnd_M", true];
+_vehicle setPylonLoadout [3,"FIR_AGM88_P_1rnd_M", true];
+_vehicle setPylonLoadout [4,"FIR_APKWS_M247_P_19rnd_M", true];
+_vehicle setPylonLoadout [5,"FIR_AWW13_P_1rnd_M", true];
+_vehicle setPylonLoadout [6,"FIR_Litening_P_1rnd_M", true];
+_vehicle setPylonLoadout [7,"FIR_APKWS_M247_P_19rnd_M", true];
+_vehicle setPylonLoadout [8,"FIR_AGM88_P_1rnd_M", true];
+_vehicle setPylonLoadout [9,"FIR_AIM120_P_1rnd_M", true];
+_vehicle setPylonLoadout [10,"FIR_AIM120_P_1rnd_M", true];

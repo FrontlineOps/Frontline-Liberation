@@ -1,0 +1,17 @@
+# Arma 3 packed mission/build outputs
+*.pbo
+*.bisign
+*.bikey
+
+# Arma/profile and crash/log output
+*.rpt
+*.mdmp
+*.bidmp
+
+# Local editor and OS metadata
+.vscode/
+.idea/
+*.swp
+*.tmp
+Thumbs.db
+.DS_Store

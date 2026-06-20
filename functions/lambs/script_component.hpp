@@ -1,0 +1,29 @@
+#include "\x\cba\addons\main\script_macros_common.hpp"
+
+#define TASK_GARRISON_EXITCONDITIONS -2
+#define TASK_GARRISON_SORTBYHEIGHT false
+#define TASK_GARRISON_TELEPORT false
+#define TASK_GARRISON_PATROL false
+#define TASK_GARRISON_SIZE 50
+
+#define TASK_PATROL_WAYPOINTCOUNT 4
+#define TASK_PATROL_MOVEWAYPOINTS false
+#define TASK_PATROL_SIZE 200
+
+#define TASK_CREEP_MOVINGCENTER false
+#define TASK_CREEP_PLAYERSONLY false
+#define TASK_CREEP_CYCLETIME 30
+#define TASK_CREEP_SIZE 1000
+
+#define TASK_HUNT_MOVINGCENTER false
+#define TASK_HUNT_PLAYERSONLY false
+#define TASK_HUNT_CYCLETIME 70
+#define TASK_HUNT_SIZE 1000
+#define TASK_HUNT_TRYUGLFLARE 1
+
+#define TASK_RUSH_MOVINGCENTER false
+#define TASK_RUSH_PLAYERSONLY false
+#define TASK_RUSH_CYCLETIME 15
+#define TASK_RUSH_SIZE 1000
+
+#define RND(var) random 1 > var

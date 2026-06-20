@@ -1,0 +1,2 @@
+garrison:   https://cbateam.github.io/CBA_A3/docs/files/ai/fnc_waypointGarrison-sqf.html OR https://cbateam.github.io/CBA_A3/docs/files/ai/fnc_taskDefend-sqf.html
+patrol:     https://cbateam.github.io/CBA_A3/docs/files/ai/fnc_taskPatrol-sqf.html
