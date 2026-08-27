@@ -12,33 +12,128 @@ private _weapons = [];
 private _magazines = [];
 private _items = [];
 private _backpacks = [];
+private _blacklist = (missionNamespace getVariable ["KP_liberation_autoFaction_arsenalBlacklist", []]) apply {toLower _x};
+private _arsenalClassCache = createHashMap;
+
+/* Match ACE Arsenal's public config filter without depending on ACE. */
+private _isArsenalVisible = {
+    params ["_cfg"];
+    if !(isClass _cfg) exitWith {false};
+
+    private _scope = getNumber (_cfg >> "scope");
+    private _visible = if (isNumber (_cfg >> "scopeArsenal")) then {
+        getNumber (_cfg >> "scopeArsenal") == 2 && {_scope > 0}
+    } else {
+        _scope == 2
+    };
+
+    _visible && {getNumber (_cfg >> "ace_arsenal_hide") != 1}
+};
+
+/*
+    Unit and crate configs often reference hidden, prefilled equipment variants.
+    Resolve those to the nearest public ancestor in the same arsenal category.
+*/
+private _resolveArsenalClass = {
+    params ["_class"];
+    if !(_class isEqualType "") exitWith {["", ""]};
+    if (_class isEqualTo "") exitWith {["", ""]};
+
+    private _cacheKey = toLower _class;
+    if (_cacheKey in _arsenalClassCache) exitWith {
+        _arsenalClassCache get _cacheKey
+    };
+    if (_cacheKey in _blacklist) exitWith {
+        _arsenalClassCache set [_cacheKey, ["", ""]];
+        ["", ""]
+    };
+
+    private _cfg = configNull;
+    private _root = "";
+    private _bucket = "";
+
+    private _candidate = configFile >> "CfgMagazines" >> _class;
+    if (isClass _candidate) then {
+        _cfg = _candidate;
+        _root = "CfgMagazines";
+        _bucket = "magazines";
+    };
+
+    if (_bucket isEqualTo "") then {
+        _candidate = configFile >> "CfgVehicles" >> _class;
+        if (isClass _candidate && {_class isKindOf "Bag_Base"}) then {
+            _cfg = _candidate;
+            _root = "CfgVehicles";
+            _bucket = "backpacks";
+        };
+    };
+
+    if (_bucket isEqualTo "") then {
+        _candidate = configFile >> "CfgGlasses" >> _class;
+        if (isClass _candidate) then {
+            _cfg = _candidate;
+            _root = "CfgGlasses";
+            _bucket = "items";
+        };
+    };
+
+    if (_bucket isEqualTo "") then {
+        _candidate = configFile >> "CfgWeapons" >> _class;
+        if (isClass _candidate) then {
+            _cfg = _candidate;
+            _root = "CfgWeapons";
+            _bucket = if (getNumber (_candidate >> "type") in [1, 2, 4, 4096]) then {"weapons"} else {"items"};
+        };
+    };
+
+    if (_bucket isEqualTo "") exitWith {
+        _arsenalClassCache set [_cacheKey, ["", ""]];
+        ["", ""]
+    };
+
+    private _resolvedClass = "";
+    private _current = _cfg;
+    private _visited = [];
+    private _depth = 0;
+
+    while {_resolvedClass isEqualTo "" && {_depth < 64} && {isClass _current}} do {
+        private _currentClass = configName _current;
+        private _currentKey = toLower _currentClass;
+        if (_currentKey in _visited) exitWith {};
+        _visited pushBack _currentKey;
+
+        private _sameCategory = switch (_root) do {
+            case "CfgVehicles": {_currentClass isKindOf "Bag_Base"};
+            case "CfgWeapons": {
+                private _isWeapon = getNumber (_current >> "type") in [1, 2, 4, 4096];
+                _isWeapon isEqualTo (_bucket isEqualTo "weapons")
+            };
+            default {true};
+        };
+
+        if (_sameCategory && {[_current] call _isArsenalVisible}) then {
+            _resolvedClass = _currentClass;
+        } else {
+            _current = inheritsFrom _current;
+        };
+        _depth = _depth + 1;
+    };
+
+    private _result = if (_resolvedClass isEqualTo "") then {["", ""]} else {[_bucket, _resolvedClass]};
+    _arsenalClassCache set [_cacheKey, _result];
+    _result
+};
 
 private _addClass = {
     params ["_class"];
-    if !(_class isEqualType "") exitWith {};
-    if (_class isEqualTo "") exitWith {};
+    private _resolved = [_class] call _resolveArsenalClass;
+    _resolved params ["_bucket", "_resolvedClass"];
 
-    if (isClass (configFile >> "CfgMagazines" >> _class)) exitWith {
-        _magazines pushBackUnique _class;
-    };
-
-    private _vehicleCfg = configFile >> "CfgVehicles" >> _class;
-    if (isClass _vehicleCfg && {_class isKindOf "Bag_Base"}) exitWith {
-        _backpacks pushBackUnique _class;
-    };
-
-    if (isClass (configFile >> "CfgGlasses" >> _class)) exitWith {
-        _items pushBackUnique _class;
-    };
-
-    private _weaponCfg = configFile >> "CfgWeapons" >> _class;
-    if !(isClass _weaponCfg) exitWith {};
-
-    private _type = getNumber (_weaponCfg >> "type");
-    if (_type in [1, 2, 4, 4096]) then {
-        _weapons pushBackUnique _class;
-    } else {
-        _items pushBackUnique _class;
+    switch (_bucket) do {
+        case "weapons": {_weapons pushBackUnique _resolvedClass};
+        case "magazines": {_magazines pushBackUnique _resolvedClass};
+        case "items": {_items pushBackUnique _resolvedClass};
+        case "backpacks": {_backpacks pushBackUnique _resolvedClass};
     };
 };
 
@@ -166,7 +261,6 @@ if (missionNamespace getVariable ["KP_liberation_autoFaction_includeTfarRadios",
     [_x] call _addClass;
 } forEach (missionNamespace getVariable ["KP_liberation_autoFaction_arsenalExtraItems", []]);
 
-private _blacklist = (missionNamespace getVariable ["KP_liberation_autoFaction_arsenalBlacklist", []]) apply {toLower _x};
 private _filter = {
     params ["_classes"];
     private _filtered = _classes select {!((toLower _x) in _blacklist)};
