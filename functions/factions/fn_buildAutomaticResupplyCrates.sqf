@@ -2,7 +2,12 @@
 
 private _catalogs = missionNamespace getVariable ["KPLIB_autoFactionCatalogs", createHashMap];
 private _catalog = _catalogs getOrDefault ["blufor", createHashMap];
-private _crateClasses = +(_catalog getOrDefault ["crates", []]);
+private _factionModels = +(_catalog getOrDefault ["crates", []]);
+_factionModels = _factionModels select {
+    isClass (configFile >> "CfgVehicles" >> _x) && {_x isKindOf "ReammoBox_F"}
+};
+_factionModels = _factionModels arrayIntersect _factionModels;
+private _crateClasses = +_factionModels;
 
 /* Include loaded ACE/ACM medical crates even if their config faction is generic. */
 if (missionNamespace getVariable ["KP_liberation_autoFaction_includeAceMedical", true]) then {
@@ -23,7 +28,7 @@ if (missionNamespace getVariable ["KP_liberation_autoFaction_includeAceMedical",
         getArray (configFile >> "CfgPatches" >> "ace_medical_treatment" >> "units") +
         getArray (configFile >> "CfgPatches" >> "acm_core" >> "units")
     );
-    _crateClasses = (_medicalCrates + _crateClasses) arrayIntersect (_medicalCrates + _crateClasses);
+    _crateClasses = (_crateClasses + _medicalCrates) arrayIntersect (_crateClasses + _medicalCrates);
 };
 
 private _usableModels = _crateClasses select {
@@ -32,13 +37,10 @@ private _usableModels = _crateClasses select {
 _usableModels = _usableModels arrayIntersect _usableModels;
 private _limit = missionNamespace getVariable ["KP_liberation_autoFaction_resupplyCrateLimit", 16];
 if (_limit > 0 && {count _usableModels > _limit}) then {_usableModels resize _limit};
-if (_usableModels isEqualTo []) exitWith {
-    private _message = "No selected-faction or compatibility ReammoBox_F models were found";
-    [_message, "FACTIONS"] call KPLIB_fnc_log;
-    throw _message;
-};
+private _usableFactionModels = _usableModels select {_x in _factionModels};
 
 private _generated = createHashMap;
+private _nativeFactionDefinitions = 0;
 {
     private _class = _x;
     if !(_class isKindOf "ReammoBox_F") then {continue};
@@ -69,14 +71,35 @@ private _generated = createHashMap;
         ["Items", _cargo get "Items"],
         ["Backpacks", _cargo get "Backpacks"]
     ]];
+    if (_class in _usableFactionModels) then {
+        _nativeFactionDefinitions = _nativeFactionDefinitions + 1;
+    };
 } forEach _usableModels;
 
-if (count _generated == 0) then {
+private _syntheticFactionDefinitions = 0;
+if (_nativeFactionDefinitions == 0) then {
     private _arsenalData = missionNamespace getVariable ["KPLIB_autoFactionPlayerArsenalData", createHashMap];
     private _weapons = +(_arsenalData getOrDefault ["weapons", []]);
     private _magazines = +(_arsenalData getOrDefault ["magazines", []]);
     private _items = +(_arsenalData getOrDefault ["items", []]);
     private _backpacks = +(_arsenalData getOrDefault ["backpacks", []]);
+    private _syntheticModels = +_usableFactionModels;
+    if (_syntheticModels isEqualTo []) then {
+        private _fallbackModel = "Box_NATO_Ammo_F";
+        if !(isClass (configFile >> "CfgVehicles" >> _fallbackModel) && {_fallbackModel isKindOf "ReammoBox_F"}) then {
+            private _message = format [
+                "No selected-faction ReammoBox_F model was found and fallback model %1 is unavailable",
+                _fallbackModel
+            ];
+            [_message, "FACTIONS"] call KPLIB_fnc_log;
+            throw _message;
+        };
+        _syntheticModels = [_fallbackModel];
+        [format [
+            "Selected BLUFOR faction exposes no public ReammoBox_F; using %1 for synthesized faction resupply containers",
+            _fallbackModel
+        ], "FACTIONS"] call KPLIB_fnc_log;
+    };
 
     private _toCargoMap = {
         params ["_classes", "_quantity", "_classLimit"];
@@ -101,7 +124,7 @@ if (count _generated == 0) then {
         ) exitWith {};
 
         _generated set [_name, createHashMapFromArray [
-            ["Model", _usableModels param [_modelIndex, _usableModels select 0]],
+            ["Model", _syntheticModels param [_modelIndex, _syntheticModels select 0]],
             ["Offset", [0, 1, 1]],
             ["Category", "Faction Supplies"],
             ["SquadLocks", []],
@@ -114,6 +137,7 @@ if (count _generated == 0) then {
         ]];
     };
 
+    private _beforeSynthesis = count _generated;
     [
         "[AUTO] Faction Ammunition",
         0,
@@ -138,14 +162,18 @@ if (count _generated == 0) then {
         [_items, 4, 128] call _toCargoMap,
         [_backpacks, 2, 24] call _toCargoMap
     ] call _setSyntheticEntry;
+    _syntheticFactionDefinitions = (count _generated) - _beforeSynthesis;
 
     [format [
-        "Selected crate configs exposed no cargo; synthesized %1 definitions from generated BLUFOR arsenal data",
-        count _generated
+        "Selected faction produced no native resupply definitions; synthesized %1 definitions from generated BLUFOR arsenal data",
+        _syntheticFactionDefinitions
     ], "FACTIONS"] call KPLIB_fnc_log;
 };
 
-if (count _generated == 0) exitWith {
+if (
+    count _generated == 0 ||
+    {_nativeFactionDefinitions == 0 && {_syntheticFactionDefinitions == 0}}
+) exitWith {
     private _message = "Selected crate configs and generated BLUFOR arsenal contain no usable resupply cargo";
     [_message, "FACTIONS"] call KPLIB_fnc_log;
     throw _message;
