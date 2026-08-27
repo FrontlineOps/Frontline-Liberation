@@ -183,24 +183,3 @@ support_vehicles = [
 ];
 
 elite_vehicles = [];
-bypass_perm_vehicles = [
-	"UK3CB_TKA_B_RHIB",
-	"UK3CB_TKA_B_RHIB_Gunboat",
-    //"UK3CB_B_AAV_US_DES",
-	"rhsusf_mkvsoc",
-    //"itc_land_rhsusf_m109_usarmy",
-	//"itc_land_rhsusf_m109d_usarmy",
-    //"rhsusf_m109_usarmy",
-    "rhsusf_m113wd_usarmy_unarmed",
-    //"rhsusf_m113wd_usarmy_medical",
-    "rhsusf_m113wd_usarmy",
-    "rhsusf_m113d_usarmy_unarmed",
-    //"rhsusf_m113d_usarmy_medical",
-    "rhsusf_m113d_usarmy",
-    "rhsusf_m113_usarmy_unarmed",
-    //"rhsusf_m113_usarmy_medical",
-    "rhsusf_m113_usarmy",
-    "rhsusf_stryker_m1126_m2_wd",
-    "rhsusf_stryker_m1126_m2_d",
-    "rhsusf_stryker_m1126_m2"
-];

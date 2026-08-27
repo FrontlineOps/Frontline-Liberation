@@ -83,27 +83,24 @@ _idx = _idx + 1;
     _control ctrlSetFontHeight fontsize;
     _control ctrlCommit 0;
 
-    [_idx, 1, 0, localize "STR_PERMISSIONS_LIGHT", localize "STR_PERMISSIONS_TOOLTIP_LIGHT"] call permission_create_activetext;
-    [_idx, 2, 1, localize "STR_PERMISSIONS_ARMORED", localize "STR_PERMISSIONS_TOOLTIP_ARMORED"] call permission_create_activetext;
-    [_idx, 3, 2, localize "STR_PERMISSIONS_AIR", localize "STR_PERMISSIONS_TOOLTIP_AIR"] call permission_create_activetext;
-    [_idx, 4, 3, localize "STR_PERMISSIONS_CONSTRUCTION", localize "STR_PERMISSIONS_TOOLTIP_CONSTRUCTION"] call permission_create_activetext;
-    [_idx, 5, 4, localize "STR_PERMISSIONS_RECYCLING", localize "STR_PERMISSIONS_TOOLTIP_RECYCLING"] call permission_create_activetext;
-    [_idx, 6, 5, localize "STR_PERMISSIONS_MISC", localize "STR_PERMISSIONS_TOOLTIP_MISC"] call permission_create_activetext;
+    [_idx, 1, 3, localize "STR_PERMISSIONS_CONSTRUCTION", localize "STR_PERMISSIONS_TOOLTIP_CONSTRUCTION"] call permission_create_activetext;
+    [_idx, 2, 4, localize "STR_PERMISSIONS_RECYCLING", localize "STR_PERMISSIONS_TOOLTIP_RECYCLING"] call permission_create_activetext;
+    [_idx, 3, 5, localize "STR_PERMISSIONS_MISC", localize "STR_PERMISSIONS_TOOLTIP_MISC"] call permission_create_activetext;
 
-    _control = (findDisplay 5118) ctrlCreate ["RscButton", ((10 * _idx) + 111) + 7, (findDisplay 5118) displayCtrl 9969];
-    _control ctrlSetPosition [((0.075 * 7) - 0.02) * safeZoneW, ((_idx * 0.025) * safezoneH) + 0.0025, (0.035 * safeZoneW), 0.022  * safezoneH];
+    _control = (findDisplay 5118) ctrlCreate ["RscButton", ((10 * _idx) + 111) + 4, (findDisplay 5118) displayCtrl 9969];
+    _control ctrlSetPosition [((0.075 * 4) - 0.02) * safeZoneW, ((_idx * 0.025) * safezoneH) + 0.0025, (0.035 * safeZoneW), 0.022  * safezoneH];
     _control ctrlSetText (localize "STR_PERMISSIONS_ALL");
     _control ctrlSetFontHeight fontsize;
     _control ctrlSetTooltip (localize "STR_PERMISSIONS_TOOLTIP_ALL");
-    buttonSetAction [ ((10 * _idx) + 111) + 7, format ["permission_playerid = %1; permission_toset = 666;", _idx]];
+    buttonSetAction [ ((10 * _idx) + 111) + 4, format ["permission_playerid = %1; permission_toset = 666;", _idx]];
     _control ctrlCommit 0;
 
-    _control = (findDisplay 5118) ctrlCreate ["RscButton", ((10 * _idx) + 111) + 8, (findDisplay 5118) displayCtrl 9969];
-    _control ctrlSetPosition [((0.075 * 7) + 0.02) * safeZoneW, (_idx * 0.025) * safezoneH + 0.0025, 0.035 * safeZoneW, 0.022  * safezoneH];
+    _control = (findDisplay 5118) ctrlCreate ["RscButton", ((10 * _idx) + 111) + 5, (findDisplay 5118) displayCtrl 9969];
+    _control ctrlSetPosition [((0.075 * 4) + 0.02) * safeZoneW, (_idx * 0.025) * safezoneH + 0.0025, 0.035 * safeZoneW, 0.022  * safezoneH];
     _control ctrlSetText (localize "STR_PERMISSIONS_NONE");
     _control ctrlSetFontHeight fontsize;
     _control ctrlSetTooltip (localize "STR_PERMISSIONS_TOOLTIP_NONE");
-    buttonSetAction [((10 * _idx) + 111) + 8, format ["permission_playerid = %1; permission_toset = 999;", _idx]];
+    buttonSetAction [((10 * _idx) + 111) + 5, format ["permission_playerid = %1; permission_toset = 999;", _idx]];
     _control ctrlCommit 0;
 
 } foreach _players_array;
@@ -178,15 +175,16 @@ while {dialog && alive player} do {
                 private _player_permissions = _x select 2;
 
                 {
-                    private _control = ((findDisplay 5118) displayCtrl ((10 * _idx) + _x + 111));
-                    if (_player_permissions select (_x - 1)) then {
+                    _x params ["_column", "_permission"];
+                    private _control = ((findDisplay 5118) displayCtrl ((10 * _idx) + _column + 111));
+                    if (_player_permissions param [_permission, false]) then {
                         _control ctrlSetTextColor color_authorized;
                         _control ctrlSetActiveColor color_authorized;
                     } else {
                         _control ctrlSetTextColor color_denied;
                         _control ctrlSetActiveColor color_denied;
                     };
-                } foreach [1, 2, 3, 4, 5, 6];
+                } foreach [[1, 3], [2, 4], [3, 5]];
             };
         } foreach _modify_permissions;
 

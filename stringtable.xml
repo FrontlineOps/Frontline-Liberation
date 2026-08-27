@@ -2209,48 +2209,6 @@
             <Korean>사용 권한 설정</Korean>
             <Czech>MANAŽER PRAVOMOCÍ</Czech>
         </Key>
-        <Key ID="STR_PERMISSIONS_LIGHT">
-            <Original>Light vehicles</Original>
-            <French>Véhicules légers</French>
-            <German>Leichte Fahrzeuge</German>
-            <Spanish>Vehículos ligeros</Spanish>
-            <Russian>Лёгкая техника</Russian>
-            <Italian>Veicoli Leggeri</Italian>
-            <Chinesesimp>轻型载具</Chinesesimp>
-            <Chinese>輕型載具</Chinese>
-            <Turkish>Hafif araçlar</Turkish>
-            <Portuguese>Veículos leves</Portuguese>
-            <Korean>전투 차량</Korean>
-            <Czech>Lehká vozidla</Czech>
-        </Key>
-        <Key ID="STR_PERMISSIONS_ARMORED">
-            <Original>Armored vehicles</Original>
-            <French>Véhicules blindés</French>
-            <German>Gepanzerte Fahrzeuge</German>
-            <Spanish>Vehículos blindados</Spanish>
-            <Russian>Бронированная техника</Russian>
-            <Italian>veicoli Blindati</Italian>
-            <Chinesesimp>装甲载具</Chinesesimp>
-            <Chinese>裝甲載具</Chinese>
-            <Turkish>Zırhlı araçlar</Turkish>
-            <Portuguese>Veículos blindados</Portuguese>
-            <Korean>장갑 차량</Korean>
-            <Czech>Obrněná vozidla</Czech>
-        </Key>
-        <Key ID="STR_PERMISSIONS_AIR">
-            <Original>Air vehicles</Original>
-            <French>Véhicules aériens</French>
-            <German>Luftfahrzeuge</German>
-            <Spanish>Vehículos aéreos</Spanish>
-            <Russian>Авиация</Russian>
-            <Italian>Aerei</Italian>
-            <Chinesesimp>空中载具</Chinesesimp>
-            <Chinese>空中載具</Chinese>
-            <Turkish>Hava araçları</Turkish>
-            <Portuguese>Veículos aéreos</Portuguese>
-            <Korean>항공기</Korean>
-            <Czech>Letectvo</Czech>
-        </Key>
         <Key ID="STR_PERMISSIONS_CONSTRUCTION">
             <Original>Construction</Original>
             <French>Construction</French>
@@ -2320,48 +2278,6 @@
             <Portuguese>Nenhum</Portuguese>
             <Korean>없음</Korean>
             <Czech>Nic</Czech>
-        </Key>
-        <Key ID="STR_PERMISSIONS_TOOLTIP_LIGHT">
-            <Original>Allows the player to operate light vehicles as driver and gunner.</Original>
-            <French>Autorise le joueur à utiliser les véhicules légers en tant que conducteur ou tireur.</French>
-            <German>Erlaubt es dem Spieler, leichte Fahrzeuge als Fahrer und Schütze zu bedienen.</German>
-            <Spanish>Permite al jugador utilizar vehículos ligeros como conductor y artillero</Spanish>
-            <Russian>Позволяет игроку использовать легкую технику в качестве водителя или стрелка.</Russian>
-            <Italian>Permetti al giocatore di entrare nei veicoli leggeri come guidatore e artigliere</Italian>
-            <Chinesesimp>允许玩家进入轻型载具的驾驶和炮手位。</Chinesesimp>
-            <Chinese>允許玩家進入輕型載具的駕駛與砲手位置。</Chinese>
-            <Turkish>Oyuncunun hafif araçları sürücü veya taretçi olarak kullanmasına olanak verir.</Turkish>
-            <Portuguese>Permite ao jogador operar veículos leves como condutor e atirador.</Portuguese>
-            <Korean>플레이어가 전투 차량을 사용할 수 있는 권한를 허가 합니다.</Korean>
-            <Czech>Povolí hráči operovat s lehkými vozidly jako řidič nebo střelec.</Czech>
-        </Key>
-        <Key ID="STR_PERMISSIONS_TOOLTIP_ARMORED">
-            <Original>Allows the player to operate armored vehicles as driver, gunner and commander.</Original>
-            <French>Autorise le joueur à utiliser les véhicules blindés en tant que conducteur, tireur ou commandant.</French>
-            <German>Erlaubt es dem Spieler, gepanzerte Fahrzeuge als Fahrer, Schütze und Kommandant zu bedienen.</German>
-            <Spanish>Permite al jugador utilizar vehículos blindados como conductor, artillero y comandante</Spanish>
-            <Russian>Позволяет игроку использовать бронированную технику в качестве водителя, стрелка или командира.</Russian>
-            <Italian>Permetti al giocatore di entrare nei veicoli blindati come guidatore e artigliere e comandante</Italian>
-            <Chinesesimp>允许玩家进入装甲载具的驾驶、炮手和车长位。</Chinesesimp>
-            <Chinese>允許玩家進入裝甲載具的駕駛、砲手、車長位置。</Chinese>
-            <Turkish>Oyuncunun zırhlı araçları sürücü, komutan veya  taretçi olarak kullanmasına olanak verir.</Turkish>
-            <Portuguese>Permite ao jogador operar veículos blindados como condutor, atirador e comandante.</Portuguese>
-            <Korean>플레이어가 장갑 차량을 사용할 수 있는 권한를 허가 합니다.</Korean>
-            <Czech>Povolí hráči operovat s obrněnými vozidly jako řidič, střelec a velitel.</Czech>
-        </Key>
-        <Key ID="STR_PERMISSIONS_TOOLTIP_AIR">
-            <Original>Allows the player to operate air vehicles as driver and gunner.</Original>
-            <French>Autorise le joueur à utiliser les véhicules aériens en tant que conducteur ou tireur.</French>
-            <German>Erlaubt es dem Spieler, Luftfahrzeuge als Pilot und Schütze zu bedienen.</German>
-            <Spanish>Permite al jugador utilizar vehículos aéreos como conductor y artillero</Spanish>
-            <Russian>Позволяет игроку использовать авиацию в качестве пилота или стрелка.</Russian>
-            <Italian>Permetti al giocatore di entrare negli aerei come guidatore e artigliere</Italian>
-            <Chinesesimp>允许玩家进入空中载具的驾驶和炮手位。</Chinesesimp>
-            <Chinese>允許玩家進入空中載具的駕駛和砲手位置。</Chinese>
-            <Turkish>Oyuncunun bütün hava araçlarını pilot veya taretçi olarak kullanmasına olanak verir.</Turkish>
-            <Portuguese>Permite ao jogador operar veículos aéreos como piloto e atirador.</Portuguese>
-            <Korean>플레이어가 항공기를 사용할 수 있는 권한를 허가 합니다.</Korean>
-            <Czech>Povolí hráči operovat s letadly jako řidič a střelec.</Czech>
         </Key>
         <Key ID="STR_PERMISSIONS_TOOLTIP_CONSTRUCTION">
             <Original>Allows the player to use the BUILD menu.</Original>
@@ -2474,48 +2390,6 @@
             <Portuguese>Gestão de Permissões</Portuguese>
             <Korean>사용 권한 설정</Korean>
             <Czech>Manažer pravomocí</Czech>
-        </Key>
-        <Key ID="STR_PERMISSION_NO_LIGHT">
-            <Original>You don't have permission from the commander to use light vehicles.</Original>
-            <French>Vous n'avez pas la permission du commandant pour utiliser les véhicules légers.</French>
-            <German>Du hast keine Rechte zur Nutzung leichter Fahrzeuge.</German>
-            <Spanish>No tienes permiso del comandante para usar vehículos ligeros</Spanish>
-            <Russian>У вас нет разрешения от командира использовать легкую технику.</Russian>
-            <Italian>Non hai il permesso di usare veicoli leggeri</Italian>
-            <Chinesesimp>指挥官没有给你使用轻型载具的权限。</Chinesesimp>
-            <Chinese>指揮官並沒有提供你輕型載具機組員權限。</Chinese>
-            <Turkish>Hafif araçları kullanmak için komutadan yetkiniz eksik.</Turkish>
-            <Portuguese>Você não tem permissão do comandante para utilizar veículos leves.</Portuguese>
-            <Korean>당신은 전투 차량을 사용할 수 있는 권한를 받지 못하였습니다.</Korean>
-            <Czech>Nemáš pravomoc od Komandéra používat lehká vozidla.</Czech>
-        </Key>
-        <Key ID="STR_PERMISSION_NO_ARMOR">
-            <Original>You don't have permission from the commander to use armored vehicles.</Original>
-            <French>Vous n'avez pas la permission du commandant pour utiliser les véhicules blindés.</French>
-            <German>Du hast keine Rechte zur Nutzung gepanzerter Fahrzeuge</German>
-            <Spanish>No tienes permiso del comandante para usar vehículos blindados</Spanish>
-            <Russian>У вас нет разрешения от командира использовать бронированную технику.</Russian>
-            <Italian>Non hai il permesso di usare veicoli pesanti</Italian>
-            <Chinesesimp>指挥官没有给你使用装甲载具的权限。</Chinesesimp>
-            <Chinese>指揮官並沒有提供你裝甲載具機組員權限。</Chinese>
-            <Turkish>Zırhlı araçları kullanmak için komutadan yetkiniz eksik.</Turkish>
-            <Portuguese>Você não tem permissão do comandante para utilizar veículos blindados.</Portuguese>
-            <Korean>당신은 장갑 차량을 사용할 수 있는 권한를 받지 못하였습니다.</Korean>
-            <Czech>Nemáš pravomoc od Komandéra používat obrněná vozidla.</Czech>
-        </Key>
-        <Key ID="STR_PERMISSION_NO_AIR">
-            <Original>You don't have permission from the commander to use air vehicles.</Original>
-            <French>Vous n'avez pas la permission du commandant pour utiliser les véhicules aériens.</French>
-            <German>Du hast keine Rechte zur Nutzung von Luftfahrzeugen</German>
-            <Spanish>No tienes permiso del comandante para usar vehículos aéreos</Spanish>
-            <Russian>У вас нет разрешения от командира использовать авиацию.</Russian>
-            <Italian>Non hai il permesso di usare veivoli</Italian>
-            <Chinesesimp>指挥官没有给你使用空中载具的权限。</Chinesesimp>
-            <Chinese>指揮官並沒有提供你空中載具機組員權限。</Chinese>
-            <Turkish>Hava araçlarını kullanmak için komutadan yetkiniz eksik.</Turkish>
-            <Portuguese>Você não tem permissão do comandante para utilizar veículos aéreos.</Portuguese>
-            <Korean>당신은 항공기를 사용할 수 있는 권한를 받지 못하였습니다.</Korean>
-            <Czech>Nemáš pravomoc od Komandéra používat letectvo.</Czech>
         </Key>
         <Key ID="STR_PERMISSION_WARNING">
             <Original>No permissions have been set. The commander must setup the permissions to allow player actions and vehicle usage. Alternatively, the permission system can be disabled from the mission options.</Original>

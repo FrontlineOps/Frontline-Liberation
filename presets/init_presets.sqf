@@ -501,28 +501,6 @@ KPLIB_o_allVeh_classes = KPLIB_o_allVeh_classes arrayIntersect KPLIB_o_allVeh_cl
 KPLIB_o_inf_classes = [opfor_sentry, opfor_rifleman, opfor_grenadier, opfor_squad_leader, opfor_team_leader, opfor_marksman, opfor_machinegunner, opfor_heavygunner, opfor_medic, opfor_rpg, opfor_at, opfor_aa, opfor_officer, opfor_sharpshooter, opfor_sniper,opfor_engineer,opfor_paratrooper,opfor_rto];
 KPLIB_o_inf_classes = KPLIB_o_inf_classes apply {toLower _x};
 
-/*
-    Vehicle type permission arrays
-*/
-KPLIB_typeLightClasses = +KPLIB_b_light_classes;
-KPLIB_typeReconClasses = +KPLIB_b_recon_classes;
-KPLIB_typeMedicalClasses = +KPLIB_b_medical_classes;
-KPLIB_typeGroundLogiClasses = +KPLIB_b_groundlogi_classes;
-KPLIB_typeArtilleryClasses = +KPLIB_b_artillery_classes;
-KPLIB_typeATGMClasses = +KPLIB_b_atgm_classes;
-KPLIB_typeAAClasses = +KPLIB_b_aa_classes;
-KPLIB_typeHeavyClasses = +KPLIB_b_heavy_classes;
-KPLIB_typeRotaryLogiClasses = +KPLIB_b_rotarylogi_classes;
-KPLIB_typeRotaryCasClasses = +(KPLIB_b_rotarycas_classes + ["rhs_melb_ah6m"]);
-KPLIB_typeFixedWingClasses = +KPLIB_b_fixedwing_classes;
-{
-    switch (true) do {
-        case (_x isKindOf "Tank"):  {KPLIB_typeHeavyClasses      pushBack _x};
-        case (_x isKindOf "Air"):   {KPLIB_typeRotaryLogiClasses pushBack _x};
-        default                     {KPLIB_typeLightClasses      pushBack _x};
-    };
-} forEach (KPLIB_b_support_classes + [toLower huron_typename]);
-
 // Military alphabet used for FOBs and convois
 military_alphabet = ["Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golf", "Hotel", "India", "Juliet", "Kilo", "Lima", "Mike", "November", "Oscar", "Papa", "Quebec", "Romeo", "Sierra", "Tango", "Uniform", "Victor", "Whiskey", "X-Ray", "Yankee", "Zulu"];
 
