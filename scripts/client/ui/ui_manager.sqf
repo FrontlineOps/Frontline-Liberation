@@ -61,7 +61,7 @@ while {true} do {
         private _nearestFob = player getVariable "KPLIB_fobPos";
         ([_nearestFob] call KPLIB_fnc_getFobResources) params ["", "_supplies", "_ammo", "_fuel", "_hasAir", "_hasRecycling"];
 
-        if (KP_liberation_resources_global || {_visibleMap}) then {
+        if ((missionNamespace getVariable ["KP_liberation_resources_global", false]) || {_visibleMap}) then {
             // Overwrite FOB name in global mode
             _currentFob = localize "STR_RESOURCE_GLOBAL";
 

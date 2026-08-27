@@ -29,6 +29,7 @@ IADS_QueueFire = {
 
 	
 	private _engagements =  1;
+	private _rank = _track getOrDefault ["rank", 10];
 
 	if(_rank <= 8) then {
 		_engagements = 2;
@@ -38,8 +39,6 @@ IADS_QueueFire = {
 	};
 
 	
-	private _rank = _track getOrDefault ["rank", 10];
-
 	private _distanceToClosest = _track getOrDefault ["threatDistanceToClosestSystem", 12000];
 
 	private _altitude = getPosATLVisual _target;
@@ -272,8 +271,10 @@ IADS_QueueFire = {
 				} else {
 					_randomTime = _delayInFiring + _randomTime;
 				};
-				systemChat format ["Dir of launcher: %1 - Angle to target %2 - Angle diff %3 - degLauncher %4 - launcher dir %5", _dir, (_launcher getDir _target), _angleTo, deg (_launcher animationPhase "mainTurret"), getDir _launcher];
-				systemChat format ["Engaging %1 - Delay in firing %2 - Cooldown %3", _target, _delayInFiring, _randomTime];
+				if (IADS_DEBUG_LAUNCH) then {
+					systemChat format ["Dir of launcher: %1 - Angle to target %2 - Angle diff %3 - degLauncher %4 - launcher dir %5", _dir, (_launcher getDir _target), _angleTo, deg (_launcher animationPhase "mainTurret"), getDir _launcher];
+					systemChat format ["Engaging %1 - Delay in firing %2 - Cooldown %3", _target, _delayInFiring, _randomTime];
+				};
 				if(!((typeOf _launcher) in IADS_IGNORE_TURN)) then {
 
 					private _pos = getPosASLVisual _target;

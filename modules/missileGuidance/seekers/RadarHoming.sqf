@@ -105,7 +105,7 @@ IADS_CHAFF_SEARCH_DIST = 1250;
 			// Notched
 			
 			if((abs _likeness) <= 0.026) then {
-				systemChat format ["Notched %1", _likeness];
+				if (IADS_SAM_DEBUG) then {systemChat format ["Notched %1", _likeness];};
 				_newTarget = objNull;
 			};
 		};

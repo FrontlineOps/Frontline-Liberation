@@ -49,5 +49,5 @@ while {true} do {
             _actionned_intel_items = _actionned_intel_items - [_x];
         } forEach _actionned_intel_items;
     };
-    sleep 3;
+    sleep (missionNamespace getVariable ["KP_liberation_client_action_refresh_interval", 5]);
 };

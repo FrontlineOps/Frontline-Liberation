@@ -4,7 +4,7 @@ waitUntil {!isNil "one_eco_done"};
 waitUntil {one_synchro_done};
 waitUntil {one_eco_done};
 
-private ["_managed_trucks", "_managed_boxes", "_managed_areas", "_next_truck", "_next_box", "_truck_load", "_checked_trucks", "_checked_boxes", "_action_id","_action_id2","_action_id3","_action_id4","_b_action_id1","_b_action_id2","_b_action_id3","_b_action_id4"];
+private ["_managed_trucks", "_managed_boxes", "_managed_areas", "_next_truck", "_next_box", "_truck_load", "_checked_trucks", "_checked_boxes", "_checked_areas", "_next_area", "_area_load", "_nearammoboxes", "_neartransporttrucks", "_nearstorageareas", "_action_id","_action_id2","_action_id3","_action_id4","_b_action_id1","_b_action_id2","_b_action_id3","_b_action_id4"];
 
 _managed_trucks = [];
 _managed_boxes = [];
@@ -122,6 +122,6 @@ while {true} do {
 
     };
 
-    sleep 3;
+    sleep (missionNamespace getVariable ["KP_liberation_client_action_refresh_interval", 5]);
 
 };

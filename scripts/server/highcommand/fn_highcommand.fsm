@@ -81,7 +81,8 @@ class FSM
                          "private _grp = createGroup sideLogic;" \n
                          "private _cmdr = objNull;" \n
                          "private _hcGrps = [];" \n
-                         "private _newGrps = [];"/*%FSM</STATEINIT""">*/;
+                         "private _newGrps = [];" \n
+                         "private _nextRefreshAt = 0;"/*%FSM</STATEINIT""">*/;
                         precondition = /*%FSM<STATEPRECONDITION""">*/""/*%FSM</STATEPRECONDITION""">*/;
                         class Links
                         {
@@ -248,18 +249,7 @@ class FSM
                 {
                         name = "Start_High_Command";
                         itemno = 10;
-                        init = /*%FSM<STATEINIT""">*/"// Get all groups which are currently added to high command" \n
-                         "_hcGrps = hcAllGroups _cmdr;" \n
-                         "" \n
-                         "// Get all groups with at least one member alive" \n
-                         "// and not already added to high command" \n
-                         "_newGrps = allGroups select {" \n
-                         "    (side _x) isEqualTo GRLIB_side_friendly" \n
-                         "    && {!(_x in _hcGrps)}" \n
-                         "    && {!(((units _x) select {alive _x}) isEqualTo [])}" \n
-                         "    && {!(_cmdr in (units _x))}" \n
-                         "    && {(((units _x) apply {str _x}) findIf {_x find ""BIS_SUPP_HQ_"" != -1}) isEqualTo -1}" \n
-                         "};"/*%FSM</STATEINIT""">*/;
+                        init = /*%FSM<STATEINIT""">*/"_nextRefreshAt = diag_tickTime + (missionNamespace getVariable [""KP_liberation_high_command_refresh_interval"", 2]);"/*%FSM</STATEINIT""">*/;
                         precondition = /*%FSM<STATEPRECONDITION""">*/""/*%FSM</STATEPRECONDITION""">*/;
                         class Links
                         {
@@ -281,8 +271,19 @@ class FSM
                                         priority = 0.000000;
                                         to="Remove_empty_gro";
                                         precondition = /*%FSM<CONDPRECONDITION""">*/""/*%FSM</CONDPRECONDITION""">*/;
-                                        condition=/*%FSM<CONDITION""">*/""/*%FSM</CONDITION""">*/;
-                                        action=/*%FSM<ACTION""">*/""/*%FSM</ACTION""">*/;
+                                        condition=/*%FSM<CONDITION""">*/"diag_tickTime >= _nextRefreshAt"/*%FSM</CONDITION""">*/;
+                                        action=/*%FSM<ACTION""">*/"// Get all groups which are currently added to high command" \n
+                                         "_hcGrps = hcAllGroups _cmdr;" \n
+                                         "" \n
+                                         "// Get all groups with at least one member alive" \n
+                                         "// and not already added to high command" \n
+                                         "_newGrps = allGroups select {" \n
+                                         "    (side _x) isEqualTo GRLIB_side_friendly" \n
+                                         "    && {!(_x in _hcGrps)}" \n
+                                         "    && {!(((units _x) select {alive _x}) isEqualTo [])}" \n
+                                         "    && {!(_cmdr in (units _x))}" \n
+                                         "    && {(((units _x) apply {str _x}) findIf {_x find ""BIS_SUPP_HQ_"" != -1}) isEqualTo -1}" \n
+                                         "};"/*%FSM</ACTION""">*/;
                                 };
                                 /*%FSM</LINK>*/
                         };

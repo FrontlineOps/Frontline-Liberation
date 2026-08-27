@@ -33,11 +33,10 @@ if (!isServer) then {waitUntil {!isNil "KPLIB_initServer"};};
 //Initialize global list of arsenal crates (added in kp_objectinits)
 KARMA_ARSENAL_CRATES = [];
 OPFOR_ARSENAL_CRATES = [];
-[] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\index.sqf";
-
 
 [] call compileFinal preprocessFileLineNumbers "scripts\shared\fetch_params.sqf";
 [] call compileFinal preprocessFileLineNumbers "kp_liberation_config.sqf";
+[] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\index.sqf";
 
 if (isDedicated) then 
 {

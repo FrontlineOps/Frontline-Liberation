@@ -80,7 +80,7 @@ if (_side == GRLIB_side_friendly) then {
     _allMarkers = missionnamespace getvariable [ "OPFOR_all_cops", [] ];
 };
 
-private _marker = _allMarkers select 0;
+private _marker = _allMarkers select ((count _allMarkers) - 1);
 [ _markerPos, _canSpawn, _pbCount - 1, _side] remoteexeccall [ "KPLIB_fnc_createPBMarker", _side ];
 
 
@@ -107,6 +107,7 @@ private _marker = _allMarkers select 0;
             "killed", 
             {
                 params [ "_unit", "_killer", "_instigator", "_useeffects" ];
+				[_unit] remoteExecCall ["KPLIB_fnc_queueDeadObjectCleanup", 2];
                 
                 private _marker = _unit getvariable ["copmarker", ""];
                 private _side = _unit getVariable ["copside", GRLIB_side_friendly];
@@ -114,10 +115,14 @@ private _marker = _allMarkers select 0;
                 if (_side == GRLIB_side_friendly) then {
                     ["lib_admin_notification", ["PB lost", format ["PB - %1 has been destroyed!", mapgridposition ( getmarkerpos _marker ) ], "res\notif\ui_notif_sec_los.paa" ] ] remoteexec [ "bis_fnc_shownotification" ];
                     GRLIB_all_cops = GRLIB_all_cops - [ _marker ];
-                    publicVariable "GRLIB_all_cops";            
+                    GRLIB_cop_count = count GRLIB_all_cops;
+                    publicVariable "GRLIB_all_cops";
+                    publicVariable "GRLIB_cop_count";
                 } else {
                     OPFOR_all_cops = OPFOR_all_cops - [ _marker ];
+                    OPFOR_cop_count = count OPFOR_all_cops;
                     publicVariable "OPFOR_all_cops";
+                    publicVariable "OPFOR_cop_count";
                 };
                 
                 //--- Delete

@@ -5,6 +5,8 @@ KC_AUTOHEALER = {
 	if(!canSuspend) exitWith {
 		_this spawn KC_AUTOHEALER;
 	};
+	if (_building getVariable ["KC_autohealerActive", false]) exitWith {};
+	_building setVariable ["KC_autohealerActive", true];
 
 	_building allowDamage false;
 

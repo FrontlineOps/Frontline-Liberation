@@ -25,7 +25,10 @@ private _toRemove = [];
 private _toAdd = [];
 
 while {true} do {
-    waitUntil {sleep 1; !(allCurators isEqualTo [])};
+    if (allCurators isEqualTo []) then {
+        sleep 1;
+        continue;
+    };
 
     // Add units
     _valids = allUnits select {
@@ -63,5 +66,5 @@ while {true} do {
         _x addCuratorEditableObjects [_toAdd, true];
         _x removeCuratorEditableObjects [_toRemove, true];
     } forEach allCurators;
-    sleep 9;
+    sleep (missionNamespace getVariable ["KP_liberation_zeus_sync_interval", 15]);
 };

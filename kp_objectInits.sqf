@@ -52,12 +52,6 @@ KPLIB_objectInits = [
         KP_liberation_medical_facilities,
         {_this setVariable ["ace_medical_isMedicalFacility", true, true];}
     ],    
-	[
-        ["nyoom"], // THIS IS THE FACILITY THAT AUTO HEALS AT OPS BASE, KEEP IT UP TO DATE.
-        {
-            [_this, false] spawn KC_AUTOHEALER; // Second parameter determines if auto heal is disabled when enemies are within 1km including Air. For the future if we want to put it at FOBs.
-        }
-    ],
     [
         ["nyoom"], // THIS IS THE FACILITY THAT AUTO HEALS AT OPS BASE, KEEP IT UP TO DATE.
         {
@@ -600,7 +594,7 @@ KPLIB_objectInits = [
         } forEach KARMA_ARSENAL_CRATES;
         */
         
-        KARMA_ARSENAL_CRATES pushback _box;
+        KARMA_ARSENAL_CRATES pushBackUnique _box;
         [roleArsenal, [_box, _player], 5] call CBA_fnc_waitAndExecute;
     },
     true,
@@ -615,16 +609,18 @@ KPLIB_objectInits = [
         [_box, false, [0, 0, 0], 1] call ace_dragging_fnc_setCarryable;
         private _player = player;
 
-        clearMagazineCargoGlobal _box;
-	    clearItemCargoGlobal _box;
-	    clearBackpackCargoGlobal _box;
-	    clearWeaponCargoGlobal _box;
+        if (isServer) then {
+            clearMagazineCargoGlobal _box;
+	        clearItemCargoGlobal _box;
+	        clearBackpackCargoGlobal _box;
+	        clearWeaponCargoGlobal _box;
+        };
 
-        OPFOR_ARSENAL_CRATES pushback _box;
+        OPFOR_ARSENAL_CRATES pushBackUnique _box;
 
         if (side player == GRLIB_side_enemy) then {
             [_box, false] call ace_arsenal_fnc_removeBox;
-            _items = [player] call OpforArsenal_DetermineGear;
+            private _items = [player] call OpforArsenal_DetermineGear;
 	        [_box, _items, false] call ace_arsenal_fnc_initBox;
         };
     },

@@ -30,22 +30,28 @@ if (_number > 0) then {
 
 if (!(isnull _roadobj)) then {
 
-    _roadpos = getpos _roadobj;
+    private _roadpos = getpos _roadobj;
     private _iedPos = _roadpos getPos [_spread, random 360];
 
     _iedPos set [2, 0];
     _ied_obj = createMine [_ied_type, _iedPos, [], 0];
     _ied_obj setdir (random 360);
     _ied_obj setVectorUp (surfaceNormal [_iedPos#0, _iedPos#1]);
-    (format ["IED Manager Spawn at %1 | ATL %2", getPos _ied_obj, getPosATL _ied_obj]) remoteExec ["diag_log", 2];
+    if (KP_liberation_asymmetric_debug > 0) then {
+        (format ["IED Manager Spawn at %1 | ATL %2", getPos _ied_obj, getPosATL _ied_obj]) remoteExec ["diag_log", 2];
+    };
     if (KP_liberation_asymmetric_debug > 0) then {[format ["ied_manager.sqf -> IED %1 spawned at %2", _number, markerText _sector], "ASYMMETRIC"] remoteExecCall ["KPLIB_fnc_log", 2];};
 
     while {_sector in active_sectors && mineActive _ied_obj && !_goes_boom} do {
-       _nearinfantry = ((getpos _ied_obj) nearEntities ["Man", _activation_radius_infantry]) select {side _x == GRLIB_side_friendly};
-
-       private _peopleOnTopForSomeReason = ((getpos _ied_obj) nearEntities ["Man", 1.6]) select {side _x == GRLIB_side_friendly};
-        _nearvehicles = ((getpos _ied_obj) nearEntities [["Car", "Tank", "Air"], _activation_radius_vehicles]) select {side _x == GRLIB_side_friendly};
-        if (count _nearinfantry >= _infantry_trigger || count _nearvehicles >= _vehicle_trigger || count _peopleOnTopForSomeReason >= 1) then {
+        private _nearbyFriendlies = ((getPos _ied_obj) nearEntities [["Man", "Car", "Tank", "Air"], _activation_radius_vehicles]) select {
+            side _x == GRLIB_side_friendly
+        };
+        private _nearInfantry = _nearbyFriendlies select {
+            _x isKindOf "Man" && {_x distance _ied_obj <= _activation_radius_infantry}
+        };
+        private _peopleOnTopForSomeReason = _nearInfantry select {_x distance _ied_obj <= 1.6};
+        private _nearVehicles = _nearbyFriendlies select {!(_x isKindOf "Man")};
+        if (count _nearInfantry >= _infantry_trigger || count _nearVehicles >= _vehicle_trigger || count _peopleOnTopForSomeReason >= 1) then {
             if (_ultra_strong) then {
                 "ammo_Missile_Cruise_01" createVehicle (getpos _ied_obj);
                 deleteVehicle _ied_obj;

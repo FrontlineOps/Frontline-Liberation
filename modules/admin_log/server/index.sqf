@@ -6,8 +6,8 @@ KC_ADMIN_EVENTS_LOG = [];
 
 KC_ADMIN_LOG_EVENT	= {
 	// determine priority
-	_priority   = 0;
-	_priorities = [
+	private _priority = 0;
+	private _priorities = [
 		KC_ADMIN_LOG_LOW,
 		KC_ADMIN_LOG_MEDIUM,
 		KC_ADMIN_LOG_HIGH
@@ -20,5 +20,9 @@ KC_ADMIN_LOG_EVENT	= {
 
 	// [ [message, priority, type, serverTime], ... ]
 	KC_ADMIN_EVENTS_LOG pushBack [_this#0, _priority, _this#1, systemTime];
+	private _logLimit = missionNamespace getVariable ["KP_liberation_admin_log_limit", 250];
+	if ((count KC_ADMIN_EVENTS_LOG) > _logLimit) then {
+		KC_ADMIN_EVENTS_LOG deleteRange [0, (count KC_ADMIN_EVENTS_LOG) - _logLimit];
+	};
 	publicVariable "KC_ADMIN_EVENTS_LOG";
 };

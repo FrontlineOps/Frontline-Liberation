@@ -19,7 +19,7 @@ if (hasInterface) then {
         (findDisplay 46) displayAddEventHandler ["Unload", {
             if (!isServer) exitWith {};
             ["Player server exit. Saving mission data.", "SAVE"] call KPLIB_fnc_log;
-            [] call KPLIB_fnc_doSave;
+            [] spawn KPLIB_fnc_doSave;
         }];
     };
 } else {
@@ -28,7 +28,7 @@ if (hasInterface) then {
         params ["_unit"];
         deleteVehicle _unit;
         ["Last player disconnected. Saving mission data.", "SAVE"] call KPLIB_fnc_log;
-        [] call KPLIB_fnc_doSave;
+        [] spawn KPLIB_fnc_doSave;
     }];
 };
 
@@ -570,8 +570,6 @@ while {true} do {
         sleep 0.5;
         (time > _saveTime) || {GRLIB_endgame == 1};
     };
-    _start = diag_tickTime;
-
     // Exit the while and wipe save, if campaign ended
     if (GRLIB_endgame == 1) exitWith {
         profileNamespace setVariable [GRLIB_save_key, nil];
@@ -579,8 +577,6 @@ while {true} do {
     };
 
     [] call KPLIB_fnc_doSave;
-
-    if (KP_liberation_savegame_debug > 0) then {[format ["Campaign saved - Time needed: %1 seconds", diag_tickTime - _start], "SAVE"] call KPLIB_fnc_log;};
 
     _saveTime = time + KP_liberation_save_interval;
 };

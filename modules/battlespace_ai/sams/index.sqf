@@ -2,6 +2,7 @@
 // Track how many sites are currently active
 // Logic for spawning in a SAM site by traversing sector link graph and then finding suitable spawns.
 
+BATTLESPACE_SAM_DEBUG = false;
 BATTLESPACE_SAM_EXISTING_SITES = [];
 
 BATTLESPACE_SAM_LAST_SPAWN_TIME = 0;
@@ -12,12 +13,12 @@ BATTLESPACE_EVALUATE_AIRSPACE = {
 
 	if((BATTLESPACE_SAM_LAST_SPAWN_TIME + BATTLESPACE_SAM_SPAWN_COOLDOWN) >= CBA_missionTime && BATTLESPACE_SAM_LAST_SPAWN_TIME > 0) exitWith {};
 	diag_log format ["Battlespace Evaluating Airspace..."];
-	systemChat format ["Battlespace Evaluating Airspace..."];
+	if (BATTLESPACE_SAM_DEBUG) then {systemChat "Battlespace Evaluating Airspace...";};
 
 	private _frontlineSectors = [blufor_sectors, 1] call NETWORKED_SECTORS_GET_SECTORS_UP_TO_COST;
 
 	diag_log format ["Frontline Sectors %1", _frontlineSectors];
-	systemChat format ["Frontline Sectors %1", _frontlineSectors];
+	if (BATTLESPACE_SAM_DEBUG) then {systemChat format ["Frontline Sectors %1", _frontlineSectors];};
 	private _detected = "";
 
 	private _procPos = [];
@@ -44,7 +45,7 @@ BATTLESPACE_EVALUATE_AIRSPACE = {
 		_detected = selectRandom _sectorsDetected;
 	};
 	diag_log format ["Detected %1", _detected];
-	systemChat format ["Detected %1", _detected];
+	if (BATTLESPACE_SAM_DEBUG) then {systemChat format ["Detected %1", _detected];};
 
 	if(_detected != "") then {
 
@@ -96,11 +97,11 @@ BATTLESPACE_EVALUATE_AIRSPACE = {
 		
 		// spawn 
 		if(_sectorToSpawnIn == "") exitWith {
-			systemChat format ["Unable to find acceptable SAM Site spawn location; Sector %1 detected air", _detected];
+			if (BATTLESPACE_SAM_DEBUG) then {systemChat format ["Unable to find acceptable SAM Site spawn location; Sector %1 detected air", _detected];};
 			diag_log format ["Unable to find acceptable SAM Site spawn location; Sector %1 detected air", _detected];
 		};
 		
-		systemChat format ["Spawning at %1", _sectorToSpawnIn];
+		if (BATTLESPACE_SAM_DEBUG) then {systemChat format ["Spawning at %1", _sectorToSpawnIn];};
 		private _unitsToSpawn = [];
 
 		private _amountOfTel = BATTLESPACE_SAM_SITE_COMPOSITION get "TEL";
@@ -137,7 +138,7 @@ BATTLESPACE_EVALUATE_AIRSPACE = {
 BATTLESPACE_SAM_SITE_CREATE = {
 	params ["_unitsToSpawn", "_sectorToSpawnIn", "_procPos"];
 
-	systemChat format ["SAMs to spawn %1 in sector %2", _unitsToSpawn, _sectorToSpawnIn];
+	if (BATTLESPACE_SAM_DEBUG) then {systemChat format ["SAMs to spawn %1 in sector %2", _unitsToSpawn, _sectorToSpawnIn];};
 	diag_Log format ["SAMs to spawn %1 in sector %2", _unitsToSpawn, _sectorToSpawnIn];
 
 	private _newSite = createHashMap;
@@ -228,6 +229,12 @@ BATTLESPACE_SAM_SITE_CREATE = {
 		{ 
 			_x setVariable ["acex_headless_blacklist", true, true]; 
 			_x setVariable ["Vcm_Disable", true, true];
+			_x addEventHandler ["Killed", {
+				params ["_unit"];
+				if (!isNil "KPLIB_fnc_queueDeadObjectCleanup") then {
+					[_unit] call KPLIB_fnc_queueDeadObjectCleanup;
+				};
+			}];
 
 			if(!(_className in BATTLESPACE_SAM_SITE_TELS) && !(_className in BATTLESPACE_SAM_SITE_FCRS)) then {
 				_x disableAI "MOVE";
@@ -249,7 +256,7 @@ BATTLESPACE_SAM_SITE_CREATE = {
 
 
 	if((count _units) > 0) then {
-		systemChat format ["pushback new SAM site %1", _units];
+		if (BATTLESPACE_SAM_DEBUG) then {systemChat format ["pushback new SAM site %1", _units];};
 
 		BATTLESPACE_SAM_EXISTING_SITES pushBack _newSite;
 
@@ -261,6 +268,9 @@ BATTLESPACE_SAM_KILLED = {
 	params ["_type", "_event"];
 
 	_event params ["_unit", "_killer", "_instigator", "_useEffects"];
+	if (!isNil "KPLIB_fnc_queueDeadObjectCleanup") then {
+		[_unit] call KPLIB_fnc_queueDeadObjectCleanup;
+	};
 
 	if(_type == "SAM") then {
 

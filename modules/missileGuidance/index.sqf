@@ -123,6 +123,7 @@
 				Same as chaff, if the seekerhead is IR guided without a radar component.. However an IR launch would not be part of the IADS system.
  */
 IADS_SAM_DEBUG = false;
+IADS_FCR_DEBUG = false;
 
 [] call compileFinal preprocessFileLineNumbers "modules\missileGuidance\laws\index.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\missileGuidance\steering.sqf";

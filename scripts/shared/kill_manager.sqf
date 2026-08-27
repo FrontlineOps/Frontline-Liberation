@@ -11,12 +11,19 @@ if (isServer) then {
             if (KP_liberation_kill_debug > 0) then {["_unit is local to server", "KILL"] call KPLIB_fnc_log;};
         } else {
             if (KP_liberation_kill_debug > 0) then {["_unit is not local to server", "KILL"] call KPLIB_fnc_log;};
-            if (isNil "KP_liberation_ace_killer") then {KP_liberation_ace_killer = objNull;};
-            waitUntil {sleep 0.5; !(isNull KP_liberation_ace_killer)};
-            if (KP_liberation_kill_debug > 0) then {["KP_liberation_ace_killer received on server", "KILL"] call KPLIB_fnc_log;};
-            _killer = KP_liberation_ace_killer;
-            KP_liberation_ace_killer = objNull;
-            publicVariable "KP_liberation_ace_killer";
+            private _deadline = diag_tickTime + 2;
+            waitUntil {
+                sleep 0.05;
+                !(isNull (_unit getVariable ["KPLIB_aceKiller", objNull]))
+                || {diag_tickTime >= _deadline}
+            };
+            private _aceKiller = _unit getVariable ["KPLIB_aceKiller", objNull];
+            if !(isNull _aceKiller) then {
+                _killer = _aceKiller;
+                if (KP_liberation_kill_debug > 0) then {["Object-specific ACE killer received on server", "KILL"] call KPLIB_fnc_log;};
+            } else {
+                if (KP_liberation_kill_debug > 0) then {["ACE killer lookup timed out; using MPKilled fallback", "KILL"] call KPLIB_fnc_log;};
+            };
         };
     };
 
@@ -195,15 +202,11 @@ if (isServer) then {
     // Get Killer and send it to server, when ACE enabled, via lastDamageSource
     if (KP_liberation_ace && local _unit) then {
         if (KP_liberation_kill_debug > 0) then {[format ["_unit is local to: %1", debug_source], "KILL"] remoteExecCall ["KPLIB_fnc_log", 2];};
-        KP_liberation_ace_killer = _unit getVariable ["ace_medical_lastDamageSource", _killer];
-        publicVariable "KP_liberation_ace_killer";
+        _unit setVariable ["KPLIB_aceKiller", _unit getVariable ["ace_medical_lastDamageSource", _killer], true];
     };
 };
 
-// Body/Wreck deletion after cleanup delay
+// Queue body/wreck cleanup instead of keeping one sleeping script per casualty.
 if (isServer && !isplayer _unit) then {
-    sleep GRLIB_cleanup_delay;
-    hidebody _unit;
-    sleep 10;
-    deleteVehicle _unit;
+    [_unit] call KPLIB_fnc_queueDeadObjectCleanup;
 };

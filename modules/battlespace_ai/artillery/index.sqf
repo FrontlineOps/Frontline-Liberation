@@ -1,4 +1,5 @@
 BATTLESPACE_DISABLE_ARTILLERY = false;
+BATTLESPACE_ARTILLERY_DEBUG = false;
 BATTLESPACE_ARTILLERY_SECTIONS = [];
 BATTLESPACE_ARTILLERY_OBSERVER_TARGETS = createHashMap;
 BATTLESPACE_ARTILLERY_PIECE = "rhs_2s3_tv";
@@ -97,7 +98,7 @@ BATTLESPACE_ARTILLERY_REPORT_SHELL_FIRED = {
 							private _curState = _x getVariable "BSAState";
 
 							if((_curState#0) == "COOLING DOWN") then {
-								systemChat format ["RESET COOLDOWN"];
+								if (BATTLESPACE_ARTILLERY_DEBUG) then {systemChat "RESET COOLDOWN";};
 								_curState set [0, "READY"];
 								_curState set [3, objNull];
 								_curState set [4, 0];
@@ -225,7 +226,7 @@ BATTLESPACE_SPAWN_BATTERY = {
 	};
 
 	if(_sectorToSpawnIn == "") exitWith {
-		systemChat format ["Unable to find sector to spawn artillery for"];
+		if (BATTLESPACE_ARTILLERY_DEBUG) then {systemChat "Unable to find sector to spawn artillery for";};
 		diag_log format ["Unable to find sector to spawn artillery for"];
 	};
 	private _wantHouses = false;
@@ -252,7 +253,7 @@ BATTLESPACE_SPAWN_BATTERY = {
 	} forEach _potentialSpawnPoints;
 
 	if(isNil "_spawnPoint") exitWith {
-		systemChat format ["Could not find a valid spawn point for %1", BATTLESPACE_ARTILLERY_PIECE];
+		if (BATTLESPACE_ARTILLERY_DEBUG) then {systemChat format ["Could not find a valid spawn point for %1", BATTLESPACE_ARTILLERY_PIECE];};
 		diag_log format ["Unable to find sector to spawn artillery for"];
 	};
 	private _vehs = [];
@@ -268,6 +269,12 @@ BATTLESPACE_SPAWN_BATTERY = {
 		_vehs pushBack _newVeh;
 
 		_newVeh setVariable ["acex_headless_blacklist", true, true]; 
+		_newVeh addEventHandler ["Killed", {
+			params ["_vehicle"];
+			if (!isNil "KPLIB_fnc_queueDeadObjectCleanup") then {
+				[_vehicle] call KPLIB_fnc_queueDeadObjectCleanup;
+			};
+		}];
 
 		private _crew = units (createVehicleCrew _newVeh);
 		_crew joinSilent _fcrGrp;
@@ -278,6 +285,12 @@ BATTLESPACE_SPAWN_BATTERY = {
 			_x disableAI "FSM";
 			_x disableAI "AUTOTARGET";
 			_x setVariable ["acex_headless_blacklist", true, true]; 
+			_x addEventHandler ["Killed", {
+				params ["_unit"];
+				if (!isNil "KPLIB_fnc_queueDeadObjectCleanup") then {
+					[_unit] call KPLIB_fnc_queueDeadObjectCleanup;
+				};
+			}];
 
 		} forEach _crew;
 
@@ -576,7 +589,7 @@ BATTLESPACE_ARTILLERY_POLL_REQUESTS = {
 		};
 	} forEach BATTLESPACE_ARTILLERY_SECTIONS;
 
-	systemChat format ["Exec"];
+	if (BATTLESPACE_ARTILLERY_DEBUG) then {systemChat "Exec";};
 
 
 	
@@ -588,7 +601,10 @@ BATTLESPACE_ARTILLERY_POLL_REQUESTS = {
 			_y params ["_observer", "_target", "_timeInCombat", ["_systemTargeted", false], ["_targetedAt", CBA_missionTime]];
 
 			// Out of range, arbitrary value
-			if(_target distance2D (leader _section) >= 17000) then { systemChat format ["Too far"]; continue };
+			if(_target distance2D (leader _section) >= 17000) then {
+				if (BATTLESPACE_ARTILLERY_DEBUG) then {systemChat "Too far";};
+				continue
+			};
 
 			if((CBA_missionTime - _targetedAt) >= 600) then {
 				[_x] remoteExec ["BATTLESPACE_ARTILLERY_BROADCAST_CLEAR_TARGET", 2];
@@ -611,7 +627,9 @@ BATTLESPACE_ARTILLERY_POLL_REQUESTS = {
 			};
 			{
 				if((_x distance2D _target) < 200) exitWith {
-					systemChat format ["Skip target %1, too close to existing fire mission being fulfilled", _target];
+					if (BATTLESPACE_ARTILLERY_DEBUG) then {
+						systemChat format ["Skip target %1, too close to existing fire mission being fulfilled", _target];
+					};
 					_valid = false;
 				};
 			} forEach _currentSelectedTargets;
@@ -634,7 +652,9 @@ BATTLESPACE_ARTILLERY_POLL_REQUESTS = {
 		if((_currentHighestAccuracyRequest#2) > 0) then {
 			_currentSelectedTargets pushBack ((_currentHighestAccuracyRequest#1) getPos [0,0]);
 
-			systemChat format ["Battery %1 fire at %2", str _x, str (_currentHighestAccuracyRequest#1)];
+			if (BATTLESPACE_ARTILLERY_DEBUG) then {
+				systemChat format ["Battery %1 fire at %2", str _x, str (_currentHighestAccuracyRequest#1)];
+			};
 
 			[_x, _currentHighestAccuracyRequest, _currentHighestAccuracyKey] call BATTLESPACE_ARTILLERY_FULFILL_REQUEST;
 		};
@@ -721,7 +741,7 @@ BATTLESPACE_ARTILLERY_DO_REQUEST = {
 
 	private _shellType = [BATTLESPACE_ARTILLERY_SHELL, BATTLESPACE_ARTILLERY_WP_SHELL] select _wp;
 
-	systemChat format ["We are shooting %1", _shellType];
+	if (BATTLESPACE_ARTILLERY_DEBUG) then {systemChat format ["We are shooting %1", _shellType];};
 	for "_i" from 1 to _shells do {
 		{	
 
@@ -998,7 +1018,7 @@ BATTLESPACE_ARTILLERY_OBSERVER_COROUTINE = {
 			_sortedTargets pushBack [(getPos _x) distance2D (getPos _observer), _x];
 		} forEach _targets;
 
-		systemChat format ["Obs sees %1", _sortedTargets];
+		if (BATTLESPACE_ARTILLERY_DEBUG) then {systemChat format ["Obs sees %1", _sortedTargets];};
 
 		_observer setVariable ["BSASortedTargets", _sortedTargets, true];
 
@@ -1234,7 +1254,7 @@ if (isServer) then {
 
 	[
 		{ _this call BATTLESPACE_ARTILLERY_POLL_REQUESTS },
-		0,
+		1,
 		[]
 	] call CBA_fnc_addPerFrameHandler;
 

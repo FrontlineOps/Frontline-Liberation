@@ -27,7 +27,7 @@ IADS_CRAM = ["karmakut_tamir"];
 
 [
 	{ _this call IADS_Sweep; ITC_LAND_CIWS = false; },
-	0,
+	0.1,
 	[0]
 ] call CBA_fnc_addPerFrameHandler;
 

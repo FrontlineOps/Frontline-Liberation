@@ -28,12 +28,18 @@ if (missionNamespace getVariable ["kp_liberation_saving", false]) exitWith {
 };
 
 kp_liberation_saving = true;
+private _saveStartedAt = diag_tickTime;
 
 private _saveData = [] call KPLIB_fnc_getSaveData;
 
 // Write data in the server profileNamespace
 profileNamespace setVariable [GRLIB_save_key, str _saveData];
 saveProfileNamespace;
+
+KPLIB_lastSaveDuration = diag_tickTime - _saveStartedAt;
+if (KP_liberation_savegame_debug > 0 || {KPLIB_lastSaveDuration >= 2}) then {
+    [format ["Campaign save completed in %1 seconds", KPLIB_lastSaveDuration], "SAVE"] call KPLIB_fnc_log;
+};
 
 kp_liberation_saving = false;
 

@@ -53,5 +53,5 @@ while { true } do {
 
     } foreach _markedveh;
 
-    sleep 5;
+    sleep (missionNamespace getVariable ["KP_liberation_client_marker_refresh_interval", 10]);
 };

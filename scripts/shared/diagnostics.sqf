@@ -5,17 +5,18 @@ private _source = "";
 [format ["World: %1", worldName], "MISSIONSTART"] call KPLIB_fnc_log;
 [format ["Version: %1", (localize "STR_MISSION_VERSION")], "MISSIONSTART"] call KPLIB_fnc_log;
 [format ["Author: %1", [missionConfigFile] call BIS_fnc_overviewAuthor], "MISSIONSTART"] call KPLIB_fnc_log;
-[format ["Blufor: %1", KP_liberation_preset_blufor], "MISSIONSTART"] call KPLIB_fnc_log;
-[format ["Opfor: %1", KP_liberation_preset_opfor], "MISSIONSTART"] call KPLIB_fnc_log;
-[format ["Resistance: %1", KP_liberation_preset_resistance], "MISSIONSTART"] call KPLIB_fnc_log;
-[format ["Civilians: %1", KP_liberation_preset_civilians], "MISSIONSTART"] call KPLIB_fnc_log;
-[format ["Arsenal: %1", KP_liberation_arsenal], "MISSIONSTART"] call KPLIB_fnc_log;
+[format ["Blufor factions: %1", KP_liberation_autoFaction_blufor], "MISSIONSTART"] call KPLIB_fnc_log;
+[format ["Opfor factions: %1", KP_liberation_autoFaction_opfor], "MISSIONSTART"] call KPLIB_fnc_log;
+[format ["Resistance factions: %1", KP_liberation_autoFaction_resistance], "MISSIONSTART"] call KPLIB_fnc_log;
+[format ["Civilian factions: %1", KP_liberation_autoFaction_civilians], "MISSIONSTART"] call KPLIB_fnc_log;
 [format ["CBA: %1", KPPLM_CBA], "MISSIONSTART"] call KPLIB_fnc_log;
 [format ["ACE: %1", KP_liberation_ace], "MISSIONSTART"] call KPLIB_fnc_log;
 [format ["KP Ranks: %1", KPPLM_KPR], "MISSIONSTART"] call KPLIB_fnc_log;
 ["------------------------------------", "MISSIONSTART"] call KPLIB_fnc_log;
 
 waitUntil {sleep 1; !isNil "active_sectors"};
+
+if !(missionNamespace getVariable ["KP_liberation_runtime_diagnostics", false]) exitWith {};
 
 private _delay = 60;
 

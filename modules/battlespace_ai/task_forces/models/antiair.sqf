@@ -71,7 +71,6 @@
 						params ["_taskForceName", "_taskForce"];
 						private _success = [_taskForceName, _taskForce, true, false, false, false, "LIMITED", [opfor_aa]] call BATTLESPACE_TASK_FORCE_DEFAULT_TRY_SPAWN;
 						
-						(BATTLESPACE_TASK_FORCES get _taskForceName) set [11, false];
 						if(_success) then {
 
 							private _grp = createGroup [_taskForce select 6, true];
@@ -81,6 +80,7 @@
 							// (BATTLESPACE_TASK_FORCES get _taskForceName) set [6, []];
 							BATTLESPACE_TASK_FORCE_PATHS deleteAt _taskForceName;
 						};
+						[_taskForceName, _taskForce, _success] call BATTLESPACE_TASK_FORCE_DEFAULT_FINISH_SPAWN;
 						//publicVariable "BATTLESPACE_TASK_FORCES";
 						
 					};

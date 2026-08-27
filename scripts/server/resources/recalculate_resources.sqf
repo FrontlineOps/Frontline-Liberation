@@ -27,13 +27,31 @@ while {true} do {
 
     {
         private _fob_buildings = _x nearobjects GRLIB_fob_range;
-        private _storage_areas = _fob_buildings select {(_x getVariable ["KP_liberation_storage_type",-1]) == 0};
-        private _heliSlots = {(typeOf _x) == KP_liberation_heli_slot_building;} count _fob_buildings;
-        private _planeSlots = {(typeOf _x) == KP_liberation_plane_slot_building;} count _fob_buildings;
-        private _hasAirBuilding = {(typeOf _x) == KP_liberation_air_vehicle_building;} count _fob_buildings;
-        if (_hasAirBuilding > 0) then {_hasAirBuilding = true;} else {_hasAirBuilding = false;};
-        private _hasRecBuilding = {(typeOf _x) == KP_liberation_recycle_building;} count _fob_buildings;
-        if (_hasRecBuilding > 0) then {_hasRecBuilding = true;} else {_hasRecBuilding = false;};
+        private _storage_areas = [];
+        private _heliSlots = 0;
+        private _planeSlots = 0;
+        private _hasAirBuilding = false;
+        private _hasRecBuilding = false;
+
+        // Classify each FOB object once instead of filtering the same array repeatedly.
+        {
+            private _className = typeOf _x;
+            if ((_x getVariable ["KP_liberation_storage_type", -1]) == 0) then {
+                _storage_areas pushBack _x;
+            };
+            if (_className isEqualTo KP_liberation_heli_slot_building) then {
+                _heliSlots = _heliSlots + 1;
+            };
+            if (_className isEqualTo KP_liberation_plane_slot_building) then {
+                _planeSlots = _planeSlots + 1;
+            };
+            if (_className isEqualTo KP_liberation_air_vehicle_building) then {
+                _hasAirBuilding = true;
+            };
+            if (_className isEqualTo KP_liberation_recycle_building) then {
+                _hasRecBuilding = true;
+            };
+        } forEach _fob_buildings;
 
         private _supplyValue = 0;
         private _ammoValue = 0;

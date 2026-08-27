@@ -24,5 +24,5 @@ while {true} do {
     unitcap = _local_unitcap;
     KP_liberation_heli_count = _local_heli_count;
     KP_liberation_plane_count = _local_plane_count;
-    sleep 1;
+    sleep (missionNamespace getVariable ["KP_liberation_unit_cap_refresh_interval", 5]);
 };

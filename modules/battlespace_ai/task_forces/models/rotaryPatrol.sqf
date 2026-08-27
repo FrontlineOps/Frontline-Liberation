@@ -73,7 +73,6 @@
 						private _success = [_taskForceName, _taskForce, false, true, false, false, "LIMITED"] call BATTLESPACE_TASK_FORCE_DEFAULT_TRY_SPAWN;
 
 						
-						(BATTLESPACE_TASK_FORCES get _taskForceName) set [11, false];
 						if(_success) then {
 
 							private _objs = _taskForce select 8;
@@ -88,6 +87,7 @@
 							// (BATTLESPACE_TASK_FORCES get _taskForceName) set [6, []];
 							BATTLESPACE_TASK_FORCE_PATHS deleteAt _taskForceName;
 						};
+						[_taskForceName, _taskForce, _success] call BATTLESPACE_TASK_FORCE_DEFAULT_FINISH_SPAWN;
 						//publicVariable "BATTLESPACE_TASK_FORCES";
 						
 					};

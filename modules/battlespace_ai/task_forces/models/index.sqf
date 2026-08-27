@@ -92,6 +92,50 @@ BATTLESPACE_TASK_FORCE_MOVE_SIMULATED_GROUP = {
 	
 };
 
+BATTLESPACE_TASK_FORCE_DEFAULT_FINISH_SPAWN = {
+	params ["_taskForceName", "_spawnedTaskForce", "_success"];
+
+	private _activeGroups = +(_spawnedTaskForce param [4, []]);
+	private _activeObjects = +(_spawnedTaskForce param [8, []]);
+	private _registeredTaskForce = BATTLESPACE_TASK_FORCES get _taskForceName;
+
+	// A failed or cancelled materialization must not leave physical entities behind.
+	if (!_success || {isNil "_registeredTaskForce"}) then {
+		{
+			if (!isNull _x) then {
+				deleteVehicle _x;
+			};
+		} forEach _activeObjects;
+		{
+			if (!isNull _x) then {
+				deleteGroup _x;
+			};
+		} forEach _activeGroups;
+	};
+
+	if (!isNil "_registeredTaskForce") then {
+		if (_success) then {
+			// Scheduled spawn arguments are isolated from the canonical hashmap entry.
+			// Publish materialized state before releasing the lock so evaluation cannot
+			// observe an unlocked task force with no active objects and spawn it again.
+			_registeredTaskForce set [4, _activeGroups];
+			_registeredTaskForce set [8, _activeObjects];
+		};
+		_registeredTaskForce set [11, false];
+		BATTLESPACE_TASK_FORCES set [_taskForceName, _registeredTaskForce];
+	} else {
+		diag_log format [
+			"Task Force %1 was removed while spawning; cleaned %2 orphaned objects and %3 groups",
+			_taskForceName,
+			count _activeObjects,
+			count _activeGroups
+		];
+	};
+
+	BATTLESPACE_TASK_FORCE_SPAWN_RESERVATIONS deleteAt _taskForceName;
+	_success && {!isNil "_registeredTaskForce"}
+};
+
 BATTLESPACE_TASK_FORCE_DEFAULT_TRY_SPAWN = {
 	params ["_taskForceName", "_taskForce", ["_garrisonedInfantry", false], ["_infantryCombinedWithVehicles", false], ["_ambush", false], ["_civilian", false], ["_speed", "LIMITED"], ["_overrideSquadAdditions", []]];
 	_taskForce params [

@@ -52,7 +52,7 @@ if((isNull _missile) || (!(alive _missile)) || (_missileID < 0)) exitWith {
 
 
 if(_guidancePhases isEqualTo []) exitWith {
-	systemChat format ["Guidance initiated without guidance laws"];
+	if (IADS_SAM_DEBUG) then {systemChat "Guidance initiated without guidance laws";};
 	[_this select 1] call CBA_fnc_removePerFrameHandler;
 };
 
@@ -65,7 +65,7 @@ if(_targetState isEqualTo []) exitWith {
 	_initialTargetData params ["_initialTarget", "_initialTargetPos"];
 	// TODO: Refactor this when active radar homings are added to just fire as pitbull
 	if((isNull _initialTarget) && _initialTargetPos isEqualTo []) exitWith {
-		systemChat format ["Guidance initiated without valid initial target"];
+		if (IADS_SAM_DEBUG) then {systemChat "Guidance initiated without valid initial target";};
 		[_this select 1] call CBA_fnc_removePerFrameHandler;
 	};
 

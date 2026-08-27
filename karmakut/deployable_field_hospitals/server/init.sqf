@@ -14,7 +14,7 @@ karma_deployableFieldHospitals_server_deployFieldHospital = {
             karma_deployableFieldHospitals_shared_statusCodes_fieldHospitalAlreadyDeployed,
             _playerUID,
             _existingFieldHospital
-        ] remoteExecCall ["karma_deployableFieldHospitals_client_handleFieldHospitalDeploymentResponse"];
+        ] remoteExecCall ["karma_deployableFieldHospitals_client_handleFieldHospitalDeploymentResponse", owner _player];
     };
 
     private _distanceFromPlayerToTerrain = getPosATL _player select 2;
@@ -22,7 +22,7 @@ karma_deployableFieldHospitals_server_deployFieldHospital = {
         [
             karma_deployableFieldHospitals_shared_statusCodes_playerNotOnTerrain,
             _playerUID
-        ] remoteExecCall ["karma_deployableFieldHospitals_client_handleFieldHospitalDeploymentResponse"];
+        ] remoteExecCall ["karma_deployableFieldHospitals_client_handleFieldHospitalDeploymentResponse", owner _player];
     };
 
     private _playerPosition = position _player;
@@ -38,7 +38,7 @@ karma_deployableFieldHospitals_server_deployFieldHospital = {
         karma_deployableFieldHospitals_shared_statusCodes_fieldHospitalDeployed,
         _playerUID,
         _fieldHospital
-    ] remoteExecCall ["karma_deployableFieldHospitals_client_handleFieldHospitalDeploymentResponse"];
+    ] remoteExecCall ["karma_deployableFieldHospitals_client_handleFieldHospitalDeploymentResponse", owner _player];
 };
 
 karma_deployableFieldHospitals_server_repackFieldHospital = {
@@ -58,5 +58,5 @@ karma_deployableFieldHospitals_server_repackFieldHospital = {
     [
         karma_deployableFieldHospitals_shared_statusCodes_fieldHospitalRepacked,
         _playerUID
-    ] remoteExecCall ["karma_deployableFieldHospitals_client_handleFieldHospitalRepackResponse"];
+    ] remoteExecCall ["karma_deployableFieldHospitals_client_handleFieldHospitalRepackResponse", owner _player];
 };

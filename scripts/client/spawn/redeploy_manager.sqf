@@ -158,14 +158,14 @@ while {true} do {
 
             if (KP_liberation_mobilerespawn) then {
                 if (KP_liberation_respawn_time <= time) then {
-
+                    private _mobileRespawns = [] call KPLIB_fnc_getMobileRespawns;
                     {
                         KPLIB_respawnPositionsList pushBack [
                             format ["%1 - %2", localize "STR_RESPAWN_TRUCK", mapGridPosition getPosATL _x],
                             getPosATL _x,
                             _x
                         ];
-                    } forEach _mobileRespawns
+                    } forEach _mobileRespawns;
                 };
             };
         };

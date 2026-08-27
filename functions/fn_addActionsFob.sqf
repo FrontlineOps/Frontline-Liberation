@@ -19,11 +19,13 @@ params [
     ["_obj", objNull, [objNull]]
 ];
 
-if (isNull _object) exitWith {["Null object given"] call BIS_fnc_error; false};
+if (isNull _obj) exitWith {["Null object given"] call BIS_fnc_error; false};
+if (_obj getVariable ["KPLIB_fobActionsAdded", false]) exitWith {true};
 
 if (isNil "FOB_build_in_progress") then {FOB_build_in_progress = false;};
 
 if ((typeOf _obj) isEqualTo FOB_typename) exitWith {
+    _obj setVariable ["KPLIB_fobActionsAdded", true];
     _obj addAction [
         ["<t color='#FFFF00'>", localize "STR_FOB_REPACKAGE", "</t> <img size='2' image='res\ui_deployfob.paa'/>"] joinString "",
         "scripts\client\actions\do_repackage_fob.sqf",
@@ -39,6 +41,7 @@ if ((typeOf _obj) isEqualTo FOB_typename) exitWith {
 };
 
 if ((typeOf _obj) in [FOB_box_typename, FOB_truck_typename]) exitWith {
+    _obj setVariable ["KPLIB_fobActionsAdded", true];
     _obj addAction [
         ["<t color='#FFFF00'>", localize "STR_FOB_ACTION", "</t> <img size='2' image='res\ui_deployfob.paa'/>"] joinString "",
         "scripts\client\build\do_build_fob.sqf",

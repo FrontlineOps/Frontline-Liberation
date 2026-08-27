@@ -39,7 +39,7 @@ private _armor_weight_old = -1;
 private _air_weight_old = -1;
 
 while {true} do {
-    waitUntil {sleep 0.25;
+    waitUntil {sleep (missionNamespace getVariable ["KP_liberation_state_sync_poll_interval", 1]);
         !(_KP_liberation_fob_resources_old isEqualTo KP_liberation_fob_resources)
         || _KP_liberation_supplies_global_old != KP_liberation_supplies_global
         || _KP_liberation_ammo_global_old != KP_liberation_ammo_global
@@ -61,7 +61,6 @@ while {true} do {
 
     if (KP_liberation_guerilla_strength < 0) then {KP_liberation_guerilla_strength = 0;};
 
-    sleep 0.25;
     sync_vars = [
         KP_liberation_fob_resources,
         KP_liberation_supplies_global,

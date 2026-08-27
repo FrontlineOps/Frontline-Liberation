@@ -46,5 +46,5 @@ while {true} do {
         };
     };
 
-    sleep 5;
+    sleep (missionNamespace getVariable ["KP_liberation_client_marker_refresh_interval", 10]);
 };

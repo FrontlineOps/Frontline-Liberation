@@ -64,5 +64,5 @@ while { true } do {
         _iconed_groups = [];
     };
 
-    sleep 4.7;
+    sleep (missionNamespace getVariable ["KP_liberation_client_action_refresh_interval", 5]);
 };

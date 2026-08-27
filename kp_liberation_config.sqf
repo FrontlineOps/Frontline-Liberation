@@ -70,6 +70,20 @@ BATTLESPACE_SQUAD_SIZE = 7;
 
 KP_liberation_save_interval = 60;            			// Save interval (sec)
 
+// Behavior-preserving scheduler tuning.
+KP_liberation_sector_monitor_pass_interval = 1;
+KP_liberation_sector_monitor_sector_yield = 0.01;
+KP_liberation_high_command_refresh_interval = 2;
+KP_liberation_resource_reconcile_interval = 15;
+KP_liberation_unit_cap_refresh_interval = 5;
+KP_liberation_state_sync_poll_interval = 1;
+KP_liberation_zeus_sync_interval = 15;
+KP_liberation_client_state_refresh_interval = 2;
+KP_liberation_client_action_refresh_interval = 5;
+KP_liberation_client_marker_refresh_interval = 10;
+KP_liberation_runtime_diagnostics = false;
+KP_liberation_admin_log_limit = 250;
+
 GRLIB_side_friendly = WEST;                  			// Friendly side
 GRLIB_side_enemy = EAST;                     			// Enemy side
 GRLIB_side_resistance = RESISTANCE;          			// Guerilla side

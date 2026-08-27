@@ -48,6 +48,9 @@ BATTLESPACE_TASK_FORCE_PATHS = createHashMap;
 BATTLESPACE_TASK_FORCE_MINIMUM_SIZE = 4;
 // Enable some more verbose diag logs and stuff.
 BATTLESPACE_DEBUG_INDEPTH = false;
+if (isNil "BATTLESPACE_TASK_FORCE_SPAWN_RESERVATIONS") then {
+	BATTLESPACE_TASK_FORCE_SPAWN_RESERVATIONS = createHashMap;
+};
 
 BATTLESPACE_TASK_FORCE_SAVE_KEY = format ["BATTLESPACE_TASK_FORCES_%1", toUpper worldName];
 
@@ -69,7 +72,7 @@ BATTLESPACE_TASK_FORCES_LOAD = {
 		diag_log format ["  Save valid"];
 		// Loop through and init
 		BATTLESPACE_TASK_FORCE_AUTOINCREMENT = _save get "AI";
-		_savedForces = _save get "TaskForces";
+		private _savedForces = _save get "TaskForces";
 
 		{
 			_y params ["_type", "_currentLoc", "_destination", "_composition", "_homePoint"];
@@ -116,6 +119,7 @@ BATTLESPACE_TASK_FORCES_PONG = {
 BATTLESPACE_TASK_FORCES_SAVE = {
 	private _save = createHashMap;
 	private _saveData = createHashMap;
+	private _invalidTaskForces = [];
 
 	{
 		_y params [
@@ -132,18 +136,24 @@ BATTLESPACE_TASK_FORCES_SAVE = {
 			["_homePoint", []] // 10
 		];
 
-		// Check if valid still
-		private _isValid = [_x, _y] call (_model get "isAlive");
+		// Check if the registered model still exists and considers this force alive.
+		private _model = BATTLESPACE_TASK_FORCE_MODELS get _taskForceType;
+		private _isValid = !isNil "_model" && {[_x, _y] call (_model get "isAlive")};
 
 		if(!_isValid) then {
-			BATTLESPACE_TASK_FORCES deleteAt _taskForceName;
-			["BATTLESPACE/TASKFORCES/DESTROYED", [_x, _y]] call CBA_fnc_serverEvent;
+			_invalidTaskForces pushBack [_x, _y];
 			continue;
 		};
 
 		_saveData set [_x, [_taskForceType, _currentLoc, _destination, _composition, _homePoint]];
 
 	} forEach BATTLESPACE_TASK_FORCES;
+
+	{
+		_x params ["_taskForceName", "_taskForce"];
+		BATTLESPACE_TASK_FORCES deleteAt _taskForceName;
+		["BATTLESPACE/TASKFORCES/DESTROYED", [_taskForceName, _taskForce]] call CBA_fnc_serverEvent;
+	} forEach _invalidTaskForces;
 
 	_save set ["TaskForces", _saveData];
 	_save set ["AI", BATTLESPACE_TASK_FORCE_AUTOINCREMENT];
@@ -344,40 +354,30 @@ BATTLESPACE_TASK_FORCES_CLUSTER_BLUFOR = {
 
 	while { (count _remainingPlayers) > 0 } do {
 
-		private _sourcePlayer = _remainingPlayers#0;
-		_remainingPlayers = _remainingPlayers - [_sourcePlayer];
+		private _sourcePlayer = _remainingPlayers deleteAt 0;
 
 		_currentClusterAveragePosition = getPos _sourcePlayer;
 		_currentClusterPlayers = [_sourcePlayer];
+		private _positionSum = +_currentClusterAveragePosition;
+		private _clusteredIndices = [];
 
 		// Loop through remaining players and see if we can cluster them.
 		{
 			private _playerPos = getPos _x;
 
 			if((_playerPos distance2D _currentClusterAveragePosition) <= BLUFOR_CLUSTER_DISTANCE) then {
-			
 				_currentClusterPlayers pushBack _x;
-
-				
-
-				private _xComp = 0;
-				private _yComp = 0;
-				private _zComp = 0;
-				{
-					private _pPos = getPos _x;
-
-					_xComp = _xComp + (_pPos#0);
-					_yComp = _yComp + (_pPos#1);
-					_zComp = _zComp + (_pPos#2);
-				} forEach _currentClusterPlayers;
-
-				
+				_positionSum = _positionSum vectorAdd _playerPos;
 				private _count = count _currentClusterPlayers;
-				_currentClusterAveragePosition = [_xComp / _count, _yComp / _count, _zComp / _count];
+				_currentClusterAveragePosition = _positionSum vectorMultiply (1 / _count);
+				_clusteredIndices pushBack _forEachIndex;
 			};
 		} forEach _remainingPlayers;
-		
-		_remainingPlayers = _remainingPlayers - _currentClusterPlayers;
+
+		reverse _clusteredIndices;
+		{
+			_remainingPlayers deleteAt _x;
+		} forEach _clusteredIndices;
 
 		BATTLESPACE_TASK_FORCES_BLUFOR_CLUSTERS pushBack (createHashMapFromArray [
 			["Position", _currentClusterAveragePosition],
@@ -385,16 +385,6 @@ BATTLESPACE_TASK_FORCES_CLUSTER_BLUFOR = {
 		]);
 
 		_currentClusterAveragePosition = [];
-
-
-	};
-
-
-	if(!(_currentClusterAveragePosition isEqualTo [])) then {
-		BATTLESPACE_TASK_FORCES_BLUFOR_CLUSTERS pushBack (createHashMapFromArray [
-			["Position", _currentClusterAveragePosition],
-			["Players", _currentClusterPlayers]
-		]);
 	};
 	
 	// publicVariable "BATTLESPACE_TASK_FORCES_BLUFOR_CLUSTERS";
@@ -414,6 +404,24 @@ BATTLESPACE_TASK_FORCES_EVALUATE = {
 	
 	private _startTime = diag_tickTime;
 	private _unitCount = ([] call KPLIB_fnc_getOpforCap);
+	private _reservationTotal = 0;
+	private _expiredReservations = [];
+	{
+		private _reservedTaskForce = BATTLESPACE_TASK_FORCES get _x;
+		_y params ["_reservedUnits", "_reservationExpiresAt"];
+		if (
+			isNil "_reservedTaskForce"
+			|| {CBA_missionTime >= _reservationExpiresAt}
+			|| {!(_reservedTaskForce param [11, false])}
+		) then {
+			_expiredReservations pushBack _x;
+		} else {
+			_reservationTotal = _reservationTotal + _reservedUnits;
+		};
+	} forEach BATTLESPACE_TASK_FORCE_SPAWN_RESERVATIONS;
+	{
+		BATTLESPACE_TASK_FORCE_SPAWN_RESERVATIONS deleteAt _x;
+	} forEach _expiredReservations;
 
 	// 1. Loop through all Task Forces
 	// 2. Validate task forces are still valid (the ones that are procced)
@@ -422,8 +430,6 @@ BATTLESPACE_TASK_FORCES_EVALUATE = {
 	// 4. Validate procced task forces are still procced, else despawn and reset them to simulated
 
 	BATTLESPACE_AMOUNT_SKIPPED = 0;
-
-	private _startTime = diag_tickTime;
 
 	// 1. Loop through all Task Forces
 	// 2. Validate task forces are still valid (the ones that are procced)
@@ -443,13 +449,15 @@ BATTLESPACE_TASK_FORCES_EVALUATE = {
 			["_despawnCounter", 0], // 7
 			["_activeObjects", []], // 8
 			["_wasDespawning", false], // 9
-			["_homePoint", []] // 10
+			["_homePoint", []], // 10
+			["_spawning", false] // 11
 		];
 		// Regardless of type, if something has no valid location its just not valid.
 		if((isNil { _simulatedLocation }) || (_simulatedLocation isEqualTo [])) then {
 			diag_log format ["Task Force %1 (%2) has invalid simulated location %3, deleting", _taskForceName, _type, _simulatedLocation];
 
 			BATTLESPACE_TASK_FORCES deleteAt _taskForceName;
+			BATTLESPACE_TASK_FORCE_SPAWN_RESERVATIONS deleteAt _taskForceName;
 
 			["BATTLESPACE/TASKFORCES/DESTROYED", [_x, _y]] call CBA_fnc_serverEvent;
 			continue;
@@ -458,6 +466,7 @@ BATTLESPACE_TASK_FORCES_EVALUATE = {
 
 		if(isNil { _model }) then {
 			BATTLESPACE_TASK_FORCES deleteAt _taskForceName;
+			BATTLESPACE_TASK_FORCE_SPAWN_RESERVATIONS deleteAt _taskForceName;
 			continue;	
 		};
 
@@ -466,6 +475,7 @@ BATTLESPACE_TASK_FORCES_EVALUATE = {
 
 		if(!_isValid) then {
 			BATTLESPACE_TASK_FORCES deleteAt _taskForceName;
+			BATTLESPACE_TASK_FORCE_SPAWN_RESERVATIONS deleteAt _taskForceName;
 
 			["BATTLESPACE/TASKFORCES/DESTROYED", [_x, _y]] call CBA_fnc_serverEvent;
 			continue;
@@ -475,20 +485,29 @@ BATTLESPACE_TASK_FORCES_EVALUATE = {
 		// Check for proccing if no active groups
 		private _canProc = [_x, _y] call (_model get "canProc");
 		if(_canProc) then {
-			// Ensure units are below cap to preserve server health, groups may spawn in later once other opfor cleared
-			if(_unitCount <= BATTLESPACE_UNIT_CAP && count _activeObjects <= 0) then {
-				_y set [9, false];
-				[_x, _y] call (_model get "doSpawn");
+			if (!_spawning && {count _activeObjects <= 0}) then {
+				private _manpowerEstimate = _composition getOrDefault ["manpower", 0];
+				private _vehicleEstimate = count (_composition getOrDefault ["vehicles", []]);
+				private _staticEstimate = {
+					private _className = _x getOrDefault ["className", ""];
+					_className isKindOf "StaticWeapon"
+				} count (_composition getOrDefault ["structures", []]);
+				private _spawnEstimate = 1 max (_manpowerEstimate + (4 * (_vehicleEstimate + _staticEstimate)));
 
-				private _objsSpawned = 0;
-				{
-					_objsSpawned = _objsSpawned + (count (units _x));
-				} forEach (_y select 4);
-				_unitCount = _unitCount + _objsSpawned;
+				// Reserve asynchronous spawn capacity before any objects are created.
+				if ((_unitCount + _reservationTotal + _spawnEstimate) <= BATTLESPACE_UNIT_CAP) then {
+					BATTLESPACE_TASK_FORCE_SPAWN_RESERVATIONS set [
+						_taskForceName,
+						[_spawnEstimate, CBA_missionTime + 180]
+					];
+					_reservationTotal = _reservationTotal + _spawnEstimate;
+					_y set [9, false];
+					[_x, _y] call (_model get "doSpawn");
+				};
 			};
 			_y set [7, 0];
 		} else {
-			if(count _activeObjects > 0) then {
+			if(!_spawning && {count _activeObjects > 0}) then {
 				// 90s
 				if(_despawnCounter >= 9) then {
 					diag_log format ["Task Force %1 despawning...", _taskForceName];
@@ -502,6 +521,7 @@ BATTLESPACE_TASK_FORCES_EVALUATE = {
 					} forEach _activeObjects;
 					// Reset states
 					BATTLESPACE_TASK_FORCE_PATHS deleteAt _taskForceName;
+					BATTLESPACE_TASK_FORCE_SPAWN_RESERVATIONS deleteAt _taskForceName;
 					_y set [8, []];
 					_y set [4, []];
 					_y set [7, 0];
@@ -515,6 +535,7 @@ BATTLESPACE_TASK_FORCES_EVALUATE = {
 		private _done = [_x, _y] call (_model get "onDecisionTick");
 		if(_done) then {
 			BATTLESPACE_TASK_FORCES deleteAt _taskForceName;
+			BATTLESPACE_TASK_FORCE_SPAWN_RESERVATIONS deleteAt _taskForceName;
 
 			["BATTLESPACE/TASKFORCES/DONE", [_x, _y]] call CBA_fnc_serverEvent;
 			continue;
@@ -614,7 +635,7 @@ if (isServer) then {
 		while { true } do {
 			_state call BATTLESPACE_TASK_FORCES_EVALUATE;
 			_clusteringState call BATTLESPACE_TASK_FORCES_CLUSTER_BLUFOR;
-			sleep 0.5;
+			sleep 1;
 		};
 	};
 

@@ -109,7 +109,7 @@ karma_deployableFieldHospitals_client_handleFieldHospitalRepackResponse = {
 [] call karma_deployableFieldHospitals_client_initializePlayer;
 player addEventHandler ["Respawn", {
     params ["_unit", "_corpse"];
-    if (player != unit) exitWith {};
+    if (player != _unit) exitWith {};
     private _deployActionId = _corpse getVariable ["karma_deployableFieldHospitals_deployActionId", -1];
     if (_deployActionId == -1) exitWith {};
     [_corpse, _deployActionId] call BIS_fnc_holdActionRemove;

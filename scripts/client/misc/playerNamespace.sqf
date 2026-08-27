@@ -63,5 +63,5 @@ while {true} do {
     // Update state in Discord rich presence
     //[] call KPLIB_fnc_setDiscordState;
 
-    sleep 1;
+    sleep (missionNamespace getVariable ["KP_liberation_client_state_refresh_interval", 2]);
 };

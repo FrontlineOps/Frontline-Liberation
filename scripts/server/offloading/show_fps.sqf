@@ -1,3 +1,5 @@
+if !(missionNamespace getVariable ["KP_liberation_runtime_diagnostics", false]) exitWith {};
+
 private _sourcestr = "Server";
 private _position = 0;
 

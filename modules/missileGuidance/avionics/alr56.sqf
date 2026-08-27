@@ -138,6 +138,6 @@ IADS_RWR = {
 	{
 		_this call IADS_RWR
 	},
-	0,
+	0.1,
 	[]
 ] call CBA_fnc_addPerFrameHandler;

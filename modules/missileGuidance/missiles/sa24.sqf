@@ -31,7 +31,7 @@
 				_det setVectorDirAndUp [_toTarget, _up];
 				_detonate = true;
 
-				systemChat format ["SA-24 Detonate %1", _dist];
+				if (IADS_SAM_DEBUG) then {systemChat format ["SA-24 Detonate %1", _dist];};
 			};
 
 		};

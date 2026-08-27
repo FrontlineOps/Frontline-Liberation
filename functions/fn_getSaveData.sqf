@@ -47,8 +47,8 @@ private ["_fobPos", "_fobObjects", "_grpUnits", "_fobMines"];
         {!((toLower (typeOf _x)) in KPLIB_crates)}                  // Exclude storage crates (those are handled separately)
     };
 
-    _allObjects = _allObjects + (_fobObjects select {!((toLower (typeOf _x)) in KPLIB_storageBuildings)});
-    _allStorages = _allStorages + (_fobObjects select {(_x getVariable ["KP_liberation_storage_type",-1]) == 0});
+    _allObjects append (_fobObjects select {!((toLower (typeOf _x)) in KPLIB_storageBuildings)});
+    _allStorages append (_fobObjects select {(_x getVariable ["KP_liberation_storage_type",-1]) == 0});
 
     // Process all groups near this FOB
     {

@@ -48,12 +48,12 @@ EvaluateRadarTargets = {
 		// [RotateEWR, [_radarVeh, 0], 2] call CBA_fnc_waitAndExecute; 
 		// diag_log format ["EWR INITIALIZED, CALL ROTATE EWR"];
 
-		[EvaluateRadarTargets, [_radarVeh, _side, _canStillPlaySound], 8] call CBA_fnc_waitAndExecute; 
+		[EvaluateRadarTargets, [_radarVeh, _side, _canPlaySound], 8] call CBA_fnc_waitAndExecute;
 		
 	}; 
  
 	private _currentRemoteTargets = listRemoteTargets _side; 
-	_airTargets = []; 
+	private _airTargets = [];
 	{ 
 	
 		private _target = _x select 0; 

@@ -31,7 +31,8 @@ while { GRLIB_cleanup_vehicles > 0 } do {
         if (  _nextvehicle getVariable [ "GRLIB_empty_vehicle_ticker", 0 ] >= ( 6 * GRLIB_cleanup_vehicles ) ) then {
             deleteVehicle _nextvehicle;
         };
-
-        sleep 0.5;
+        if ((_forEachIndex % 25) == 24) then {
+            sleep 0.01;
+        };
     } foreach vehicles;
 };
