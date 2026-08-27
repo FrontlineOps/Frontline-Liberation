@@ -195,8 +195,6 @@ if (isServer) then {
     ] call ace_fortify_fnc_registerObjects;
 
 
-    // fuck the f-18 devs, good mod but stupid decisions...
-    missionNamespace setVariable ["js_jc_fa18_serviceMenuObjects", ["NoMoreFuckingPylonEditing"]];
 };
 CHBN_adjustBrightness = 0.1;
 
