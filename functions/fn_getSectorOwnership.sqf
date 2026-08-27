@@ -37,7 +37,7 @@ private _playerCount = [] call KPLIB_fnc_getPlayerCount;
 
 private _required = (ceil (_playerCount * 0.15));
 
-_required = 5 max _required;
+_required = 2 max _required;
 
 if (_blufor >= _required && {(_opfor <= _capCount && _ratio > _capRatioMin) || _ratio > _capRatio}) exitWith {GRLIB_side_friendly};
 if (_blufor <= _required && _opfor > _capCount) exitWith {GRLIB_side_enemy};
