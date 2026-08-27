@@ -68,8 +68,6 @@ execVM "scripts\server\resources\recalculate_timer.sqf";
 execVM "scripts\server\resources\recalculate_timer_sector.sqf";
 execVM "scripts\server\resources\unit_cap.sqf";
 execVM "scripts\server\sector\lose_sectors.sqf";
-diag_log "Creating Default Loadouts...";
-execVM "arsenal_presets\default_loadouts_USMCmodern.sqf";
 
 //--- For vehicle respawns
 server_fnc_spawnVehicle = compileFinal preprocessFileLineNumbers "scripts\server\vehicles\spawnVehicle.sqf";
@@ -77,41 +75,19 @@ server_fnc_spawnVehicle = compileFinal preprocessFileLineNumbers "scripts\server
 KPLIB_fsm_sectorMonitor = [] call KPLIB_fnc_sectorMonitor;
 if (KP_liberation_high_command) then {KPLIB_fsm_highcommand = [] call KPLIB_fnc_highcommand;};
 
-// Select FOB templates
-switch (KP_liberation_preset_opfor) do {
-    case 1: {
-        KPLIB_fob_templates = [
-            "scripts\fob_templates\apex\template1.sqf",
-            "scripts\fob_templates\apex\template2.sqf",
-            "scripts\fob_templates\apex\template3.sqf",
-            "scripts\fob_templates\apex\template4.sqf",
-            "scripts\fob_templates\apex\template5.sqf"
-        ];
-    };
-    case 12: {
-        KPLIB_fob_templates = [
-            "scripts\fob_templates\unsung\template1.sqf",
-            "scripts\fob_templates\unsung\template2.sqf",
-            "scripts\fob_templates\unsung\template3.sqf",
-            "scripts\fob_templates\unsung\template4.sqf",
-            "scripts\fob_templates\unsung\template5.sqf"
-        ];
-    };
-    default {
-        KPLIB_fob_templates = [
-            "scripts\fob_templates\default\template1.sqf",
-            "scripts\fob_templates\default\template2.sqf",
-            "scripts\fob_templates\default\template3.sqf",
-            "scripts\fob_templates\default\template4.sqf",
-            "scripts\fob_templates\default\template5.sqf",
-            "scripts\fob_templates\default\template6.sqf",
-            "scripts\fob_templates\default\template7.sqf",
-            "scripts\fob_templates\default\template8.sqf",
-            "scripts\fob_templates\default\template9.sqf",
-            "scripts\fob_templates\default\template10.sqf"
-        ];
-    };
-};
+// The automatic faction system uses the mission's standard FOB compositions.
+KPLIB_fob_templates = [
+    "scripts\fob_templates\default\template1.sqf",
+    "scripts\fob_templates\default\template2.sqf",
+    "scripts\fob_templates\default\template3.sqf",
+    "scripts\fob_templates\default\template4.sqf",
+    "scripts\fob_templates\default\template5.sqf",
+    "scripts\fob_templates\default\template6.sqf",
+    "scripts\fob_templates\default\template7.sqf",
+    "scripts\fob_templates\default\template8.sqf",
+    "scripts\fob_templates\default\template9.sqf",
+    "scripts\fob_templates\default\template10.sqf"
+];
 
 // Civil Reputation
 execVM "scripts\server\civrep\init_module.sqf";

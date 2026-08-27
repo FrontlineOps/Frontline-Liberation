@@ -12,13 +12,18 @@ KC_FIX_AI_LOADOUT = {
 
 		// Provide night vision scopes
 		if ((side _x) isEqualTo GRLIB_side_enemy) then {
-            _x linkItem "rhs_1PN138";
+            private _nightVision = if (missionNamespace getVariable ["KPLIB_autoFactionActive", false]) then {
+                missionNamespace getVariable ["KPLIB_autoFactionOpforNightVision", ""]
+            } else {
+                "rhs_1PN138"
+            };
+            if (_nightVision != "") then {_x linkItem _nightVision};
         };
 
 		// Find current unit uniform and check to see if it needs to be replaced
 		private _currentUniform = uniform _x;
 		// Check if OPFOR unit currently doesn't have a uniform
-		if ((count _currentUniform) == 0 && (side _x) isEqualTo GRLIB_side_enemy) then {
+		if ((count _currentUniform) == 0 && (side _x) isEqualTo GRLIB_side_enemy && {opfor_uniforms isNotEqualTo []}) then {
 			// Don't change if currently has a valid OPFOR uniform
 			if (!(_currentUniform in opfor_uniforms)) then {
 				// No valid uniform, apply a default one from the OPFOR preset

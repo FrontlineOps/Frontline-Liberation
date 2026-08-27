@@ -51,7 +51,17 @@ if (isServer && hasInterface) then
 
 [] call compileFinal preprocessFileLineNumbers "presets\init_presets.sqf";
 [] call compileFinal preprocessFileLineNumbers "arsenal_presets\rolearsenal.sqf";
-[] call compileFinal preprocessFileLineNumbers "arsenal_presets\opforarsenal_KOG7MAN.sqf";
+OPFORArsenalItems = +(missionNamespace getVariable ["KPLIB_autoFactionOpforArsenal", []]);
+if (OPFORArsenalItems isEqualTo [] || {opfor_uniforms isEqualTo []}) then {
+    private _message = "Generated OPFOR arsenal or starting uniforms are empty; automatic faction initialization cannot continue";
+    [_message, "FACTIONS"] call KPLIB_fnc_log;
+    throw _message;
+};
+OpforArsenal_DetermineGear = {
+    +(missionNamespace getVariable ["KPLIB_autoFactionOpforArsenal", []])
+};
+OpForStartingUniform = opfor_uniforms select 0;
+Op_StartingItems = +(missionNamespace getVariable ["KPLIB_autoFactionOpforStartingItems", []]);
 [] call compileFinal preprocessFileLineNumbers "kp_objectInits.sqf";
 [] call compileFinal preprocessFileLineNumbers "scripts\crate-resupply\init.sqf";
 [] call compileFinal preprocessFileLineNumbers "scripts\fireteams\init.sqf";

@@ -105,6 +105,19 @@ class KPLIB {
 
         class overlayUpdateResources    {};
     };
+    class functions_factions {
+        file = "functions\factions";
+
+        class applyAutomaticFactionPresets {};
+        class buildAutomaticResupplyCrates {};
+        class buildFactionCatalog          {};
+        class buildFactionIndex            {};
+        class classifyFactionVehicle       {};
+        class collectFactionArsenal        {};
+        class getAutomaticFactionPrice     {};
+        class getConfigCargo               {};
+        class pickFactionUnit              {};
+    };
     class functions_lambs
     {
         file = "functions\lambs";

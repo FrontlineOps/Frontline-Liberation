@@ -14,20 +14,20 @@ removeGoggles player;
 player unassignItem "";
 player removeItem "";
 
-// Make sure any changes here are reflected in starter gear list arsenal_presets\rolearsenal_config.sqf
+// Starter gear is generated from the selected faction during preset initialization.
 if (side player == GRLIB_side_friendly) then {
 
-    player addHeadgear selectRandom RA_StartingHeadwear;
-    player addGoggles selectRandom RA_StartingGoggles;
-    player forceAddUniform selectRandom RA_StartingUniforms;
+    if (RA_StartingHeadwear isNotEqualTo []) then {player addHeadgear selectRandom RA_StartingHeadwear};
+    if (RA_StartingGoggles isNotEqualTo []) then {player addGoggles selectRandom RA_StartingGoggles};
+    if (RA_StartingUniforms isNotEqualTo []) then {player forceAddUniform selectRandom RA_StartingUniforms};
     {
         player linkItem _x;
     } forEach RA_StartingItems;
 };
 
 if (side player == GRLIB_side_enemy) then {
-    
-    player forceAddUniform OpForStartingUniform;
+
+    if (OpForStartingUniform != "") then {player forceAddUniform OpForStartingUniform};
     {
         player linkItem _x;
     } forEach Op_StartingItems;
@@ -51,14 +51,9 @@ if (side player == GRLIB_side_enemy) then {
     private _box = _x;
     if (!isNull _box) then 
     {
-        clearMagazineCargoGlobal _box;
-	    clearItemCargoGlobal _box;
-	    clearBackpackCargoGlobal _box;
-	    clearWeaponCargoGlobal _box;
-
         if (side player == GRLIB_side_enemy) then {
             [_box, false] call ace_arsenal_fnc_removeBox;
-	        _items = [player] call OpforArsenal_DetermineGear;
+	        private _items = [player] call OpforArsenal_DetermineGear;
 	        [_box, _items, false] call ace_arsenal_fnc_initBox;
         };
     };

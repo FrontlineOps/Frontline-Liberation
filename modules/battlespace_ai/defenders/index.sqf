@@ -28,6 +28,7 @@ BATTLESPACE_DEFENDER_GARRISON_AI = {
     // Kind of a hack to make sure they have their stuff
     {
         if(typeOf _x != opfor_grenadier) then { continue };
+        if (missionNamespace getVariable ["KPLIB_autoFactionActive", false]) then {continue};
 
         diag_log format ["Group %1 starting task hunt, changing vest of %2 to have flares", _infGrp, _x];
         removeVest _x;
@@ -153,10 +154,11 @@ BATTLESPACE_DEFENDERS_CREATE_TASK_FORCES = {
 
     // Air Rotary CAS spawn
     private _spawnRotaryPatrol = Random 1 >= 0.25;
-    if(_spawnRotaryPatrol && _playerCount > 45) then {
+    private _rotaryPatrolClasses = opfor_choppers select {_x isKindOf "Helicopter"};
+    if(_spawnRotaryPatrol && _playerCount > 45 && {_rotaryPatrolClasses isNotEqualTo []}) then {
         private _composition = createHashMapFromArray [
             ["manpower", 0],
-            ["vehicles", ["rhs_mi28n_vvsc"]],
+            ["vehicles", [selectRandom _rotaryPatrolClasses]],
             ["structures", []]
         ];
         
@@ -231,7 +233,9 @@ BATTLESPACE_DEFENDERS_CREATE_TASK_FORCES = {
                 private _vehicles = [];
 
                 // Add a primary machinegun emplacement
-                _vehicles pushBack "rhs_KORD_high_VDV";
+                if (BATTLESPACE_DEFENDERS_STATIC_CLASSES isNotEqualTo []) then {
+                    _vehicles pushBack (selectRandom BATTLESPACE_DEFENDERS_STATIC_CLASSES);
+                };
 
                 // Add a bunker for cover
                 _structures pushBack (createHashMapFromArray [
@@ -241,13 +245,8 @@ BATTLESPACE_DEFENDERS_CREATE_TASK_FORCES = {
                 ]);
 
                 // Whether to include an AGS
-                if((random 100) <= 99) then {
-                    _structures pushBack (createHashMapFromArray [
-                        ["position", _pos vectorAdd [0,0,2.4]],
-                        ["rotation", true],
-                        ["className", "rhs_D30_at_vdv"],
-                        ["ignoreCollision", true]
-                    ]);
+                if((random 100) <= 99 && {BATTLESPACE_DEFENDERS_STATIC_CLASSES isNotEqualTo []}) then {
+                    _vehicles pushBack (selectRandom BATTLESPACE_DEFENDERS_STATIC_CLASSES);
                 };
 
                 // Include some supporting infantry
@@ -277,7 +276,7 @@ BATTLESPACE_DEFENDERS_CREATE_TASK_FORCES = {
 
     // Spawn ambush patrols in wait
     private _overlookCount = (count _overlookPlaces);
-    if(_overlookCount > 0) then {
+    if(_overlookCount > 0 && {BATTLESPACE_DEFENDERS_STATIC_CLASSES isNotEqualTo []}) then {
         for "_i" from 1 to _ambushSquads do {
             private _spotToUse = selectRandom _overlookPlaces;
             private _pos = _spotToUse#0;
@@ -300,19 +299,11 @@ BATTLESPACE_DEFENDERS_CREATE_TASK_FORCES = {
             
             if(_execs < _overlookCount) then {
                 _positions pushBack _pos;
-                private _staticClass = "RHS_ZU23_VDV","RHS_AGS30_TriPod_VDV";
+                private _staticClass = selectRandom BATTLESPACE_DEFENDERS_STATIC_CLASSES;
                 private _composition = createHashMapFromArray [
                     ["manpower", round(BATTLESPACE_SQUAD_SIZE + random(BATTLESPACE_SQUAD_SIZE))],
-                    ["vehicles", []],
-                    ["structures",
-                        [
-                            createHashMapFromArray [
-                                ["position", _pos],
-                                ["rotation", true],
-                                ["className", _staticClass]
-                            ]
-                        ]
-                    ]
+                    ["vehicles", [_staticClass]],
+                    ["structures", []]
                 ];
 
                 ["Ambush Patrol", _composition, _pos, _pos, _objPos] remoteExec ["BATTLESPACE_TASK_FORCES_INIT", 2];
@@ -346,6 +337,7 @@ BATTLESPACE_DEFENDERS_CREATE_TASK_FORCES = {
     };
 
     // Spawn defenders on top in the actual point
+    if (BATTLESPACE_DEFENDERS_VEHICLE_CLASSES isEqualTo []) then {_garrisonCount = 0};
     for "_i" from 1 to _garrisonCount do {
         private _vehicleClass = selectRandom BATTLESPACE_DEFENDERS_VEHICLE_CLASSES;
         private _pos = _objPos getPos [random 150, random 360];
@@ -371,6 +363,7 @@ BATTLESPACE_DEFENDERS_CREATE_TASK_FORCES = {
 
     // Spawning static guns/mortars/etc around a point
     private _statics = [];
+    if (BATTLESPACE_DEFENDERS_STATIC_CLASSES isEqualTo []) then {_numberOfStatics = 0};
     for "_i" from 1 to _numberOfStatics do {
         private _vehicleClass = selectRandom BATTLESPACE_DEFENDERS_STATIC_CLASSES;
 
@@ -607,6 +600,7 @@ BATTLESPACE_DEFENDERS_CREATE_TASK_FORCES = {
     if((random 100) <= 5) then {
         _aaCount = 2;
     };
+    if (BATTLESPACE_SAM_SITE_TELS isEqualTo []) then {_aaCount = 0};
 
     // Spawn AA groups
     for "_i" from 1 to _aaCount do {
@@ -620,11 +614,13 @@ BATTLESPACE_DEFENDERS_CREATE_TASK_FORCES = {
             _likeness < 0 && !surfaceIsWater _pos
         };
         private _aaPlacesCount = (count _aaPlaces);
+        if (_aaPlacesCount == 0) then {continue};
 
-        private _vehicles = ["rhs_Igla_AA_pod_vdv"];
+        private _vehicles = [];
+        if (BATTLESPACE_SAM_SITE_TELS isNotEqualTo []) then {_vehicles pushBack (selectRandom BATTLESPACE_SAM_SITE_TELS)};
 
-        if((random 100) <= 65) then {
-            _vehicles pushBack "rhs_zsu234_aa";
+        if((random 100) <= 65 && {BATTLESPACE_SAM_SITE_TELS isNotEqualTo []}) then {
+            _vehicles pushBack (selectRandom BATTLESPACE_SAM_SITE_TELS);
         };
 
         private _aaComp = createHashMapFromArray [

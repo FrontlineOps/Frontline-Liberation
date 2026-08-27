@@ -1,82 +1,69 @@
 setResupplyFlags = {
-	params ["_player", "_debug"];
+    params ["_player", "_debug"];
 
-	private _isDebugOn = !isNil { _debug };
+    if (!isServer || {isNull _player}) exitWith {false};
 
-	private _currentRoleDescription = roleDescription _player;
+    private _isDebugOn = !isNil {_debug};
+    private _currentRoleDescription = roleDescription _player;
+    private _currentSquad = [_player] call getResupplyGroupKey;
+    if (_currentSquad isEqualTo "") exitWith {
+        format ["Could not derive a network group key for %1", _player] call resupplyLog;
+        false
+    };
 
-	private _resupplyLastDescription = _player getVariable ["resupplyLastDescription", ""];
+    /* Legacy role metadata is retained only for unrelated mission permissions. */
+    private _currentRoles = [];
+    {
+        if (_currentRoleDescription find _y != -1) then {
+            _currentRoles pushBack _x;
+        };
+    } forEach ResupplyRoleDescriptionsToRoleFlags;
 
-	
+    private _legacySquadFlag = "AUTO";
+    {
+        private _flagInfo = _x;
+        private _squadNames = _flagInfo get "SquadNames";
+        {
+            if (_currentRoleDescription find _x != -1) exitWith {
+                _legacySquadFlag = _flagInfo get "FlagName";
+            };
+        } forEach _squadNames;
+        if (_legacySquadFlag != "AUTO") exitWith {};
+    } forEach ResupplyRoleDescriptionToSquadFlags;
 
-	format ["SetResupplyFlags(%1): %2)", _player, _currentRoleDescription] call resupplyLog;
-	
+    _player setVariable ["resupplySquadRoleFlags", _currentRoles, true];
+    _player setVariable ["resupplySquadGroupFlag", _legacySquadFlag, true];
+    _player setVariable ["resupplySquadGroupName", _currentSquad, true];
+    _player setVariable ["resupplySquadGroup", group _player, true];
 
-	private _currentRoles = [];
-	private _currentSquadFlag = nil;
-	private _currentSquad = nil;
-	{
-		private _index = _currentRoleDescription find _y;
+    private _newCompatibleCrates = [_player] call getCompatibleCratesForPlayer;
+    _player setVariable ["resupplyCompatibleCrates", _newCompatibleCrates, true];
+    _player setVariable ["resupplyLastDescription", _currentRoleDescription];
 
-		if(_index != -1) then {
+    private _currentAllocations = missionNamespace getVariable _currentSquad;
+    if (isNil {_currentAllocations}) then {
+        _currentAllocations = createHashMapFromArray [
+            ["SpecialtyResources", 0],
+            ["Crates", 0],
+            ["ResetTime", -1],
+            ["RecallResetTime", -1],
+            ["CanReset", true],
+            ["CrateObjects", []]
+        ];
+        missionNamespace setVariable [_currentSquad, _currentAllocations, true];
+        format ["Initialized automatic group %1 (%2)", groupId (group _player), _currentSquad] call resupplyLog;
+    };
 
-			if (_isDebugOn) then {
-				format ["Role %1 exists", _x] call resupplyLog;
-			};
-			_currentRoles pushBack _x;
-		};
-	} forEach ResupplyRoleDescriptionsToRoleFlags;
+    if (_isDebugOn) then {
+        format [
+            "SetResupplyFlags(%1): group=%2 key=%3 categories=%4",
+            _player,
+            groupId (group _player),
+            _currentSquad,
+            count _newCompatibleCrates
+        ] call resupplyLog;
+    };
 
-	{
-		private _flagInfo = _x;
-		private _squadNames = _flagInfo get "SquadNames";
-		private _match = false;
-
-		{
-			private _index = _currentRoleDescription find _x;
-
-			if(_index != -1) exitWith {
-				if (_isDebugOn) then {
-					format ["Squad matched to %1", _x] call resupplyLog;
-				};
-				_match = true;
-				_currentSquad = _x;
-			}
-		} forEach _squadNames;
-
-		if(_match) exitWith {
-			if (_isDebugOn) then {
-				format ["Squad flag set to %1", _flagInfo get "FlagName"] call resupplyLog;
-			};
-			_currentSquadFlag = _flagInfo get "FlagName";
-		};
-
-	} forEach ResupplyRoleDescriptionToSquadFlags;
-
-	if (isNil { _currentSquadFlag }) exitWith {
-		format ["Could not detect valid Squad Flag for %1, RD: %2", _player, _currentRoleDescription] call resupplyLog;
-	};
-	if (isNil { _currentSquad }) exitWith {
-		format ["Could not detect valid Squad for %1, RD: %2", _player, _currentRoleDescription] call resupplyLog;
-	};
-	format ["Set %1 Squad Roles: %2, Squad Flag: %3, Squad Name: %4", _player, _currentRoles, _currentSquadFlag, _currentSquad] call resupplyLog;
-
-	_player setVariable ["resupplySquadRoleFlags", _currentRoles, true];
-	_player setVariable ["resupplySquadGroupFlag", _currentSquadFlag, true];
-	// NOTE: Just cache the name to enable O(1) lookups
-	_player setVariable ["resupplySquadGroupName", _currentSquad, true];
-
-	private _newCompatibleCrates = [_player] call getCompatibleCratesForPlayer;
-
-	if (_isDebugOn) then {
-		format ["New Compatible Crates %1", _newCompatibleCrates] call resupplyLog;
-	};
-
-	
-
-	_player setVariable ["resupplyCompatibleCrates", _newCompatibleCrates, true];
-
-	_player setVariable ["resupplyLastDescription", _currentRoleDescription];
-
-	["resupplyFlagSets", [], _player] call CBA_fnc_targetEvent;
+    ["resupplyFlagSets", [], _player] call CBA_fnc_targetEvent;
+    true
 };

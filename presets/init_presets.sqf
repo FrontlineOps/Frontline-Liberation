@@ -8,21 +8,12 @@ if (isServer) then {
     ["Only if you e.g. use a CUP preset and you get messages about missing CUP classes, then check your loaded mods.", "PRESETS"] call KPLIB_fnc_log;
 };
 
-switch (KP_liberation_preset_blufor) do {
-    default  {[] call compileFinal preprocessFileLineNumbers "presets\blufor\rhs_usmcmodern2023.sqf";};
-};
+// Fixed mission policy loads before automatic faction combat catalogs.
+[] call compileFinal preprocessFileLineNumbers "presets\mission_infrastructure.sqf";
+[] call compileFinal preprocessFileLineNumbers "presets\battlespace_tuning.sqf";
 
-switch (KP_liberation_preset_opfor) do {
-    default  {[] call compileFinal preprocessFileLineNumbers "presets\opfor\modernRussia.sqf";};
-};
-
-switch (KP_liberation_preset_resistance) do {
-    default  {[] call compileFinal preprocessFileLineNumbers "presets\resistance\custom.sqf";};
-};
-
-switch (KP_liberation_preset_civilians) do {
-    default  {[] call compileFinal preprocessFileLineNumbers "presets\civilians\custom.sqf";};
-};
+KPLIB_autoFactionActive = false;
+[] call KPLIB_fnc_applyAutomaticFactionPresets;
 
 // Prices for the blufor infantry squads (supplies, ammo, fuel)
 KPLIB_b_allSquads = [

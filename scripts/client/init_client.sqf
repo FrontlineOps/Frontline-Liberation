@@ -1,7 +1,4 @@
 [] call compileFinal preprocessFileLineNumbers "scripts\client\misc\init_markers.sqf";
-switch (KP_liberation_arsenal) do {
-	default  {GRLIB_arsenal_weapons = [];GRLIB_arsenal_magazines = [];GRLIB_arsenal_items = [];GRLIB_arsenal_backpacks = [];};
-};
 
 if(roleDescription player find "Odin" > -1) then {
 	if (!(getPlayerUID player in KP_liberation_commander_actions)) then 
@@ -64,13 +61,11 @@ execVM "scripts\client\spawn\redeploy_manager.sqf";
 execVM "scripts\client\ui\ui_manager.sqf";
 execVM "scripts\client\ui\tutorial_manager.sqf";
 execVM "scripts\client\markers\update_production_sites.sqf";
-diag_log "Creating Default Loadouts...";
-execVM "arsenal_presets\default_loadouts_USMCmodern.sqf";
 execVM "scripts\client\misc\restrict_gamma.sqf";
 
 player addMPEventHandler ["MPKilled", {_this spawn kill_manager;}];
 player addEventHandler ["GetInMan", {[_this select 2] spawn kp_fuel_consumption;}];
-player addEventHandler ["GetInMan", {[_this select 2] call KPLIB_fnc_setVehiclesSeized;}];
+player addEventHandler ["GetInMan", {[_this select 2] call KPLIB_fnc_setVehicleSeized;}];
 player addEventHandler ["GetInMan", {[_this select 2] call KPLIB_fnc_setVehicleCaptured;}];
 player addEventHandler ["GetInMan", {[_this select 2] call kp_vehicle_permissions;}];
 player addEventHandler ["SeatSwitchedMan", {[_this select 2] call kp_vehicle_permissions;}];

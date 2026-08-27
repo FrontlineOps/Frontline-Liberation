@@ -1,24 +1,46 @@
 // https://github.com/KillahPotatoes/KP-Liberation
 
-/* BLUFOR preset:
-0 = Custom */
-KP_liberation_preset_blufor = 0;
+/* Automatic factions (required)
 
-/* OPFOR preset
-0 = Custom */
-KP_liberation_preset_opfor = 0;
+    Select one or more CfgFactionClasses classnames per side. Multiple entries
+    merge split factions (useful for mods which separate infantry and vehicles).
 
-/* Resistance preset
-0 = Custom */
-KP_liberation_preset_resistance = 0;
+    All four selections are mandatory. Invalid, wrong-side, empty, or sparse
+    selections stop preset initialization instead of loading legacy faction data.
+*/
+KP_liberation_autoFaction_blufor = ["CUP_B_US_Army"];
+KP_liberation_autoFaction_opfor = ["CUP_O_RU"];
+KP_liberation_autoFaction_resistance = ["CUP_I_NAPA"];
+KP_liberation_autoFaction_civilians = ["CUP_C_RU"];
 
-/* Civilians preset
-0 = Custom */
-KP_liberation_preset_civilians = 0;
+// Include loaded compatibility equipment in the generated restricted arsenal.
+KP_liberation_autoFaction_includeAceMedical = true;
+KP_liberation_autoFaction_includeAceTools = true;
+KP_liberation_autoFaction_includeTfarRadios = true;
+KP_liberation_autoFaction_arsenalExtraItems = [];
+KP_liberation_autoFaction_arsenalBlacklist = [];
 
-/* Arsenal preset
-0 = Custom */
-KP_liberation_arsenal = 0;
+// Limit generated faction ammunition boxes in the squad resupply menu. A value
+// below 1 disables the cap.
+KP_liberation_autoFaction_resupplyCrateLimit = 16;
+
+// Baseline build costs [supplies, ammunition, fuel]. Vehicle config cost and
+// threat apply a bounded multiplier; all results are rounded to steps of 25.
+KP_liberation_autoFaction_priceDefaults = createHashMapFromArray [
+    ["infantry",       [25,   0,   0]],
+    ["light",          [75,  25,  50]],
+    ["recon",         [100,  50,  75]],
+    ["medical",       [100,   0,  75]],
+    ["groundLogistics",[125,  0, 125]],
+    ["artillery",     [500, 600, 150]],
+    ["atgm",          [300, 350, 100]],
+    ["aa",            [500, 600, 150]],
+    ["heavy",         [700, 750, 250]],
+    ["rotaryLogistics",[350,  0, 300]],
+    ["rotaryCas",     [650, 700, 400]],
+    ["fixedWing",    [1000,1000, 500]],
+    ["static",        [125, 150,   0]]
+];
 
 // Idle fuel consumption (min)
 KP_liberation_fuel_neutral = 180;

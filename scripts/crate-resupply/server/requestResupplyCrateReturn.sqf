@@ -4,6 +4,10 @@ requestResupplyCrateReturn = {
 	params ["_crate", "_returner"];
 
 	private _cannotReturnStr = "You cannot return this crate";
+	if (isNull _crate || {isNull _returner} || {!isPlayer _returner}) exitWith {};
+	if !([_returner] call setResupplyFlags) exitWith {
+		_cannotReturnStr remoteExec ["hint", owner _returner];
+	};
 
 	private _crateName = _crate getVariable "resupplyCrateName";
 
@@ -13,10 +17,8 @@ requestResupplyCrateReturn = {
 		_cannotReturnStr remoteExec ["hint", owner _returner];
 	};
 
-	private  _playerSquadName = _returner getVariable "resupplySquadGroupName";
-
-
-	if (isNil { _playerSquadName }) exitWith {
+	private _playerSquadName = [_returner] call getResupplyGroupKey;
+	if (_playerSquadName isEqualTo "") exitWith {
 		_cannotReturnStr remoteExec ["hint", owner _returner];
 	};
 

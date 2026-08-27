@@ -51,12 +51,15 @@ _fnc_enforceArsenal = {
 
 	// Get Resupply crate items and add to allowed loadout whitelist
 	{
+		private _crateInfo = _y;
 		{
-			if (typeName _x == "STRING") then {
-				_allowed_loadout pushBack _x;
-				_fullArsenal pushBack (toLower _x); // Add the crate items to the full whitelist - lowercase for easier comparison
-			};
-		} forEach (_y get "Items");
+			{
+				if (typeName _x == "STRING") then {
+					_allowed_loadout pushBack _x;
+					_fullArsenal pushBack (toLower _x);
+				};
+			} forEach (_crateInfo getOrDefault [_x, createHashMap]);
+		} forEach ["Weapons", "Magazines", "Items", "Backpacks"];
 	} forEach ResupplyCrates; // global variable "ResupplyCrates" location: scripts\crate-resupply\config.sqf
 
 	// Add all ammo types to the whitelist
@@ -165,7 +168,9 @@ _fnc_enforceArsenal = {
 	// Uniform Check & Addition
 	if !(count (uniform _unit) > 0) then {
 		// Assign a default uniform to unit, consistent w/ onPlayerRespawn.
-		_unit forceAddUniform selectRandom RA_StartingUniforms;
+		if (RA_StartingUniforms isNotEqualTo []) then {
+			_unit forceAddUniform selectRandom RA_StartingUniforms;
+		};
 	};
 
 	// Android/tab Check & Addition

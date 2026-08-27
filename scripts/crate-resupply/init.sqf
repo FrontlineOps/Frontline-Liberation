@@ -47,13 +47,7 @@ if( (isServer && !isDedicated) || !isServer ) then {
 		format ["Class Init %1", _ammoCrateClass] call resupplyLog;
 
 		_conditionToShowRoot = {
-
-			private _currentCompatibleCrates = player getVariable ["resupplyCompatibleCrates", []];
-
-			private _shouldShow = count _currentCompatibleCrates > 0;
-
-
-			_shouldShow;
+			!(isNull (group player)) && {count ResupplyCrates > 0}
 		};
 
 		// Render category roots
@@ -61,40 +55,26 @@ if( (isServer && !isDedicated) || !isServer ) then {
 			params ["_target", "_player", "_params"];
 
 			
-			private _currentSquadName = player getVariable "resupplySquadGroupName";
-			private _currentSquadFlag = player getVariable "resupplySquadGroupFlag";
-			private _currentCompatibleCrates = player getVariable ["resupplyCompatibleCrates" ,[]];
+			private _currentSquadName = [player] call getResupplyGroupKey;
+			private _currentCompatibleCrates = [player] call getCompatibleCratesForPlayer;
+			if (_currentSquadName isEqualTo "") exitWith {[]};
 
-
-
-			if ( isNil { _currentSquadName } ) exitWith {
-				[]
-			};
-
-			if ( isNil { _currentSquadFlag } ) exitWith {
-				[]
-			};
-
-			private _currentAllocations = missionNamespace getVariable _currentSquadName;
-			private _currentCrates = _currentAllocations get "Crates";
-			private _maxCrates = ResupplyCrateAllocations get _currentSquadFlag getOrDefault ["CrateAllocations", 0];
+			private _currentAllocations = missionNamespace getVariable [_currentSquadName, createHashMap];
+			private _currentCrates = _currentAllocations getOrDefault ["Crates", 0];
+			private _maxCrates = [group player] call getResupplyGroupCrateLimit;
 			private _actions = [];
 
 
 			_modifyRecallDisplayName = {
 				params ["_target", "_player", "_params", "_actionData"];
-				private  _playerSquadName = player getVariable "resupplySquadGroupName";
-
-
-				if (isNil { _playerSquadName }) exitWith {
-					false
-				};
-				_actionData set [1, format["Recall ALL Resupply Crates for %1", _playerSquadName]];
+				private _playerSquadName = [player] call getResupplyGroupKey;
+				if (_playerSquadName isEqualTo "") exitWith {false};
+				_actionData set [1, format["Recall ALL Resupply Crates for %1", groupId (group player)]];
 				
 
-				private _currentAllocations = missionNamespace getVariable _playerSquadName;
+				private _currentAllocations = missionNamespace getVariable [_playerSquadName, createHashMap];
 
-				private _canReset = _currentAllocations get "CanReset";
+				private _canReset = _currentAllocations getOrDefault ["CanReset", true];
 
 				if (!_canReset) then {
 
@@ -126,23 +106,18 @@ if( (isServer && !isDedicated) || !isServer ) then {
 			};
 
 			_canDisplayRecall = {
-				private _currentCompatibleCrates = player getVariable ["resupplyCompatibleCrates", []];
-
-				private _shouldShow = count _currentCompatibleCrates > 0;
+				private _shouldShow = count ResupplyCrates > 0;
 
 				if(!_shouldShow) exitWith {
 					false
 				};
 
-				private _playerSquadName = player getVariable "resupplySquadGroupName";
-
-				if (isNil { _playerSquadName }) exitWith {
-					false
-				};
+				private _playerSquadName = [player] call getResupplyGroupKey;
+				if (_playerSquadName isEqualTo "") exitWith {false};
 				
-				private _currentAllocations = missionNamespace getVariable _playerSquadName;
+				private _currentAllocations = missionNamespace getVariable [_playerSquadName, createHashMap];
 
-				private _currentCrates = _currentAllocations get "Crates";
+				private _currentCrates = _currentAllocations getOrDefault ["Crates", 0];
 
 				_currentCrates > 0
 			};
@@ -151,18 +126,12 @@ if( (isServer && !isDedicated) || !isServer ) then {
 
 				params ["_target", "_player", "_params"];
 
-				private  _playerSquadName = player getVariable "resupplySquadGroupName";
-
-
-				if (isNil { _playerSquadName }) exitWith {
-					false
-				};
+				private _playerSquadName = [player] call getResupplyGroupKey;
+				if (_playerSquadName isEqualTo "") exitWith {false};
 				
-				
+				private _currentAllocations = missionNamespace getVariable [_playerSquadName, createHashMap];
 
-				private _currentAllocations = missionNamespace getVariable _playerSquadName;
-
-				private _canReset = _currentAllocations get "CanReset";
+				private _canReset = _currentAllocations getOrDefault ["CanReset", true];
 
 				if(!_canReset) exitWith {
 					false
@@ -201,7 +170,8 @@ if( (isServer && !isDedicated) || !isServer ) then {
 					// If this is special, then should display the root only when the squad they belong to can even get special stuff ever.
 					// Checks the MAX they can have, not the current.
 					if(_isSpecial) then {
-						private _maxSpecialtyResources = ResupplyCrateAllocations get _currentSquadFlag getOrDefault ["SpecialtyAllocations", 0];
+						private _allocationDefinition = ResupplyCrateAllocations getOrDefault [_currentSquadFlag, createHashMap];
+						private _maxSpecialtyResources = _allocationDefinition getOrDefault ["SpecialtyAllocations", 0];
 						_shouldShow = _maxSpecialtyResources > 0;
 					};
 
@@ -220,15 +190,16 @@ if( (isServer && !isDedicated) || !isServer ) then {
 
 					if (_isSpecial) then {
 						private _currentSquadFlag = player getVariable "resupplySquadGroupFlag";
-						private _maxSpecialtyResources = ResupplyCrateAllocations get _currentSquadFlag getOrDefault ["SpecialtyAllocations", 0];
+						private _allocationDefinition = ResupplyCrateAllocations getOrDefault [_currentSquadFlag, createHashMap];
+						private _maxSpecialtyResources = _allocationDefinition getOrDefault ["SpecialtyAllocations", 0];
 
 						if (_maxSpecialtyResources > 0) then {
 							
-							private _currentSquadName = player getVariable "resupplySquadGroupName";
+							private _currentSquadName = [player] call getResupplyGroupKey;
 
-							private _currentAllocations = missionNamespace getVariable _currentSquadName;
+							private _currentAllocations = missionNamespace getVariable [_currentSquadName, createHashMap];
 
-							private _currentSpecialtyResource = _currentAllocations get "SpecialtyResources";
+							private _currentSpecialtyResource = _currentAllocations getOrDefault ["SpecialtyResources", 0];
 
 							if( !isNil { _currentSpecialtyResource }) then {
 
@@ -279,14 +250,13 @@ if( (isServer && !isDedicated) || !isServer ) then {
 					private _category = _params select 0;
 					private _crateNames = _params select 1;
 
-					private _currentSquadName = player getVariable ["resupplySquadGroupName", ""];
-					private _currentSquadFlag = player getVariable ["resupplySquadGroupFlag", ""];
-					private _currentAllocations = missionNamespace getVariable _currentSquadName;
+					private _currentSquadName = [player] call getResupplyGroupKey;
+					private _currentAllocations = missionNamespace getVariable [_currentSquadName, createHashMap];
 
 
-					private _squadMaxAllocations = ResupplyCrateAllocations get _currentSquadFlag getOrDefault ["CrateAllocations", 0];
+					private _squadMaxAllocations = [group player] call getResupplyGroupCrateLimit;
 
-					if( _squadMaxAllocations == 0 || (_currentAllocations get "Crates") >= _squadMaxAllocations) exitWith {
+					if( _squadMaxAllocations == 0 || (_currentAllocations getOrDefault ["Crates", 0]) >= _squadMaxAllocations) exitWith {
 						[]
 					};
 
@@ -313,19 +283,19 @@ if( (isServer && !isDedicated) || !isServer ) then {
 					private _actions = [];
 
 					{
-						_crateName = _x;
+						private _crateName = _x;
 
 						private _onActionExec = {
 							params ["_target", "_player", "_params"];
 
-							_crateName = _params select 0;
+							private _crateName = _params select 0;
 							[player, _crateName] remoteExec ["requestResupplyCrate", 2];
 							true
 						};
 
 
 
-						_grabCrate = [_crateName, format ["Grab %1", _crateName], "", _onActionExec, { true }, nil, [_crateName]] call ace_interact_menu_fnc_createAction;
+						private _grabCrate = [_crateName, format ["Grab %1", _crateName], "", _onActionExec, { true }, nil, [_crateName]] call ace_interact_menu_fnc_createAction;
 
 						_actions pushBack [_grabCrate, [], _target];
 					} forEach _crateNames;
@@ -348,11 +318,10 @@ if( (isServer && !isDedicated) || !isServer ) then {
 		_modifyRootDisplayName = {
 			params ["_target", "_player", "_params", "_actionData"];
 
-			private _currentSquadName = player getVariable "resupplySquadGroupName";
-			private _currentSquadFlag = player getVariable "resupplySquadGroupFlag";
-			private _currentAllocations = missionNamespace getVariable _currentSquadName;
-			private _currentCrates = _currentAllocations get "Crates";
-			private _maxCrates = ResupplyCrateAllocations get _currentSquadFlag getOrDefault ["CrateAllocations", 0];
+			private _currentSquadName = [player] call getResupplyGroupKey;
+			private _currentAllocations = missionNamespace getVariable [_currentSquadName, createHashMap];
+			private _currentCrates = _currentAllocations getOrDefault ["Crates", 0];
+			private _maxCrates = [group player] call getResupplyGroupCrateLimit;
 
 			private _displayName = format ["Resupply Crates (%1/%2)", _currentCrates, _maxCrates];
 

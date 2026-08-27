@@ -9,11 +9,22 @@ fillResupplyCrate = {
 	if( !isNil{ _crateType }) then {
 		private _crateInfo = ResupplyCrates get _crateType;
 
-		private _itemsMap = _crateInfo get "Items";
 		clearItemCargoGlobal _crate;
 		clearMagazineCargoGlobal _crate;
 		clearWeaponCargoGlobal _crate;
 		clearBackpackCargoGlobal _crate;
+
+		{
+			_crate addWeaponCargoGlobal [_x, _y];
+		} forEach (_crateInfo getOrDefault ["Weapons", createHashMap]);
+		{
+			_crate addMagazineCargoGlobal [_x, _y];
+		} forEach (_crateInfo getOrDefault ["Magazines", createHashMap]);
+		{
+			_crate addBackpackCargoGlobal [_x, _y];
+		} forEach (_crateInfo getOrDefault ["Backpacks", createHashMap]);
+
+		private _itemsMap = _crateInfo getOrDefault ["Items", createHashMap];
 		{
 			_itemClass = _x;
 			_itemAmount = _y;

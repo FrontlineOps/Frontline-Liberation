@@ -157,9 +157,14 @@ BATTLESPACE_LOGISTICS = {
 				_spawnPos = getPos (selectRandom _roads);
 			};
 
+			private _convoyPool = opfor_troup_transports + opfor_vehicles + opfor_battlegroup_vehicles;
+			private _convoyVehicles = [];
+			for "_i" from 1 to (3 min count _convoyPool) do {
+				_convoyVehicles pushBack (selectRandom _convoyPool);
+			};
 			private _composition = createHashMapFromArray [
 				["manpower", 21],
-				["vehicles", ["rhs_bmd4_vdv","rhs_btr80_vdv","rhs_bmd2k"]],
+				["vehicles", _convoyVehicles],
 				["structures", []]
 			];
 

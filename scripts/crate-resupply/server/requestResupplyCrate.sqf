@@ -1,15 +1,23 @@
 requestResupplyCrate = {
 	params ["_requester", "_crateName"];
 
-	format ["RequestResupplyCrate (%1, %2)", _requester, _crateName];
+	if (isNull _requester || {!isPlayer _requester}) exitWith {};
+	if !([_requester] call setResupplyFlags) exitWith {};
+
+	format ["RequestResupplyCrate (%1, %2)", _requester, _crateName] call resupplyLog;
 	private _crateInfo = ResupplyCrates get _crateName;
+	if (isNil {_crateInfo}) exitWith {
+		format ["Rejected unknown crate definition %1 from %2", _crateName, _requester] call resupplyLog;
+		"Unknown resupply crate" remoteExec ["hint", owner _requester];
+	};
 
 	private _squadFlag = _requester getVariable "resupplySquadGroupFlag";
-	private _squadName = _requester getVariable "resupplySquadGroupName";
+	private _squadName = [_requester] call getResupplyGroupKey;
 	private _squadRoles = _requester getVariable ["resupplySquadRoleFlags", []];
-	private _allowedCrates = _requester getVariable ["resupplyCompatibleCrates", []];
+	private _allowedCrates = [_requester] call getCompatibleCratesForPlayer;
 
-	private _allowed = _crateName in (_allowedCrates get (_crateInfo getOrDefault ["Category", "Basic"]));
+	private _category = _crateInfo getOrDefault ["Category", "Faction Supplies"];
+	private _allowed = _crateName in (_allowedCrates getOrDefault [_category, []]);
 
 	if(!_allowed) exitWith {
 		format ["Someone tried to request a %1 crate despite not having permissions... Compatibles: %2; Squad Flag %3 Squad Name %4 Roles Assigned %5", _crateName, _allowedCrates, _squadFlag, _squadName, _squadRoles] call resupplyLog;
@@ -36,14 +44,14 @@ requestResupplyCrate = {
 		};
 	};
 
-	if(!_allowed) then {
+	if(!_allowed) exitWith {
 		format ["Not enough specialty resources to grab this crate"] remoteExec ["hint", owner _requester];
 	};
 
 	private _currentCrates = _currentAllocations get "Crates";
 
 	_currentCrates = 0 max _currentCrates;
-	private _maxCrates = ResupplyCrateAllocations get _squadFlag get "CrateAllocations";
+	private _maxCrates = [group _requester] call getResupplyGroupCrateLimit;
 
 	if ( _currentCrates >= _maxCrates ) exitWith {
 		format ["Max crates for your squad has been reached"] remoteExec ["hint", owner _requester];
@@ -62,13 +70,14 @@ requestResupplyCrate = {
 		_offset = [0, 1, 1];
 	};
 
-	_crate = createVehicle [_model, getPosATL _requester, [], 0, "CAN_COLLIDE"];
+	private _crate = createVehicle [_model, getPosATL _requester, [], 0, "CAN_COLLIDE"];
 
 	
 	[_crate, 300] remoteExec ["setMass", 0];
 	_crate addEventHandler ["HandleDamage", { false }];
 	_crate setVariable ["resupplyCrateName", _crateName, true];
 	_crate setVariable ["resupplySquadOwner", _squadName, true];
+	_crate setVariable ["resupplySquadOwnerDisplay", groupId (group _requester), true];
 	_crate setVariable ["resupplySquadFlag", _squadFlag, true];
 
 	[_crate] call fillResupplyCrate;
@@ -76,14 +85,15 @@ requestResupplyCrate = {
 
 	_currentAllocations set ["Crates", _currentCrates + 1];
 
-	_currentCrateObjects = _currentAllocations get "CrateObjects";
+	private _currentCrateObjects = _currentAllocations get "CrateObjects";
 
 	_currentCrateObjects pushBack _crate;
 
 	_currentAllocations set ["CrateObjects", _currentCrateObjects];
 
 	if(_isSpecialCrate) then {
-		private _maxSpecialtyResources = ResupplyCrateAllocations get _squadFlag getOrDefault ["SpecialtyAllocations", 0];
+		private _allocationDefinition = ResupplyCrateAllocations getOrDefault [_squadFlag, createHashMap];
+		private _maxSpecialtyResources = _allocationDefinition getOrDefault ["SpecialtyAllocations", 0];
 
 		private _missionTime = CBA_missionTime;
 

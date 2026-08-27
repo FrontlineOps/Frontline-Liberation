@@ -4,8 +4,9 @@ loopAndAddSpecialtyResources = {
 	format ["LoopAndAddSpecialtyResources(%1, %2)", _squadName, _maxSpecialtyResources];
 
 	private _currentAllocations = missionNamespace getVariable _squadName;
+	if (isNil {_currentAllocations}) exitWith {};
 
-	private _currentSpecialtyResources = _currentAllocations get "SpecialtyResources";
+	private _currentSpecialtyResources = _currentAllocations getOrDefault ["SpecialtyResources", 0];
 
 	
 

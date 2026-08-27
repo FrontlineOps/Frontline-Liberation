@@ -4,6 +4,10 @@ requestResupplyCrateEmpty = {
 	params ["_crate", "_requester"];
 
 	private _cannotEmptyStr = "You cannot empty this crate";
+	if (isNull _crate || {isNull _requester} || {!isPlayer _requester}) exitWith {};
+	if !([_requester] call setResupplyFlags) exitWith {
+		_cannotEmptyStr remoteExec ["hint", owner _requester];
+	};
 
 	private _crateName = _crate getVariable "resupplyCrateName";
 
@@ -13,10 +17,8 @@ requestResupplyCrateEmpty = {
 		_cannotEmptyStr remoteExec ["hint", owner _requester];
 	};
 
-	private  _playerSquadName = _requester getVariable "resupplySquadGroupName";
-
-
-	if (isNil { _playerSquadName }) exitWith {
+	private _playerSquadName = [_requester] call getResupplyGroupKey;
+	if (_playerSquadName isEqualTo "") exitWith {
 		_cannotEmptyStr remoteExec ["hint", owner _requester];
 	};
 

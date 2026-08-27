@@ -25,24 +25,13 @@ addResupplyActions = {
 
 		
 
-		private  _playerSquadName = player getVariable "resupplySquadGroupName";
-
-
-		if (isNil { _playerSquadName }) exitWith {
+		private _playerSquadName = [player] call getResupplyGroupKey;
+		if (_playerSquadName isEqualTo "") exitWith {
 			[];
 		};
 
-		private _playerSquadFlag = player getVariable "resupplySquadGroupFlag";
-
-		if (isNil { _playerSquadFlag }) exitWith {
-			[];
-		};
-
-		private _squadDefinition = ResupplyCrateAllocations get _playerSquadFlag; 
-
-		if (isNil { _squadDefinition }) exitWith {
-			[];
-		};
+		private _playerSquadFlag = player getVariable ["resupplySquadGroupFlag", "AUTO"];
+		private _squadDefinition = ResupplyCrateAllocations getOrDefault [_playerSquadFlag, createHashMap];
 
 		private _globalResupplier = _squadDefinition getOrDefault ["Resupplier", false];
 
@@ -67,10 +56,8 @@ addResupplyActions = {
 				false;
 			};
 
-			private _playerSquadName = player getVariable "resupplySquadGroupName";
-
-
-			if (isNil { _playerSquadName }) exitWith {
+			private _playerSquadName = [player] call getResupplyGroupKey;
+			if (_playerSquadName isEqualTo "") exitWith {
 				false;
 			};
 			
@@ -103,24 +90,13 @@ addResupplyActions = {
 				false;
 			};
 
-			private  _playerSquadName = player getVariable "resupplySquadGroupName";
-
-
-			if (isNil { _playerSquadName }) exitWith {
+			private _playerSquadName = [player] call getResupplyGroupKey;
+			if (_playerSquadName isEqualTo "") exitWith {
 				false;
 			};
 
-			private _playerSquadFlag = player getVariable "resupplySquadGroupFlag";
-
-			if (isNil { _playerSquadFlag }) exitWith {
-				false;
-			};
-
-			private _squadDefinition = ResupplyCrateAllocations get _playerSquadFlag; 
-
-			if (isNil { _squadDefinition }) exitWith {
-				false;
-			};
+			private _playerSquadFlag = player getVariable ["resupplySquadGroupFlag", "AUTO"];
+			private _squadDefinition = ResupplyCrateAllocations getOrDefault [_playerSquadFlag, createHashMap];
 
 			private _crateName = _target getVariable "resupplyCrateName";
 			_actionData set [1, format ["Refill %1", _crateName]];
@@ -137,7 +113,7 @@ addResupplyActions = {
 				if ( !(isNil { _crateInfo })) then {
 					private _isSpecialCrate = (_crateInfo getOrDefault ["SpecialtyCost", 0]) > 0;
 
-					private _currentAllocations = missionNamespace getVariable _crateSquadOwner;
+					private _currentAllocations = missionNamespace getVariable [_crateSquadOwner, createHashMap];
 
 					if(_isSpecialCrate == true && _currentAllocations getOrDefault ["SpecialtyResources", 0] <= 0) then {
 						private _currentMissionTime = CBA_missionTime;
@@ -183,24 +159,13 @@ addResupplyActions = {
 				false;
 			};
 
-			private  _playerSquadName = player getVariable "resupplySquadGroupName";
-
-
-			if (isNil { _playerSquadName }) exitWith {
+			private _playerSquadName = [player] call getResupplyGroupKey;
+			if (_playerSquadName isEqualTo "") exitWith {
 				false;
 			};
 
-			private _playerSquadFlag = player getVariable "resupplySquadGroupFlag";
-
-			if (isNil { _playerSquadFlag }) exitWith {
-				false;
-			};
-
-			private _squadDefinition = ResupplyCrateAllocations get _playerSquadFlag; 
-
-			if (isNil { _squadDefinition }) exitWith {
-				false;
-			};
+			private _playerSquadFlag = player getVariable ["resupplySquadGroupFlag", "AUTO"];
+			private _squadDefinition = ResupplyCrateAllocations getOrDefault [_playerSquadFlag, createHashMap];
 
 			private _crateInfo = ResupplyCrates get (_target getVariable "resupplyCrateName");
 
@@ -209,7 +174,7 @@ addResupplyActions = {
 			if ( !(isNil { _crateInfo })) then {
 				private _isSpecialCrate = (_crateInfo getOrDefault ["SpecialtyCost", 0]) > 0;
 
-				private _currentAllocations = missionNamespace getVariable _crateSquadOwner;
+				private _currentAllocations = missionNamespace getVariable [_crateSquadOwner, createHashMap];
 
 				if(_isSpecialCrate == true && _currentAllocations getOrDefault ["SpecialtyResources", 0] <= 0) exitWith {
 					_allowed = false;
@@ -250,7 +215,7 @@ addResupplyActions = {
 	};
 
 	private _crateName = _supplyCrate getVariable "resupplyCrateName";
-	private _crateSquadOwner = _supplyCrate getVariable "resupplySquadOwner";
-	_menuRoot = ["KARMA_RESUPPLY_CRATE_ROOT", format ["%1 (%2)", _cratename, _crateSquadOwner], "z\ace\addons\rearm\ui\icon_rearm_interact.paa", { true }, _conditionToShowRoot, _insertChildren] call ace_interact_menu_fnc_createAction;
+	private _crateSquadOwnerDisplay = _supplyCrate getVariable ["resupplySquadOwnerDisplay", "Unknown Group"];
+	_menuRoot = ["KARMA_RESUPPLY_CRATE_ROOT", format ["%1 (%2)", _cratename, _crateSquadOwnerDisplay], "z\ace\addons\rearm\ui\icon_rearm_interact.paa", { true }, _conditionToShowRoot, _insertChildren] call ace_interact_menu_fnc_createAction;
 	[_supplyCrate, 0, ["ACE_MainActions"], _menuRoot] call ace_interact_menu_fnc_addActionToObject;
 };
