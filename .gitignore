@@ -15,3 +15,8 @@
 *.tmp
 Thumbs.db
 .DS_Store
+
+# Local agent memory and implementation notes
+/AGENTS.md
+/CONTEXT.md
+/.agent-notes/
