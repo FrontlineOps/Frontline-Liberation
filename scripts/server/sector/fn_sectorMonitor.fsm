@@ -214,7 +214,7 @@ class FSM
                                         condition=/*%FSM<CONDITION""">*/"_opforCount < GRLIB_sector_cap" \n
                                          "&& {" \n
                                          "    if (isDedicated) then {" \n
-                                         "        ([markerPos _sector, _range, GRLIB_side_friendly, false] call KPLIB_fnc_getUnitsCount) >= 6" \n
+                                         "        ([markerPos _sector, _range, GRLIB_side_friendly, false] call KPLIB_fnc_getUnitsCount) >= 1" \n
                                          "    }" \n
                                          "    else {" \n
                                          "        ([markerPos _sector, _range, GRLIB_side_friendly, false] call KPLIB_fnc_getUnitsCount) >= 1" \n
