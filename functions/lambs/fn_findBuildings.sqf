@@ -1,6 +1,10 @@
 /*
  * Author: nkenny
  * Finds nearby buildings
+ * Source: addons/main/functions/fnc_findBuildings.sqf
+ * Upstream commit: 63122df5d9403a52f10bf50198ac75a49f0a3d6b
+ * Adapted 2026-08-27 for the KPLIB namespace.
+ * License: see NOTICE.md and LICENSE.LAMBS in this directory.
  *
  * Arguments:
  * 0: Unit checking <OBJECT> or position <ARRAY>
@@ -12,7 +16,7 @@
  * Array of buildings or house positions
  *
  * Example:
- * [bob, 100, true, true] call lambs_main_fnc_findBuildings;
+ * [bob, 100, true, true] call KPLIB_fnc_findBuildings;
  *
  * Public: Yes
 */

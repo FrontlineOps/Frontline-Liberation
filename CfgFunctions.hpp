@@ -111,10 +111,18 @@ class KPLIB {
         class findClosestTarget	{};		// [] call KPLIB_fnc_findClosestTarget
         class findBuildings		{};		// [] call KPLIB_fnc_findBuildings
         class doUgl 			{};		// [] call KPLIB_fnc_doUgl
-        class creep				{};		// [] call KPLIB_fnc_creep
-        class hunt				{};     // [] call KPLIB_fnc_hunt
-        class rush 				{};		// [] call KPLIB_fnc_rush
-        class garrison 			{};		// [] call KPLIB_fnc_garrison
+        class checkMagazineAiUsageFlags {};
+        class doAnimation                   {};
+        class getLauncherUnits              {};
+        class isAlive                       {};
+        class hunt                         {}; // [] call KPLIB_fnc_hunt
+        class rush                         {}; // [] call KPLIB_fnc_rush
+        class garrison                     {}; // [] call KPLIB_fnc_garrison
+        class isIndoor                     {}; // [] call KPLIB_fnc_isIndoor
+        class removeLambsEventHandlers     {}; // [] call KPLIB_fnc_removeLambsEventHandlers
+        class taskPatrol                   {}; // [] call KPLIB_fnc_taskPatrol
+        class taskPatrolWaypointStatement  {};
+        class taskReset                    {}; // [] call KPLIB_fnc_taskReset
     };
     #include "scripts\client\CfgFunctions.hpp"
     #include "scripts\server\CfgFunctions.hpp"

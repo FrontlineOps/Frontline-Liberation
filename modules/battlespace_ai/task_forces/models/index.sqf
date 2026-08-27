@@ -375,7 +375,6 @@ BATTLESPACE_TASK_FORCE_DEFAULT_TRY_SPAWN = {
 		// TODO: Determine vehicle waypoints
 		// Attack destination
 		if(!(_destination isEqualTo [])) then {
-			// [_vehGrp, _destination, 300, 4, [], false, true] call lambs_wp_fnc_taskPatrol;
 			if((count (units _infGrp)) > 0) then {
 				[_veh, _vehGrp, _infGrp, _destination, false] spawn BATTLESPACE_TASK_FORCE_TRANSPORT_AI;
 			} else {
@@ -428,53 +427,16 @@ BATTLESPACE_TASK_FORCE_DEFAULT_TRY_SPAWN = {
 			} foreach _baseSquad;
 
 			if(_garrisoned) then {
-				if(!(isNil { KPLIB_fnc_getLessLoadedHC})) then {
-					private _hc = [] call KPLIB_fnc_getLessLoadedHC;
-					if(!(isNull _hc ) && !(isNil { _hc })) then {
-						[
-							{
-								params ["_infGrp", "_hc"];
-								_infGrp setGroupOwner (owner _hc);
-							},
-							[_infGrp, _hc],
-							0
-						] call CBA_fnc_waitAndExecute;
-						_infGrp setVariable ["acex_headless_blacklist", true, true];
-						{
-							_x setVariable ["acex_headless_blacklist", true, true];
-						} forEach (units _infGrp);
-						_infGrp setVariable ["Vcm_Disable", true, true];
-						[
-							{
-								params ["_infGrp", "_housePos", "_hc"];
-								// Uncomment this to use without LAMBS
-								//[_infGrp, _housePos] remoteExec ["KPLIB_fnc_garrison", owner _hc];
-								[_infGrp, _housePos] remoteExec ["lambs_wp_fnc_taskgarrison", owner _hc];
-
-							},
-							[
-								_infGrp,
-								_housePos,
-								_hc
-							],
-							1
-						] call CBA_fnc_waitAndExecute;
-					};
-					// Uncomment this to use without LAMBS
-					//[_infGrp, _housePos] call KPLIB_fnc_garrison;
-					[_infGrp, _housePos] call lambs_wp_fnc_taskgarrison;
-				};
+				// Task-force groups are created on the server; issue the order once where local.
+				[_infGrp, _housePos] call KPLIB_fnc_garrison;
 			} else {
 				// Attack waypoints
 				if(!(_destination isEqualTo [])) then {
 					// Slow pace towards objective via patrol ig
-					// [_infGrp, _destination, 300, 4, [], false, true] call lambs_wp_fnc_taskPatrol;
 					[_infGrp, _destination, _speed, _ambush] spawn BATTLESPACE_TASK_FORCE_ADD_WAYPOINTS;
 				} else {
 					// Defensive patrol
-					// Uncomment this to use without LAMBS
-					//[_infGrp, _currentLoc, 300, 4] call CBA_fnc_taskPatrol;
-					[_infGrp, _currentLoc, 300, 4, [], false, true] call lambs_wp_fnc_taskPatrol;
+					[_infGrp, _currentLoc, 300, 4, [], false, true] call KPLIB_fnc_taskPatrol;
 				};
 			};
 

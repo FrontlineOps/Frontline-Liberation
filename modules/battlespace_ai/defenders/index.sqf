@@ -58,9 +58,8 @@ BATTLESPACE_DEFENDER_GARRISON_AI = {
 
     diag_log format ["Group %1 detected nearby blufor, starting Task Hunt.", _infGrp];
 
-    // Task Hunt time. UGL bois use their flares
-    // Comment this to use without LAMBS
-    [_infGrp] remoteExec ["lambs_wp_fnc_taskReset", groupOwner _infGrp];
+    // Reset the existing task where the group is local before assigning its replacement.
+    [_infGrp] remoteExec ["BATTLESPACE_DEFENDER_TASK_RESET", groupOwner _infGrp];
     [
         {
             _this params ["_leader"];
@@ -79,20 +78,24 @@ BATTLESPACE_DEFENDER_GARRISON_AI = {
     ] call CBA_fnc_waitAndExecute;
 };
 
+BATTLESPACE_DEFENDER_TASK_RESET = {
+    params [["_group", grpNull, [grpNull]]];
+
+    if (isNull _group || {!local _group}) exitWith {false};
+
+    [_group, false, true] call KPLIB_fnc_taskReset;
+};
+
 BATTLESPACE_DEFENDER_TASK_HUNT = {
     diag_log format ["Task Hunt params %1", _this];
 
-    // Uncomment this to use without LAMBS
-    //_this spawn KPLIB_fnc_hunt;
-    _this spawn lambs_wp_fnc_taskHunt;
+    _this spawn KPLIB_fnc_hunt;
 };
 
 BATTLESPACE_DEFENDER_TASK_RUSH = {
     diag_log format ["Task Rush params %1", _this];
 
-    // Uncomment this to use without LAMBS
-    //_this spawn KPLIB_fnc_rush;
-    _this spawn lambs_wp_fnc_taskRush;
+    _this spawn KPLIB_fnc_rush;
 };
 
 BATTLESPACE_DEFENDERS_CREATE_TASK_FORCES = {

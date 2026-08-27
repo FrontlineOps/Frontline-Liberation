@@ -76,13 +76,6 @@ KPLIB_objectInits = [
         {if (KP_liberation_suppMod > 0) then {KPLIB_suppMod_arty synchronizeObjectsAdd [_this];};}
     ],
     
-    [
-        ["rhs_2b14_82mm_vdv"],
-        {
-            _this call lambs_wp_fnc_taskArtilleryRegister;
-        }
-    ],
-    
     // Disable autocombat (if set in parameters) and fleeing
     [
         ["Man"],

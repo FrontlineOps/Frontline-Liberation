@@ -1,26 +1,17 @@
 #include "script_component.hpp"
 /*
  * Author: nkenny
- * Aggressive Attacker script
- *
- * Arguments:
- * 0: Group performing action, either unit <OBJECT> or group <GROUP>
- * 1: Range of tracking, default is 500 meters <NUMBER>
- * 2: Delay of cycle, default 15 seconds <NUMBER>
- * 3: Area the AI Camps in, default [] <ARRAY>
- * 4: Center Position, if no position or Empty Array is given it uses the Group as Center and updates the position every Cycle, default [] <ARRAY>
- * 5: Only Players, default true <BOOL>
- *
- * Return Value:
- * none
- *
- * Example:
- * [bob, 500] spawn lambs_wp_fnc_taskRush;
- *
- * Public: Yes
-*/
+ * Adapted from LAMBS Danger.fsm taskRush.
+ * Source: addons/wp/functions/fnc_taskRush.sqf
+ * Upstream commit: 63122df5d9403a52f10bf50198ac75a49f0a3d6b
+ * Adapted 2026-08-27 for the KPLIB namespace and mission-local state.
+ * License: see NOTICE.md and LICENSE.LAMBS in this directory.
+ */
 
-// init
+if (!canSuspend) exitWith {
+    _this spawn KPLIB_fnc_rush;
+};
+
 params [
     ["_group", grpNull, [grpNull, objNull]],
     ["_radius", TASK_RUSH_SIZE, [0]],
@@ -30,84 +21,104 @@ params [
     ["_onlyPlayers", TASK_RUSH_PLAYERSONLY, [false]]
 ];
 
-if (!canSuspend) exitWith {
-    _this spawn KPLIB_fnc_rush;
-};
+private _rushOrders = {
+    params ["_rushGroup", "_target"];
+    private _distance = (leader _rushGroup) distance _target;
 
-// functions ---
-
-private _fnc_rushOrders = {
-    params ["_group", "_target"];
-
-    private _distance = (leader _group) distance2D _target;
-    // Helicopters -- supress it!
-    if ((_distance < 200) && {vehicle _target isKindOf "Air"}) exitWith {
-        {
-            _x commandSuppressiveFire _target;
-            true
-        } count (units _group);
+    if (_distance < 200 && {(vehicle _target) isKindOf "Air"}) exitWith {
+        units _rushGroup commandSuppressiveFire _target;
     };
 
-    // Tank -- hide or ready AT
-    if ((_distance < 80) && {(vehicle _target) isKindOf "Tank"}) exitWith {
+    private _launcherUnits = [_rushGroup] call KPLIB_fnc_getLauncherUnits;
+    if (_distance < 80 && {(vehicle _target) isKindOf "Tank"}) exitWith {
         {
-            if ((secondaryWeapon _x) isNotEqualTo "") then {
+            if (_x in _launcherUnits) then {
                 _x setUnitPos "MIDDLE";
                 _x selectWeapon (secondaryWeapon _x);
             } else {
                 _x setUnitPos "DOWN";
-                _x commandSuppressiveFire _target;
+                _x doSuppressiveFire _target;
             };
             true
-        } count (units _group);
-        _group enableGunLights "forceOff";
+        } count units _rushGroup;
+        _rushGroup enableGunLights "forceOff";
     };
 
-    // Default -- run for it!
+    private _movePos = call {
+        private _targetPos = getPosATL _target;
+        if (insideBuilding _target == 1 || {_distance < 20}) exitWith {_targetPos};
+        private _emptyPos = _targetPos findEmptyPosition [0, 20, "O_MRAP_02_F"];
+        if (_emptyPos isEqualTo []) exitWith {_targetPos};
+        _emptyPos
+    };
+
     {
-        _x setUnitPos "UP";
-        _x doMove (getPosATL _target);
+        _x forceSpeed -1;
+        _x setUnitPos (["UP", "MIDDLE"] select ((unitPos _x) isEqualTo "Down"));
+        _x doMove _movePos;
         true
-    } count (units _group);
-    _group enableGunLights "forceOn";
+    } count units _rushGroup;
+    _rushGroup enableGunLights "forceOn";
 };
-// functions end ---
 
-// sort grp
 if (!local _group) exitWith {false};
-if (_group isEqualType objNull) then { _group = group _group; };
+if (_group isEqualType objNull) then {_group = group _group};
+if (isNull _group) exitWith {false};
 
-// orders
 _group setSpeedMode "FULL";
-//_group setFormation "DIAMOND";
 _group enableAttack false;
+_group allowFleeing 0;
 {
     _x disableAI "AUTOCOMBAT";
+    _x disableAI "FSM";
+
+    private _firedEvent = _x addEventHandler ["Fired", {
+        params ["_unit"];
+        _unit forceSpeed 3;
+    }];
+    private _suppressedEvent = _x addEventHandler ["Suppressed", {
+        params ["_unit", "", "_shooter"];
+        private _unitPos = unitPos _unit;
+        if (_unitPos isEqualTo "Down") exitWith {};
+        if (_unitPos isEqualTo "Middle" && {_unit distance2D _shooter > 30}) exitWith {
+            _unit setUnitPos "DOWN";
+        };
+        _unit setUnitPos "MIDDLE";
+    }];
+
+    _x setVariable [
+        "KPLIB_lambs_taskEventHandlers",
+        [["Fired", _firedEvent], ["Suppressed", _suppressedEvent]]
+    ];
     doStop _x;
     true
-} count (units _group);
+} count units _group;
 
-// Hunting loop
+_group setVariable ["KPLIB_lambs_currentTactic", "taskRush"];
+
 waitUntil {
-
-    // performance
-    waitUntil { sleep 1; simulationEnabled leader _group; };
-
-    // find
-    private _target = [_group, _radius, _area, _pos, _onlyPlayers] call KPLIB_fnc_findClosestTarget;
-
-    // act
-    if (!isNull _target) then  {
-        [_group, _target] call _fnc_rushOrders;
-        sleep (linearConversion [1000, 2000, (leader _group distance2D _target), _cycle, _cycle * 4, true]);
-    } else {
-        sleep (_cycle * 4);
+    waitUntil {
+        sleep 1;
+        isNull _group || {simulationEnabled leader _group}
     };
 
-    // end
-    (count ((units _group) select {alive _x}) == 0)
+    if (isNull _group) exitWith {true};
+    private _target = [_group, _radius, _area, _pos, _onlyPlayers] call KPLIB_fnc_findClosestTarget;
+    if (isNull _target) then {
+        sleep (_cycle * 4);
+    } else {
+        [_group, _target] call _rushOrders;
+        sleep (linearConversion [
+            1000,
+            2000,
+            (leader _group) distance2D _target,
+            _cycle,
+            _cycle * 4,
+            true
+        ]);
+    };
 
+    (units _group) findIf {_x call KPLIB_fnc_isAlive} == -1
 };
 
-// end
 true
