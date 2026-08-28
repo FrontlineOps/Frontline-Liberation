@@ -6,6 +6,7 @@
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\index.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\logistics\index.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\battlegroup\index.sqf";
+[] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\tactical\index.sqf";
 
 if (!isNil { BATTLESPACE_LOCAL_TESTING }) then {
 	KPLIB_fnc_getLessLoadedHC = {
@@ -100,5 +101,5 @@ if (!isNil { BATTLESPACE_LOCAL_TESTING }) then {
 // - Resource-backed military-sector attacks use Battlegroup task forces.
 // - The strategic decision interval is configured in kp_liberation_config.sqf.
 //
-// Future integrations, not implemented here: funding normal sector defenders,
-// reactive patrol/reinforcement requests, and SAM/artillery ammunition expenditure.
+// Tactical defenders, reactive operations, artillery/SAM expenditure, and
+// ZEN diagnostics consume the same server-owned stockpiles.

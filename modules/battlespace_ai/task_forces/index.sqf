@@ -56,6 +56,7 @@ if (isNil "BATTLESPACE_TASK_FORCE_SPAWN_RESERVATIONS") then {
 };
 
 BATTLESPACE_TASK_FORCE_SAVE_KEY = format ["BATTLESPACE_TASK_FORCES_%1", toUpper worldName];
+BATTLESPACE_TASK_FORCE_SAVE_VERSION = 2;
 
 BATTLESPACE_TASK_FORCE_REGISTER_MODEL = {
 	params ["_modelName", "_modelDefinition"];
@@ -69,7 +70,11 @@ BATTLESPACE_TASK_FORCES_LOAD = {
 	diag_log format ["Battlespace Task Forces Loading..."];
 	private _save = profileNamespace getVariable BATTLESPACE_TASK_FORCE_SAVE_KEY;
 
-	private _saveValid = !isNil "_save" && !isNil { _save get "AI" } && !isNil { _save get "TaskForces" };
+	private _saveValid = !isNil "_save"
+		&& {typeName _save == "HASHMAP"}
+		&& {(_save getOrDefault ["Version", -1]) == BATTLESPACE_TASK_FORCE_SAVE_VERSION}
+		&& {!isNil { _save get "AI" }}
+		&& {!isNil { _save get "TaskForces" }};
 
 	if(_saveValid) then {
 		diag_log format ["  Save valid"];
@@ -78,7 +83,22 @@ BATTLESPACE_TASK_FORCES_LOAD = {
 		private _savedForces = _save get "TaskForces";
 
 		{
-			_y params ["_type", "_currentLoc", "_destination", "_composition", "_homePoint"];
+			_y params [
+				["_type", ""],
+				["_currentLoc", []],
+				["_destination", []],
+				["_composition", createHashMap],
+				["_homePoint", []],
+				["_sideName", "EAST"],
+				["_hpSector", ""]
+			];
+			private _savedSide = switch (toUpper _sideName) do {
+				case "WEST": {west};
+				case "INDEPENDENT": {resistance};
+				case "GUER": {resistance};
+				case "CIVILIAN": {civilian};
+				default {east};
+			};
 			private _savedTaskForce = [
 				_type,
 				_currentLoc,
@@ -86,10 +106,11 @@ BATTLESPACE_TASK_FORCES_LOAD = {
 				_composition,
 				[],
 				["IDLE"],
-				[]
+				_savedSide
 			];
 
 			_savedTaskForce set [10, _homePoint];
+			if (_hpSector != "") then {_savedTaskForce set [12, _hpSector]};
 			BATTLESPACE_TASK_FORCES set [_x, _savedTaskForce];
 		} forEach _savedForces;
 
@@ -120,6 +141,7 @@ BATTLESPACE_TASK_FORCES_PONG = {
 // Save task forces that are active
 // Save task forces as is, however sanitize and remove dead units / groups accordingly.
 BATTLESPACE_TASK_FORCES_SAVE = {
+	params [["_flush", true]];
 	private _save = createHashMap;
 	private _saveData = createHashMap;
 	private _invalidTaskForces = [];
@@ -147,8 +169,36 @@ BATTLESPACE_TASK_FORCES_SAVE = {
 			_invalidTaskForces pushBack [_x, _y];
 			continue;
 		};
+		private _savedComposition = createHashMap;
+		{{_savedComposition set [_x, if (_y isEqualType []) then {+_y} else {_y}]} forEach _composition};
+		private _savedVehicles = _savedComposition getOrDefault ["vehicles", []];
+		private _savedStructures = _savedComposition getOrDefault ["structures", []];
+		{
+			if (isNull _x || {_x isKindOf "Man"} || {!(_x getVariable ["KPLIB_captured", false])}) then {continue};
+			private _capturedObject = _x;
+			private _vehicleIndex = _savedVehicles find (typeOf _capturedObject);
+			if (_vehicleIndex >= 0) then {
+				_savedVehicles deleteAt _vehicleIndex;
+			} else {
+				private _structureIndex = _savedStructures findIf {
+					(_x getOrDefault ["className", ""]) == typeOf _capturedObject
+					&& {(_x getOrDefault ["position", []]) distance2D (getPos _capturedObject) <= 1}
+				};
+				if (_structureIndex >= 0) then {_savedStructures deleteAt _structureIndex};
+			};
+		} forEach _activeObjects;
+		_savedComposition set ["vehicles", _savedVehicles];
+		_savedComposition set ["structures", _savedStructures];
 
-		_saveData set [_x, [_taskForceType, _currentLoc, _destination, _composition, _homePoint]];
+		_saveData set [_x, [
+			_taskForceType,
+			_currentLoc,
+			_destination,
+			_savedComposition,
+			_homePoint,
+			toUpper str _taskForceSide,
+			_y param [12, ""]
+		]];
 
 	} forEach BATTLESPACE_TASK_FORCES;
 
@@ -160,9 +210,10 @@ BATTLESPACE_TASK_FORCES_SAVE = {
 
 	_save set ["TaskForces", _saveData];
 	_save set ["AI", BATTLESPACE_TASK_FORCE_AUTOINCREMENT];
+	_save set ["Version", BATTLESPACE_TASK_FORCE_SAVE_VERSION];
 
 	profileNamespace setVariable [BATTLESPACE_TASK_FORCE_SAVE_KEY, _save];
-	saveProfileNamespace;
+	if (_flush) then {saveProfileNamespace};
 };
 
 // Used for testing, spawns two basic patrols at the specified point
@@ -626,18 +677,20 @@ BATTLESPACE_TASK_FORCE_OBJECT_KILLED = {
 	if(BATTLESPACE_DEBUG_INDEPTH) then {
 		diag_log format ["Task Force Unit killed (%1, %2, %3)", _type, _unit, _taskForceName];
 	};
+	private _recordedLoss = false;
 	if(_type == "STRUCTURE") then {
 		private _structures = _composition getOrDefault ["structures", []];
 
 		{
-			private _loc = _y get "location";
-			private _rot = _y get "rotation";
-			private _className = _y get "className";
+			private _loc = _x getOrDefault ["position", []];
+			private _rot = _x getOrDefault ["rotation", 0];
+			private _className = _x getOrDefault ["className", ""];
 
-			if((typeOf _unit) == _className && ((getPos _unit) isEqualTo _loc) && ((getDir _unit) isEqualTo _rot)) exitWith {
+			if((typeOf _unit) == _className && {(getPos _unit) distance2D _loc <= 1} && {abs ((getDir _unit) - _rot) <= 1}) exitWith {
 				_structures deleteAt _forEachIndex;
 				_composition set ["structures", _structures];
 				_taskForce set [3, _composition];
+				_recordedLoss = true;
 			}
 		} forEach _structures;
 	};
@@ -646,7 +699,7 @@ BATTLESPACE_TASK_FORCE_OBJECT_KILLED = {
 		private _vehs = _composition getOrDefault ["vehicles", []];
 
 		{
-			if((typeOf _unit) == _x) exitWith { _vehs deleteAt _forEachIndex };
+			if((typeOf _unit) == _x) exitWith {_vehs deleteAt _forEachIndex; _recordedLoss = true};
 		} forEach _vehs;
 
 		_composition set ["vehicles", _vehs];
@@ -655,20 +708,29 @@ BATTLESPACE_TASK_FORCE_OBJECT_KILLED = {
 	if(_type == "MANPOWER") then {
 		private _manpower = _composition getOrDefault ["manpower", 1];
 
-		_manpower = _manpower - 1;
-		_composition set ["manpower", _manpower];
+		if (_manpower > 0) then {
+			_manpower = _manpower - 1;
+			_composition set ["manpower", _manpower];
+			_recordedLoss = true;
+		};
 	};
 
 	_taskForce set [3, _composition];
 	BATTLESPACE_TASK_FORCES set [_taskForceName, _taskForce];
+	if (_recordedLoss && {!isNil "BATTLESPACE_STRATEGIC_RECORD_CASUALTY"}) then {
+		[_taskForceName, _type] call BATTLESPACE_STRATEGIC_RECORD_CASUALTY;
+	};
 	// publicVariable "BATTLESPACE_TASK_FORCES";
 };
 
 if (isServer) then {
-	if(!(isNil { BATTLESPACE_TASK_FORCES_PERSISTENT })) then {
+	if(missionNamespace getVariable ["BATTLESPACE_TASK_FORCES_PERSISTENT", false]) then {
 		[] call BATTLESPACE_TASK_FORCES_LOAD;
 	};
 	[] spawn {
+		if (missionNamespace getVariable ["BATTLESPACE_TASK_FORCES_PERSISTENT", false]) then {
+			waitUntil {sleep 0.25; missionNamespace getVariable ["BATTLESPACE_LOGISTICS_READY", false]};
+		};
 		private _state = [[], 0];
 
 		private _clusteringState = [[], 1];

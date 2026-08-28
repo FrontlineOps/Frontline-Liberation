@@ -101,6 +101,17 @@ BATTLESPACE_DEFENDER_TASK_RUSH = {
 
 BATTLESPACE_DEFENDERS_CREATE_TASK_FORCES = {
     params ["_sector"];
+    waitUntil {sleep 0.25; missionNamespace getVariable ["BATTLESPACE_LOGISTICS_READY", false]};
+    private _sectorState = BATTLESPACE_SECTOR_STATES get _sector;
+    if (isNil "_sectorState" || {(_sectorState getOrDefault ["owner", ""]) != "OPFOR"}) exitWith {};
+
+    private _createFundedDefender = {
+        params ["_type", "_composition", "_origin", "_destination", "_home"];
+        [
+            _type, _composition, _origin, _destination, _home, _sector, "DEFENDER",
+            createHashMapFromArray [["targetSector", _sector], ["pressureSector", _sector]]
+        ] call BATTLESPACE_STRATEGIC_CREATE_FUNDED_TASK_FORCE
+    };
 
     diag_log format ["Defender Create Task Forces at %1 (%2)", _sector, diag_tickTime];
 
@@ -164,7 +175,7 @@ BATTLESPACE_DEFENDERS_CREATE_TASK_FORCES = {
         
         // Spawn rotary CAS patrol within X distance circle, position doesn't matter too much in the air
         private _pos = _objPos getPos [random 300, random 360];
-        ["Rotary Patrol", _composition, _pos, _objPos, _objPos] remoteExec ["BATTLESPACE_TASK_FORCES_INIT", 2];
+        ["Rotary Patrol", _composition, _pos, _objPos, _objPos] call _createFundedDefender;
     };
 
     // Patrolling infantry squads
@@ -188,7 +199,7 @@ BATTLESPACE_DEFENDERS_CREATE_TASK_FORCES = {
             _execs = _execs + 1;
         };
         if(_execs < 5) then {
-            ["Reconnaissance Patrol", _composition, _position, _position, _objPos] remoteExec ["BATTLESPACE_TASK_FORCES_INIT", 2];
+            ["Reconnaissance Patrol", _composition, _position, _position, _objPos] call _createFundedDefender;
         };
     };
 
@@ -258,7 +269,7 @@ BATTLESPACE_DEFENDERS_CREATE_TASK_FORCES = {
                     ]
                 ];
 
-                ["Outpost", _composition, _pos, _pos, _objPos] remoteExec ["BATTLESPACE_TASK_FORCES_INIT", 2];
+                ["Outpost", _composition, _pos, _pos, _objPos] call _createFundedDefender;
             };
         };
     };
@@ -306,7 +317,7 @@ BATTLESPACE_DEFENDERS_CREATE_TASK_FORCES = {
                     ["structures", []]
                 ];
 
-                ["Ambush Patrol", _composition, _pos, _pos, _objPos] remoteExec ["BATTLESPACE_TASK_FORCES_INIT", 2];
+                ["Ambush Patrol", _composition, _pos, _pos, _objPos] call _createFundedDefender;
             };
         };
     };
@@ -332,7 +343,7 @@ BATTLESPACE_DEFENDERS_CREATE_TASK_FORCES = {
         };
 
         if(_execs < 25) then {
-            ["Defensive Patrol", _composition, _position, _position, _objPos] remoteExec ["BATTLESPACE_TASK_FORCES_INIT", 2];
+            ["Defensive Patrol", _composition, _position, _position, _objPos] call _createFundedDefender;
         };
     };
 
@@ -357,7 +368,7 @@ BATTLESPACE_DEFENDERS_CREATE_TASK_FORCES = {
             ];
             private _position = _objPos getPos [random 200, random 360];
 
-            ["Garrison", _composition, _position, [], _objPos] remoteExec ["BATTLESPACE_TASK_FORCES_INIT", 2];
+            ["Garrison", _composition, _position, [], _objPos] call _createFundedDefender;
         };
     };
 
@@ -421,7 +432,7 @@ BATTLESPACE_DEFENDERS_CREATE_TASK_FORCES = {
         ["vehicles", []],
         ["structures", _statics]
     ];
-    ["Fortifications", _comp, _objPos, [], _objPos] remoteExec ["BATTLESPACE_TASK_FORCES_INIT", 2];
+    ["Fortifications", _comp, _objPos, [], _objPos] call _createFundedDefender;
 
     // Roll for minefields
     private _minefieldCount = 0;
@@ -508,7 +519,7 @@ BATTLESPACE_DEFENDERS_CREATE_TASK_FORCES = {
                     ["structures", _structs]
                 ];
 
-                ["Minefield", _composition, _pos, [], _objPos] remoteExec ["BATTLESPACE_TASK_FORCES_INIT", 2];
+                ["Minefield", _composition, _pos, [], _objPos] call BATTLESPACE_TASK_FORCES_INIT;
             };
         };
 
@@ -572,7 +583,7 @@ BATTLESPACE_DEFENDERS_CREATE_TASK_FORCES = {
                 ["structures", _structs]
             ];
 
-            ["Minefield", _composition, _pos, [], _objPos] remoteExec ["BATTLESPACE_TASK_FORCES_INIT", 2];
+            ["Minefield", _composition, _pos, [], _objPos] call BATTLESPACE_TASK_FORCES_INIT;
         };
         
     };
@@ -588,7 +599,7 @@ BATTLESPACE_DEFENDERS_CREATE_TASK_FORCES = {
                 ["vehicles", []],
                 ["structures", []]
             ];
-            ["Civilians", _composition, _objPos, _objPos, _objPos, GRLIB_side_civilian] remoteExec ["BATTLESPACE_TASK_FORCES_INIT", 2];
+            ["Civilians", _composition, _objPos, _objPos, _objPos, GRLIB_side_civilian] call BATTLESPACE_TASK_FORCES_INIT;
         };
     };
 
@@ -647,7 +658,7 @@ BATTLESPACE_DEFENDERS_CREATE_TASK_FORCES = {
 
         if(_execs < _aaPlacesCount) then {
             _positions pushBack _pos;
-            ["Anti-Air", _aaComp, _pos, _pos, _objPos] remoteExec ["BATTLESPACE_TASK_FORCES_INIT", 2];
+            ["Anti-Air", _aaComp, _pos, _pos, _objPos] call _createFundedDefender;
         };
     };
 

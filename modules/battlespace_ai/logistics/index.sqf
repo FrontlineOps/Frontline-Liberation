@@ -6,7 +6,7 @@
     settlement.
 */
 
-BATTLESPACE_LOGISTICS_SAVE_VERSION = 1;
+BATTLESPACE_LOGISTICS_SAVE_VERSION = 2;
 BATTLESPACE_LOGISTICS_SAVE_KEY = format ["Battlespace/Logistics/%1", toUpper worldName];
 BATTLESPACE_RESOURCE_TYPES = [
     "manpower",
@@ -103,7 +103,12 @@ BATTLESPACE_SECTOR_CREATE_STATE = {
         ["resources", _resources],
         ["lastOwnerChange", CBA_missionTime],
         ["nextResupplyAt", 0],
-        ["nextBattlegroupAt", 0]
+        ["nextBattlegroupAt", 0],
+        ["nextEmergencyAt", 0],
+        ["nextReinforcementAt", 0],
+        ["nextPatrolAt", 0],
+        ["casualtyPressure", 0],
+        ["lastCasualtyAt", -1]
     ]
 };
 
@@ -136,6 +141,11 @@ BATTLESPACE_SECTOR_SET_OWNER = {
         "nextBattlegroupAt",
         CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_BATTLEGROUP_COOLDOWN", 3600])
     ];
+    _state set ["nextEmergencyAt", CBA_missionTime];
+    _state set ["nextReinforcementAt", CBA_missionTime];
+    _state set ["nextPatrolAt", CBA_missionTime];
+    _state set ["casualtyPressure", 0];
+    _state set ["lastCasualtyAt", -1];
     BATTLESPACE_SECTOR_STATES set [_sector, _state];
     true
 };
@@ -226,25 +236,78 @@ BATTLESPACE_RESOURCE_DEPOSIT_CLAMPED = {
     _accepted
 };
 
+BATTLESPACE_STRATEGIC_SERIALIZE_OPERATION = {
+    params ["_operation"];
+    private _saved = [_operation] call BATTLESPACE_COPY_RESOURCE_MAP;
+    if ("captureStartedAt" in _saved) then {
+        _saved set ["captureAge", (CBA_missionTime - (_saved getOrDefault ["captureStartedAt", CBA_missionTime])) max 0];
+        _saved deleteAt "captureStartedAt";
+    };
+    {
+        if (_x in _saved) then {
+            _saved set [_x + "Remaining", ((_saved getOrDefault [_x, CBA_missionTime]) - CBA_missionTime) max 0];
+            _saved deleteAt _x;
+        };
+    } forEach ["expiresAt", "loiterUntil"];
+    _saved
+};
+
+BATTLESPACE_STRATEGIC_DESERIALIZE_OPERATION = {
+    params ["_savedOperation"];
+    private _operation = [_savedOperation] call BATTLESPACE_COPY_RESOURCE_MAP;
+    if ("captureAge" in _operation) then {
+        _operation set ["captureStartedAt", CBA_missionTime - (_operation getOrDefault ["captureAge", 0])];
+        _operation deleteAt "captureAge";
+    };
+    {
+        private _remainingKey = _x + "Remaining";
+        if (_remainingKey in _operation) then {
+            _operation set [_x, CBA_missionTime + (_operation getOrDefault [_remainingKey, 0])];
+            _operation deleteAt _remainingKey;
+        };
+    } forEach ["expiresAt", "loiterUntil"];
+    _operation
+};
+
 BATTLESPACE_LOGISTICS_SAVE = {
-    if (!isServer) exitWith { false };
+    if (!isServer || {missionNamespace getVariable ["BATTLESPACE_LOGISTICS_SAVING", false]}) exitWith { false };
+    BATTLESPACE_LOGISTICS_SAVING = true;
+    if (missionNamespace getVariable ["BATTLESPACE_TASK_FORCES_PERSISTENT", false]) then {
+        [false] call BATTLESPACE_TASK_FORCES_SAVE;
+    };
     private _savedSectors = createHashMap;
     {
         private _state = _y;
+        private _persistedResources = [(_state getOrDefault ["resources", createHashMap])] call BATTLESPACE_COPY_RESOURCE_MAP;
+        if (!isNil "BATTLESPACE_STRATEGIC_ADD_DEPLOYED_ASSETS_TO_SNAPSHOT") then {
+            [_x, _state getOrDefault ["type", ""], _persistedResources] call BATTLESPACE_STRATEGIC_ADD_DEPLOYED_ASSETS_TO_SNAPSHOT;
+        };
         _savedSectors set [_x, createHashMapFromArray [
             ["owner", _state getOrDefault ["owner", "BLUFOR"]],
-            ["resources", [(_state getOrDefault ["resources", createHashMap])] call BATTLESPACE_COPY_RESOURCE_MAP],
+            ["resources", _persistedResources],
             ["ownerAge", (CBA_missionTime - (_state getOrDefault ["lastOwnerChange", CBA_missionTime])) max 0],
             ["resupplyCooldown", ((_state getOrDefault ["nextResupplyAt", 0]) - CBA_missionTime) max 0],
-            ["battlegroupCooldown", ((_state getOrDefault ["nextBattlegroupAt", 0]) - CBA_missionTime) max 0]
+            ["battlegroupCooldown", ((_state getOrDefault ["nextBattlegroupAt", 0]) - CBA_missionTime) max 0],
+            ["emergencyCooldown", ((_state getOrDefault ["nextEmergencyAt", 0]) - CBA_missionTime) max 0],
+            ["reinforcementCooldown", ((_state getOrDefault ["nextReinforcementAt", 0]) - CBA_missionTime) max 0],
+            ["patrolCooldown", ((_state getOrDefault ["nextPatrolAt", 0]) - CBA_missionTime) max 0],
+            ["casualtyPressure", (_state getOrDefault ["casualtyPressure", 0]) max 0],
+            ["lastCasualtyAge", if ((_state getOrDefault ["lastCasualtyAt", -1]) < 0) then {-1} else {(CBA_missionTime - (_state get "lastCasualtyAt")) max 0}]
         ]];
     } forEach BATTLESPACE_SECTOR_STATES;
 
+    private _savedOperations = createHashMap;
+    {
+        _savedOperations set [_x, [_y] call BATTLESPACE_STRATEGIC_SERIALIZE_OPERATION];
+    } forEach BATTLESPACE_STRATEGIC_OPERATIONS;
+
     profileNamespace setVariable [BATTLESPACE_LOGISTICS_SAVE_KEY, createHashMapFromArray [
         ["version", BATTLESPACE_LOGISTICS_SAVE_VERSION],
-        ["sectors", _savedSectors]
+        ["sectors", _savedSectors],
+        ["operations", _savedOperations]
     ]];
     saveProfileNamespace;
+    BATTLESPACE_LOGISTICS_SAVING = false;
     true
 };
 
@@ -260,11 +323,18 @@ BATTLESPACE_LOGISTICS_LOAD = {
     };
 
     private _save = profileNamespace getVariable [BATTLESPACE_LOGISTICS_SAVE_KEY, createHashMap];
+    private _saveVersion = if (typeName _save == "HASHMAP") then {_save getOrDefault ["version", -1]} else {-1};
     private _saveValid = typeName _save == "HASHMAP"
-        && {(_save getOrDefault ["version", -1]) == BATTLESPACE_LOGISTICS_SAVE_VERSION}
+        && {_saveVersion == BATTLESPACE_LOGISTICS_SAVE_VERSION}
         && {typeName (_save getOrDefault ["sectors", objNull]) == "HASHMAP"};
     private _savedSectors = if (_saveValid) then {_save get "sectors"} else {createHashMap};
     private _initialFill = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_INITIAL_STOCK_RATIO", 0.75];
+
+    if (!_saveValid && {missionNamespace getVariable ["BATTLESPACE_TASK_FORCES_PERSISTENT", false]}) then {
+        BATTLESPACE_TASK_FORCES = createHashMap;
+        BATTLESPACE_TASK_FORCE_PATHS = createHashMap;
+        BATTLESPACE_TASK_FORCE_SPAWN_RESERVATIONS = createHashMap;
+    };
 
     BATTLESPACE_SECTOR_STATES = createHashMap;
     {
@@ -295,10 +365,31 @@ BATTLESPACE_LOGISTICS_LOAD = {
                 _state set ["lastOwnerChange", CBA_missionTime - (_savedState getOrDefault ["ownerAge", 0])];
                 _state set ["nextResupplyAt", CBA_missionTime + (_savedState getOrDefault ["resupplyCooldown", 0])];
                 _state set ["nextBattlegroupAt", CBA_missionTime + (_savedState getOrDefault ["battlegroupCooldown", 0])];
+                _state set ["nextEmergencyAt", CBA_missionTime + (_savedState getOrDefault ["emergencyCooldown", 0])];
+                _state set ["nextReinforcementAt", CBA_missionTime + (_savedState getOrDefault ["reinforcementCooldown", 0])];
+                _state set ["nextPatrolAt", CBA_missionTime + (_savedState getOrDefault ["patrolCooldown", 0])];
+                _state set ["casualtyPressure", (_savedState getOrDefault ["casualtyPressure", 0]) max 0];
+                private _lastCasualtyAge = _savedState getOrDefault ["lastCasualtyAge", -1];
+                _state set ["lastCasualtyAt", if (_lastCasualtyAge < 0) then {-1} else {CBA_missionTime - _lastCasualtyAge}];
             };
         };
         BATTLESPACE_SECTOR_STATES set [_sector, _state];
     } forEach sectors_allSectors;
+
+    BATTLESPACE_STRATEGIC_OPERATIONS = createHashMap;
+    private _savedOperations = if (_saveValid) then {_save getOrDefault ["operations", createHashMap]} else {createHashMap};
+    if (typeName _savedOperations == "HASHMAP") then {
+        {
+            if (!isNil {BATTLESPACE_TASK_FORCES get _x} && {typeName _y == "HASHMAP"}) then {
+                private _operation = [_y] call BATTLESPACE_STRATEGIC_DESERIALIZE_OPERATION;
+                BATTLESPACE_STRATEGIC_OPERATIONS set [_x, _operation];
+                if ((_operation getOrDefault ["kind", ""]) == "DEFENDER") then {
+                    if (isNil "BATTLESPACE_DEFENDERS_SECTORS_SPAWNED") then {BATTLESPACE_DEFENDERS_SECTORS_SPAWNED = createHashMap};
+                    BATTLESPACE_DEFENDERS_SECTORS_SPAWNED set [_operation getOrDefault ["fundingSector", ""], true];
+                };
+            };
+        } forEach _savedOperations;
+    };
 
     [format [
         "Strategic sector state %1: %2 current sectors",
@@ -578,14 +669,14 @@ BATTLESPACE_CAPTURE_SECTOR_FOR_OPFOR = {
 };
 
 BATTLESPACE_LOGISTICS_BUILD_REQUEST = {
-    params ["_sector"];
+    params ["_sector", ["_thresholdType", "Resupply"]];
     private _request = createHashMap;
     private _state = BATTLESPACE_SECTOR_STATES get _sector;
     if (isNil "_state" || {(_state getOrDefault ["owner", ""]) != "OPFOR"}) exitWith { _request };
 
     private _sectorType = _state get "type";
     private _resources = _state get "resources";
-    private _thresholds = [_sectorType, "Resupply"] call BATTLESPACE_SECTOR_GET_THRESHOLD_MAP;
+    private _thresholds = [_sectorType, _thresholdType] call BATTLESPACE_SECTOR_GET_THRESHOLD_MAP;
     {
         private _threshold = _thresholds getOrDefault [_x, -1];
         private _capacity = [_sectorType, _x] call BATTLESPACE_SECTOR_GET_CAPACITY;
@@ -830,6 +921,8 @@ BATTLESPACE_STRATEGIC_HANDLE_TASK_FORCE_EVENT = {
             [_operation getOrDefault ["targetSector", ""], 3] remoteExec ["remote_call_sector", 0];
         };
         [format ["Strategic %1 operation %2 was destroyed", _kind, _taskForceId]] call BATTLESPACE_STRATEGIC_LOG;
+        [_taskForce] call BATTLESPACE_STRATEGIC_RETIRE_PHYSICAL_FORCE;
+        [] call BATTLESPACE_LOGISTICS_SAVE;
     };
 
     switch (_kind) do {
@@ -863,6 +956,19 @@ BATTLESPACE_STRATEGIC_HANDLE_TASK_FORCE_EVENT = {
                 [_taskForceId, _taskForce, _operation] call BATTLESPACE_BATTLEGROUP_SETTLE;
             };
         };
+        case "REINFORCEMENT";
+        case "PATROL": {
+            private _destinationSector = switch (_operation getOrDefault ["outcome", ""]) do {
+                case "REINFORCED": {_operation getOrDefault ["targetSector", ""]};
+                case "RETURNED": {_operation getOrDefault ["originSector", ""]};
+                default {""};
+            };
+            if (_destinationSector != "") then {
+                private _survivors = [_taskForce, _operation] call BATTLESPACE_STRATEGIC_GET_SURVIVING_FORCE_RESOURCES;
+                private _accepted = [_destinationSector, _survivors] call BATTLESPACE_RESOURCE_DEPOSIT_CLAMPED;
+                [format ["Strategic %1 %2 settled at %3 with %4", _kind, _taskForceId, _destinationSector, _accepted]] call BATTLESPACE_STRATEGIC_LOG;
+            };
+        };
     };
 
     [_taskForce] call BATTLESPACE_STRATEGIC_RETIRE_PHYSICAL_FORCE;
@@ -892,7 +998,9 @@ BATTLESPACE_LOGISTICS_INIT = {
         ["Generated OPFOR catalog could not build strategic vehicle pools", "ERROR"] call BATTLESPACE_STRATEGIC_LOG;
         false
     };
-    [] call BATTLESPACE_LOGISTICS_LOAD
+    private _loaded = [] call BATTLESPACE_LOGISTICS_LOAD;
+    BATTLESPACE_LOGISTICS_READY = _loaded;
+    _loaded
 };
 
 if (isServer) then {
@@ -915,11 +1023,17 @@ if (isServer) then {
         while {GRLIB_endgame == 0} do {
             [] call BATTLESPACE_SECTOR_SYNC_OWNERS;
             [] call BATTLESPACE_STRATEGIC_RECONCILE_OPERATIONS;
+            if (!isNil "BATTLESPACE_TACTICAL_MAINTENANCE_TICK") then {
+                [] call BATTLESPACE_TACTICAL_MAINTENANCE_TICK;
+            };
 
             if (CBA_missionTime >= _nextDecision) then {
                 [] call BATTLESPACE_LOGISTICS_DECISION_TICK;
                 if (!isNil "BATTLESPACE_BATTLEGROUP_DECISION_TICK") then {
                     [] call BATTLESPACE_BATTLEGROUP_DECISION_TICK;
+                };
+                if (!isNil "BATTLESPACE_PATROL_DECISION_TICK") then {
+                    [] call BATTLESPACE_PATROL_DECISION_TICK;
                 };
                 _nextDecision = CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DECISION_INTERVAL", 1800]);
             };

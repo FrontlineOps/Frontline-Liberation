@@ -141,9 +141,86 @@ BATTLESPACE_BATTLEGROUP_ON_DECISION_TICK = {
     if (isNil "_operation") exitWith { false };
 
     private _phase = _operation getOrDefault ["phase", "ENROUTE"];
+    private _kind = _operation getOrDefault ["kind", "BATTLEGROUP"];
     private _targetSector = _operation getOrDefault ["targetSector", ""];
     private _currentLocation = _taskForce param [1, []];
     private _retreatRatio = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_RETREAT_STRENGTH_RATIO", 0.35];
+
+    if (_kind == "REINFORCEMENT") exitWith {
+        private _retreatFailed = false;
+        private _arrived = false;
+        private _targetState = BATTLESPACE_SECTOR_STATES get _targetSector;
+        if (isNil "_targetState" || {(_targetState getOrDefault ["owner", ""]) != "OPFOR"}) then {
+            if (_phase != "RETURNING") then {
+                _retreatFailed = !([_taskForceId, _taskForce, _operation] call BATTLESPACE_BATTLEGROUP_BEGIN_RETREAT);
+            };
+        } else {
+            if (_phase == "ENROUTE" && {_currentLocation distance2D (getMarkerPos _targetSector) <= 100}) then {
+                _operation set ["outcome", "REINFORCED"];
+                BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceId, _operation];
+                _arrived = true;
+            };
+        };
+        if (_arrived) exitWith {true};
+        if (_retreatFailed) exitWith {true};
+        if ((_operation getOrDefault ["phase", _phase]) == "RETURNING") then {
+            private _originSector = _operation getOrDefault ["originSector", ""];
+            if (_originSector != "" && {_currentLocation distance2D (getMarkerPos _originSector) <= 100}) then {
+                _operation set ["outcome", "RETURNED"];
+                BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceId, _operation];
+                _arrived = true;
+            };
+        };
+        _arrived
+    };
+
+    if (_kind == "PATROL") exitWith {
+        private _retreatFailed = false;
+        private _patrolDone = false;
+        if (([_taskForce, _operation] call BATTLESPACE_STRATEGIC_GET_SURVIVAL_RATIO) < _retreatRatio && {_phase != "RETURNING"}) then {
+            _retreatFailed = !([_taskForceId, _taskForce, _operation] call BATTLESPACE_BATTLEGROUP_BEGIN_RETREAT);
+            if (!_retreatFailed) then {
+                _phase = "RETURNING";
+                _operation = BATTLESPACE_STRATEGIC_OPERATIONS get _taskForceId;
+            };
+        };
+        if (_retreatFailed) exitWith {true};
+        if (_phase == "OUTBOUND" && {_currentLocation distance2D (_operation getOrDefault ["targetPosition", _taskForce param [2, []]]) <= 100}) then {
+            _operation set ["phase", "LOITER"];
+            BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceId, _operation];
+            _phase = "LOITER";
+        };
+        if (_phase in ["OUTBOUND", "LOITER"] && {CBA_missionTime >= (_operation getOrDefault ["expiresAt", CBA_missionTime])}) then {
+            _retreatFailed = !([_taskForceId, _taskForce, _operation] call BATTLESPACE_BATTLEGROUP_BEGIN_RETREAT);
+            if (!_retreatFailed) then {
+                _phase = "RETURNING";
+                _operation = BATTLESPACE_STRATEGIC_OPERATIONS get _taskForceId;
+            };
+        };
+        if (_retreatFailed) exitWith {true};
+        if (_phase == "RETURNING") then {
+            private _originSector = _operation getOrDefault ["originSector", ""];
+            private _originState = BATTLESPACE_SECTOR_STATES get _originSector;
+            if (isNil "_originState" || {(_originState getOrDefault ["owner", ""]) != "OPFOR"}) then {
+                _originSector = [_currentLocation] call BATTLESPACE_STRATEGIC_FIND_NEAREST_OPFOR_SECTOR;
+                if (_originSector != "") then {
+                    _operation set ["originSector", _originSector];
+                    [_taskForceId, _taskForce, _operation, "RETURNING", _originSector] call BATTLESPACE_BATTLEGROUP_SET_DESTINATION;
+                };
+            };
+            if (_originSector == "") then {
+                _operation set ["outcome", "LOST"];
+                BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceId, _operation];
+                _patrolDone = true;
+            };
+            if (!_patrolDone && {_currentLocation distance2D (getMarkerPos _originSector) <= 100}) then {
+                _operation set ["outcome", "RETURNED"];
+                BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceId, _operation];
+                _patrolDone = true;
+            };
+        };
+        _patrolDone
+    };
 
     if (_phase in ["ENROUTE", "ASSAULTING"] && {
         ([_taskForce, _operation] call BATTLESPACE_STRATEGIC_GET_SURVIVAL_RATIO) < _retreatRatio
