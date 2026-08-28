@@ -111,11 +111,6 @@
 
 					_taskForce set [12, _hpSector];
 				};
-				// Only dies when the sector it belongs to is blufor controlled
-				private _closestSector = _hpSector;
-
-
-				
 				// Validate active groups
 				if(count _activeGroups > 0) then {
 					private _invalids = [];
@@ -131,15 +126,12 @@
 
 					_taskForce set [4, _activeGroups - _invalids];
 				};
-				private _alive = true;
+				if (sector_to_blufor getOrDefault [_hpSector, false]) exitWith {false};
 
-				if(count _activeObjects <= 0) then {
-					if((sector_to_blufor getOrDefault [_closestSector, false])) then {
-						_alive = false;
-					};
-				};
-
-				_alive
+				// Logical structures survive virtualization. Once the last one is
+				// destroyed, the task force must terminate instead of respawning an
+				// empty site forever.
+				(_composition getOrDefault ["structures", []]) isNotEqualTo []
 			}
 		],
 		[

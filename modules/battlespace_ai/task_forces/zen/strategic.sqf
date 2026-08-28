@@ -19,13 +19,14 @@ BATTLESPACE_ZEN_SHOW_SECTOR_SNAPSHOT = {
 		private _ratio = if (_capacity > 0) then {round (100 * _amount / _capacity)} else {0};
 		_lines pushBack format ["%1%2: %3 / %4 (%5%%)<br/>", if (_shortage) then {"<t color='#ff9c75'>SHORT </t>"} else {""}, _resource, _amount, _capacity, _ratio];
 	} forEach _stock;
-	_cooldowns params ["_resupply", "_emergency", "_reinforcement", "_patrol", "_battlegroup"];
-	_lines pushBack format ["<br/>Cooldowns — supply %1, emergency %2, reinforcement %3, patrol %4, battlegroup %5<br/>",
+	_cooldowns params ["_resupply", "_emergency", "_reinforcement", "_patrol", "_battlegroup", ["_fortification", 0]];
+	_lines pushBack format ["<br/>Cooldowns — supply %1, emergency %2, reinforcement %3, patrol %4, battlegroup %5, construction %6<br/>",
 		[_resupply] call BATTLESPACE_ZEN_FORMAT_DURATION,
 		[_emergency] call BATTLESPACE_ZEN_FORMAT_DURATION,
 		[_reinforcement] call BATTLESPACE_ZEN_FORMAT_DURATION,
 		[_patrol] call BATTLESPACE_ZEN_FORMAT_DURATION,
-		[_battlegroup] call BATTLESPACE_ZEN_FORMAT_DURATION
+		[_battlegroup] call BATTLESPACE_ZEN_FORMAT_DURATION,
+		[_fortification] call BATTLESPACE_ZEN_FORMAT_DURATION
 	];
 	if (_operations isEqualTo []) then {
 		_lines pushBack "Operations: none";
@@ -61,12 +62,13 @@ BATTLESPACE_ZEN_RECEIVE_SNAPSHOT = {
 			} forEach _resourceRows;
 			_lines pushBack "<br/>Operation pressure:<br/>";
 			{_lines pushBack format ["%1: %2%3<br/>", _x#0, _x#1, if ((_x#2) < 0) then {""} else {" / " + str (_x#2)}]} forEach _operationRows;
-			_settings params [["_decision", 0], ["_pressure", 0], ["_emergency", 0], ["_reinforcement", 0], ["_patrol", 0]];
-			_lines pushBack format ["<br/>Decision %1; casualty trigger %2; cooldowns E/R/P %3/%4/%5",
+			_settings params [["_decision", 0], ["_pressure", 0], ["_emergency", 0], ["_reinforcement", 0], ["_patrol", 0], ["_fortification", 0]];
+			_lines pushBack format ["<br/>Decision %1; casualty trigger %2; cooldowns E/R/P/F %3/%4/%5/%6",
 				[_decision] call BATTLESPACE_ZEN_FORMAT_DURATION, _pressure,
 				[_emergency] call BATTLESPACE_ZEN_FORMAT_DURATION,
 				[_reinforcement] call BATTLESPACE_ZEN_FORMAT_DURATION,
-				[_patrol] call BATTLESPACE_ZEN_FORMAT_DURATION
+				[_patrol] call BATTLESPACE_ZEN_FORMAT_DURATION,
+				[_fortification] call BATTLESPACE_ZEN_FORMAT_DURATION
 			];
 			hintSilent parseText (_lines joinString "");
 		};
@@ -95,7 +97,16 @@ BATTLESPACE_ZEN_STRATEGIC_OVERLAY_RENDER = {
 	} forEach _sectors;
 	{
 		_x params ["_id", "_kind", "_phase", "_current", "_destination", ["_routeData", []]];
-		if (_current isEqualTo [] || {_destination isEqualTo []}) then {continue};
+		if (_current isEqualTo []) then {continue};
+		if (_kind == "FORTIFICATION") then {
+			private _sitePosition = +_current;
+			if (count _sitePosition == 2) then {_sitePosition pushBack 0};
+			_sitePosition set [2, 35];
+			drawIcon3D ["\A3\ui_f\data\map\markers\nato\o_installation.paa", [1, 0.35, 0.15, 0.95], _sitePosition, 0.8, 0.8, 0,
+				format ["%1 %2 / %3", _kind, _id, _phase], 1, 0.025, "TahomaB"];
+			continue;
+		};
+		if (_destination isEqualTo []) then {continue};
 		[_current, _routeData, [1, 0.75, 0.1, 0.8]] call BATTLESPACE_TASK_FORCE_DRAW_ROUTE_3D;
 		private _labelPosition = +_current;
 		_labelPosition set [2, 50];
@@ -179,5 +190,6 @@ private _overlay = ["battlespaceStrategicOverlay", "Toggle Strategic Overlay + L
 	["battlespaceSelfTest", "Run Resource/Persistence Self-Test", "SELF_TEST"],
 	["battlespaceEmergency", "Request Emergency Response (Test)", "EMERGENCY"],
 	["battlespaceRefill", "Refill Nearest OPFOR Sector (Test)", "REFILL"],
-	["battlespaceDrain", "Drain Nearest OPFOR Sector (Test)", "DRAIN"]
+	["battlespaceDrain", "Drain Nearest OPFOR Sector (Test)", "DRAIN"],
+	["battlespaceFortify", "Construct Nearest OPFOR Site (Test)", "FORTIFY"]
 ];

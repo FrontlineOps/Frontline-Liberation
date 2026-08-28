@@ -81,6 +81,25 @@ BATTLESPACE_BATTLEGROUP_SET_DESTINATION = {
     [_taskForceId, _taskForce param [1, []], _destination] call QUEUE_PATHFIND_REQUEST;
 };
 
+BATTLESPACE_BATTLEGROUP_SET_POSITION_DESTINATION = {
+    params ["_taskForceId", "_taskForce", "_operation", "_phase", "_destination"];
+    if !(
+        _destination isEqualType []
+        && {(count _destination) in [2, 3]}
+        && {_destination findIf {!(_x isEqualType 0)} < 0}
+    ) exitWith {false};
+    private _normalizedDestination = +_destination;
+    if (count _normalizedDestination == 2) then {_normalizedDestination pushBack 0};
+    _operation set ["phase", _phase];
+    _operation set ["targetPosition", _normalizedDestination];
+    _taskForce set [2, _normalizedDestination];
+    BATTLESPACE_TASK_FORCE_PATHS deleteAt _taskForceId;
+    BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceId, _operation];
+    BATTLESPACE_TASK_FORCES set [_taskForceId, _taskForce];
+    [_taskForceId, _taskForce param [1, []], _normalizedDestination] call QUEUE_PATHFIND_REQUEST;
+    true
+};
+
 BATTLESPACE_BATTLEGROUP_SETTLE = {
     params ["_taskForceId", "_taskForce", "_operation"];
     private _outcome = _operation getOrDefault ["outcome", "LOST"];
@@ -172,7 +191,19 @@ BATTLESPACE_BATTLEGROUP_ON_DECISION_TICK = {
     if (_kind == "PATROL") exitWith {
         private _retreatFailed = false;
         private _patrolDone = false;
-        if (([_taskForce, _operation] call BATTLESPACE_STRATEGIC_GET_SURVIVAL_RATIO) < _retreatRatio && {_phase != "RETURNING"}) then {
+        private _originSector = _operation getOrDefault ["originSector", ""];
+        private _originState = BATTLESPACE_SECTOR_STATES get _originSector;
+        private _corridorInvalid = _targetSector == ""
+            || {!(_targetSector in blufor_sectors)}
+            || {isNil "_originState"}
+            || {(_originState getOrDefault ["owner", ""]) != "OPFOR"};
+        if (
+            _phase != "RETURNING"
+            && {
+                _corridorInvalid
+                || {([_taskForce, _operation] call BATTLESPACE_STRATEGIC_GET_SURVIVAL_RATIO) < _retreatRatio}
+            }
+        ) then {
             _retreatFailed = !([_taskForceId, _taskForce, _operation] call BATTLESPACE_BATTLEGROUP_BEGIN_RETREAT);
             if (!_retreatFailed) then {
                 _phase = "RETURNING";
@@ -180,22 +211,65 @@ BATTLESPACE_BATTLEGROUP_ON_DECISION_TICK = {
             };
         };
         if (_retreatFailed) exitWith {true};
-        if (_phase == "OUTBOUND" && {_currentLocation distance2D (_operation getOrDefault ["targetPosition", _taskForce param [2, []]]) <= 100}) then {
-            _operation set ["phase", "LOITER"];
-            BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceId, _operation];
-            _phase = "LOITER";
-        };
-        if (_phase in ["OUTBOUND", "LOITER"] && {CBA_missionTime >= (_operation getOrDefault ["expiresAt", CBA_missionTime])}) then {
-            _retreatFailed = !([_taskForceId, _taskForce, _operation] call BATTLESPACE_BATTLEGROUP_BEGIN_RETREAT);
-            if (!_retreatFailed) then {
-                _phase = "RETURNING";
-                _operation = BATTLESPACE_STRATEGIC_OPERATIONS get _taskForceId;
+        if (_phase in ["OUTBOUND", "PROBING"]) then {
+            private _probePositions = _operation getOrDefault ["probePositions", []];
+            private _probeMetadataValid = _probePositions isEqualType []
+                && {count _probePositions >= 2}
+                && {_probePositions findIf {
+                    private _probePosition = _x;
+                    !(_probePosition isEqualType [])
+                    || {!((count _probePosition) in [2, 3])}
+                    || {_probePosition findIf {!(_x isEqualType 0)} >= 0}
+                } < 0};
+            if (!_probeMetadataValid) then {
+                [format ["Patrol %1 has malformed probe metadata and is returning", _taskForceId], "WARNING"] call BATTLESPACE_STRATEGIC_LOG;
+                _retreatFailed = !([_taskForceId, _taskForce, _operation] call BATTLESPACE_BATTLEGROUP_BEGIN_RETREAT);
+                if (!_retreatFailed) then {
+                    _phase = "RETURNING";
+                    _operation = BATTLESPACE_STRATEGIC_OPERATIONS get _taskForceId;
+                };
+            } else {
+                private _expiresAt = _operation getOrDefault ["expiresAt", -1];
+                if (_phase == "PROBING" && {_expiresAt >= 0} && {CBA_missionTime >= _expiresAt}) then {
+                    _retreatFailed = !([_taskForceId, _taskForce, _operation] call BATTLESPACE_BATTLEGROUP_BEGIN_RETREAT);
+                    if (!_retreatFailed) then {
+                        _phase = "RETURNING";
+                        _operation = BATTLESPACE_STRATEGIC_OPERATIONS get _taskForceId;
+                    };
+                } else {
+                    private _probeIndex = ((_operation getOrDefault ["probeIndex", 0]) max 0) min ((count _probePositions) - 1);
+                    private _currentProbe = _probePositions select _probeIndex;
+                    if (_currentLocation distance2D _currentProbe <= 100) then {
+                        if (_phase == "OUTBOUND") then {
+                            _operation set ["expiresAt", CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_PATROL_DURATION", 1200])];
+                        };
+                        private _nextProbeIndex = (_probeIndex + 1) mod (count _probePositions);
+                        _operation set ["probeIndex", _nextProbeIndex];
+                        if !([
+                            _taskForceId,
+                            _taskForce,
+                            _operation,
+                            "PROBING",
+                            _probePositions select _nextProbeIndex
+                        ] call BATTLESPACE_BATTLEGROUP_SET_POSITION_DESTINATION) then {
+                            [format ["Patrol %1 could not accept probe leg %2 and is returning", _taskForceId, _nextProbeIndex], "WARNING"] call BATTLESPACE_STRATEGIC_LOG;
+                            _retreatFailed = !([_taskForceId, _taskForce, _operation] call BATTLESPACE_BATTLEGROUP_BEGIN_RETREAT);
+                            if (!_retreatFailed) then {
+                                _phase = "RETURNING";
+                                _operation = BATTLESPACE_STRATEGIC_OPERATIONS get _taskForceId;
+                            };
+                        } else {
+                            _phase = "PROBING";
+                            _operation = BATTLESPACE_STRATEGIC_OPERATIONS get _taskForceId;
+                        };
+                    };
+                };
             };
         };
         if (_retreatFailed) exitWith {true};
         if (_phase == "RETURNING") then {
-            private _originSector = _operation getOrDefault ["originSector", ""];
-            private _originState = BATTLESPACE_SECTOR_STATES get _originSector;
+            _originSector = _operation getOrDefault ["originSector", ""];
+            _originState = BATTLESPACE_SECTOR_STATES get _originSector;
             if (isNil "_originState" || {(_originState getOrDefault ["owner", ""]) != "OPFOR"}) then {
                 _originSector = [_currentLocation] call BATTLESPACE_STRATEGIC_FIND_NEAREST_OPFOR_SECTOR;
                 if (_originSector != "") then {

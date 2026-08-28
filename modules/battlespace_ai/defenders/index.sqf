@@ -216,6 +216,18 @@ BATTLESPACE_DEFENDERS_CREATE_TASK_FORCES = {
 
     // Spawn fortifications with garrisons
     private _positions = [];
+    // Dynamic sites can exist before this sector is first materialized. Seed
+    // the legacy defender placement guard so later outposts/ambushes/statics
+    // do not build on top of already funded construction.
+    if (!isNil "BATTLESPACE_FORTIFICATION_GET_OPERATIONS_FOR_SECTOR") then {
+        {
+            private _operation = BATTLESPACE_STRATEGIC_OPERATIONS get _x;
+            if (!isNil "_operation") then {
+                private _position = _operation getOrDefault ["sitePosition", []];
+                if (_position isEqualType [] && {count _position >= 2}) then {_positions pushBackUnique _position};
+            };
+        } forEach ([_sector] call BATTLESPACE_FORTIFICATION_GET_OPERATIONS_FOR_SECTOR);
+    };
     private _outpostsCount = (count _outpostPlaces);
     if(_outpostsCount > 0) then {
         for "_i" from 1 to 2 do {

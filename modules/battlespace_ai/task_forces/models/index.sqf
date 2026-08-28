@@ -217,6 +217,8 @@ BATTLESPACE_TASK_FORCE_DEFAULT_TRY_SPAWN = {
 	private _manpower = _composition getOrDefault ["manpower", 0];
 	private _vehicles = _composition getOrDefault ["vehicles", []];
 	private _structures = _composition getOrDefault ["structures", []];
+	private _structureCrewFromManpower = _composition getOrDefault ["structureCrewFromManpower", false];
+	private _structureCrewCount = 0;
 
 	diag_log format ["  Unit cap within bounds, spawning Task Force"];
 	diag_log format ["    Manpower %1", _manpower];
@@ -264,11 +266,32 @@ BATTLESPACE_TASK_FORCE_DEFAULT_TRY_SPAWN = {
 			private _grp = createVehicleCrew _building;
 			private _crew = units (_grp);
 
+			if(_structureCrewFromManpower) then {
+				private _crewBudget = floor ((_manpower - _structureCrewCount) max 0);
+				private _retainedCrew = [];
+				{
+					if(_forEachIndex < _crewBudget) then {
+						_x setVariable ["TASKFORCEID", _taskForceName];
+						_x addMPEventHandler ["MPKilled", { ["MANPOWER", _this] call BATTLESPACE_TASK_FORCE_OBJECT_KILLED }];
+						_retainedCrew pushBack _x;
+					} else {
+						deleteVehicle _x;
+					};
+				} forEach _crew;
+				_crew = _retainedCrew;
+				_structureCrewCount = _structureCrewCount + count _crew;
+				_grp setVariable ["TASKFORCEID", _taskForceName];
+			};
+
 			{
 				_activeObjects pushBack _x;
 			} forEach _crew;
 
-			_activeGroups pushBack _grp;
+			if(_crew isEqualTo []) then {
+				deleteGroup _grp;
+			} else {
+				_activeGroups pushBack _grp;
+			};
 		};
 		_activeObjects pushBack _building;
 	} forEach _structures;
@@ -280,7 +303,7 @@ BATTLESPACE_TASK_FORCE_DEFAULT_TRY_SPAWN = {
 	// Is the Task Force on a road currently
 	// If yes, we spawn along the road. Spawn along road objects for the vehicles in a column
 
-	private _remainingManpower = _manpower;
+	private _remainingManpower = (_manpower - _structureCrewCount) max 0;
 	private _taskForceOnRoad = (count (_currentLoc nearRoads 33) > 0);
 	private _spawnPositions = [];
 
@@ -397,7 +420,7 @@ BATTLESPACE_TASK_FORCE_DEFAULT_TRY_SPAWN = {
 					_remainingManpower = 0;
 				};
 
-				private _baseSquad = [_squadSize, _overrideSquadAdditions, _ambush] call BATTLESPACE_TASK_FORCES_GET_SQUAD_COMPOSITION;
+				private _baseSquad = [_squadSize, _overrideSquadAdditions, _ambush, _structureCrewFromManpower] call BATTLESPACE_TASK_FORCES_GET_SQUAD_COMPOSITION;
 				if(_civilian) then {
 					_baseSquad = [];
 
@@ -446,7 +469,7 @@ BATTLESPACE_TASK_FORCE_DEFAULT_TRY_SPAWN = {
 	} forEach _vehicles;
 
 	// Spawn remaining infantry squads
-	if(_remainingManpower >= 2) then {
+	if(_remainingManpower >= ([2, 1] select _structureCrewFromManpower)) then {
 		private _nearbyHouses = (_currentLoc) nearObjects ["Building", 200];
 		// NOTE: Yes, for some reason lamps and power lines are considered a house. What the fuck.
 		_nearbyHouses = _nearbyHouses select {
@@ -469,7 +492,7 @@ BATTLESPACE_TASK_FORCE_DEFAULT_TRY_SPAWN = {
 				_garrisoned = true;
 			};
 
-			private _baseSquad = [_squadSize, _overrideSquadAdditions, _ambush] call BATTLESPACE_TASK_FORCES_GET_SQUAD_COMPOSITION;
+			private _baseSquad = [_squadSize, _overrideSquadAdditions, _ambush, _structureCrewFromManpower] call BATTLESPACE_TASK_FORCES_GET_SQUAD_COMPOSITION;
 			if(_civilian) then {
 				_baseSquad = [];
 				for "_i" from 1 to _squadSize do {

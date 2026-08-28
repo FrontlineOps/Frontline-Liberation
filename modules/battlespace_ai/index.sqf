@@ -7,6 +7,7 @@
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\logistics\index.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\battlegroup\index.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\tactical\index.sqf";
+[] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\fortifications\index.sqf";
 
 if (!isNil { BATTLESPACE_LOCAL_TESTING }) then {
 	KPLIB_fnc_getLessLoadedHC = {
@@ -99,6 +100,7 @@ if (!isNil { BATTLESPACE_LOCAL_TESTING }) then {
 // - Every current sector has a finite server-owned resource stockpile.
 // - Threshold-driven transfers use interceptable Convoy task forces.
 // - Resource-backed military-sector attacks use Battlegroup task forces.
+// - OPFOR objectives spend construction stock on persistent defensive sites.
 // - The strategic decision interval is configured in kp_liberation_config.sqf.
 //
 // Tactical defenders, reactive operations, artillery/SAM expenditure, and

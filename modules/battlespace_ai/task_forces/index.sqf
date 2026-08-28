@@ -215,7 +215,7 @@ BATTLESPACE_TASK_FORCES_SAVE = {
 			continue;
 		};
 		private _savedComposition = createHashMap;
-		{{_savedComposition set [_x, if (_y isEqualType []) then {+_y} else {_y}]} forEach _composition};
+		{_savedComposition set [_x, if (_y isEqualType []) then {+_y} else {_y}]} forEach _composition;
 		private _savedVehicles = _savedComposition getOrDefault ["vehicles", []];
 		private _savedStructures = _savedComposition getOrDefault ["structures", []];
 		{

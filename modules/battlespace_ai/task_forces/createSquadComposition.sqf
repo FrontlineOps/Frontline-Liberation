@@ -1,6 +1,9 @@
 BATTLESPACE_TASK_FORCES_GET_SQUAD_COMPOSITION = {
-	params ["_size", ["_overrideSquadAdditions", []], ["_ambush", false]];
-	if (_size <= 2) exitWith { [] };
+	params ["_size", ["_overrideSquadAdditions", []], ["_ambush", false], ["_allowSmallSquad", false]];
+	if (_size <= 2) exitWith {
+		if (!_allowSmallSquad || {_size <= 0}) exitWith {[]};
+		[opfor_squad_leader, opfor_medic] select [0, _size]
+	};
 
 	// Each entry = their chance
 	private _squadAdditions = [opfor_heavygunner, opfor_marksman, opfor_rpg, opfor_grenadier, opfor_aa, opfor_at];

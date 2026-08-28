@@ -875,6 +875,32 @@ private _aircraftThresholdPolicy = createHashMapFromArray [
 	} forEach _aircraftThresholdPolicy;
 } forEach ["military", "bigtown", "capture", "tower", "factory"];
 
+// Construction supplies are an internal Battlespace stock used only for
+// persistent objective defenses. They are distinct from Liberation crates.
+private _constructionCapacityBySector = createHashMapFromArray [
+	["military", 30],
+	["bigtown", 24],
+	["capture", 18],
+	["tower", 12],
+	["factory", 36]
+];
+private _constructionThresholdPolicy = createHashMapFromArray [
+	["ResupplySend", 0.75],
+	["SendReinforcements", -1],
+	["Resupply", 1.0],
+	["EmergencyResupply", -1],
+	["Battlegroup", -1],
+	["Patrol", -1],
+	["Fortification", 0.5]
+];
+{
+	private _sectorType = _x;
+	[_sectorType, "MaximumCapacity", "construction_supplies", _constructionCapacityBySector get _sectorType] call BATTLESPACE_SET_THRESHOLD;
+	{
+		[_sectorType, _x, "construction_supplies", _y] call BATTLESPACE_SET_THRESHOLD;
+	} forEach _constructionThresholdPolicy;
+} forEach ["military", "bigtown", "capture", "tower", "factory"];
+
 
 // SAMS
 BATTLESPACE_SAM_SITE_LIMIT = 4;
