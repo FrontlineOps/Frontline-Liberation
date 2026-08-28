@@ -69,7 +69,7 @@ private _statement = {
 			["vehicles", _vehicles]
 		];
 
-		["Outpost", _composition, _position, [], _position] remoteExec ["BATTLESPACE_TASK_FORCES_INIT", 2];
+		["Outpost", _composition, _position, [], _position] remoteExecCall ["BATTLESPACE_ZEN_SERVER_CREATE_TASK_FORCE", 2];
 
 		{
 			deleteVehicle _x;

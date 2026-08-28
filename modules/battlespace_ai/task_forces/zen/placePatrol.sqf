@@ -62,7 +62,7 @@ private _statement = {
 			_homePoint = getMarkerPos _homePointSector;
 		};
 
-		["Defensive Patrol", _composition, _position, _position, _homePoint] remoteExec ["BATTLESPACE_TASK_FORCES_INIT", 2];
+		["Defensive Patrol", _composition, _position, _position, _homePoint] remoteExecCall ["BATTLESPACE_ZEN_SERVER_CREATE_TASK_FORCE", 2];
 
 		{
 			deleteVehicle _x;

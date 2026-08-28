@@ -4,12 +4,77 @@
 
 BATTLESPACE_SAM_DEBUG = false;
 BATTLESPACE_SAM_EXISTING_SITES = [];
+BATTLESPACE_SAM_SITE_POOLS = createHashMap;
+BATTLESPACE_SAM_SITE_AUTOINCREMENT = 1;
 
 BATTLESPACE_SAM_LAST_SPAWN_TIME = 0;
+
+BATTLESPACE_SAM_BUILD_RESERVATION = {
+	params ["_classes"];
+	private _cost = createHashMap;
+	private _strategicLaunchers = 0;
+	private _tacticalLaunchers = 0;
+	private _shorad = [];
+	{{_shorad pushBackUnique _x} forEach _x} forEach BATTLESPACE_SAM_SITE_SHORAD;
+	{
+		if (_x in BATTLESPACE_SAM_SITE_TELS || {_x in BATTLESPACE_SAM_SITE_FCRS}) then {_strategicLaunchers = _strategicLaunchers + 1};
+		if (_x in _shorad) then {_tacticalLaunchers = _tacticalLaunchers + 1};
+	} forEach _classes;
+	if (_strategicLaunchers > 0) then {_cost set ["strategic_sam", _strategicLaunchers]};
+	if (_tacticalLaunchers > 0) then {_cost set ["tactical_sam", _tacticalLaunchers]};
+	private _telCount = {_x in BATTLESPACE_SAM_SITE_TELS} count _classes;
+	if (_telCount > 0) then {
+		_cost set ["strategic_missiles", _telCount * (missionNamespace getVariable ["BATTLESPACE_SAM_STRATEGIC_MISSILES_PER_LAUNCHER", 8])];
+	};
+	if (_tacticalLaunchers > 0) then {
+		_cost set ["tactical_missiles", _tacticalLaunchers * (missionNamespace getVariable ["BATTLESPACE_SAM_TACTICAL_MISSILES_PER_LAUNCHER", 4])];
+	};
+	_cost
+};
+
+BATTLESPACE_SAM_TRY_RELOAD = {
+	params ["_vehicle", "_siteId", "_resource"];
+	private _site = BATTLESPACE_SAM_SITE_POOLS get _siteId;
+	if (isNil "_site") exitWith {false};
+	private _sector = _site getOrDefault ["Sector", ""];
+	private _state = BATTLESPACE_SECTOR_STATES get _sector;
+	if (isNil "_state" || {(_state getOrDefault ["owner", ""]) != "OPFOR"}) exitWith {false};
+	private _available = (_state getOrDefault ["resources", createHashMap]) getOrDefault [_resource, 0];
+	private _batch = _available min (missionNamespace getVariable ["BATTLESPACE_SAM_RELOAD_BATCH", 4]);
+	if (_batch <= 0 || {!([_sector, createHashMapFromArray [[_resource, -_batch]]] call BATTLESPACE_RESOURCE_APPLY_STRICT)}) exitWith {false};
+	private _pools = _site get "Pools";
+	_pools set [_resource, (_pools getOrDefault [_resource, 0]) + _batch];
+	_site set ["Pools", _pools];
+	BATTLESPACE_SAM_SITE_POOLS set [_siteId, _site];
+	if (!isNull _vehicle && {alive _vehicle}) then {_vehicle setVehicleAmmoDef 1};
+	true
+};
+
+BATTLESPACE_SAM_ON_FIRED = {
+	params ["_vehicle", "_weapon", "_muzzle", "_mode", "_ammo"];
+	if (!isServer) exitWith {};
+	private _simulation = toLower getText (configFile >> "CfgAmmo" >> _ammo >> "simulation");
+	if ((_simulation find "shotmissile") < 0) exitWith {};
+	private _siteId = _vehicle getVariable ["BSASiteId", ""];
+	private _resource = _vehicle getVariable ["BSAMissileResource", ""];
+	private _site = BATTLESPACE_SAM_SITE_POOLS get _siteId;
+	if (isNil "_site" || {_resource == ""}) exitWith {_vehicle setVehicleAmmoDef 0};
+	private _pools = _site get "Pools";
+	private _remaining = ((_pools getOrDefault [_resource, 0]) - 1) max 0;
+	_pools set [_resource, _remaining];
+	_site set ["Pools", _pools];
+	BATTLESPACE_SAM_SITE_POOLS set [_siteId, _site];
+	if (_remaining > 0) then {
+		[{params ["_vehicle"]; if (!isNull _vehicle && {alive _vehicle}) then {_vehicle setVehicleAmmoDef 1}}, [_vehicle], 0.5] call CBA_fnc_waitAndExecute;
+	} else {
+		if !([_vehicle, _siteId, _resource] call BATTLESPACE_SAM_TRY_RELOAD) then {_vehicle setVehicleAmmoDef 0};
+	};
+};
 
 BATTLESPACE_EVALUATE_AIRSPACE = {
 
 	if(isNil "blufor_sectors") exitWith {};
+	if !(missionNamespace getVariable ["BATTLESPACE_LOGISTICS_READY", false]) exitWith {};
 
 	if((BATTLESPACE_SAM_LAST_SPAWN_TIME + BATTLESPACE_SAM_SPAWN_COOLDOWN) >= CBA_missionTime && BATTLESPACE_SAM_LAST_SPAWN_TIME > 0) exitWith {};
 	diag_log format ["Battlespace Evaluating Airspace..."];
@@ -121,12 +186,18 @@ BATTLESPACE_EVALUATE_AIRSPACE = {
 		};
 
 		_unitsToSpawn append (selectRandom BATTLESPACE_SAM_SITE_SHORAD);
+		private _reservation = [_unitsToSpawn] call BATTLESPACE_SAM_BUILD_RESERVATION;
+		private _debit = createHashMap;
+		{_debit set [_x, -_y]} forEach _reservation;
+		if !([_sectorToSpawnIn, _debit] call BATTLESPACE_RESOURCE_APPLY_STRICT) exitWith {
+			diag_log format ["SAM site at %1 skipped because stock cannot fund %2", _sectorToSpawnIn, _reservation];
+		};
 		
 		[
 			{
 				_this call BATTLESPACE_SAM_SITE_CREATE
 			},
-			[_unitsToSpawn, _sectorToSpawnIn, _procPos],
+			[_unitsToSpawn, _sectorToSpawnIn, _procPos, _reservation],
 			0
 		] call CBA_fnc_waitAndExecute;
 		
@@ -136,12 +207,14 @@ BATTLESPACE_EVALUATE_AIRSPACE = {
 
 
 BATTLESPACE_SAM_SITE_CREATE = {
-	params ["_unitsToSpawn", "_sectorToSpawnIn", "_procPos"];
+	params ["_unitsToSpawn", "_sectorToSpawnIn", "_procPos", ["_reservation", createHashMap]];
 
 	if (BATTLESPACE_SAM_DEBUG) then {systemChat format ["SAMs to spawn %1 in sector %2", _unitsToSpawn, _sectorToSpawnIn];};
 	diag_Log format ["SAMs to spawn %1 in sector %2", _unitsToSpawn, _sectorToSpawnIn];
 
 	private _newSite = createHashMap;
+	private _siteId = str BATTLESPACE_SAM_SITE_AUTOINCREMENT;
+	BATTLESPACE_SAM_SITE_AUTOINCREMENT = BATTLESPACE_SAM_SITE_AUTOINCREMENT + 1;
 	private _sideEnemy = EAST;
 
 	if(!isNil "GRLIB_side_enemy") then {
@@ -151,6 +224,9 @@ BATTLESPACE_SAM_SITE_CREATE = {
 	private _fcrGrp = createGroup [_sideEnemy, true];
 	
 	private _units = [];
+	private _spawnedClasses = [];
+	private _shorad = [];
+	{{_shorad pushBackUnique _x} forEach _x} forEach BATTLESPACE_SAM_SITE_SHORAD;
 	{
 		private _className = _x;
 		private _wantHouses = false;
@@ -203,6 +279,7 @@ BATTLESPACE_SAM_SITE_CREATE = {
 		private _dir = _spawnPoint getDir _procPos;
 
 		_unit setDir _dir;
+		_unit setVariable ["BSAFundingSector", _sectorToSpawnIn, true];
 		
 		if(!isNil "KPLIB_fnc_addObjectInit") then {
 			[_unit] call KPLIB_fnc_addObjectInit;
@@ -210,18 +287,15 @@ BATTLESPACE_SAM_SITE_CREATE = {
 
 		if(_className in BATTLESPACE_SAM_SITE_TELS) then {
 			_grp = createGroup [_sideEnemy, true];
-
-
+		};
+		private _missileResource = "";
+		if (_className in BATTLESPACE_SAM_SITE_TELS) then {_missileResource = "strategic_missiles"};
+		if (_className in _shorad) then {_missileResource = "tactical_missiles"};
+		if (_missileResource != "") then {
 			_unit setVehicleAmmoDef 0;
-			[
-				{
-					params ["_unit"];
-					// Because we blacklist from HC the unit should still stay local to the server
-					_unit setVehicleAmmoDef 1;
-				},
-				[_unit],
-				30
-			] call CBA_fnc_waitAndExecute;
+			_unit setVariable ["BSASiteId", _siteId, true];
+			_unit setVariable ["BSAMissileResource", _missileResource, true];
+			_unit addEventHandler ["Fired", {_this call BATTLESPACE_SAM_ON_FIRED}];
 		};
 		private _crew = units (createVehicleCrew _unit);
 		_crew joinSilent _grp;
@@ -229,8 +303,12 @@ BATTLESPACE_SAM_SITE_CREATE = {
 		{ 
 			_x setVariable ["acex_headless_blacklist", true, true]; 
 			_x setVariable ["Vcm_Disable", true, true];
+			_x setVariable ["BSAFundingSector", _sectorToSpawnIn, true];
 			_x addEventHandler ["Killed", {
 				params ["_unit"];
+				if (!isNil "BATTLESPACE_STRATEGIC_ADD_SECTOR_PRESSURE") then {
+					[_unit getVariable ["BSAFundingSector", ""], 1] call BATTLESPACE_STRATEGIC_ADD_SECTOR_PRESSURE;
+				};
 				if (!isNil "KPLIB_fnc_queueDeadObjectCleanup") then {
 					[_unit] call KPLIB_fnc_queueDeadObjectCleanup;
 				};
@@ -245,6 +323,7 @@ BATTLESPACE_SAM_SITE_CREATE = {
 		
 
 		_units pushBack _unit;
+		_spawnedClasses pushBack _className;
 
 		// Not MP because this is a server only matter
 		_unit addEventHandler ["Killed", { ["SAM", _this] call BATTLESPACE_SAM_KILLED }];
@@ -253,6 +332,29 @@ BATTLESPACE_SAM_SITE_CREATE = {
 
 	_newSite set ["Units", _units];
 	_newSite set ["Sector", _sectorToSpawnIn];
+	_newSite set ["Id", _siteId];
+	private _actualReservation = [_spawnedClasses] call BATTLESPACE_SAM_BUILD_RESERVATION;
+	private _refund = createHashMap;
+	{
+		private _difference = _y - (_actualReservation getOrDefault [_x, 0]);
+		if (_difference > 0) then {_refund set [_x, _difference]};
+	} forEach _reservation;
+	if (count _refund > 0) then {[_sectorToSpawnIn, _refund] call BATTLESPACE_RESOURCE_DEPOSIT_CLAMPED};
+	private _pools = createHashMapFromArray [
+		["strategic_missiles", _actualReservation getOrDefault ["strategic_missiles", 0]],
+		["tactical_missiles", _actualReservation getOrDefault ["tactical_missiles", 0]]
+	];
+	private _poolState = createHashMapFromArray [["Sector", _sectorToSpawnIn], ["Pools", _pools]];
+	BATTLESPACE_SAM_SITE_POOLS set [_siteId, _poolState];
+	{
+		private _resource = _x getVariable ["BSAMissileResource", ""];
+		if (_resource != "") then {
+			[
+				{params ["_unit", "_siteId", "_resource"]; private _site = BATTLESPACE_SAM_SITE_POOLS get _siteId; if (!isNil "_site" && {((_site get "Pools") getOrDefault [_resource, 0]) > 0} && {alive _unit}) then {_unit setVehicleAmmoDef 1}},
+				[_x, _siteId, _resource], 30
+			] call CBA_fnc_waitAndExecute;
+		};
+	} forEach _units;
 
 
 	if((count _units) > 0) then {
@@ -261,6 +363,9 @@ BATTLESPACE_SAM_SITE_CREATE = {
 		BATTLESPACE_SAM_EXISTING_SITES pushBack _newSite;
 
 		BATTLESPACE_SAM_LAST_SPAWN_TIME = CBA_missionTime;
+		[] call BATTLESPACE_LOGISTICS_SAVE;
+	} else {
+		BATTLESPACE_SAM_SITE_POOLS deleteAt _siteId;
 	};
 };
 
@@ -268,6 +373,9 @@ BATTLESPACE_SAM_KILLED = {
 	params ["_type", "_event"];
 
 	_event params ["_unit", "_killer", "_instigator", "_useEffects"];
+	if (!isNil "BATTLESPACE_STRATEGIC_ADD_SECTOR_PRESSURE") then {
+		[_unit getVariable ["BSAFundingSector", ""], 4] call BATTLESPACE_STRATEGIC_ADD_SECTOR_PRESSURE;
+	};
 	if (!isNil "KPLIB_fnc_queueDeadObjectCleanup") then {
 		[_unit] call KPLIB_fnc_queueDeadObjectCleanup;
 	};
@@ -283,7 +391,9 @@ BATTLESPACE_SAM_KILLED = {
 					_deadCount = _deadCount + 1;
 				};
 			} forEach _units;
-			_deadCount < (count _units)
+			private _aliveSite = _deadCount < (count _units);
+			if (!_aliveSite) then {BATTLESPACE_SAM_SITE_POOLS deleteAt (_x getOrDefault ["Id", ""])};
+			_aliveSite
 		};
 
 		if(isNil "BATTLESPACE_SAM_EXISTING_SITES") then {

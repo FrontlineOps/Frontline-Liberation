@@ -167,14 +167,38 @@ BATTLESPACE_GET_MAX_DISPERSION = {
 	_dispersion
 };
 
+BATTLESPACE_ARTILLERY_GET_REQUEST_SALVOS = {
+	params ["_request"];
+	_request params [["_observer", objNull], ["_target", nil], ["_accuracy", 0], ["_systemTargeted", false], ["_targetedAt", CBA_missionTime], ["_wp", false]];
+	private _salvos = 1 max (floor (_accuracy / 75));
+	if (_accuracy >= 300) then {_salvos = 6};
+	if (_wp) then {_salvos = _salvos max 3};
+	if (_systemTargeted) then {
+		_salvos = 6;
+		if (_accuracy >= 300) then {_salvos = 12};
+	};
+	_salvos
+};
+
+BATTLESPACE_ARTILLERY_RESERVE_AMMUNITION = {
+	params ["_battery", "_requestedRounds"];
+	private _sector = _battery getVariable ["BSAFundingSector", ""];
+	private _state = BATTLESPACE_SECTOR_STATES get _sector;
+	if (isNil "_state" || {(_state getOrDefault ["owner", ""]) != "OPFOR"}) exitWith {0};
+	private _available = (_state getOrDefault ["resources", createHashMap]) getOrDefault ["rockets", 0];
+	private _reserved = (round _requestedRounds) max 0 min _available;
+	if (_reserved <= 0) exitWith {0};
+	if !([_sector, createHashMapFromArray [["rockets", -_reserved]]] call BATTLESPACE_RESOURCE_APPLY_STRICT) exitWith {0};
+	_reserved
+};
+
 BATTLESPACE_SPAWN_BATTERY = {
 	params ["_target"];
 
 	if (BATTLESPACE_DISABLE_ARTILLERY) exitWith {};
+	if !(missionNamespace getVariable ["BATTLESPACE_LOGISTICS_READY", false]) exitWith {};
 
 	if((diag_tickTime - BATTLESPACE_LAST_ARTILLERY_SPAWN) < BATTLESPACE_ARTILLERY_SPAWN_COOLDOWN ) exitWith {};
-	BATTLESPACE_LAST_ARTILLERY_SPAWN = diag_tickTime;
-	publicVariable "BATTLESPACE_LAST_ARTILLERY_SPAWN";
 	if((count BATTLESPACE_ARTILLERY_SECTIONS) >= 2) exitWith {};
 	
 	private _costDepth = 8;
@@ -239,8 +263,6 @@ BATTLESPACE_SPAWN_BATTERY = {
 	
 	private _sideEnemy = GRLIB_side_enemy;
 
-	private _fcrGrp = createGroup [_sideEnemy, true];
-
 	private _spawnPoint = nil;
 
 	{
@@ -256,12 +278,26 @@ BATTLESPACE_SPAWN_BATTERY = {
 		if (BATTLESPACE_ARTILLERY_DEBUG) then {systemChat format ["Could not find a valid spawn point for %1", BATTLESPACE_ARTILLERY_PIECE];};
 		diag_log format ["Unable to find sector to spawn artillery for"];
 	};
+	private _pieceResource = [BATTLESPACE_ARTILLERY_PIECE] call BATTLESPACE_STRATEGIC_GET_RESOURCE_FOR_CLASS;
+	if !(_pieceResource in ["rocket_artillery", "howitzers", "mortars"]) then {_pieceResource = "howitzers"};
+	private _crewPerPiece = missionNamespace getVariable ["BATTLESPACE_ARTILLERY_CREW_PER_PIECE", 3];
+	private _batteryCost = createHashMapFromArray [
+		[_pieceResource, BATTLESPACE_ARTILLERY_PIECES_PER_BATTERY],
+		["manpower", BATTLESPACE_ARTILLERY_PIECES_PER_BATTERY * _crewPerPiece]
+	];
+	private _batteryDebit = createHashMap;
+	{_batteryDebit set [_x, -_y]} forEach _batteryCost;
+	if !([_sectorToSpawnIn, _batteryDebit] call BATTLESPACE_RESOURCE_APPLY_STRICT) exitWith {
+		[format ["Artillery battery at %1 skipped: insufficient stock for %2", _sectorToSpawnIn, _batteryCost], "BATTLESPACE"] call KPLIB_fnc_log;
+	};
+	private _fcrGrp = createGroup [_sideEnemy, true];
 	private _vehs = [];
 
 	
 	for "_i" from 1 to BATTLESPACE_ARTILLERY_PIECES_PER_BATTERY do {
 
 		private _spawn = _spawnPoint findEmptyPosition [10, 200, BATTLESPACE_ARTILLERY_PIECE];
+		if (_spawn isEqualTo []) then {continue};
 		
 		private _newVeh = BATTLESPACE_ARTILLERY_PIECE createVehicle _spawn;	
 
@@ -269,8 +305,13 @@ BATTLESPACE_SPAWN_BATTERY = {
 		_vehs pushBack _newVeh;
 
 		_newVeh setVariable ["acex_headless_blacklist", true, true]; 
+		_newVeh setVehicleAmmo 0;
+		_newVeh setVariable ["BSAFundingSector", _sectorToSpawnIn, true];
 		_newVeh addEventHandler ["Killed", {
 			params ["_vehicle"];
+			if (!isNil "BATTLESPACE_STRATEGIC_ADD_SECTOR_PRESSURE") then {
+				[_vehicle getVariable ["BSAFundingSector", ""], 4] call BATTLESPACE_STRATEGIC_ADD_SECTOR_PRESSURE;
+			};
 			if (!isNil "KPLIB_fnc_queueDeadObjectCleanup") then {
 				[_vehicle] call KPLIB_fnc_queueDeadObjectCleanup;
 			};
@@ -285,8 +326,12 @@ BATTLESPACE_SPAWN_BATTERY = {
 			_x disableAI "FSM";
 			_x disableAI "AUTOTARGET";
 			_x setVariable ["acex_headless_blacklist", true, true]; 
+			_x setVariable ["BSAFundingSector", _sectorToSpawnIn, true];
 			_x addEventHandler ["Killed", {
 				params ["_unit"];
+				if (!isNil "BATTLESPACE_STRATEGIC_ADD_SECTOR_PRESSURE") then {
+					[_unit getVariable ["BSAFundingSector", ""], 1] call BATTLESPACE_STRATEGIC_ADD_SECTOR_PRESSURE;
+				};
 				if (!isNil "KPLIB_fnc_queueDeadObjectCleanup") then {
 					[_unit] call KPLIB_fnc_queueDeadObjectCleanup;
 				};
@@ -298,7 +343,17 @@ BATTLESPACE_SPAWN_BATTERY = {
 
 		
 	};
+	private _missingPieces = (BATTLESPACE_ARTILLERY_PIECES_PER_BATTERY - count _vehs) max 0;
+	if (_missingPieces > 0) then {
+		[_sectorToSpawnIn, createHashMapFromArray [
+			[_pieceResource, _missingPieces],
+			["manpower", _missingPieces * _crewPerPiece]
+		]] call BATTLESPACE_RESOURCE_DEPOSIT_CLAMPED;
+	};
+	if (_vehs isEqualTo []) exitWith {deleteGroup _fcrGrp};
 	_fcrGrp setVariable ["BSAState", ["READY", 0, getPos ((units _fcrGrp)#0)], true];
+	_fcrGrp setVariable ["BSAFundingSector", _sectorToSpawnIn, true];
+	_fcrGrp setVariable ["BSAPieceResource", _pieceResource, true];
 	_fcrGrp setVariable ["acex_headless_blacklist", true, true];
 	_fcrGrp setVariable ["Vcm_Disable", true, true];
 	BATTLESPACE_ARTILLERY_SECTIONS pushBack _fcrGrp;
@@ -308,6 +363,7 @@ BATTLESPACE_SPAWN_BATTERY = {
 	
 
 	BATTLESPACE_LAST_ARTILLERY_SPAWN = diag_tickTime;
+	[] call BATTLESPACE_LOGISTICS_SAVE;
 	publicVariable "BATTLESPACE_ARTILLERY_SECTIONS";
 	publicVariable "BATTLESPACE_LAST_ARTILLERY_SPAWN";
 };
@@ -672,6 +728,31 @@ BATTLESPACE_ARTILLERY_FULFILL_REQUEST = {
 	_state params [["_status", "NOT READY"], ["_initialSetupTime", 0], ["_loc", []], ["_tgt", objNull], ["_acc", 0], ["_obs", objNull]];
 
 	if(_status != "READY") exitWith { };
+	private _vehicles = [];
+	{
+		private _vehicle = vehicle _x;
+		if (_vehicle isNotEqualTo _x && {alive _vehicle}) then {_vehicles pushBackUnique _vehicle};
+	} forEach units _battery;
+	if (_vehicles isEqualTo []) exitWith {};
+	private _salvos = [_req] call BATTLESPACE_ARTILLERY_GET_REQUEST_SALVOS;
+	private _requestedRounds = _salvos * count _vehicles;
+	private _reservedRounds = [_battery, _requestedRounds] call BATTLESPACE_ARTILLERY_RESERVE_AMMUNITION;
+	if (_reservedRounds <= 0) exitWith {
+		if (BATTLESPACE_ARTILLERY_DEBUG) then {systemChat format ["Battery %1 has no paid ammunition", _battery]};
+	};
+	{_x setVehicleAmmo 1} forEach _vehicles;
+	private _readyVehicles = _vehicles select {canFire _x};
+	if (_readyVehicles isEqualTo []) exitWith {
+		{_x setVehicleAmmo 0} forEach _vehicles;
+		[_battery getVariable ["BSAFundingSector", ""], createHashMapFromArray [["rockets", _reservedRounds]]] call BATTLESPACE_RESOURCE_DEPOSIT_CLAMPED;
+	};
+	private _usableReservation = _reservedRounds min (_salvos * count _readyVehicles);
+	private _immediateRefund = _reservedRounds - _usableReservation;
+	if (_immediateRefund > 0) then {
+		[_battery getVariable ["BSAFundingSector", ""], createHashMapFromArray [["rockets", _immediateRefund]]] call BATTLESPACE_RESOURCE_DEPOSIT_CLAMPED;
+	};
+	{if !(_x in _readyVehicles) then {_x setVehicleAmmo 0}} forEach _vehicles;
+	_req set [6, _usableReservation];
 
 	_state set [0, "IN MISSION"];
 
@@ -693,28 +774,9 @@ BATTLESPACE_ARTILLERY_FULFILL_REQUEST = {
 BATTLESPACE_ARTILLERY_DO_REQUEST = {
 	params ["_battery", "_req", "_obsKey"];
 
-	(_req) params [["_observer", objNull], ["_target", nil], ["_accuracy", 0], ["_systemTargeted", false], ["_targetedAt", CBA_missionTime], ["_wp", false]];
+	(_req) params [["_observer", objNull], ["_target", nil], ["_accuracy", 0], ["_systemTargeted", false], ["_targetedAt", CBA_missionTime], ["_wp", false], ["_reservedRounds", 0]];
 
-	private _shells = 1;
-
-	_shells = 1 max (floor (_accuracy / 75));
-
-
-	if(_accuracy >= 300) then {
-		_shells = 6;
-	};
-
-	if(_wp) then {
-		_shells = _shells max 3;
-	};
-	// COUNTER-BATTERY is lower accuracy but still a lot of shells
-	if(_systemTargeted) then {
-		_shells = 6;
-
-		if(_accuracy >= 300) then {
-			_shells = 12;
-		};
-	};
+	private _shells = [_req] call BATTLESPACE_ARTILLERY_GET_REQUEST_SALVOS;
 
 
 	private _vehs = [];
@@ -722,7 +784,7 @@ BATTLESPACE_ARTILLERY_DO_REQUEST = {
 	{
 		private _veh = (vehicle _x);
 
-		if(_veh isEqualTo _x) then {
+		if(_veh isEqualTo _x || {!alive _veh} || {!canFire _veh}) then {
 		continue;
 		};
 		_veh doWatch (_target getPos [0,0]);
@@ -738,12 +800,15 @@ BATTLESPACE_ARTILLERY_DO_REQUEST = {
 
 	private _targets = [];
 	private _shellsFired = 0;
+	private _roundsRemaining = _reservedRounds;
 
 	private _shellType = [BATTLESPACE_ARTILLERY_SHELL, BATTLESPACE_ARTILLERY_WP_SHELL] select _wp;
 
 	if (BATTLESPACE_ARTILLERY_DEBUG) then {systemChat format ["We are shooting %1", _shellType];};
 	for "_i" from 1 to _shells do {
+		if (_roundsRemaining <= 0) exitWith {};
 		{	
+			if (_roundsRemaining <= 0) then {continue};
 
 			
 			private _minDispersion = [_accuracy, _wp] call BATTLESPACE_GET_MIN_DISPERSION;
@@ -773,6 +838,7 @@ BATTLESPACE_ARTILLERY_DO_REQUEST = {
 
 				if(_inRange) then {
 					_shellsFired = _shellsFired + 1;
+					_roundsRemaining = _roundsRemaining - 1;
 					_tLoc = _new;
 					_execs = 26;
 				};
@@ -850,9 +916,12 @@ BATTLESPACE_ARTILLERY_DO_REQUEST = {
 	[_obsKey] remoteExec ["BATTLESPACE_ARTILLERY_BROADCAST_CLEAR_TARGET", 2];
 	
 
-	{
-		[_x, 1] remoteExec ["setVehicleAmmo", _x];
-	} forEach _vehs;
+	{[_x, 0] remoteExec ["setVehicleAmmo", _x]} forEach _vehs;
+	private _unusedRounds = (_reservedRounds - _shellsFired) max 0;
+	if (_unusedRounds > 0) then {
+		private _fundingSector = _battery getVariable ["BSAFundingSector", ""];
+		[_fundingSector, createHashMapFromArray [["rockets", _unusedRounds]]] call BATTLESPACE_RESOURCE_DEPOSIT_CLAMPED;
+	};
 
 	
 	
