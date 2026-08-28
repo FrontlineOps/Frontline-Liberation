@@ -105,7 +105,7 @@ if (_class isKindOf "Helicopter") exitWith {
 };
 
 if (_class isKindOf "Plane") exitWith {["fixedWing"]};
-if (_class isKindOf "Ship") exitWith {["light", "boat"]};
+if (_class isKindOf "Ship") exitWith {["boat"]};
 
 if (_class isKindOf "LandVehicle") then {
     if (_isMedical) then {_categories pushBack "medical"};
