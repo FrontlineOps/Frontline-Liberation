@@ -168,7 +168,7 @@ BATTLESPACE_TASK_FORCE_DEFAULT_FINISH_SPAWN = {
 				private _destination = _registeredTaskForce param [2, []];
 				private _type = _registeredTaskForce param [0, ""];
 				if (
-					_type in ["Battlegroup", "Convoy", "Defensive Patrol", "Reconnaissance Patrol", "Rotary Patrol", "Civilians"]
+					_type in ["Battlegroup", "Convoy", "Defensive Patrol", "Reconnaissance Patrol", "Air Response", "Civilians"]
 					&& {_currentLocation isNotEqualTo []}
 					&& {_destination isNotEqualTo []}
 				) then {
@@ -547,5 +547,5 @@ BATTLESPACE_TASK_FORCE_DEFAULT_TRY_SPAWN = {
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\models\fortifications.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\models\civilians.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\models\minefield.sqf";
-[] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\models\rotaryPatrol.sqf";
+[] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\models\airResponse.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\models\antiair.sqf";

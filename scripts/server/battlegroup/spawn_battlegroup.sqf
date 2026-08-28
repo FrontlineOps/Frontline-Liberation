@@ -46,7 +46,6 @@ diag_log format ["Battlegroup will attack %1 spawning from %2", [_objectivePos] 
 
 if !(_spawn_marker isEqualTo "") then {
 
-    GRLIB_last_battlegroup_time = diag_tickTime;
 
     private _selected_opfor_battlegroup = [];
     private _scalingFactor = ([] call KPLIB_fnc_getOpforFactor);

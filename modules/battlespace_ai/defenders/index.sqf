@@ -161,23 +161,6 @@ BATTLESPACE_DEFENDERS_CREATE_TASK_FORCES = {
     systemChat _logMsg;
     diag_log _logMsg;
 
-    private _playerCount = [] call KPLIB_fnc_getPlayerCount;
-
-    // Air Rotary CAS spawn
-    private _spawnRotaryPatrol = Random 1 >= 0.25;
-    private _rotaryPatrolClasses = opfor_choppers select {_x isKindOf "Helicopter"};
-    if(_spawnRotaryPatrol && _playerCount > 45 && {_rotaryPatrolClasses isNotEqualTo []}) then {
-        private _composition = createHashMapFromArray [
-            ["manpower", 0],
-            ["vehicles", [selectRandom _rotaryPatrolClasses]],
-            ["structures", []]
-        ];
-        
-        // Spawn rotary CAS patrol within X distance circle, position doesn't matter too much in the air
-        private _pos = _objPos getPos [random 300, random 360];
-        ["Rotary Patrol", _composition, _pos, _objPos, _objPos] call _createFundedDefender;
-    };
-
     // Patrolling infantry squads
     for "_i" from 1 to _patrollingSquads do {
         private _def = selectRandom BATTLESPACE_DEFENDERS_MECHANIZED_PATROL_DEFS;

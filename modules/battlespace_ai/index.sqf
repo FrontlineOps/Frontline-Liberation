@@ -7,6 +7,7 @@
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\logistics\index.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\battlegroup\index.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\tactical\index.sqf";
+[] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\air_response\index.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\fortifications\index.sqf";
 
 if (!isNil { BATTLESPACE_LOCAL_TESTING }) then {
@@ -43,7 +44,6 @@ if (!isNil { BATTLESPACE_LOCAL_TESTING }) then {
 	armor_weight = 0;
 	combat_readiness = 0;
 	BATTLESPACE_UNIT_CAP = 200;
-	GRLIB_battlegroup_cap = BATTLESPACE_UNIT_CAP;
 	GRLIB_side_enemy = east;
 	GRLIB_side_friendly = west;
 	GRLIB_side_guerilla = resistance;
@@ -103,5 +103,5 @@ if (!isNil { BATTLESPACE_LOCAL_TESTING }) then {
 // - OPFOR objectives spend construction stock on persistent defensive sites.
 // - The strategic decision interval is configured in kp_liberation_config.sqf.
 //
-// Tactical defenders, reactive operations, artillery/SAM expenditure, and
-// ZEN diagnostics consume the same server-owned stockpiles.
+// Tactical defenders, air responses, artillery/SAM expenditure, and ZEN
+// diagnostics consume the same server-owned stockpiles.

@@ -60,8 +60,5 @@ while {true} do {
     // Zeus module synced to player
     player setVariable ["KPLIB_ownedZeusModule", getAssignedCuratorLogic player];
 
-    // Update state in Discord rich presence
-    //[] call KPLIB_fnc_setDiscordState;
-
     sleep (missionNamespace getVariable ["KP_liberation_client_state_refresh_interval", 2]);
 };

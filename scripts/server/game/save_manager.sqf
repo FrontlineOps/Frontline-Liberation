@@ -558,7 +558,6 @@ if ((_lockedVehCount < (count sectors_military)) && (_lockedVehCount < (count el
 };
 
 publicVariable "GRLIB_vehicle_to_military_base_links";
-publicVariable "GRLIB_permissions";
 save_is_loaded = true; publicVariable "save_is_loaded";
 
 [format ["----- Saved data loaded - Time needed: %1 seconds", diag_tickTime - _start], "SAVE"] call KPLIB_fnc_log;

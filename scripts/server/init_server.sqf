@@ -3,7 +3,6 @@ add_civ_waypoints = compileFinal preprocessFileLineNumbers "scripts\server\ai\ad
 add_defense_waypoints = compileFinal preprocessFileLineNumbers "scripts\server\ai\add_defense_waypoints.sqf";
 battlegroup_ai = compileFinal preprocessFileLineNumbers "scripts\server\ai\battlegroup_ai.sqf";
 building_defence_ai = compileFinal preprocessFileLineNumbers "scripts\server\ai\building_defence_ai.sqf";
-patrol_ai = compileFinal preprocessFileLineNumbers "scripts\server\ai\patrol_ai.sqf";
 prisonner_ai = compileFinal preprocessFileLineNumbers "scripts\server\ai\prisonner_ai.sqf";
 troup_transport = compileFinal preprocessFileLineNumbers "scripts\server\ai\troup_transport.sqf";
 vehicle_ai = compileFinal preprocessFileLineNumbers "scripts\server\ai\vehicle_ai.sqf";
@@ -16,8 +15,6 @@ spawn_battlegroup = compileFinal preprocessFileLineNumbers "scripts\server\battl
 check_victory_conditions = compileFinal preprocessFileLineNumbers "scripts\server\game\check_victory_conditions.sqf";
 
 // Patrol
-manage_one_civilian_patrol = compileFinal preprocessFileLineNumbers "scripts\server\patrols\manage_one_civilian_patrol.sqf";
-manage_one_patrol = compileFinal preprocessFileLineNumbers "scripts\server\patrols\manage_one_patrol.sqf";
 reinforcements_manager = compileFinal preprocessFileLineNumbers "scripts\server\patrols\reinforcements_manager.sqf";
 send_paratroopers = compileFinal preprocessFileLineNumbers "scripts\server\patrols\send_paratroopers.sqf";
 spawn_paratroopers = compileFinal preprocessFileLineNumbers "scripts\server\patrols\spawn_paratroopers.sqf";
@@ -43,9 +40,6 @@ active_sectors = []; publicVariable "active_sectors";
 execVM "scripts\server\base\huron_manager.sqf";
 execVM "scripts\server\base\startvehicle_spawn.sqf";
 [] call KPLIB_fnc_createSuppModules;
-execVM "scripts\server\battlegroup\counter_battlegroup.sqf";
-// execVM "scripts\server\battlegroup\readiness_increase.sqf";
-execVM "scripts\server\game\apply_default_permissions.sqf";
 execVM "scripts\server\game\cleanup_vehicles.sqf";
 if (!KP_liberation_fog_param) then {execVM "scripts\server\game\fucking_set_fog.sqf";};
 execVM "scripts\server\game\manage_time.sqf";
@@ -57,19 +51,13 @@ execVM "scripts\server\game\synchronise_vars.sqf";
 execVM "scripts\server\game\synchronise_eco.sqf";
 execVM "scripts\server\game\zeus_synchro.sqf";
 execVM "scripts\server\offloading\show_fps.sqf";
-//execVM "scripts\server\patrols\civilian_patrols.sqf";
-//execVM "scripts\server\patrols\manage_patrols.sqf";
 execVM "scripts\server\patrols\reinforcements_resetter.sqf";
-if (KP_liberation_ailogistics) then {execVM "scripts\server\resources\manage_logistics.sqf";};
 execVM "scripts\server\resources\manage_resources.sqf";
 execVM "scripts\server\resources\recalculate_resources.sqf";
 execVM "scripts\server\resources\recalculate_timer.sqf";
 execVM "scripts\server\resources\recalculate_timer_sector.sqf";
 execVM "scripts\server\resources\unit_cap.sqf";
 execVM "scripts\server\sector\lose_sectors.sqf";
-
-//--- For vehicle respawns
-server_fnc_spawnVehicle = compileFinal preprocessFileLineNumbers "scripts\server\vehicles\spawnVehicle.sqf";
 
 KPLIB_fsm_sectorMonitor = [] call KPLIB_fnc_sectorMonitor;
 if (KP_liberation_high_command) then {KPLIB_fsm_highcommand = [] call KPLIB_fnc_highcommand;};
@@ -94,9 +82,6 @@ execVM "scripts\server\civrep\init_module.sqf";
 // Civil Informant
 execVM "scripts\server\civinformant\init_module.sqf";
 
-// Asymmetric Threats
-execVM "scripts\server\asymmetric\init_module.sqf";
-
 // Groupcheck for deletion when empty
 execVM "scripts\server\offloading\group_diag.sqf";
 
@@ -105,10 +90,6 @@ execVM "scripts\server\offloading\group_diag.sqf";
         deleteVehicle _x;
     };
 } forEach allUnits;
-
-//NoAce Squad Lock System
-if (isNil "global_locked_group") then { global_locked_group = [] };
-publicVariable "global_locked_group";
 
 // Server Restart Script from K4s0
 if (KP_liberation_restart > 0) then {

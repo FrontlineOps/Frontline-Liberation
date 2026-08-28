@@ -37,10 +37,8 @@ class KPLIB {
         class getFobResources           {};
         class getGroupType              {};
         class getLessLoadedHC           {};
-        class getLoadout                {};
         class getLocalCap               {};
         class getLocationName           {};
-        class getMilitaryId             {};
         class getMobileRespawns         {};
         class getNearbyPlayers          {};
         class getNearestBluforObjective {};
@@ -61,36 +59,28 @@ class KPLIB {
         class getSectorRange            {};
         class getSquadComp              {};
         class getStoragePositions       {};
-        class getUnitPositionId         {};
         class getUnitsCount             {};
         class getWeaponComponents       {};
         class handlePlacedZeusObject    {};
-        class hasPermission             {};
         class initSectors               {};
         class isBigtownActive           {};
         class isClassUAV                {};
         class isRadio                   {};
         class isNearFriendlyPB          {};
         class log                       {};
-        class onPause                   {};
         class potatoScan                {};
         class protectObject             {};
         class secondsToTimer            {};
         class setFobMass                {};
         class setLoadableViV            {};
-        class setLoadout                {};
         class setupVehicle              {};
         class setVehicleCaptured        {};
         class setVehicleSeized          {};
         class sortStorage               {};
-        class spawnBuildingSquad        {};
         class spawnCivilians            {};
         class spawnGuerillaGroup        {};
-        class spawnMilitaryPostSquad    {};
         class spawnMilitiaCrew          {};
-        class spawnRegularSquad         {};
         class spawnVehicle              {};
-        class swapInventory             {};
     };
     class functions_curator {
         file = "functions\curator";
@@ -137,6 +127,5 @@ class KPLIB {
         class taskPatrolWaypointStatement  {};
         class taskReset                    {}; // [] call KPLIB_fnc_taskReset
     };
-    #include "scripts\client\CfgFunctions.hpp"
     #include "scripts\server\CfgFunctions.hpp"
 };

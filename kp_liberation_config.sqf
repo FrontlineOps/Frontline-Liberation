@@ -61,7 +61,6 @@ DEBUG_ARSENAL_ROLE_OVERRIDE = "";
 // Used for development to simulate a different player count for e.g. battlespace AI spawns
 DEBUG_PLAYER_COUNT_OVERRIDE = -1;
 
-// Also see GRLIB_battlegroup_cap for when Battlegroup units may spawn
 // 10 default
 BATTLESPACE_UNIT_CAP = 200;
 
@@ -141,6 +140,23 @@ BATTLESPACE_STRATEGIC_PATROL_FORWARD_RATIOS = [0.35, 0.60];
 BATTLESPACE_STRATEGIC_PATROL_REAR_SCREEN_RANGE = [150, 350];
 BATTLESPACE_STRATEGIC_PATROL_LATERAL_OFFSET = 250;
 BATTLESPACE_STRATEGIC_PATROL_BLUFOR_STANDOFF = 350;
+BATTLESPACE_STRATEGIC_AIR_RESPONSE_INITIAL_DELAY = 600;
+BATTLESPACE_STRATEGIC_AIR_RESPONSE_DECISION_INTERVAL = 60;
+BATTLESPACE_STRATEGIC_MAX_ACTIVE_AIR_RESPONSES = 2;
+BATTLESPACE_STRATEGIC_MAX_AIR_RESPONSES_PER_TICK = 1;
+BATTLESPACE_STRATEGIC_AIR_RESPONSE_COOLDOWN = 1800;
+BATTLESPACE_STRATEGIC_AIR_RESPONSE_MIN_AGGRESSIVITY = 0.9;
+BATTLESPACE_STRATEGIC_AIR_RESPONSE_MIN_READINESS = 70;
+BATTLESPACE_STRATEGIC_AIR_RESPONSE_MIN_WEIGHT = 50;
+BATTLESPACE_STRATEGIC_AIR_RESPONSE_MAX_RANGE = 18000;
+BATTLESPACE_STRATEGIC_AIR_RESPONSE_MIN_SEPARATION = 3000;
+BATTLESPACE_STRATEGIC_AIR_RESPONSE_REACQUIRE_RANGE = 4000;
+BATTLESPACE_STRATEGIC_AIR_RESPONSE_CONTACT_GRACE = 120;
+BATTLESPACE_STRATEGIC_AIR_RESPONSE_ON_STATION_DURATION = 900;
+BATTLESPACE_STRATEGIC_AIR_RESPONSE_MAX_LIFETIME = 1800;
+BATTLESPACE_STRATEGIC_AIR_RESPONSE_ARRIVAL_RADIUS = 600;
+BATTLESPACE_STRATEGIC_AIR_RESPONSE_RETARGET_DISTANCE = 500;
+BATTLESPACE_STRATEGIC_AIR_RESPONSE_ORBIT_RADIUS = 1200;
 BATTLESPACE_STRATEGIC_MAX_ACTIVE_FORTIFICATIONS = 48;
 BATTLESPACE_STRATEGIC_MAX_FORTIFICATIONS_PER_SECTOR = 3;
 BATTLESPACE_STRATEGIC_MAX_FORTIFICATIONS_PER_TICK = 2;
@@ -191,19 +207,15 @@ GRLIB_sector_size = 3000;                    			// Sector activation range
 GRLIB_capture_size = 225;                    			// Sector cap circle size
 GRLIB_defended_buildingpos_part = 0.7;       			// Multiplier for defenders in buildings
 GRLIB_battlegroup_size = 4;                  			// Battlegroup size
-GRLIB_battlegroup_Interval = 3860;
 GRLIB_battlegroup_Show_Spawn_Location = false;
 GRLIB_vulnerability_timer = 840;             			// OPFOR sector cap timer (sec)
 GRLIB_radiotower_size = 2500;                			// Radio tower range
 GRLIB_surrender_chance = 60;                 			// Surrender after heavy losses chance
 
-GRLIB_civilians_amount = .25;                 			// Civilian count multiplier
 GRLIB_cleanup_delay = 250;                   			// Corpse cleanup time (sec)
 
 GRLIB_blufor_cap = 171;                      			// Cap for BLUFOR
 GRLIB_sector_cap = 480;     			// Cap for sector defenders
-GRLIB_battlegroup_cap = 350;			// Cap for enemy battlegroups (total Opfor must be under this to check for BG spawns, gets scaled) 3.4 120
-GRLIB_patrol_cap = 0;                        			// Cap for enemy patrols
 
 KP_liberation_cr_kill_penalty = 25;          			// Civrep civilian kill penalty
 KP_liberation_cr_building_penalty = 15;      			// Civrep destroy/damage penatly
@@ -627,10 +639,7 @@ KP_liberation_small_storage_positions = [
 GRLIB_endgame = 0;
 // KP_liberation_production_interval = ceil (KP_liberation_production_interval / GRLIB_resources_multiplier);
 GRLIB_battlegroup_size = GRLIB_battlegroup_size * (sqrt GRLIB_unitcap) * (sqrt GRLIB_csat_aggressivity);
-GRLIB_civilians_amount = GRLIB_civilians_amount * GRLIB_civilian_activity;
 GRLIB_blufor_cap = (GRLIB_blufor_cap * GRLIB_unitcap) min 100;
 GRLIB_sector_cap = GRLIB_sector_cap * GRLIB_unitcap;
-GRLIB_battlegroup_cap = GRLIB_battlegroup_cap * GRLIB_unitcap;
-GRLIB_patrol_cap = GRLIB_patrol_cap * GRLIB_unitcap;
 GRLIB_kog_trucks = ["UK3CB_ARD_O_GAZ_Vodnik"];//"vn_o_wheeled_z157_01_vcmf"rhs_ka60_grey
 GRLIB_battlegroup_delay = 2700;

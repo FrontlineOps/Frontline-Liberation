@@ -47,18 +47,6 @@ class Params {
         texts[] = {$STR_PARAMS_CIVILIANS1, $STR_PARAMS_CIVILIANS2, $STR_PARAMS_CIVILIANS3, $STR_PARAMS_CIVILIANS4};
         default = 3;
     };
-    class FirstFob {
-        title = $STR_PARAMS_FIRSTFOB;
-        values[] = {1, 0};
-        texts[] = {$STR_YES, $STR_NO};
-        default = 0;
-    };
-    class FirstFobVehicle {
-        title = $STR_PARAMS_FIRSTFOBVEHICLE;
-        values[] = {0, 1};
-        texts[] = {$STR_PARAMS_FIRSTFOBVEHICLE_CONTAINTER, $STR_PARAMS_FIRSTFOBVEHICLE_TRUCK};
-        default = 0;
-    };
     class MaximumFobs {
         title = $STR_PARAM_FOBS_COUNT;
         values[] = {1, 2, 3, 4, 5, 6, 7};
@@ -118,18 +106,6 @@ class Params {
         values[] = {0, 1};
         texts[] = {$STR_PARAMS_ARSENAL_BI, $STR_PARAMS_ARSENAL_ACE};
         default = 1;
-    };
-    class DirectArsenal {
-        title = $STR_PARAMS_DIRECTARSENAL;
-        values[] = {0, 1};
-        texts[] = {$STR_PARAMS_DISABLED, $STR_PARAMS_ENABLED};
-        default = 0;
-    };
-    class PlayerMenu {
-        title = $STR_PARAMS_PLAYERMENU;
-        values[] = {0, 1};
-        texts[] = {$STR_PARAMS_PLAYERMENU_GREUH, $STR_PARAMS_PLAYERMENU_KP};
-        default = 0;
     };
     class VictoryCondition {
         title = $STR_PARAMS_VICTORYCONDITION;
@@ -257,22 +233,10 @@ class Params {
         texts[] = {$STR_PARAMS_DISABLED, $STR_PARAMS_ENABLED};
         default = 0;
     };
-    class AiLogistics {
-        title = $STR_PARAMS_AILOGISTICS;
-        values[] = {0, 1};
-        texts[] = {$STR_PARAMS_DISABLED, $STR_PARAMS_ENABLED};
-        default = 0;
-    };
     class CR_Building {
         title = $STR_PARAM_CR_BUILDING;
         values[] = {1, 0};
         texts[] = {$STR_PARAM_CR_DAMAGED, $STR_PARAM_CR_DESTROYED};
-        default = 0;
-    };
-    class HaloJump {
-        title = $STR_HALO_PARAM;
-        values[] = {1, 5, 10, 15, 20, 30, 0};
-        texts[] = {$STR_HALO_PARAM1, $STR_HALO_PARAM2, $STR_HALO_PARAM3, $STR_HALO_PARAM4, $STR_HALO_PARAM5, $STR_HALO_PARAM6, $STR_PARAMS_DISABLED};
         default = 0;
     };
     class ClearCargo {
@@ -323,12 +287,6 @@ class Params {
         texts[] = {$STR_PARAMS_DISABLED, $STR_PARAM_SUPPMOD_CMDRANDWHITELIST, $STR_PARAM_SUPPMOD_EVERYONE};
         default = 0;
     };
-    class Tutorial {
-        title = $STR_PARAM_TUTORIAL;
-        values[] = {1, 0};
-        texts[] = {$STR_PARAMS_ENABLED, $STR_PARAMS_DISABLED};
-        default = 0;
-    };
     class Spacer3 {
         title = "";
         values[] = {""};
@@ -340,12 +298,6 @@ class Params {
         values[] = {""};
         texts[] = {""};
         default = "";
-    };
-    class Permissions {
-        title = $STR_PERMISSIONS_PARAM;
-        values[] = {1, 0};
-        texts[] = {$STR_PARAMS_ENABLED, $STR_PARAMS_DISABLED};
-        default = 1;
     };
     class CleanupVehicles {
         title = $STR_CLEANUP_PARAM;
@@ -427,12 +379,6 @@ class Params {
     };
     class DebugKill {
         title = $STR_PARAMS_DEBUG_KILL;
-        values[] = {0, 1};
-        texts[] = {$STR_PARAMS_DISABLED, $STR_PARAMS_ENABLED};
-        default = 0;
-    };
-    class DebugLogistic {
-        title = $STR_PARAMS_DEBUG_LOGISTIC;
         values[] = {0, 1};
         texts[] = {$STR_PARAMS_DISABLED, $STR_PARAMS_ENABLED};
         default = 0;

@@ -9,8 +9,6 @@ private _directedBattlegroupRoot = ["DirectedBattlegroups", "Directed Battlegrou
 [] call compileFinal preprocessFileLineNumbers "scripts\libZeusActions\client\actions\battlegroups\motorized.sqf";
 [] call compileFinal preprocessFileLineNumbers "scripts\libZeusActions\client\actions\battlegroups\mechanized.sqf";
 [] call compileFinal preprocessFileLineNumbers "scripts\libZeusActions\client\actions\battlegroups\combat_air_patrol.sqf";
-[] call compileFinal preprocessFileLineNumbers "scripts\libZeusActions\client\actions\battlegroups\toggle.sqf";
-
 [] call compileFinal preprocessFileLineNumbers "scripts\libZeusActions\client\actions\battlegroups\directed_battlegroup_send.sqf";
 [] call compileFinal preprocessFileLineNumbers "scripts\libZeusActions\client\actions\battlegroups\directed_battlegroup_set_spawn.sqf";
 [] call compileFinal preprocessFileLineNumbers "scripts\libZeusActions\client\actions\battlegroups\directed_battlegroup_set_type.sqf";

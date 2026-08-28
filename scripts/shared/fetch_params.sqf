@@ -10,7 +10,6 @@ KP_liberation_civinfo_debug = ["DebugCivInfo", 0] call bis_fnc_getParamValue;
 KP_liberation_civrep_debug = ["DebugCivRep", 0] call bis_fnc_getParamValue;
 KP_liberation_savegame_debug = ["DebugSave", 0] call bis_fnc_getParamValue;
 KP_liberation_asymmetric_debug = ["DebugAsymmetric", 0] call bis_fnc_getParamValue;
-KP_liberation_logistic_debug = ["DebugLogistic", 0] call bis_fnc_getParamValue;
 KP_liberation_sectorspawn_debug = ["DebugSectorSpawn", 0] call bis_fnc_getParamValue;
 KP_liberation_kill_debug = ["DebugKill", 0] call bis_fnc_getParamValue;
 KP_liberation_production_debug = ["DebugProduction", 0] call bis_fnc_getParamValue;
@@ -44,8 +43,6 @@ if(isServer) then {
     GET_PARAM(GRLIB_csat_aggressivity, "Aggressivity", 2);
     GET_PARAM_BOOL(GRLIB_adaptive_opfor, "AdaptToPlayercount", 1);
     GET_PARAM(GRLIB_civilian_activity, "Civilians", 1);
-    GET_PARAM_BOOL(GRLIB_build_first_fob, "FirstFob", 0);
-    GET_PARAM_BOOL(KP_liberation_fob_vehicle, "FirstFobVehicle", 0);
     GET_PARAM(GRLIB_maximum_fobs, "MaximumFobs", 26);
     GET_PARAM(GRLIB_max_squad_size, "MaxSquadSize", 10);
     GET_PARAM_BOOL(GRLIB_blufor_defenders, "BluforDefenders", 1);
@@ -56,8 +53,6 @@ if(isServer) then {
     GET_PARAM_BOOL(KP_liberation_fog_param, "VanillaFog", 1);
     GET_PARAM(GRLIB_resources_multiplier, "ResourcesMultiplier", 3);
     GET_PARAM_BOOL(KP_liberation_arsenal_type, "ArsenalType", 0);
-    GET_PARAM_BOOL(KPLIB_directArsenal, "DirectArsenal", 0);
-    GET_PARAM_BOOL(KP_liberation_playermenu, "PlayerMenu", 1);
     GET_PARAM(KP_liberation_victoryCondition, "VictoryCondition", 0);
 
     // Deactivate BI Revive when ACE Medical is running
@@ -87,9 +82,7 @@ if(isServer) then {
     GET_PARAM(KP_liberation_respawn_cooldown, "RespawnCooldown", 900);
     GET_PARAM_BOOL(KP_liberation_mobilearsenal, "MobileArsenal", 1);
     GET_PARAM_BOOL(KPLIB_respawnOnAttackedSectors, "AttackedSectorRespawn", 0);
-    GET_PARAM_BOOL(KP_liberation_ailogistics, "AiLogistics", 1);
     GET_PARAM_BOOL(KP_liberation_cr_param_buildings, "CR_Building", 0);
-    GET_PARAM(GRLIB_halo_param, "HaloJump", 1);
     GET_PARAM_BOOL(KP_liberation_clear_cargo, "ClearCargo", 1);
     GET_PARAM(KP_liberation_allowEnemiesInImmobile, "AllowEnemiesInImmobile", 50);
     GET_PARAM(KP_liberation_delayDespawnMax, "DelayDespawnMax", 5);
@@ -98,11 +91,9 @@ if(isServer) then {
     GET_PARAM_BOOL(KP_liberation_enemies_zeus, "ZeusAddEnemies", 1);
     GET_PARAM_BOOL(KP_liberation_high_command, "HighCommand", 1);
     GET_PARAM(KP_liberation_suppMod, "SuppMod", 1);
-    GET_PARAM_BOOL(KP_liberation_tutorial, "Tutorial", 1);
 
     // Technical Options
     ["--- Technical Options ---", "PARAM"] call KPLIB_fnc_log;
-    GET_PARAM_BOOL(GRLIB_permissions_param, "Permissions", 1);
     GET_PARAM(GRLIB_cleanup_vehicles, "CleanupVehicles", 2);
     GET_PARAM_BOOL(GRLIB_introduction, "Introduction", 1);
     GET_PARAM_BOOL(GRLIB_deployment_cinematic, "DeploymentCinematic", 1);
@@ -254,14 +245,6 @@ if (!isDedicated && hasInterface) then {
     };
     _text = _text + format ["<font color='#ff8000'>%1</font><br />%2<br /><br />", _param, _value];
 
-    _param = localize "STR_PARAMS_FIRSTFOB";
-    _value = if (GRLIB_build_first_fob) then {localize "STR_YES";} else {localize "STR_NO";};
-    _text = _text + format ["<font color='#ff8000'>%1</font><br />%2<br /><br />", _param, _value];
-
-    _param = localize "STR_PARAMS_FIRSTFOBVEHICLE";
-    _value = if (KP_liberation_fob_vehicle) then {localize "STR_PARAMS_FIRSTFOBVEHICLE_TRUCK";} else {localize "STR_PARAMS_FIRSTFOBVEHICLE_CONTAINTER";};
-    _text = _text + format ["<font color='#ff8000'>%1</font><br />%2<br /><br />", _param, _value];
-
     _param = localize "STR_PARAM_FOBS_COUNT";
     _value = str GRLIB_maximum_fobs;
     _text = _text + format ["<font color='#ff8000'>%1</font><br />%2<br /><br />", _param, _value];
@@ -304,14 +287,6 @@ if (!isDedicated && hasInterface) then {
 
     _param = localize "STR_PARAMS_ARSENAL";
     _value = if (KP_liberation_arsenal_type) then {localize "STR_PARAMS_ARSENAL_ACE";} else {localize "STR_PARAMS_ARSENAL_BI";};
-    _text = _text + format ["<font color='#ff8000'>%1</font><br />%2<br /><br />", _param, _value];
-
-    _param = localize "STR_PARAMS_DIRECTARSENAL";
-    _value = if (KPLIB_directArsenal) then {localize "STR_PARAMS_ENABLED";} else {localize "STR_PARAMS_DISABLED";};
-    _text = _text + format ["<font color='#ff8000'>%1</font><br />%2<br /><br />", _param, _value];
-
-    _param = localize "STR_PARAMS_PLAYERMENU";
-    _value = if (KP_liberation_playermenu) then {localize "STR_PARAMS_PLAYERMENU_KP";} else {localize "STR_PARAMS_PLAYERMENU_GREUH";};
     _text = _text + format ["<font color='#ff8000'>%1</font><br />%2<br /><br />", _param, _value];
 
     _param = localize "STR_PARAMS_VICTORYCONDITION";
@@ -398,24 +373,8 @@ if (!isDedicated && hasInterface) then {
     _value = if (KPLIB_respawnOnAttackedSectors) then {localize "STR_PARAMS_ENABLED";} else {localize "STR_PARAMS_DISABLED";};
     _text = _text + format ["<font color='#ff8000'>%1</font><br />%2<br /><br />", _param, _value];
 
-    _param = localize "STR_PARAMS_AILOGISTICS";
-    _value = if (KP_liberation_ailogistics) then {localize "STR_PARAMS_ENABLED";} else {localize "STR_PARAMS_DISABLED";};
-    _text = _text + format ["<font color='#ff8000'>%1</font><br />%2<br /><br />", _param, _value];
-
     _param = localize "STR_PARAM_CR_BUILDING";
     _value = if (KP_liberation_cr_param_buildings) then {localize "STR_PARAM_CR_DAMAGED";} else {localize "STR_PARAM_CR_DESTROYED";};
-    _text = _text + format ["<font color='#ff8000'>%1</font><br />%2<br /><br />", _param, _value];
-
-    _param = localize "STR_HALO_PARAM";
-    switch (GRLIB_halo_param) do {
-        case 1: {_value = localize "STR_HALO_PARAM1";};
-        case 5: {_value = localize "STR_HALO_PARAM2";};
-        case 10: {_value = localize "STR_HALO_PARAM3";};
-        case 15: {_value = localize "STR_HALO_PARAM4";};
-        case 20: {_value = localize "STR_HALO_PARAM5";};
-        case 30: {_value = localize "STR_HALO_PARAM6";};
-        default {_value = localize "STR_PARAMS_DISABLED";};
-    };
     _text = _text + format ["<font color='#ff8000'>%1</font><br />%2<br /><br />", _param, _value];
 
     _param = localize "STR_PARAM_CLEAR_CARGO";
@@ -452,14 +411,6 @@ if (!isDedicated && hasInterface) then {
         case 2: {_value = localize "STR_PARAM_SUPPMOD_EVERYONE";};
         default {_value = localize "STR_PARAMS_DISABLED";};
     };
-    _text = _text + format ["<font color='#ff8000'>%1</font><br />%2<br /><br />", _param, _value];
-
-    _param = localize "STR_PARAM_TUTORIAL";
-    _value = if (KP_liberation_tutorial) then {localize "STR_PARAMS_ENABLED";} else {localize "STR_PARAMS_DISABLED";};
-    _text = _text + format ["<font color='#ff8000'>%1</font><br />%2<br /><br />", _param, _value];
-
-    _param = localize "STR_PERMISSIONS_PARAM";
-    _value = if (GRLIB_permissions_param) then {localize "STR_PARAMS_ENABLED";} else {localize "STR_PARAMS_DISABLED";};
     _text = _text + format ["<font color='#ff8000'>%1</font><br />%2<br /><br />", _param, _value];
 
     _param = localize "STR_CLEANUP_PARAM";

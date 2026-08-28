@@ -499,6 +499,7 @@ BATTLESPACE_STRATEGIC_BUILD_SECTOR_SNAPSHOT = {
             ((_state getOrDefault ["nextReinforcementAt", 0]) - CBA_missionTime) max 0,
             ((_state getOrDefault ["nextPatrolAt", 0]) - CBA_missionTime) max 0,
             ((_state getOrDefault ["nextBattlegroupAt", 0]) - CBA_missionTime) max 0,
+            ((_state getOrDefault ["nextAirResponseAt", 0]) - CBA_missionTime) max 0,
             ((_state getOrDefault ["nextFortificationAt", 0]) - CBA_missionTime) max 0
         ],
         _operations
@@ -526,6 +527,42 @@ BATTLESPACE_STRATEGIC_BUILD_INTEGRITY_AUDIT = {
     {
         private _taskForce = BATTLESPACE_TASK_FORCES get _x;
         if (isNil "_taskForce") then {_errors pushBack format ["Operation %1 has no task force", _x]};
+        if ((_y getOrDefault ["kind", ""]) == "AIR_RESPONSE" && {!isNil "_taskForce"}) then {
+            private _phase = _y getOrDefault ["phase", ""];
+            private _position = _y getOrDefault ["contactPosition", []];
+            private _composition = _taskForce param [3, createHashMap];
+            private _vehicles = if (typeName _composition == "HASHMAP") then {_composition getOrDefault ["vehicles", []]} else {[]};
+            private _manifest = _y getOrDefault ["vehicleManifest", []];
+            private _cost = _y getOrDefault ["cost", createHashMap];
+            if ((_taskForce param [0, ""]) != "Air Response") then {
+                _errors pushBack format ["Air response operation %1 uses the wrong task-force model", _x];
+            };
+            if !(_phase in ["INTERCEPT", "ON_STATION", "RETURNING"]) then {
+                _errors pushBack format ["Air response operation %1 has invalid phase %2", _x, _phase];
+            };
+            if !(_position isEqualType [] && {(count _position) in [2, 3]} && {_position findIf {!(_x isEqualType 0)} < 0}) then {
+                _errors pushBack format ["Air response operation %1 has malformed contact position", _x];
+            };
+            private _vehicleCompositionValid = _vehicles isEqualType []
+                && {_vehicles isNotEqualTo []}
+                && {_vehicles findIf {!(_x isEqualType "") || {!(_x isKindOf "Air")}} < 0};
+            if (!_vehicleCompositionValid) then {
+                _errors pushBack format ["Air response operation %1 has a non-aircraft composition", _x];
+            };
+            private _manifestValid = _manifest isEqualType []
+                && {_vehicles isEqualType []}
+                && {count _manifest == count _vehicles}
+                && {_manifest findIf {!(_x isEqualType []) || {(_x param [1, ""]) != "aircraft"}} < 0};
+            if (!_manifestValid) then {
+                _errors pushBack format ["Air response operation %1 has an invalid aircraft manifest", _x];
+            };
+            if (typeName _cost != "HASHMAP" || {count _cost != 1} || {(_cost getOrDefault ["aircraft", 0]) != 1}) then {
+                _errors pushBack format ["Air response operation %1 does not own exactly one paid aircraft", _x];
+            };
+            if !((_y getOrDefault ["targetKind", ""]) in ["AIR", "ARMOR"]) then {
+                _errors pushBack format ["Air response operation %1 has an invalid target kind", _x];
+            };
+        };
         if ((_y getOrDefault ["kind", ""]) == "FORTIFICATION") then {
             private _sector = _y getOrDefault ["targetSector", ""];
             private _tier = _y getOrDefault ["fortificationTier", 0];
@@ -571,9 +608,13 @@ BATTLESPACE_STRATEGIC_BUILD_INTEGRITY_AUDIT = {
     if (["FORTIFICATION"] call BATTLESPACE_STRATEGIC_COUNT_OPERATIONS > _globalFortificationCap) then {
         _errors pushBack format ["Global fortification operation count exceeds %1", _globalFortificationCap];
     };
+    private _globalAirResponseCap = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_ACTIVE_AIR_RESPONSES", 2];
+    if (["AIR_RESPONSE"] call BATTLESPACE_STRATEGIC_COUNT_OPERATIONS > _globalAirResponseCap) then {
+        _errors pushBack format ["Global air-response operation count exceeds %1", _globalAirResponseCap];
+    };
     {
         private _type = _y param [0, ""];
-        if (_type in ["Battlegroup", "Convoy"] && {isNil {BATTLESPACE_STRATEGIC_OPERATIONS get _x}}) then {
+        if (_type in ["Battlegroup", "Convoy", "Air Response"] && {isNil {BATTLESPACE_STRATEGIC_OPERATIONS get _x}}) then {
             _warnings pushBack format ["Task force %1 (%2) has no operation", _x, _type];
         };
     } forEach BATTLESPACE_TASK_FORCES;
@@ -618,15 +659,18 @@ BATTLESPACE_STRATEGIC_BUILD_BALANCE_REPORT = {
         ["BATTLEGROUP", missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_ACTIVE_BATTLEGROUPS", 2]],
         ["REINFORCEMENT", missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_ACTIVE_REINFORCEMENTS", 3]],
         ["PATROL", missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_ACTIVE_PATROLS", 8]],
+        ["AIR_RESPONSE", missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_ACTIVE_AIR_RESPONSES", 2]],
         ["FORTIFICATION", missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_ACTIVE_FORTIFICATIONS", 48]],
         ["DEFENDER", -1]
     ];
     [_resourceRows, _operationRows, [
         missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DECISION_INTERVAL", 1800],
+        missionNamespace getVariable ["BATTLESPACE_STRATEGIC_AIR_RESPONSE_DECISION_INTERVAL", 60],
         missionNamespace getVariable ["BATTLESPACE_STRATEGIC_CASUALTY_RESPONSE_THRESHOLD", 8],
         missionNamespace getVariable ["BATTLESPACE_STRATEGIC_EMERGENCY_COOLDOWN", 900],
         missionNamespace getVariable ["BATTLESPACE_STRATEGIC_REINFORCEMENT_COOLDOWN", 1200],
         missionNamespace getVariable ["BATTLESPACE_STRATEGIC_PATROL_COOLDOWN", 2400],
+        missionNamespace getVariable ["BATTLESPACE_STRATEGIC_AIR_RESPONSE_COOLDOWN", 1800],
         missionNamespace getVariable ["BATTLESPACE_STRATEGIC_FORTIFICATION_COOLDOWN", 1800]
     ]]
 };
@@ -762,6 +806,7 @@ BATTLESPACE_ZEN_EXECUTE_VALIDATED_ACTION = {
             [] call BATTLESPACE_LOGISTICS_DECISION_TICK;
             [] call BATTLESPACE_BATTLEGROUP_DECISION_TICK;
             [] call BATTLESPACE_PATROL_DECISION_TICK;
+            [] call BATTLESPACE_AIR_RESPONSE_DECISION_TICK;
             [] call BATTLESPACE_FORTIFICATION_DECISION_TICK;
         };
         case "SAVE": {[] call BATTLESPACE_LOGISTICS_SAVE};
@@ -812,7 +857,7 @@ BATTLESPACE_ZEN_EXECUTE_VALIDATED_ACTION = {
     if (_action == "SELF_TEST") exitWith {};
     private _payload = if (_action in ["RUN_DECISION", "SAVE"]) then {
         private _counts = [];
-        {_counts pushBack [_x, [_x] call BATTLESPACE_STRATEGIC_COUNT_OPERATIONS]} forEach ["CONVOY", "BATTLEGROUP", "DEFENDER", "REINFORCEMENT", "PATROL", "FORTIFICATION"];
+        {_counts pushBack [_x, [_x] call BATTLESPACE_STRATEGIC_COUNT_OPERATIONS]} forEach ["CONVOY", "BATTLEGROUP", "DEFENDER", "REINFORCEMENT", "PATROL", "AIR_RESPONSE", "FORTIFICATION"];
         [count BATTLESPACE_SECTOR_STATES, count BATTLESPACE_TASK_FORCES, _counts]
     } else {
         [_nearest] call BATTLESPACE_STRATEGIC_BUILD_SECTOR_SNAPSHOT
@@ -847,7 +892,7 @@ BATTLESPACE_ZEN_SERVER_REQUEST = {
     } else {
         if (_action == "OVERVIEW") then {
             private _counts = [];
-            {_counts pushBack [_x, [_x] call BATTLESPACE_STRATEGIC_COUNT_OPERATIONS]} forEach ["CONVOY", "BATTLEGROUP", "DEFENDER", "REINFORCEMENT", "PATROL", "FORTIFICATION"];
+            {_counts pushBack [_x, [_x] call BATTLESPACE_STRATEGIC_COUNT_OPERATIONS]} forEach ["CONVOY", "BATTLEGROUP", "DEFENDER", "REINFORCEMENT", "PATROL", "AIR_RESPONSE", "FORTIFICATION"];
             _payload = [count BATTLESPACE_SECTOR_STATES, count BATTLESPACE_TASK_FORCES, _counts];
         } else {
             if (_action == "OVERLAY") then {

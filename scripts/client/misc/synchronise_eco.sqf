@@ -7,8 +7,7 @@ while {true} do {
         count sync_eco > 0;
     };
     KP_liberation_production = sync_eco select 0;
-    KP_liberation_logistics = sync_eco select 1;
-    KP_liberation_production_markers = sync_eco select 2;
+    KP_liberation_production_markers = sync_eco select 1;
     sync_eco = [];
     one_eco_done = true;
 };

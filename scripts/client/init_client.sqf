@@ -49,8 +49,6 @@ execVM "scripts\client\markers\sector_manager.sqf";
 execVM "scripts\client\markers\spot_timer.sqf";
 execVM "scripts\client\misc\broadcast_squad_colors.sqf";
 execVM "scripts\client\misc\init_arsenal.sqf";
-//Remove permissions warning for new perms system.
-//execVM "scripts\client\misc\permissions_warning.sqf";
 if (!KP_liberation_ace) then {execVM "scripts\client\misc\resupply_manager.sqf";};
 execVM "scripts\client\misc\secondary_jip.sqf";
 execVM "scripts\client\misc\synchronise_vars.sqf";
@@ -100,10 +98,6 @@ if ( playerside isequalto GRLIB_side_enemy && { !isnil "_marker" } ) then {
 
 // Commander init
 if (player isEqualTo ([] call KPLIB_fnc_getCommander)) then {
-    // Start tutorial
-    if (KP_liberation_tutorial) then {
-        [] call KPLIB_fnc_tutorial;
-    };
     // Request Zeus if enabled
     if (KP_liberation_commander_zeus) then {
         [] spawn {

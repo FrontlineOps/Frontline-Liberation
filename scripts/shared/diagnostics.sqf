@@ -9,9 +9,7 @@ private _source = "";
 [format ["Opfor factions: %1", KP_liberation_autoFaction_opfor], "MISSIONSTART"] call KPLIB_fnc_log;
 [format ["Resistance factions: %1", KP_liberation_autoFaction_resistance], "MISSIONSTART"] call KPLIB_fnc_log;
 [format ["Civilian factions: %1", KP_liberation_autoFaction_civilians], "MISSIONSTART"] call KPLIB_fnc_log;
-[format ["CBA: %1", KPPLM_CBA], "MISSIONSTART"] call KPLIB_fnc_log;
 [format ["ACE: %1", KP_liberation_ace], "MISSIONSTART"] call KPLIB_fnc_log;
-[format ["KP Ranks: %1", KPPLM_KPR], "MISSIONSTART"] call KPLIB_fnc_log;
 ["------------------------------------", "MISSIONSTART"] call KPLIB_fnc_log;
 
 waitUntil {sleep 1; !isNil "active_sectors"};

@@ -4,5 +4,4 @@
 [] call compileFinal preprocessFileLineNumbers "scripts\libZeusActions\server\actions\motorized_battlegroup.sqf";
 [] call compileFinal preprocessFileLineNumbers "scripts\libZeusActions\server\actions\mechanized_battlegroup.sqf";
 [] call compileFinal preprocessFileLineNumbers "scripts\libZeusActions\server\actions\combat_air_patrol.sqf";
-[] call compileFinal preprocessFileLineNumbers "scripts\libZeusActions\server\actions\toggle_battlegroup_spawn.sqf";
 [] call compileFinal preprocessFileLineNumbers "scripts\libZeusActions\server\actions\directed_battlegroup.sqf";

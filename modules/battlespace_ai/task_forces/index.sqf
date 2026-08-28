@@ -951,7 +951,7 @@ RENDER_BATTLESPACE_AI_PFH = {
 			case "Ambush Patrol": { _targetMarker = "\A3\ui_f\data\map\markers\military\ambush_CA.paa"; };
 			case "Minefield": { _targetMarker = "\a3\Ui_F_Curator\Data\CfgMarkers\minefield_ca.paa"; };
 			case "Civilians": { _targetMarker = "\A3\ui_f\data\map\markers\nato\n_inf.paa"; };
-			case "Rotary Patrol": { _targetMarker = "\A3\ui_f\data\map\markers\nato\o_air.paa"; };
+			case "Air Response": { _targetMarker = "\A3\ui_f\data\map\markers\nato\o_air.paa"; };
 			case "Anti-Air": { _targetMarker = "\A3\ui_f\data\map\markers\nato\o_antiair.paa"; };
 		};
 

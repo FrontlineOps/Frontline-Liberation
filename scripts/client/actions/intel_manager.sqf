@@ -1,7 +1,4 @@
 // TODO Remove this loop by adding the actions to the units/intel objects on spawn
-//waitUntil {!isNil "GRLIB_permissions"};
-//waitUntil {!(GRLIB_permissions isEqualTo []) || !GRLIB_permissions_param};
-
 private _near_people = [];
 private _near_intel = [];
 private _actionned_captive_units = [];

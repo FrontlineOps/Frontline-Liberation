@@ -164,7 +164,6 @@ if (isServer) then {
                     // Admin Log Event: killedCivilian
                     if (isPlayer _killer) then {
                         [_killer, _unit] remoteExec ["KPLIB_fnc_civKillWarning", _killer]; 
-                        //[_killer] execVM "modules\admin_log\client\handlers\onCiviKilled.sqf";
                     };
                 };
             };

@@ -108,6 +108,7 @@ BATTLESPACE_SECTOR_CREATE_STATE = {
         ["nextEmergencyAt", 0],
         ["nextReinforcementAt", 0],
         ["nextPatrolAt", 0],
+        ["nextAirResponseAt", 0],
         ["nextFortificationAt", 0],
         ["casualtyPressure", 0],
         ["lastCasualtyAt", -1]
@@ -146,6 +147,7 @@ BATTLESPACE_SECTOR_SET_OWNER = {
     _state set ["nextEmergencyAt", CBA_missionTime];
     _state set ["nextReinforcementAt", CBA_missionTime];
     _state set ["nextPatrolAt", CBA_missionTime];
+    _state set ["nextAirResponseAt", CBA_missionTime];
     _state set ["nextFortificationAt", CBA_missionTime];
     _state set ["casualtyPressure", 0];
     _state set ["lastCasualtyAt", -1];
@@ -251,7 +253,7 @@ BATTLESPACE_STRATEGIC_SERIALIZE_OPERATION = {
             _saved set [_x + "Remaining", ((_saved getOrDefault [_x, CBA_missionTime]) - CBA_missionTime) max 0];
             _saved deleteAt _x;
         };
-    } forEach ["expiresAt", "loiterUntil"];
+    } forEach ["expiresAt", "loiterUntil", "contactGraceUntil"];
     _saved
 };
 
@@ -268,7 +270,7 @@ BATTLESPACE_STRATEGIC_DESERIALIZE_OPERATION = {
             _operation set [_x, CBA_missionTime + (_operation getOrDefault [_remainingKey, 0])];
             _operation deleteAt _remainingKey;
         };
-    } forEach ["expiresAt", "loiterUntil"];
+    } forEach ["expiresAt", "loiterUntil", "contactGraceUntil"];
     _operation
 };
 
@@ -294,6 +296,7 @@ BATTLESPACE_LOGISTICS_SAVE = {
             ["emergencyCooldown", ((_state getOrDefault ["nextEmergencyAt", 0]) - CBA_missionTime) max 0],
             ["reinforcementCooldown", ((_state getOrDefault ["nextReinforcementAt", 0]) - CBA_missionTime) max 0],
             ["patrolCooldown", ((_state getOrDefault ["nextPatrolAt", 0]) - CBA_missionTime) max 0],
+            ["airResponseCooldown", ((_state getOrDefault ["nextAirResponseAt", 0]) - CBA_missionTime) max 0],
             ["fortificationCooldown", ((_state getOrDefault ["nextFortificationAt", 0]) - CBA_missionTime) max 0],
             ["casualtyPressure", (_state getOrDefault ["casualtyPressure", 0]) max 0],
             ["lastCasualtyAge", if ((_state getOrDefault ["lastCasualtyAt", -1]) < 0) then {-1} else {(CBA_missionTime - (_state get "lastCasualtyAt")) max 0}]
@@ -370,6 +373,7 @@ BATTLESPACE_LOGISTICS_LOAD = {
                 _state set ["nextEmergencyAt", CBA_missionTime + (_savedState getOrDefault ["emergencyCooldown", 0])];
                 _state set ["nextReinforcementAt", CBA_missionTime + (_savedState getOrDefault ["reinforcementCooldown", 0])];
                 _state set ["nextPatrolAt", CBA_missionTime + (_savedState getOrDefault ["patrolCooldown", 0])];
+                _state set ["nextAirResponseAt", CBA_missionTime + (_savedState getOrDefault ["airResponseCooldown", 0])];
                 _state set ["nextFortificationAt", CBA_missionTime + (_savedState getOrDefault ["fortificationCooldown", 0])];
                 _state set ["casualtyPressure", (_savedState getOrDefault ["casualtyPressure", 0]) max 0];
                 private _lastCasualtyAge = _savedState getOrDefault ["lastCasualtyAge", -1];
@@ -962,7 +966,8 @@ BATTLESPACE_STRATEGIC_HANDLE_TASK_FORCE_EVENT = {
             };
         };
         case "REINFORCEMENT";
-        case "PATROL": {
+        case "PATROL";
+        case "AIR_RESPONSE": {
             private _destinationSector = switch (_operation getOrDefault ["outcome", ""]) do {
                 case "REINFORCED": {_operation getOrDefault ["targetSector", ""]};
                 case "RETURNED": {_operation getOrDefault ["originSector", ""]};
@@ -1024,6 +1029,7 @@ if (isServer) then {
         if !([] call BATTLESPACE_LOGISTICS_INIT) exitWith {};
 
         private _nextDecision = CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_INITIAL_DELAY", 300]);
+        private _nextAirResponse = CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_AIR_RESPONSE_INITIAL_DELAY", 600]);
         private _nextSave = CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_SAVE_INTERVAL", 300]);
         while {GRLIB_endgame == 0} do {
             [] call BATTLESPACE_SECTOR_SYNC_OWNERS;
@@ -1044,6 +1050,13 @@ if (isServer) then {
                     [] call BATTLESPACE_FORTIFICATION_DECISION_TICK;
                 };
                 _nextDecision = CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DECISION_INTERVAL", 1800]);
+            };
+
+            if (CBA_missionTime >= _nextAirResponse) then {
+                if (!isNil "BATTLESPACE_AIR_RESPONSE_DECISION_TICK") then {
+                    [] call BATTLESPACE_AIR_RESPONSE_DECISION_TICK;
+                };
+                _nextAirResponse = CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_AIR_RESPONSE_DECISION_INTERVAL", 60]);
             };
 
             if (CBA_missionTime >= _nextSave) then {

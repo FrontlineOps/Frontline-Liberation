@@ -23,42 +23,6 @@ if !(isPlayer _player) exitWith {["No player given"] call BIS_fnc_error; false};
 
 if (isNil "KP_liberation_resources_global") then {KP_liberation_resources_global = false;};
 
-// // Tutorial
-// _player addAction [
-//     ["<t color='#80FF80'>", localize "STR_TUTO_ACTION", "</t>"] joinString "",
-//     {howtoplay = 1;},
-//     nil,
-//     -700,
-//     false,
-//     true,
-//     "",
-//     "
-//         alive _originalTarget
-//         && {_originalTarget getVariable ['KPLIB_isNearStart', false]}
-//     "
-// ];
-
-// // HALO
-// _player addAction [
-//     ["<t color='#80FF80'>", localize "STR_HALO_ACTION", "</t><img size='2' image='res\ui_redeploy.paa'/>"] joinString "",
-//     "scripts\client\spawn\do_halo.sqf",
-//     nil,
-//     -710,
-//     false,
-//     true,
-//     "",
-//     "
-//         GRLIB_halo_param > 0
-//         && {isNull (objectParent _originalTarget)}
-//         && {alive _originalTarget}
-//         && {
-//             _originalTarget getVariable ['KPLIB_fobDist', 99999] < 20
-//             || {_originalTarget getVariable ['KPLIB_isNearStart', false]}
-//         }
-//         && {build_confirmed isEqualTo 0}
-//     "
-// ];
-
 _redeployEvaluation = "
             isNull (objectParent _originalTarget)
             && {alive _originalTarget}
@@ -94,49 +58,6 @@ _player addAction [
     "",
     _redeployEvaluation
 ];
-
-// Redeploy
-
-
-// // Squad management
-// _player addAction [
-//     ["<t color='#80FF80'>", localize "STR_SQUAD_MANAGEMENT_ACTION", "</t><img size='2' image='\a3\Ui_F_Curator\Data\Displays\RscDisplayCurator\modeGroups_ca.paa'/>"] joinString "",
-//     "scripts\client\ui\squad_management.sqf",
-//     nil,
-//     -730,
-//     false,
-//     true,
-//     "",
-//     "
-//         isNull (objectParent _originalTarget)
-//         && {alive _originalTarget}
-//         && {!((units group _originalTarget) isEqualTo [_originalTarget])}
-//         && {(leader group _originalTarget) isEqualTo _originalTarget}
-//         && {build_confirmed isEqualTo 0}
-//     "
-// ];
-
-// Arsenal
-//_player addAction [
-//    ["<t color='#FFFF00'>", localize "STR_ARSENAL_ACTION", "</t><img size='2' image='res\ui_arsenal.paa'/>"] joinString "",
-//    "scripts\client\actions\open_arsenal.sqf",
-//    nil,
-//    -740,
-//    false,
-//    true,
-//    "",
-//    "
-//        isNull (objectParent _originalTarget)
-//        && {alive _originalTarget}
-//        && {
-//            _originalTarget getVariable ['KPLIB_fobDist', 99999] < 20
-//            || {_originalTarget getVariable ['KPLIB_isNearArsenal', false]}
-//            || {_originalTarget getVariable ['KPLIB_isNearMobRespawn', false]}
-//            || {_originalTarget getVariable ['KPLIB_isNearStart', false]}
-//        }
-//        && {build_confirmed isEqualTo 0}
-//    "
-//];
 
 // Build
 _player addAction [
@@ -319,52 +240,6 @@ _player addAction [
         && {build_confirmed isEqualTo 0}
     "
 ];
-
-// Logistic
-// We don't use AI logistics
-/*
-_player addAction [
-    ["<t color='#FF8000'>", localize "STR_LOGISTIC_ACTION", "</t>"] joinString "",
-    "scripts\client\commander\open_logistic.sqf",
-    nil,
-    -830,
-    false,
-    true,
-    "",
-    "
-        KP_liberation_ailogistics
-        && {_originalTarget getVariable ['KPLIB_hasDirectAccess', false]}
-        && {isNull (objectParent _originalTarget)}
-        && {alive _originalTarget}
-        && {_originalTarget getVariable ['KPLIB_fobDist', 99999] < (GRLIB_fob_range * 0.8)}
-        && {!(
-            GRLIB_all_fobs isEqualTo []
-            || KP_liberation_production isEqualTo []
-        )}
-        && {build_confirmed isEqualTo 0}
-    "
-];
-*/
-
-// Permissions
-// Replaced by new file based permisisons
-/*
-_player addAction [
-    ["<t color='#FF8000'>", localize "STR_COMMANDER_ACTION", "</t><img size='2' image='\a3\Ui_F_Curator\Data\Displays\RscDisplayCurator\modeGroups_ca.paa'/>"] joinString "",
-    "scripts\client\commander\open_permissions.sqf",
-    nil,
-    -840,
-    false,
-    true,
-    "",
-    "
-        GRLIB_permissions_param
-        && {_originalTarget getVariable ['KPLIB_hasDirectAccess', false]}
-        && {alive _originalTarget}
-        && {build_confirmed isEqualTo 0}
-    "
-];
-*/
 
 // Reassign Zeus
 if (player == ([] call KPLIB_fnc_getCommander)) then {

@@ -133,15 +133,8 @@ class CfgDebriefing {
 
 class CfgFunctions {
     #include "CfgFunctions.hpp"
-    #include "KP\KPPLM\KPPLM_functions.hpp"
-};
-
-class CfgTaskDescriptions {
-    #include "scripts\client\tutorial\CfgTaskDescriptions.hpp"
 };
 
 #include "ui\liberation_interface.hpp"
 #include "ui\liberation_notifications.hpp"
 #include "ui\mission_params.hpp"
-#include "KP\KPGUI\KPGUI_defines.hpp"
-#include "KP\KPPLM\ui\KPPLM_dialog.hpp"
