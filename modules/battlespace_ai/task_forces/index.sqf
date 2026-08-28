@@ -48,6 +48,9 @@ BATTLESPACE_TASK_FORCE_AUTOINCREMENT = 1;
 */
 BATTLESPACE_TASK_FORCE_MODELS = createHashMap;
 BATTLESPACE_TASK_FORCE_PATHS = createHashMap;
+if (isNil "BATTLESPACE_TASK_FORCE_ROUTE_SNAPSHOT") then {
+	BATTLESPACE_TASK_FORCE_ROUTE_SNAPSHOT = createHashMap;
+};
 BATTLESPACE_TASK_FORCE_MINIMUM_SIZE = 4;
 // Enable some more verbose diag logs and stuff.
 BATTLESPACE_DEBUG_INDEPTH = false;
@@ -103,7 +106,7 @@ BATTLESPACE_TASK_FORCES_LOAD = {
 				_destination,
 				_composition,
 				[],
-				["IDLE"],
+				["IDLE", 0, 0],
 				_savedSide
 			];
 
@@ -120,13 +123,57 @@ BATTLESPACE_TASK_FORCES_LOAD = {
 	
 };
 
+BATTLESPACE_TASK_FORCE_BUILD_ROUTE_SNAPSHOT = {
+	params [["_taskForceIds", [], [[]]]];
+	if (!isServer) exitWith {createHashMap};
+	private _snapshot = createHashMap;
+	private _pointLimit = 8 max floor (missionNamespace getVariable ["BATTLESPACE_ZEN_ROUTE_SNAPSHOT_POINT_LIMIT", 1024]);
+
+	{
+		private _taskForceName = _x;
+		if (_taskForceIds isNotEqualTo [] && {!(_taskForceName in _taskForceIds)}) then {continue};
+		private _route = _y;
+		if !([_route] call BATTLESPACE_PATHFIND_ROUTE_IS_VALID) then {continue};
+		private _taskForce = BATTLESPACE_TASK_FORCES get _taskForceName;
+		if (isNil "_taskForce") then {continue};
+
+		private _state = _taskForce param [5, ["IDLE", 0, 0]];
+		private _absoluteIndex = if (_state isEqualType []) then {
+			_state param [1, 0, [0]]
+		} else {
+			0
+		};
+		private _totalNodes = count _route;
+		_absoluteIndex = (0 max floor _absoluteIndex) min (_totalNodes - 1);
+		private _offset = 0;
+		if (_totalNodes > _pointLimit) then {
+			private _historyNodes = floor (_pointLimit * 0.2);
+			_offset = (0 max (_absoluteIndex - _historyNodes)) min (_totalNodes - _pointLimit);
+		};
+		private _nodes = _route select [_offset, _pointLimit];
+		_snapshot set [_taskForceName, [
+			[_taskForce] call BATTLESPACE_PATHFIND_GET_PROFILE,
+			_absoluteIndex,
+			_totalNodes,
+			_offset,
+			_nodes
+		]];
+	} forEach BATTLESPACE_TASK_FORCE_PATHS;
+	_snapshot
+};
+
 BATTLESPACE_TASK_FORCES_PING = {
+	if (!isServer || {!isRemoteExecuted}) exitWith {};
+	private _ownerId = remoteExecutedOwner;
+	private _caller = (allPlayers select {owner _x == _ownerId}) param [0, objNull];
+	if (isNull _caller || {isNull (getAssignedCuratorLogic _caller)}) exitWith {
+		diag_log format ["Battlespace rejected task-force render snapshot from owner %1", _ownerId];
+	};
 
-
-	remoteExecutedOwner publicVariableClient "BATTLESPACE_TASK_FORCES";
-	remoteExecutedOwner publicVariableClient "BATTLESPACE_TASK_FORCES_BLUFOR_CLUSTERS";
-
-	
+	_ownerId publicVariableClient "BATTLESPACE_TASK_FORCES";
+	_ownerId publicVariableClient "BATTLESPACE_TASK_FORCES_BLUFOR_CLUSTERS";
+	BATTLESPACE_TASK_FORCE_ROUTE_SNAPSHOT = [] call BATTLESPACE_TASK_FORCE_BUILD_ROUTE_SNAPSHOT;
+	_ownerId publicVariableClient "BATTLESPACE_TASK_FORCE_ROUTE_SNAPSHOT";
 };
 
 BATTLESPACE_TASK_FORCES_PONG = {
@@ -269,7 +316,7 @@ BATTLESPACE_TASK_FORCES_INIT = {
 		}
 	*/
 
-	private _newTaskForce = [_type, _originPoint, _initialTargetLocation, _composition];
+	private _newTaskForce = [_type, _originPoint, _initialTargetLocation, _composition, [], ["IDLE", 0, 0]];
 	private _newHomePoint = _homePoint;
 	if((_homePoint isEqualTo [])) then {
 		_newHomePoint = _originPoint;
@@ -288,9 +335,10 @@ BATTLESPACE_TASK_FORCE_PATH_FOUND = {
 	
 	private _taskForce = BATTLESPACE_TASK_FORCES get _taskForceName;
 	
-	if(isNil { _taskForce }) exitWith {};
-	if (!(_path isEqualType []) || {_path isEqualTo []}) exitWith {
+	if(isNil { _taskForce }) exitWith {false};
+	if !([_path] call BATTLESPACE_PATHFIND_ROUTE_IS_VALID) exitWith {
 		[_taskForceName] call BATTLESPACE_TASK_FORCE_PATH_FAILED;
+		false
 	};
 
 	_taskForce params [
@@ -299,7 +347,7 @@ BATTLESPACE_TASK_FORCE_PATH_FOUND = {
 		["_destination", []], // 2
 		"_composition", // 3
 		["_activeGroups", []], // 4
-		["_state", []], // 5
+		["_state", ["IDLE", 0, 0]], // 5
 		["_taskForceSide", east], // 6
 		["_despawnCounter", 0], // 7
 		["_activeObjects", []], // 8
@@ -308,21 +356,25 @@ BATTLESPACE_TASK_FORCE_PATH_FOUND = {
 		["_spawning", false], // 11
 		["_hpSector", nil] // 12
 	];
-	private _endNode = _path select ((count _path) - 1);
+	if !(_state isEqualType []) then {_state = ["IDLE", 0, 0]};
+	private _endNode = _path param [(count _path) - 1, []];
+	private _normalizedDestination = [_destination] call BATTLESPACE_PATHFIND_NORMALIZE_POSITION;
 
 	_state set [1, 0];
 	_state set [2, 0];
 
 	_taskForce set [5, _state];
 	// This seems to be as a result of being stuck and no valid path can be found
-	if((_endNode distance2D _destination) > 200) exitWith {
+	if (_normalizedDestination isEqualTo [] || {(_endNode distance2D _normalizedDestination) > 200}) exitWith {
 
 		[_taskForceName] call BATTLESPACE_TASK_FORCE_PATH_FAILED;
+		false
 	};
 
 
-	BATTLESPACE_TASK_FORCE_PATHS set [_taskForceName, _path];
+	BATTLESPACE_TASK_FORCE_PATHS set [_taskForceName, +_path];
 	[_taskForceName, _taskForce, _path] call BATTLESPACE_TASK_FORCE_APPLY_ROUTE_TO_ACTIVE;
+	true
 };
 
 BATTLESPACE_TASK_FORCE_PATH_FAILED = {
@@ -338,7 +390,7 @@ BATTLESPACE_TASK_FORCE_PATH_FAILED = {
 		["_destination", []], // 2
 		"_composition", // 3
 		["_activeGroups", []], // 4
-		["_state", []], // 5
+		["_state", ["IDLE", 0, 0]], // 5
 		["_taskForceSide", east], // 6
 		["_despawnCounter", 0], // 7
 		["_activeObjects", []], // 8
@@ -348,7 +400,11 @@ BATTLESPACE_TASK_FORCE_PATH_FAILED = {
 		["_hpSector", nil] // 12
 	];
 
-	_state params ["_status", ["_currentPathIndex", 0], ["_failureCounts", 0]];
+	if !(_state isEqualType []) then {_state = ["IDLE", 0, 0]};
+	private _status = _state param [0, "IDLE", [""]];
+	private _currentPathIndex = _state param [1, 0, [0]];
+	private _failureCounts = _state param [2, 0, [0]];
+	_state = [_status, _currentPathIndex, _failureCounts];
 
 	BATTLESPACE_TASK_FORCE_PATHS deleteAt _taskForceName;
 	_failureCounts = _failureCounts + 1;
@@ -745,6 +801,86 @@ if (isServer) then {
 
 };
 
+BATTLESPACE_TASK_FORCE_ROUTE_LABEL = {
+	params ["_routeData"];
+	if !(_routeData isEqualType [] && {count _routeData >= 5}) exitWith {"ROUTE PENDING"};
+	_routeData params ["_profile", "_absoluteIndex", "_totalNodes", "_offset", "_nodes"];
+	if !([_nodes] call BATTLESPACE_PATHFIND_ROUTE_IS_VALID) exitWith {"ROUTE INVALID"};
+	format [
+		"%1 ROUTE %2/%3%4",
+		_profile,
+		(1 + _absoluteIndex) min _totalNodes,
+		_totalNodes,
+		["", " (CLIPPED)"] select (_totalNodes > count _nodes)
+	]
+};
+
+BATTLESPACE_TASK_FORCE_DRAW_ROUTE_3D = {
+	params ["_currentPosition", "_routeData", ["_baseColor", [1, 0.75, 0.1, 0.85]]];
+	if !(_routeData isEqualType [] && {count _routeData >= 5}) exitWith {false};
+	_routeData params ["_profile", "_absoluteIndex", "_totalNodes", "_offset", "_nodes"];
+	if !(
+		_absoluteIndex isEqualType 0
+		&& {_totalNodes isEqualType 0}
+		&& {_offset isEqualType 0}
+		&& {[_nodes] call BATTLESPACE_PATHFIND_ROUTE_IS_VALID}
+	) exitWith {false};
+
+	private _toVisualPosition = {
+		params ["_position"];
+		private _visual = +_position;
+		if (count _visual == 2) then {_visual pushBack 0};
+		_visual set [2, 7];
+		_visual
+	};
+	private _futureColor = [
+		_baseColor param [0, 1],
+		_baseColor param [1, 0.75],
+		_baseColor param [2, 0.1],
+		_baseColor param [3, 0.85]
+	];
+	private _traversedColor = [
+		(_futureColor select 0) * 0.4,
+		(_futureColor select 1) * 0.4,
+		(_futureColor select 2) * 0.4,
+		0.3
+	];
+
+	if (count _nodes > 1) then {
+		for "_i" from 0 to (count _nodes - 2) do {
+			private _segmentEndIndex = _offset + _i + 1;
+			private _segmentColor = [_futureColor, _traversedColor] select (_segmentEndIndex < _absoluteIndex);
+			drawLine3D [
+				[(_nodes select _i)] call _toVisualPosition,
+				[(_nodes select (_i + 1))] call _toVisualPosition,
+				_segmentColor
+			];
+		};
+	};
+
+	private _localIndex = _absoluteIndex - _offset;
+	if (
+		_localIndex >= 0
+		&& {_localIndex < count _nodes}
+		&& {([_currentPosition] call BATTLESPACE_PATHFIND_NORMALIZE_POSITION) isNotEqualTo []}
+	) then {
+		drawLine3D [
+			[_currentPosition] call _toVisualPosition,
+			[(_nodes select _localIndex)] call _toVisualPosition,
+			[1, 1, 0.2, 1]
+		];
+	};
+
+	private _nodeStride = 1 max ceil ((count _nodes) / 64);
+	{
+		if ((_forEachIndex mod _nodeStride) == 0 || {_forEachIndex == _localIndex} || {_forEachIndex == count _nodes - 1}) then {
+			private _nodeColor = [[0.95, 0.95, 0.95, 0.65], [1, 1, 0.2, 1]] select (_forEachIndex == _localIndex);
+			drawIcon3D ["\A3\ui_f\data\map\markers\military\dot_CA.paa", _nodeColor, [_x] call _toVisualPosition, 0.22, 0.22, 0, "", 0, 0.02, "TahomaB"];
+		};
+	} forEach _nodes;
+	true
+};
+
 RENDER_BATTLESPACE_AI = false;
 RENDER_BATTLESPACE_AI_PFH = {
 
@@ -820,6 +956,8 @@ RENDER_BATTLESPACE_AI_PFH = {
 		};
 
 		private _pos = _simulatedLocation vectorAdd [0,0, 5 + _ind * 0];
+		private _routeData = BATTLESPACE_TASK_FORCE_ROUTE_SNAPSHOT getOrDefault [_x, []];
+		[_simulatedLocation, _routeData, _color] call BATTLESPACE_TASK_FORCE_DRAW_ROUTE_3D;
 		private _text = "";
 		private _mousePos = screenToWorld getMousePosition;
 		private _scale = 0.5;
@@ -830,7 +968,7 @@ RENDER_BATTLESPACE_AI_PFH = {
 			_scale = 1 min _scale;
 
 			private _textScale = 0.03 * _scale;
-			_text = format ["%1 %2 | MANPWR: %3 | VICS: %4", _type, _x, _manpower, count _vehicles, _currentPathIndex];
+			_text = format ["%1 %2 | MANPWR: %3 | VICS: %4 | %5", _type, _x, _manpower, count _vehicles, [_routeData] call BATTLESPACE_TASK_FORCE_ROUTE_LABEL];
 
 			if((count _activeObjects) > 0) then {
 				{
@@ -844,8 +982,6 @@ RENDER_BATTLESPACE_AI_PFH = {
 			if(!(_targetLocation isEqualTo [])) then {
 				if(_simulatedLocation distance2D _targetLocation > 25) then {
 					drawIcon3D ["\A3\ui_f\data\map\groupicons\selector_selectedEnemy_ca.paa", _color, _targetLocation, 1, 1, 0, format ["%1 DESTINATION", _x], 1, _textScale, "TahomaB"];
-					
-					drawLine3D [_pos, _targetLocation, [1,1,0,1]];
 				};
 			};
 		};

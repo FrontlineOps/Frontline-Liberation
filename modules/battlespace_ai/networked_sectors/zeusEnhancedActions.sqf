@@ -56,10 +56,10 @@ private _rootAction = ["NetworkedSectors", "Networked Sectors", "", {}, { true }
 
 
 
-private _action = ["ToggleRoadRender", "Toggle Path Rendering", ["", [1,1,1,1]], _toggleRoadRendering, { true }] call zen_context_menu_fnc_createAction;
+private _action = ["ToggleRoadRender", "Toggle Sector-Link A* Path", ["", [1,1,1,1]], _toggleRoadRendering, { true }] call zen_context_menu_fnc_createAction;
 [_action, ["NetworkedSectors"], 0] call zen_context_menu_fnc_addAction;
 
-_action = ["ToggleRoadEvaluations", "Toggle In-depth Path Rendering", ["", [1,1,1,1]], _toggleRoadEvaluations, { true }] call zen_context_menu_fnc_createAction;
+_action = ["ToggleRoadEvaluations", "Toggle Sector-Link A* Evaluations", ["", [1,1,1,1]], _toggleRoadEvaluations, { true }] call zen_context_menu_fnc_createAction;
 [_action, ["NetworkedSectors"], 0] call zen_context_menu_fnc_addAction;
 
 _action = ["ToggleNetworkRender", "Toggle Network Rendering", ["", [1,1,1,1]], _toggleNetworkRendering, { true }] call zen_context_menu_fnc_createAction;

@@ -145,8 +145,6 @@
 					["_hpSector", nil] // 12
 				];
 				
-				_state params ["_status", ["_currentPathIndex", 0]];
-
 				// Distance check to destination
 
 				if((_currentLoc distance2D _destination) <= 25) exitWith {
@@ -231,7 +229,6 @@
 				[_taskForceName, _taskForce] call BATTLESPACE_TASK_FORCE_MOVE_SIMULATED_GROUP;
 
 				_taskForce set [4, _activeGroups];
-				_taskForce set [5, _state];
 
 				false
 			}

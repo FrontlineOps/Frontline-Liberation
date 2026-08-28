@@ -16,16 +16,57 @@ BATTLESPACE_TASK_FORCE_MOVE_SIMULATED_GROUP = {
 					["_hpSector", nil] // 12
 				];
 
-	_state params ["_status", ["_currentPathIndex", 0]];
+	if !(_state isEqualType []) then {
+		_state = ["IDLE", 0, 0];
+		_taskForce set [5, _state];
+	};
+	private _status = _state param [0, "IDLE", [""]];
+	private _currentPathIndex = _state param [1, 0, [0]];
+	private _failureCounts = _state param [2, 0, [0]];
+	_state set [0, _status];
+	_state set [1, _currentPathIndex];
+	_state set [2, _failureCounts];
 
 	private _curPath = BATTLESPACE_TASK_FORCE_PATHS getOrDefault [_taskForceName, []];
+	private _routeNodeCount = if (_curPath isEqualType []) then {count _curPath} else {-1};
+	private _queueReplacementRoute = {
+		params ["_reason"];
+		BATTLESPACE_TASK_FORCE_PATHS deleteAt _taskForceName;
+		_state set [1, 0];
+		_taskForce set [5, _state];
+		diag_log format [
+			"[BATTLESPACE][ROUTE][ERROR] Task Force %1 rejected route state: %2 | index=%3 | nodes=%4 | current=%5 | destination=%6. Replacement queued.",
+			_taskForceName,
+			_reason,
+			_currentPathIndex,
+			_routeNodeCount,
+			_currentLoc,
+			_destination
+		];
+		[_taskForceName, _currentLoc, _destination] call QUEUE_PATHFIND_REQUEST;
+		false
+	};
 
-	if ((_curPath isEqualTo [])) exitWith {
+	if !(_curPath isEqualType []) exitWith {
+		["route is not an array"] call _queueReplacementRoute
+	};
+	if (_curPath isEqualTo []) exitWith {
 
 		_state set [1, 0];
+		_taskForce set [5, _state];
 		[_taskForceName, _currentLoc, _destination] call QUEUE_PATHFIND_REQUEST;
 		false
 		
+	};
+	if !(_currentPathIndex isEqualType 0) exitWith {
+		["non-numeric path index"] call _queueReplacementRoute
+	};
+	_currentPathIndex = floor _currentPathIndex;
+	if (_currentPathIndex < 0 || {_currentPathIndex >= count _curPath}) exitWith {
+		[format ["path index %1 outside %2 nodes", _currentPathIndex, count _curPath]] call _queueReplacementRoute
+	};
+	if !([_curPath] call BATTLESPACE_PATHFIND_ROUTE_IS_VALID) exitWith {
+		["route contains a malformed node"] call _queueReplacementRoute
 	};
 	// Have a path, travel.
 
@@ -57,21 +98,21 @@ BATTLESPACE_TASK_FORCE_MOVE_SIMULATED_GROUP = {
 	private _iterDist = _travelSpeed / _iterations;
 
 	private _newPos = _currentLoc;
-	private _nextNode = _curPath select _currentPathIndex;
+	private _nextNode = _curPath param [_currentPathIndex, []];
 	for "_i" from 1 to _iterations do {
 
 		
 		
-		while { (!(isNil { _nextNode })) && !(_nextNode isEqualTo []) && ((_newPos distance2D _nextNode) < 35) && _currentPathIndex < (count _curPath - 1) } do {
+		while { !(_nextNode isEqualTo []) && {(_newPos distance2D _nextNode) < 35} && {_currentPathIndex < (count _curPath - 1)} } do {
 			if(_currentPathIndex < (count _curPath - 1)) then {
 				_currentPathIndex = _currentPathIndex + 1;
-				_nextNode = _curPath select _currentPathIndex;
+				_nextNode = _curPath param [_currentPathIndex, []];
 			};
 		};
 
 		_state set [1, _currentPathIndex];
 
-		if((!(isNil { _nextNode })) && !(_nextNode isEqualTo [])) then {
+		if !(_nextNode isEqualTo []) then {
 			private _remainingDistance = _newPos distance2D _nextNode;
 			if (_remainingDistance <= _iterDist) then {
 				_newPos = +_nextNode;

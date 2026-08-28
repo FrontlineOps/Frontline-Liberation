@@ -106,6 +106,10 @@ BATTLESPACE_TASK_FORCE_GET_WAYPOINT_ROUTE = {
 		_route = +(BATTLESPACE_TASK_FORCE_PATHS getOrDefault [_taskForceName, []]);
 	};
 	if (_route isEqualTo []) exitWith {[[], _taskForceName]};
+	if !([_route] call BATTLESPACE_PATHFIND_ROUTE_IS_VALID) exitWith {
+		diag_log format ["Task Force %1 withheld an invalid route from active-group waypoints", _taskForceName];
+		[[], _taskForceName]
+	};
 
 	private _startIndex = 0;
 	if (_taskForceName != "") then {

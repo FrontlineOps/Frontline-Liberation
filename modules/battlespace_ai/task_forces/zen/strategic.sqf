@@ -94,13 +94,18 @@ BATTLESPACE_ZEN_STRATEGIC_OVERLAY_RENDER = {
 			format ["%1 | STOCK %2%% | PRESS %3", _sector, round (100 * _fillRatio), _pressure], 1, 0.025, "TahomaB"];
 	} forEach _sectors;
 	{
-		_x params ["_id", "_kind", "_phase", "_current", "_destination"];
+		_x params ["_id", "_kind", "_phase", "_current", "_destination", ["_routeData", []]];
 		if (_current isEqualTo [] || {_destination isEqualTo []}) then {continue};
-		drawLine3D [_current, _destination, [1, 0.75, 0.1, 0.8]];
+		[_current, _routeData, [1, 0.75, 0.1, 0.8]] call BATTLESPACE_TASK_FORCE_DRAW_ROUTE_3D;
 		private _labelPosition = +_current;
 		_labelPosition set [2, 50];
 		drawIcon3D ["\A3\ui_f\data\map\groupicons\waypoint.paa", [1, 0.75, 0.1, 0.9], _labelPosition, 0.6, 0.6, 0,
-			format ["%1 %2 / %3", _kind, _id, _phase], 1, 0.025, "TahomaB"];
+			format ["%1 %2 / %3 | %4", _kind, _id, _phase, [_routeData] call BATTLESPACE_TASK_FORCE_ROUTE_LABEL], 1, 0.025, "TahomaB"];
+		private _destinationPosition = +_destination;
+		if (count _destinationPosition == 2) then {_destinationPosition pushBack 0};
+		_destinationPosition set [2, 35];
+		drawIcon3D ["\A3\ui_f\data\map\groupicons\selector_selectedEnemy_ca.paa", [1, 0.75, 0.1, 0.9], _destinationPosition, 0.6, 0.6, 0,
+			format ["%1 DESTINATION", _id], 1, 0.022, "TahomaB"];
 	} forEach _operations;
 };
 
@@ -155,7 +160,7 @@ private _balance = ["battlespaceBalanceReport", "Show Balance Report", ["", [1,1
 }, {true}] call zen_context_menu_fnc_createAction;
 [_balance, ["battlespaceAI"], 0] call zen_context_menu_fnc_addAction;
 
-private _overlay = ["battlespaceStrategicOverlay", "Toggle Strategic Overlay", ["", [1,1,1,1]], {
+private _overlay = ["battlespaceStrategicOverlay", "Toggle Strategic Overlay + Live Routes", ["", [1,1,1,1]], {
 	[] call BATTLESPACE_ZEN_TOGGLE_STRATEGIC_OVERLAY;
 }, {true}] call zen_context_menu_fnc_createAction;
 [_overlay, ["battlespaceAI"], 0] call zen_context_menu_fnc_addAction;

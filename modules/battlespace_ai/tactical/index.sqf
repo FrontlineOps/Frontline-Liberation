@@ -651,10 +651,18 @@ BATTLESPACE_ZEN_SERVER_REQUEST = {
                     _sectors pushBack [_x, getMarkerPos _x, _y getOrDefault ["owner", ""], if (_capacity > 0) then {_amount / _capacity} else {0}, _y getOrDefault ["casualtyPressure", 0]];
                 } forEach BATTLESPACE_SECTOR_STATES;
                 private _operations = [];
+                private _routeSnapshot = [(keys BATTLESPACE_STRATEGIC_OPERATIONS)] call BATTLESPACE_TASK_FORCE_BUILD_ROUTE_SNAPSHOT;
                 {
                     private _taskForce = BATTLESPACE_TASK_FORCES get _x;
                     if (!isNil "_taskForce") then {
-                        _operations pushBack [_x, _y getOrDefault ["kind", ""], _y getOrDefault ["phase", ""], _taskForce param [1, []], _taskForce param [2, []]];
+                        _operations pushBack [
+                            _x,
+                            _y getOrDefault ["kind", ""],
+                            _y getOrDefault ["phase", ""],
+                            _taskForce param [1, []],
+                            _taskForce param [2, []],
+                            _routeSnapshot getOrDefault [_x, []]
+                        ];
                     };
                 } forEach BATTLESPACE_STRATEGIC_OPERATIONS;
                 _payload = [_sectors, _operations];

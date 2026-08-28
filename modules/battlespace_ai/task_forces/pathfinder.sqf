@@ -31,6 +31,19 @@ BATTLESPACE_PATHFIND_NORMALIZE_POSITION = {
     [_position select 0, _position select 1, 0]
 };
 
+BATTLESPACE_PATHFIND_ROUTE_IS_VALID = {
+    params ["_route"];
+    _route isEqualType []
+    && {_route isNotEqualTo []}
+    && {
+        _route findIf {
+            !(_x isEqualType [])
+            || {!((count _x) in [2, 3])}
+            || {_x findIf {!(_x isEqualType 0)} >= 0}
+        } < 0
+    }
+};
+
 BATTLESPACE_PATHFIND_GET_PROFILE = {
     params ["_taskForce"];
     private _composition = _taskForce param [3, createHashMap];
@@ -131,6 +144,7 @@ BATTLESPACE_PATHFIND_BUILD_SNAPSHOTS = {
     private _congestion = createHashMap;
     {
         if (_x == _taskForceName) then {continue};
+        if !([_y] call BATTLESPACE_PATHFIND_ROUTE_IS_VALID) then {continue};
         {
             private _index = [_x] call BATTLESPACE_PATHFIND_GRID_INDEX;
             _congestion set [[_index] call BATTLESPACE_PATHFIND_GRID_KEY, true];
@@ -154,8 +168,7 @@ BATTLESPACE_PATHFIND_GET_CACHED_ROUTE = {
     if (
         !(_expiresAt isEqualType 0)
         || {CBA_missionTime >= _expiresAt}
-        || {!(_route isEqualType [])}
-        || {_route isEqualTo []}
+        || {!([_route] call BATTLESPACE_PATHFIND_ROUTE_IS_VALID)}
     ) exitWith {
         BATTLESPACE_PATHFIND_ROUTE_CACHE deleteAt _cacheKey;
         BATTLESPACE_PATHFIND_ROUTE_CACHE_ORDER = BATTLESPACE_PATHFIND_ROUTE_CACHE_ORDER - [_cacheKey];
@@ -170,6 +183,7 @@ BATTLESPACE_PATHFIND_GET_CACHED_ROUTE = {
 
 BATTLESPACE_PATHFIND_CACHE_ROUTE = {
     params ["_cacheKey", "_route"];
+    if !([_route] call BATTLESPACE_PATHFIND_ROUTE_IS_VALID) exitWith {false};
     private _ttl = missionNamespace getVariable ["BATTLESPACE_PATHFIND_CACHE_TTL", 300];
     BATTLESPACE_PATHFIND_ROUTE_CACHE set [_cacheKey, [CBA_missionTime + _ttl, +_route]];
     BATTLESPACE_PATHFIND_ROUTE_CACHE_ORDER = BATTLESPACE_PATHFIND_ROUTE_CACHE_ORDER - [_cacheKey];
@@ -180,6 +194,7 @@ BATTLESPACE_PATHFIND_CACHE_ROUTE = {
         private _oldest = BATTLESPACE_PATHFIND_ROUTE_CACHE_ORDER deleteAt 0;
         BATTLESPACE_PATHFIND_ROUTE_CACHE deleteAt _oldest;
     };
+    true
 };
 
 BATTLESPACE_PATHFIND_RECONSTRUCT_GRID = {
@@ -714,10 +729,12 @@ FULFILL_PATHFIND_REQUESTS = {
                 && {!isNil {BATTLESPACE_TASK_FORCES get _taskForceName}};
             if (_isCurrent && {_status == "FOUND"}) then {
                 private _route = _job getOrDefault ["result", []];
-                if (_route isNotEqualTo []) then {
-                    [_job get "cacheKey", _route] call BATTLESPACE_PATHFIND_CACHE_ROUTE;
-                    [_taskForceName, _route] call BATTLESPACE_TASK_FORCE_PATH_FOUND;
+                if ([_route] call BATTLESPACE_PATHFIND_ROUTE_IS_VALID) then {
+                    if ([_taskForceName, _route] call BATTLESPACE_TASK_FORCE_PATH_FOUND) then {
+                        [_job get "cacheKey", _route] call BATTLESPACE_PATHFIND_CACHE_ROUTE;
+                    };
                 } else {
+                    diag_log format ["Battlespace pathfinder produced an invalid route for %1; treating the job as failed", _taskForceName];
                     [_taskForceName] call BATTLESPACE_TASK_FORCE_PATH_FAILED;
                 };
             };

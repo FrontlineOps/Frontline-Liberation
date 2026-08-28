@@ -13,5 +13,5 @@ private _statement = {
 };
 
 
-private _action = ["renderBattlespaceAI", "Toggle Battlespace AI Rendering", ["", [1,1,1,1]], _statement, { true }] call zen_context_menu_fnc_createAction;
+private _action = ["renderBattlespaceAI", "Toggle Task Forces + Live Routes", ["", [1,1,1,1]], _statement, { true }] call zen_context_menu_fnc_createAction;
 [_action, ["battlespaceAI"], 0] call zen_context_menu_fnc_addAction;
