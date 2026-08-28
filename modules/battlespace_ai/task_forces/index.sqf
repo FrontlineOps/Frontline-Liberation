@@ -56,7 +56,6 @@ if (isNil "BATTLESPACE_TASK_FORCE_SPAWN_RESERVATIONS") then {
 };
 
 BATTLESPACE_TASK_FORCE_SAVE_KEY = format ["BATTLESPACE_TASK_FORCES_%1", toUpper worldName];
-BATTLESPACE_TASK_FORCE_SAVE_VERSION = 2;
 
 BATTLESPACE_TASK_FORCE_REGISTER_MODEL = {
 	params ["_modelName", "_modelDefinition"];
@@ -72,9 +71,8 @@ BATTLESPACE_TASK_FORCES_LOAD = {
 
 	private _saveValid = !isNil "_save"
 		&& {typeName _save == "HASHMAP"}
-		&& {(_save getOrDefault ["Version", -1]) == BATTLESPACE_TASK_FORCE_SAVE_VERSION}
-		&& {!isNil { _save get "AI" }}
-		&& {!isNil { _save get "TaskForces" }};
+		&& {(_save getOrDefault ["AI", -1]) isEqualType 0}
+		&& {typeName (_save getOrDefault ["TaskForces", objNull]) == "HASHMAP"};
 
 	if(_saveValid) then {
 		diag_log format ["  Save valid"];
@@ -210,7 +208,6 @@ BATTLESPACE_TASK_FORCES_SAVE = {
 
 	_save set ["TaskForces", _saveData];
 	_save set ["AI", BATTLESPACE_TASK_FORCE_AUTOINCREMENT];
-	_save set ["Version", BATTLESPACE_TASK_FORCE_SAVE_VERSION];
 
 	profileNamespace setVariable [BATTLESPACE_TASK_FORCE_SAVE_KEY, _save];
 	if (_flush) then {saveProfileNamespace};

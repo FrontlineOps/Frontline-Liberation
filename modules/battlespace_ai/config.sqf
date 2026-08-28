@@ -857,6 +857,24 @@ BATTLESPACE_SECTOR_STATES = createHashMap;
 	} forEach _resourceDefs;
 } forEach _combatPatrolThresholds;
 
+// Aircraft are paid strategic assets for funded rotary defenders. Current
+// reinforcement, battlegroup, and patrol constructors are ground-only.
+private _aircraftThresholdPolicy = createHashMapFromArray [
+	["MaximumCapacity", 2],
+	["ResupplySend", 0.5],
+	["SendReinforcements", -1],
+	["Resupply", 0.5],
+	["EmergencyResupply", 0.5],
+	["Battlegroup", -1],
+	["Patrol", -1]
+];
+{
+	private _sectorType = _x;
+	{
+		[_sectorType, _x, "aircraft", _y] call BATTLESPACE_SET_THRESHOLD;
+	} forEach _aircraftThresholdPolicy;
+} forEach ["military", "bigtown", "capture", "tower", "factory"];
+
 
 // SAMS
 BATTLESPACE_SAM_SITE_LIMIT = 4;

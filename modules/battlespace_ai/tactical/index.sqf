@@ -18,11 +18,12 @@ BATTLESPACE_STRATEGIC_GET_RESOURCE_FOR_CLASS = {
     private _resource = "";
     {
         if (_class in (BATTLESPACE_RESOURCE_CLASS_POOLS getOrDefault [_x, []])) exitWith {_resource = _x};
-    } forEach ["rocket_artillery", "mortars", "howitzers", "spaag", "tanks", "ifv", "apc", "truck", "car"];
+    } forEach ["aircraft", "rocket_artillery", "mortars", "howitzers", "spaag", "tanks", "ifv", "apc", "truck", "car"];
     if (_resource != "") exitWith {_resource};
 
     private _categories = [_class] call KPLIB_fnc_classifyFactionVehicle;
     private _text = toLower format ["%1 %2", _class, getText (configFile >> "CfgVehicles" >> _class >> "displayName")];
+    if (_class isKindOf "Air") exitWith {"aircraft"};
     if ("artillery" in _categories) exitWith {
         if ((_text find "mortar") >= 0) then {"mortars"} else {
             if ((_text find "rocket") >= 0 || {(_text find "mlrs") >= 0} || {(_text find "grad") >= 0}) then {"rocket_artillery"} else {"howitzers"}
@@ -408,8 +409,12 @@ BATTLESPACE_STRATEGIC_BUILD_INTEGRITY_AUDIT = {
         };
     } forEach BATTLESPACE_TASK_FORCES;
     private _saved = profileNamespace getVariable [BATTLESPACE_LOGISTICS_SAVE_KEY, createHashMap];
-    if (typeName _saved != "HASHMAP" || {(_saved getOrDefault ["version", -1]) != BATTLESPACE_LOGISTICS_SAVE_VERSION}) then {
-        _warnings pushBack "No current-format persisted strategic snapshot exists";
+    if (
+        typeName _saved != "HASHMAP"
+        || {typeName (_saved getOrDefault ["sectors", objNull]) != "HASHMAP"}
+        || {typeName (_saved getOrDefault ["operations", objNull]) != "HASHMAP"}
+    ) then {
+        _warnings pushBack "No structurally valid persisted strategic snapshot exists";
     };
     [_errors, _warnings, count BATTLESPACE_SECTOR_STATES, count BATTLESPACE_STRATEGIC_OPERATIONS]
 };
@@ -497,8 +502,12 @@ BATTLESPACE_STRATEGIC_RUN_SELF_TEST = {
     if !([] call BATTLESPACE_LOGISTICS_SAVE) then {_errors pushBack "Strategic save call failed"};
     private _strategicSave = profileNamespace getVariable [BATTLESPACE_LOGISTICS_SAVE_KEY, createHashMap];
     private _taskForceSave = profileNamespace getVariable [BATTLESPACE_TASK_FORCE_SAVE_KEY, createHashMap];
-    if (typeName _strategicSave != "HASHMAP" || {(_strategicSave getOrDefault ["version", -1]) != BATTLESPACE_LOGISTICS_SAVE_VERSION}) then {
-        _errors pushBack "Current-format strategic snapshot was not written";
+    if (
+        typeName _strategicSave != "HASHMAP"
+        || {typeName (_strategicSave getOrDefault ["sectors", objNull]) != "HASHMAP"}
+        || {typeName (_strategicSave getOrDefault ["operations", objNull]) != "HASHMAP"}
+    ) then {
+        _errors pushBack "Structurally valid strategic snapshot was not written";
     } else {
         private _savedSectors = _strategicSave getOrDefault ["sectors", createHashMap];
         private _savedOperations = _strategicSave getOrDefault ["operations", createHashMap];
@@ -509,8 +518,12 @@ BATTLESPACE_STRATEGIC_RUN_SELF_TEST = {
             if (isNil {_savedOperations get _x}) then {_errors pushBack format ["Operation %1 was not persisted", _x]};
         } forEach BATTLESPACE_STRATEGIC_OPERATIONS;
     };
-    if (typeName _taskForceSave != "HASHMAP" || {(_taskForceSave getOrDefault ["Version", -1]) != BATTLESPACE_TASK_FORCE_SAVE_VERSION}) then {
-        _errors pushBack "Current-format task-force snapshot was not written";
+    if (
+        typeName _taskForceSave != "HASHMAP"
+        || {!((_taskForceSave getOrDefault ["AI", -1]) isEqualType 0)}
+        || {typeName (_taskForceSave getOrDefault ["TaskForces", objNull]) != "HASHMAP"}
+    ) then {
+        _errors pushBack "Structurally valid task-force snapshot was not written";
     } else {
         private _savedTaskForces = _taskForceSave getOrDefault ["TaskForces", createHashMap];
         {

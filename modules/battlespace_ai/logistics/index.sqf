@@ -6,7 +6,6 @@
     settlement.
 */
 
-BATTLESPACE_LOGISTICS_SAVE_VERSION = 2;
 BATTLESPACE_LOGISTICS_SAVE_KEY = format ["Battlespace/Logistics/%1", toUpper worldName];
 BATTLESPACE_RESOURCE_TYPES = [
     "manpower",
@@ -14,6 +13,7 @@ BATTLESPACE_RESOURCE_TYPES = [
     "strategic_missiles",
     "tactical_sam",
     "tactical_missiles",
+    "aircraft",
     "tanks",
     "rocket_artillery",
     "rockets",
@@ -302,7 +302,6 @@ BATTLESPACE_LOGISTICS_SAVE = {
     } forEach BATTLESPACE_STRATEGIC_OPERATIONS;
 
     profileNamespace setVariable [BATTLESPACE_LOGISTICS_SAVE_KEY, createHashMapFromArray [
-        ["version", BATTLESPACE_LOGISTICS_SAVE_VERSION],
         ["sectors", _savedSectors],
         ["operations", _savedOperations]
     ]];
@@ -323,10 +322,9 @@ BATTLESPACE_LOGISTICS_LOAD = {
     };
 
     private _save = profileNamespace getVariable [BATTLESPACE_LOGISTICS_SAVE_KEY, createHashMap];
-    private _saveVersion = if (typeName _save == "HASHMAP") then {_save getOrDefault ["version", -1]} else {-1};
     private _saveValid = typeName _save == "HASHMAP"
-        && {_saveVersion == BATTLESPACE_LOGISTICS_SAVE_VERSION}
-        && {typeName (_save getOrDefault ["sectors", objNull]) == "HASHMAP"};
+        && {typeName (_save getOrDefault ["sectors", objNull]) == "HASHMAP"}
+        && {typeName (_save getOrDefault ["operations", objNull]) == "HASHMAP"};
     private _savedSectors = if (_saveValid) then {_save get "sectors"} else {createHashMap};
     private _initialFill = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_INITIAL_STOCK_RATIO", 0.75];
 
@@ -420,6 +418,7 @@ BATTLESPACE_STRATEGIC_BUILD_CLASS_POOLS = {
     };
 
     private _all = [(_opfor getOrDefault ["allVehicles", []])] call _validClasses;
+    private _aircraft = _all select {_x isKindOf "Air"};
     private _heavy = [(_opfor getOrDefault ["heavy", []])] call _validClasses;
     private _transport = [(_opfor getOrDefault ["transport", []])] call _validClasses;
     private _aa = [(_opfor getOrDefault ["aa", []])] call _validClasses;
@@ -458,6 +457,7 @@ BATTLESPACE_STRATEGIC_BUILD_CLASS_POOLS = {
     BATTLESPACE_RESOURCE_CLASS_POOLS = createHashMapFromArray [
         ["strategic_sam", +_aa],
         ["tactical_sam", +_aa],
+        ["aircraft", _aircraft],
         ["tanks", _tanks],
         ["rocket_artillery", _rocketArtillery],
         ["howitzers", _howitzers],
