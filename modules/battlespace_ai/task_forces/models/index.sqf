@@ -23,9 +23,7 @@ BATTLESPACE_TASK_FORCE_MOVE_SIMULATED_GROUP = {
 	if ((_curPath isEqualTo [])) exitWith {
 
 		_state set [1, 0];
-
-		// [_taskForceName, _currentLoc, _destination] call QUEUE_PATHFIND_REQUEST;
-		BATTLESPACE_TASK_FORCE_PATHS set [_taskForceName, [_destination]];
+		[_taskForceName, _currentLoc, _destination] call QUEUE_PATHFIND_REQUEST;
 		false
 		
 	};
@@ -58,8 +56,8 @@ BATTLESPACE_TASK_FORCE_MOVE_SIMULATED_GROUP = {
 
 	private _iterDist = _travelSpeed / _iterations;
 
-	_newPos = _currentLoc;
-	_nextNode = _curPath select _currentPathIndex;
+	private _newPos = _currentLoc;
+	private _nextNode = _curPath select _currentPathIndex;
 	for "_i" from 1 to _iterations do {
 
 		
@@ -74,12 +72,13 @@ BATTLESPACE_TASK_FORCE_MOVE_SIMULATED_GROUP = {
 		_state set [1, _currentPathIndex];
 
 		if((!(isNil { _nextNode })) && !(_nextNode isEqualTo [])) then {
-
-			private _dirUnitVec = _newPos vectorFromTo _nextNode;
-			
-			
-
-			_newPos = _newPos vectorAdd (_dirUnitVec vectorMultiply _iterDist);
+			private _remainingDistance = _newPos distance2D _nextNode;
+			if (_remainingDistance <= _iterDist) then {
+				_newPos = +_nextNode;
+			} else {
+				private _dirUnitVec = _newPos vectorFromTo _nextNode;
+				_newPos = _newPos vectorAdd (_dirUnitVec vectorMultiply _iterDist);
+			};
 
 			_newPos set [2, 0];
 
@@ -120,6 +119,21 @@ BATTLESPACE_TASK_FORCE_DEFAULT_FINISH_SPAWN = {
 			// observe an unlocked task force with no active objects and spawn it again.
 			_registeredTaskForce set [4, _activeGroups];
 			_registeredTaskForce set [8, _activeObjects];
+			private _route = BATTLESPACE_TASK_FORCE_PATHS getOrDefault [_taskForceName, []];
+			if (_route isNotEqualTo []) then {
+				[_taskForceName, _registeredTaskForce, _route] call BATTLESPACE_TASK_FORCE_APPLY_ROUTE_TO_ACTIVE;
+			} else {
+				private _currentLocation = _registeredTaskForce param [1, []];
+				private _destination = _registeredTaskForce param [2, []];
+				private _type = _registeredTaskForce param [0, ""];
+				if (
+					_type in ["Battlegroup", "Convoy", "Defensive Patrol", "Reconnaissance Patrol", "Rotary Patrol", "Civilians"]
+					&& {_currentLocation isNotEqualTo []}
+					&& {_destination isNotEqualTo []}
+				) then {
+					[_taskForceName, _currentLocation, _destination] call QUEUE_PATHFIND_REQUEST;
+				};
+			};
 		};
 		_registeredTaskForce set [11, false];
 		BATTLESPACE_TASK_FORCES set [_taskForceName, _registeredTaskForce];
@@ -313,6 +327,8 @@ BATTLESPACE_TASK_FORCE_DEFAULT_TRY_SPAWN = {
 		// _veh addEventHandler ["Killed", { ["VEHICLE", _this] call BATTLESPACE_TASK_FORCE_OBJECT_KILLED }];
 		private _vehGrp = group _veh;
 		private _infGrp = createGroup [_side, true];
+		_vehGrp setVariable ["TASKFORCEID", _taskForceName];
+		_infGrp setVariable ["TASKFORCEID", _taskForceName];
 		
 		// If remaining manpower is >= 2, try to spawn passengers if the vehicle supports it
 		// Minimum squad size is SL and medic
@@ -376,6 +392,9 @@ BATTLESPACE_TASK_FORCE_DEFAULT_TRY_SPAWN = {
 		// Attack destination
 		if(!(_destination isEqualTo [])) then {
 			if((count (units _infGrp)) > 0) then {
+				_vehGrp setVariable ["BATTLESPACE_TRANSPORT_VEHICLE", _veh];
+				_vehGrp setVariable ["BATTLESPACE_TRANSPORT_CARGO_GROUP", _infGrp];
+				_infGrp setVariable ["BATTLESPACE_TRANSPORT_PARENT_GROUP", _vehGrp];
 				[_veh, _vehGrp, _infGrp, _destination, false] spawn BATTLESPACE_TASK_FORCE_TRANSPORT_AI;
 			} else {
 				[_vehGrp, _destination, _speed, _ambush, true] spawn BATTLESPACE_TASK_FORCE_ADD_WAYPOINTS;
@@ -398,6 +417,7 @@ BATTLESPACE_TASK_FORCE_DEFAULT_TRY_SPAWN = {
 		private _infantrySquadCount = ceil (_remainingManpower / _maxSquadSize);
 		for "_i" from 1 to _infantrySquadCount do {
 			private _infGrp = createGroup [_side, true];
+			_infGrp setVariable ["TASKFORCEID", _taskForceName];
         	private _squadSize = _maxSquadSize min (_remainingManpower);
 			private _housePos = [];
 			private _garrisoned = false;

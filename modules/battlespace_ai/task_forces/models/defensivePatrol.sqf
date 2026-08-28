@@ -73,10 +73,6 @@
 						private _success = [_taskForceName, _taskForce, false, false] call BATTLESPACE_TASK_FORCE_DEFAULT_TRY_SPAWN;
 
 						
-						if(_success) then {
-							// (BATTLESPACE_TASK_FORCES get _taskForceName) set [6, []];
-							BATTLESPACE_TASK_FORCE_PATHS deleteAt _taskForceName;
-						};
 						[_taskForceName, _taskForce, _success] call BATTLESPACE_TASK_FORCE_DEFAULT_FINISH_SPAWN;
 						//publicVariable "BATTLESPACE_TASK_FORCES";
 						
@@ -215,17 +211,8 @@
 						};
 						if(!(surfaceIsWater _newDestination)) then {
 							_taskForce set [2, _newDestination];
-
 							BATTLESPACE_TASK_FORCE_PATHS deleteAt _taskForceName;
-						};
-						// _taskForce set [6, []];
-
-						if((count _activeGroups > 0)) then {
-							// Generate new waypoints.
-							{
-								private _hasVehicle = [_x] call BATTLESPACE_TASK_FORCE_HAS_VEHICLES;
-								[_x, _newDestination, "LIMITED", false, _hasVehicle] call BATTLESPACE_TASK_FORCE_ADD_WAYPOINTS;
-							} forEach _activeGroups;
+							[_taskForceName, _currentLoc, _newDestination] call QUEUE_PATHFIND_REQUEST;
 						};
 					};
 

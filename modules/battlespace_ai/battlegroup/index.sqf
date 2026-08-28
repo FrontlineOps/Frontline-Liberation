@@ -78,12 +78,7 @@ BATTLESPACE_BATTLEGROUP_SET_DESTINATION = {
     BATTLESPACE_TASK_FORCE_PATHS deleteAt _taskForceId;
     BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceId, _operation];
     BATTLESPACE_TASK_FORCES set [_taskForceId, _taskForce];
-
-    {
-        if (isNull _x) then { continue };
-        private _hasVehicles = [_x] call BATTLESPACE_TASK_FORCE_HAS_VEHICLES;
-        [_x, _destination, "FULL", false, _hasVehicles] spawn BATTLESPACE_TASK_FORCE_ADD_WAYPOINTS;
-    } forEach (_taskForce param [4, []]);
+    [_taskForceId, _taskForce param [1, []], _destination] call QUEUE_PATHFIND_REQUEST;
 };
 
 BATTLESPACE_BATTLEGROUP_SETTLE = {

@@ -27,9 +27,6 @@
                     [_taskForceName, _taskForce] spawn {
                         params ["_taskForceName", "_taskForce"];
                         private _success = [_taskForceName, _taskForce, false, true] call BATTLESPACE_TASK_FORCE_DEFAULT_TRY_SPAWN;
-                        if (_success) then {
-                            BATTLESPACE_TASK_FORCE_PATHS deleteAt _taskForceName;
-                        };
                         [_taskForceName, _taskForce, _success] call BATTLESPACE_TASK_FORCE_DEFAULT_FINISH_SPAWN;
                     };
                 };
@@ -91,10 +88,7 @@
                             _operation set ["phase", _phase];
                             _taskForce set [2, _destination];
                             BATTLESPACE_TASK_FORCE_PATHS deleteAt _taskForceName;
-                            {
-                                private _hasVehicles = [_x] call BATTLESPACE_TASK_FORCE_HAS_VEHICLES;
-                                [_x, _destination, "FULL", false, _hasVehicles] spawn BATTLESPACE_TASK_FORCE_ADD_WAYPOINTS;
-                            } forEach _activeGroups;
+                            [_taskForceName, _currentLoc, _destination] call QUEUE_PATHFIND_REQUEST;
                             BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceName, _operation];
                             false
                         } else {

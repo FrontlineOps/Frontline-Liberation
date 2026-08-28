@@ -57,92 +57,90 @@ A_STAR_CREATE_NODE = {
 // Returns: Array of nodes in *reverse* order that would end up with tracing a path from B to A.
 // Can utilize node information to determine road intersections.
 A_STAR = {
-	params ["_pointA", "_pointB", ["_bailOut", 1000], ["_granular", false]];
+	params [
+		"_pointA",
+		"_pointB",
+		["_bailOut", missionNamespace getVariable ["BATTLESPACE_PATHFIND_ROAD_MAX_EXPANSIONS", 20000]],
+		["_granular", false]
+	];
 	ROADS_EVALUATED = [];
 	private _startTime = diag_tickTime;
 	private _startNode = [_pointA, NETWORKED_SECTORS_CLOSEST_ROAD_SLOP] call BIS_fnc_nearestRoad;
-
 	private _endNode = [_pointB, NETWORKED_SECTORS_CLOSEST_ROAD_SLOP] call BIS_fnc_nearestRoad;
-	// No valid path was found.
-	if((isNull _startNode) || (isNull _endNode)) exitWith { 
+	if (isNull _startNode || {isNull _endNode}) exitWith {
 		diag_log format ["Not found valid start %1 or end %2", _startNode, _endNode];
-		[]
+		[[], diag_tickTime - _startTime]
 	};
 
-	private _visitedNodes = createHashMap;
+	if (isNil "BATTLESPACE_PATHFIND_ROAD_NEIGHBOR_CACHE") then {
+		BATTLESPACE_PATHFIND_ROAD_NEIGHBOR_CACHE = createHashMap;
+	};
 
+	private _closedNodes = createHashMap;
+	private _gScore = createHashMap;
 	private _unvisitedNodes = [] call NEW_PRIORITY_QUEUE;
+	private _startKey = str _startNode;
+	private _startHeuristic = _endNode distance2D _startNode;
+	_gScore set [_startKey, 0];
+	[
+		_unvisitedNodes,
+		_startHeuristic,
+		[[0, _startNode, nil, _startHeuristic] call A_STAR_CREATE_NODE, 0]
+	] call PRIORITY_QUEUE_ENQUEUE;
 
-	[_unvisitedNodes, 0, [0, _startNode, nil, _endNode distance2D _startNode] call A_STAR_CREATE_NODE] call PRIORITY_QUEUE_ENQUEUE;
 	private _path = [];
-
-
-	private _currentNode = _startNode;
-
 	private _execs = 0;
-
-	
-
-	
-	while {!([_unvisitedNodes] call PRIORITY_QUEUE_IS_EMPTY) && _execs < _bailOut} do {
-	
-		if([_unvisitedNodes] call PRIORITY_QUEUE_IS_EMPTY) exitWith {
-			diag_log format ["Queue empty"];
-		};
-
-
-
-		_currentNode = [_unvisitedNodes] call PRIORITY_QUEUE_POP;
-
-
-		if(isNil "_currentNode") then {
-			continue;
-		};
+	while {!([_unvisitedNodes] call PRIORITY_QUEUE_IS_EMPTY) && {_execs < _bailOut}} do {
+		private _queued = [_unvisitedNodes] call PRIORITY_QUEUE_POP;
+		if (isNil "_queued") then {continue};
+		_queued params ["_currentNode", "_queuedCost"];
 		private _currentRoadObject = _currentNode get "RoadObject";
+		private _currentKey = str _currentRoadObject;
+		private _bestCost = _gScore getOrDefault [_currentKey, 1e30];
+		if (_queuedCost > _bestCost || {!isNil {_closedNodes get _currentKey}}) then {continue};
 
-		
-
-		_visitedNodes set [str _currentRoadObject, _currentRoadObject];
-		if(_currentRoadObject isEqualTo _endNode) exitWith {
-			// Construct our path
-
-
-			while { !(_currentNode isEqualTo objNull) } do {
-
+		_closedNodes set [_currentKey, true];
+		ROADS_EVALUATED pushBack _currentRoadObject;
+		if (_currentRoadObject isEqualTo _endNode) exitWith {
+			while {!(_currentNode isEqualTo objNull)} do {
 				_path pushBack _currentNode;
-
 				_currentNode = _currentNode get "Parent";
 			};
 		};
 
-
-		// Not end node, evaluate our neighbors and add to unvisited set if they haven't been visited.
-		// Neighbors in this situation would be the next road segment that isn't in the visited set.
-		private _neighbors = roadsConnectedTo [_currentRoadObject, _granular];
+		private _neighborCacheKey = format ["%1:%2", _currentKey, _granular];
+		private _neighbors = BATTLESPACE_PATHFIND_ROAD_NEIGHBOR_CACHE get _neighborCacheKey;
+		if (isNil "_neighbors") then {
+			_neighbors = roadsConnectedTo [_currentRoadObject, _granular];
+			BATTLESPACE_PATHFIND_ROAD_NEIGHBOR_CACHE set [_neighborCacheKey, _neighbors];
+		};
 
 		private _rows = [];
 		{
+			if (isNull _x) then {continue};
+			private _nextKey = str _x;
+			if (!isNil {_closedNodes get _nextKey}) then {continue};
+			private _tentativeCost = _bestCost + (_x distance2D _currentRoadObject);
+			if (_tentativeCost >= (_gScore getOrDefault [_nextKey, 1e30])) then {continue};
 
-			if(isNull _x) then { continue; };
-			// Visited node, skip, as its already been evaluated.
-			if(!(isNil { _visitedNodes get (str _x) })) then {
-				continue;
-			};
-			private _newCost = (_currentNode get "Cost") + (_x distance2D _currentRoadObject) + (_x distance2D _endNode);
-			private _newNode = [(_currentNode get "Cost") + (_x distance2D _currentRoadObject), _x, _currentNode, _x distance2D _endNode ] call A_STAR_CREATE_NODE;
-			_rows pushBack [_newCost, _newNode];
+			_gScore set [_nextKey, _tentativeCost];
+			private _heuristic = _x distance2D _endNode;
+			private _newNode = [_tentativeCost, _x, _currentNode, _heuristic] call A_STAR_CREATE_NODE;
+			_rows pushBack [_tentativeCost + _heuristic, [_newNode, _tentativeCost]];
 		} forEach _neighbors;
 
 		[_unvisitedNodes, _rows] call PRIORITY_QUEUE_ENQUEUE_MULTIPLE;
-
 		_currentNode set ["NeighborAmount", count _neighbors];
 		_execs = _execs + 1;
 	};
 
-	iF(_execs >= _bailOut) then {
-		diag_log format ["A* Pathfinding bailed out"];
+	if (_execs >= _bailOut) then {
+		diag_log format ["A* Pathfinding bailed out after %1 expansions", _execs];
 	};
-	diag_log format ["A* Pathfinding took %1s", diag_tickTime - _startTime];
+	ROAD_PATH = _path;
+	if (missionNamespace getVariable ["BATTLESPACE_DEBUG_INDEPTH", false]) then {
+		diag_log format ["A* Pathfinding took %1s and %2 expansions", diag_tickTime - _startTime, _execs];
+	};
 
 	[_path, diag_tickTime - _startTime]
 

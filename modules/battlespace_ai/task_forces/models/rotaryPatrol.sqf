@@ -77,6 +77,7 @@
 
 							private _objs = _taskForce select 8;
 							private _grp = createGroup [_taskForce select 6, true];
+							_grp setVariable ["TASKFORCEID", _taskForceName];
 							{
 								(crew _x) joinSilent _grp;
 							} forEach _objs;
@@ -84,8 +85,6 @@
 							[_grp, _taskForce select 2, "LIMITED", false, true] call BATTLESPACE_TASK_FORCE_ADD_WAYPOINTS;
 
 							_taskForce set [4, [_grp]];
-							// (BATTLESPACE_TASK_FORCES get _taskForceName) set [6, []];
-							BATTLESPACE_TASK_FORCE_PATHS deleteAt _taskForceName;
 						};
 						[_taskForceName, _taskForce, _success] call BATTLESPACE_TASK_FORCE_DEFAULT_FINISH_SPAWN;
 						//publicVariable "BATTLESPACE_TASK_FORCES";
@@ -234,17 +233,8 @@
 
 						if(!(surfaceIsWater _newDestination)) then {
 							_taskForce set [2, _newDestination];
-
-							
 							BATTLESPACE_TASK_FORCE_PATHS deleteAt _taskForceName;
-						};
-						// _taskForce set [6, []];
-
-						if((count _activeGroups > 0)) then {
-							// Generate new waypoints.
-							{
-								[_x, _newDestination, "LIMITED", false, true] call BATTLESPACE_TASK_FORCE_ADD_WAYPOINTS;
-							} forEach _activeGroups;
+							[_taskForceName, _currentLoc, _newDestination] call QUEUE_PATHFIND_REQUEST;
 						};
 					};
 

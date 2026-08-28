@@ -27,9 +27,6 @@
                     [_taskForceName, _taskForce] spawn {
                         params ["_taskForceName", "_taskForce"];
                         private _success = [_taskForceName, _taskForce, false] call BATTLESPACE_TASK_FORCE_DEFAULT_TRY_SPAWN;
-                        if (_success) then {
-                            BATTLESPACE_TASK_FORCE_PATHS deleteAt _taskForceName;
-                        };
                         [_taskForceName, _taskForce, _success] call BATTLESPACE_TASK_FORCE_DEFAULT_FINISH_SPAWN;
                     };
                 };

@@ -22,7 +22,7 @@
 		}
 		_activeGroups : Array of Groups
 		_state: Array of state specific stuff
-		_taskForceSide : Array of Pos from calculatePath
+		_taskForceSide : Side
 	]
 
 */
@@ -289,6 +289,9 @@ BATTLESPACE_TASK_FORCE_PATH_FOUND = {
 	private _taskForce = BATTLESPACE_TASK_FORCES get _taskForceName;
 	
 	if(isNil { _taskForce }) exitWith {};
+	if (!(_path isEqualType []) || {_path isEqualTo []}) exitWith {
+		[_taskForceName] call BATTLESPACE_TASK_FORCE_PATH_FAILED;
+	};
 
 	_taskForce params [
 		"_taskForceType", // 0
@@ -307,6 +310,7 @@ BATTLESPACE_TASK_FORCE_PATH_FOUND = {
 	];
 	private _endNode = _path select ((count _path) - 1);
 
+	_state set [1, 0];
 	_state set [2, 0];
 
 	_taskForce set [5, _state];
@@ -318,7 +322,7 @@ BATTLESPACE_TASK_FORCE_PATH_FOUND = {
 
 
 	BATTLESPACE_TASK_FORCE_PATHS set [_taskForceName, _path];
-	// _taskForce set [6, _path];
+	[_taskForceName, _taskForce, _path] call BATTLESPACE_TASK_FORCE_APPLY_ROUTE_TO_ACTIVE;
 };
 
 BATTLESPACE_TASK_FORCE_PATH_FAILED = {
@@ -346,6 +350,7 @@ BATTLESPACE_TASK_FORCE_PATH_FAILED = {
 
 	_state params ["_status", ["_currentPathIndex", 0], ["_failureCounts", 0]];
 
+	BATTLESPACE_TASK_FORCE_PATHS deleteAt _taskForceName;
 	_failureCounts = _failureCounts + 1;
 	diag_log format ["Task Force %1 failed to find a path, failure count now at %2", _taskForceName, _failureCounts];
 
@@ -387,7 +392,7 @@ BATTLESPACE_TASK_FORCE_PATH_FAILED = {
 			_execs = _execs + 1;
 		};
 		if(_execs < 10) then {
-			_taskForce set [1, _newDestination];
+			_taskForce set [2, _newDestination];
 		};
 	};
 
