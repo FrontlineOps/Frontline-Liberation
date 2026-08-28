@@ -5,6 +5,7 @@
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\artillery\index.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\index.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\logistics\index.sqf";
+[] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\battlegroup\index.sqf";
 
 if (!isNil { BATTLESPACE_LOCAL_TESTING }) then {
 	KPLIB_fnc_getLessLoadedHC = {
@@ -93,37 +94,11 @@ if (!isNil { BATTLESPACE_LOCAL_TESTING }) then {
 		sector_to_blufor set [_x, true];
 	} forEach blufor_sectors;
 };
-// Module that evaluates battlespace conditions and determines to
-// Send resupply of manpower / resources / whatever to a sector
-// Send battlegroups
-// Send patrols
-// Initialize defending / reinforcing a town with static defenses
-// Create and spawn SAM sites when it detects blufor presence
-
-// Each sector has a pool of resources
-// Manpower = infantry
-// Specific SAM launchers
-// Specific SAM radars
-// Specific SAM missile
-// Classes of vehicles (i.e. MBT, scout car, IFV, APC)
-// Upon activating a sector normally, the defenders would be spawned by pulling from a pool of resources
-
-// Once a sector falls below a certain threshold, the AI requests a resupply to head towards the sector, with a respawn timer in case its been intercepted before to prevent spam.
-// If a sector is a frontline sector
-// if it reaches above a certain threshold, it rolls to determine if it should consume resources to send out a battlegroup to try and capture the BLUFOR sector it is linked to
-// if it reaches above a certain threshold, it rolls to determine if it should send out a patrol towards the BLUFOR sector and neighboring area
-
-// If a sector is a backline sector
-// If it reaches above a certain threshold and a frontline sector it is linked to comes under attack, it rolls to determine if it should consume resources to send reinforcements.
-// If it reaches above a certain threshold, it rolls to determine if it should consume resources to send out resupply / reinforcement convoys on its own
-
-
-
-
-// Every half hr, re-evaluate the conditions of sectors and adjust accordingly
-// This general tick is usually for sending emergency resupplies, or transferring supplies, or battlegroups / patrols.
-// Reinforcements are independently handled as an event when a sector goes live and begins to take casualties as part of the "Sector Defender" AI decision.
-// Rearming of SAM or Artillery groups will pull from the nearest sector's resource pool to replenish their ammunition expenditure.
-// If ammo is all expended, usually a request for resupply will be sent, and other sectors may decide to send a portion of their own stocks to resupply.
-
-// Calculate every 30 minutes for macro scale logistics and offensive actions
+// Live strategic layer:
+// - Every current sector has a finite server-owned resource stockpile.
+// - Threshold-driven transfers use interceptable Convoy task forces.
+// - Resource-backed military-sector attacks use Battlegroup task forces.
+// - The strategic decision interval is configured in kp_liberation_config.sqf.
+//
+// Future integrations, not implemented here: funding normal sector defenders,
+// reactive patrol/reinforcement requests, and SAM/artillery ammunition expenditure.

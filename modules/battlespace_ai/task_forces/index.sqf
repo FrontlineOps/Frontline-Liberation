@@ -30,6 +30,9 @@
 if(isNil { BATTLESPACE_TASK_FORCES }) then {
 	BATTLESPACE_TASK_FORCES = createHashMap;
 };
+if (isNil "BATTLESPACE_TASK_FORCES_BLUFOR_CLUSTERS") then {
+	BATTLESPACE_TASK_FORCES_BLUFOR_CLUSTERS = [];
+};
 /*
 	Pointer for next task force to use. Probably never going to get to overflow problems since it'd reset per map and probably would never reach 3.4028235e38
 */
@@ -181,6 +184,24 @@ BATTLESPACE_TASK_FORCES_SEED = {
 
 BATTLESPACE_TASK_FORCES_INIT = {
 	params ["_type", "_composition", "_originPoint", ["_initialTargetLocation", []], ["_homePoint", []], ["_side", GRLIB_side_enemy]];
+	if (!isServer) exitWith { "" };
+	if !(_type in BATTLESPACE_TASK_FORCE_MODELS) exitWith {
+		diag_log format ["Battlespace rejected unregistered task-force model %1", _type];
+		""
+	};
+	if (typeName _composition != "HASHMAP") exitWith {
+		diag_log "Battlespace rejected task force with non-hashmap composition";
+		""
+	};
+	if (
+		!(_originPoint isEqualType [])
+		|| {!((count _originPoint) in [2, 3])}
+		|| {_originPoint findIf {!(_x isEqualType 0)} >= 0}
+	) exitWith {
+		diag_log format ["Battlespace rejected task force %1 with invalid origin %2", _type, _originPoint];
+		""
+	};
+
 	diag_log format ["Initialize Task Force (%1) at %2", _type, _originPoint];
 	private _taskForceName = str BATTLESPACE_TASK_FORCE_AUTOINCREMENT;
 
@@ -200,12 +221,6 @@ BATTLESPACE_TASK_FORCES_INIT = {
 		}
 	*/
 
-	if (typename _composition != "HASHMAP") exitWith {
-		diag_log format ["  _composition is not a hashmap..."];
-	};
-
-	private _manpower = _composition get "manpower";
-
 	private _newTaskForce = [_type, _originPoint, _initialTargetLocation, _composition];
 	private _newHomePoint = _homePoint;
 	if((_homePoint isEqualTo [])) then {
@@ -217,6 +232,7 @@ BATTLESPACE_TASK_FORCES_INIT = {
 	BATTLESPACE_TASK_FORCES set [_taskForceName, _newTaskForce];
 
 	publicVariable "BATTLESPACE_TASK_FORCE_AUTOINCREMENT";
+	_taskForceName
 };
 
 BATTLESPACE_TASK_FORCE_PATH_FOUND = {
@@ -512,13 +528,37 @@ BATTLESPACE_TASK_FORCES_EVALUATE = {
 				if(_despawnCounter >= 9) then {
 					diag_log format ["Task Force %1 despawning...", _taskForceName];
 					_y set [9, true];
-					// Just delete everything, simple as that.
-					// Active Objects contain every object spawned
+					private _vehicles = +(_composition getOrDefault ["vehicles", []]);
+					private _structures = +(_composition getOrDefault ["structures", []]);
+					// Captured equipment leaves this force permanently. Removing it from
+					// the virtual manifest prevents it from being spawned a second time.
 					{
-						if(!(isNull _x)) then {
+						if (isNull _x) then { continue };
+						private _activeObject = _x;
+						if (!(_x isKindOf "Man") && {_x getVariable ["KPLIB_captured", false]}) then {
+							private _vehicleIndex = _vehicles find (typeOf _x);
+							if (_vehicleIndex >= 0) then {
+								_vehicles deleteAt _vehicleIndex;
+							} else {
+								private _structureIndex = _structures findIf {
+									(_x getOrDefault ["className", ""]) == typeOf _activeObject
+								};
+								if (_structureIndex >= 0) then {
+									_structures deleteAt _structureIndex;
+								};
+							};
+						} else {
 							deleteVehicle _x;
 						};
 					} forEach _activeObjects;
+					{
+						if (!isNull _x) then {
+							deleteGroup _x;
+						};
+					} forEach _activeGroups;
+					_composition set ["vehicles", _vehicles];
+					_composition set ["structures", _structures];
+					_y set [3, _composition];
 					// Reset states
 					BATTLESPACE_TASK_FORCE_PATHS deleteAt _taskForceName;
 					BATTLESPACE_TASK_FORCE_SPAWN_RESERVATIONS deleteAt _taskForceName;
