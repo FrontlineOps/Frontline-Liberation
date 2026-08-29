@@ -55,23 +55,6 @@ if(isServer) then {
     GET_PARAM_BOOL(KP_liberation_arsenal_type, "ArsenalType", 0);
     GET_PARAM(KP_liberation_victoryCondition, "VictoryCondition", 0);
 
-    // Deactivate BI Revive when ACE Medical is running
-    if (isClass (configfile >> "CfgPatches" >> "ace_medical")) then {
-        bis_reviveParam_mode = 0; publicVariable "bis_reviveParam_mode";
-        ["ACE Medical detected. Deactivating BI Revive System.", "PARAM"] call KPLIB_fnc_log;
-    } else {
-        // Revive Options
-        ["--- Revive Options ---", "PARAM"] call KPLIB_fnc_log;
-        GET_PARAM(bis_reviveParam_mode, "ReviveMode", 1);
-        GET_PARAM(bis_reviveParam_duration, "ReviveDuration", 6);
-        GET_PARAM(bis_reviveParam_requiredTrait, "ReviveRequiredTrait", 1);
-        GET_PARAM(bis_reviveParam_medicSpeedMultiplier, "ReviveMedicSpeedMultiplier", 1);
-        GET_PARAM(bis_reviveParam_requiredItems, "ReviveRequiredItems", 1);
-        GET_PARAM(bis_reviveParam_unconsciousStateMode, "UnconsciousStateMode", 0);
-        GET_PARAM(bis_reviveParam_bleedOutDuration, "ReviveBleedOutDuration", 180);
-        GET_PARAM(bis_reviveParam_forceRespawnDuration, "ReviveForceRespawnDuration", 10);
-    };
-
     // Gameplay Options
     ["--- Gameplay Options ---", "PARAM"] call KPLIB_fnc_log;
     GET_PARAM_BOOL(GRLIB_fatigue, "Fatigue", 1);
@@ -97,7 +80,6 @@ if(isServer) then {
     GET_PARAM(GRLIB_cleanup_vehicles, "CleanupVehicles", 2);
     GET_PARAM_BOOL(GRLIB_introduction, "Introduction", 1);
     GET_PARAM_BOOL(GRLIB_deployment_cinematic, "DeploymentCinematic", 1);
-    GET_PARAM_BOOL(GRLIB_use_whitelist, "Whitelist", 0);
     GET_PARAM(KP_liberation_restart, "ServerRestart", 0);
 
     GREUH_allow_mapmarkers = KP_liberation_mapmarkers; publicVariable "GREUH_allow_mapmarkers";
@@ -299,48 +281,6 @@ if (!isDedicated && hasInterface) then {
     };
     _text = _text + format ["<font color='#ff8000'>%1</font><br />%2<br /><br />", _param, _value];
 
-    _param = localize "STR_A3_ReviveMode";
-    _value = if (bis_reviveParam_mode == 1) then {localize "STR_A3_EnabledForAllPlayers";} else {localize "STR_A3_Disabled";};
-    _text = _text + format ["<font color='#ff8000'>%1</font><br />%2<br /><br />", _param, _value];
-
-    if (bis_reviveParam_mode == 1) then {
-        _param = localize "STR_A3_ReviveDuration";
-        _value = str bis_reviveParam_duration;
-        _text = _text + format ["<font color='#ff8000'>%1</font><br />%2<br /><br />", _param, _value];
-
-        _param = localize "STR_A3_RequiredTrait";
-        _value = if (bis_reviveParam_requiredTrait == 1) then {localize "STR_A3_Medic";} else {localize "STR_A3_None";};
-        _text = _text + format ["<font color='#ff8000'>%1</font><br />%2<br /><br />", _param, _value];
-
-        _param = localize "STR_A3_RequiredTrait_MedicSpeedMultiplier";
-        _value = format ["x%1", bis_reviveParam_medicSpeedMultiplier];
-        _text = _text + format ["<font color='#ff8000'>%1</font><br />%2<br /><br />", _param, _value];
-
-        _param = localize "STR_A3_RequiredItems";
-        switch (bis_reviveParam_requiredItems) do {
-            case 1: {_value = localize "STR_A3_Medikit";};
-            case 2: {_value = localize "STR_A3_FirstAidKitOrMedikit";};
-            default {_value = localize "STR_A3_None";};
-        };
-        _text = _text + format ["<font color='#ff8000'>%1</font><br />%2<br /><br />", _param, _value];
-
-        _param = localize "STR_A3_IncapacitationMode";
-        switch (bis_reviveParam_unconsciousStateMode) do {
-            case 1: {_value = localize "STR_A3_Advanced";};
-            case 2: {_value = localize "STR_A3_Realistic";};
-            default {_value = localize "STR_A3_Basic";};
-        };
-        _text = _text + format ["<font color='#ff8000'>%1</font><br />%2<br /><br />", _param, _value];
-
-        _param = localize "STR_A3_BleedOutDuration";
-        _value = str bis_reviveParam_bleedOutDuration;
-        _text = _text + format ["<font color='#ff8000'>%1</font><br />%2<br /><br />", _param, _value];
-
-        _param = localize "STR_A3_ForceRespawnDuration";
-        _value = str bis_reviveParam_forceRespawnDuration;
-        _text = _text + format ["<font color='#ff8000'>%1</font><br />%2<br /><br />", _param, _value];
-    };
-
     _param = localize "STR_PARAMS_FATIGUE";
     _value = if (GRLIB_fatigue) then {localize "STR_PARAMS_ENABLED";} else {localize "STR_PARAMS_DISABLED";};
     _text = _text + format ["<font color='#ff8000'>%1</font><br />%2<br /><br />", _param, _value];
@@ -428,10 +368,6 @@ if (!isDedicated && hasInterface) then {
 
     _param = localize "STR_PARAMS_DEPLOYMENTCAMERA";
     _value = if (GRLIB_deployment_cinematic) then {localize "STR_PARAMS_ENABLED";} else {localize "STR_PARAMS_DISABLED";};
-    _text = _text + format ["<font color='#ff8000'>%1</font><br />%2<br /><br />", _param, _value];
-
-    _param = localize "STR_WHITELIST_PARAM";
-    _value = if (GRLIB_use_whitelist) then {localize "STR_WHITELIST_ENABLED";} else {localize "STR_PARAMS_DISABLED";};
     _text = _text + format ["<font color='#ff8000'>%1</font><br />%2<br /><br />", _param, _value];
 
     _param = localize "STR_RESTART_PARAM";

@@ -129,11 +129,6 @@ if (!isDedicated && hasInterface) then {
     setViewDistance 1600;
 };
 
-// Execute fnc_reviveInit again (by default it executes in postInit)
-if ((isNil {player getVariable "bis_revive_ehHandleHeal"} || isDedicated) && !(bis_reviveParam_mode == 0)) then {
-    [] call bis_fnc_reviveInit;
-};
-
 KPLIB_init = true;
 
 // Notify clients that server is ready
