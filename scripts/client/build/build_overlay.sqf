@@ -2,17 +2,40 @@ GRLIB_conflicting_objects = [];
 GRLIB_buildoverlay_icon = "\A3\ui_f\data\map\markers\handdrawn\objective_CA.paa";
 GRLIB_buildoverlay_color = [ 1, 0, 0, 1 ];
 GRLIB_buildoverlay_cfg = configFile >> "cfgVehicles";
+KPLIB_buildOverlayActive = false;
 
-["build_overlay", "onEachFrame", {
+KPLIB_fnc_startBuildOverlay = {
+    if (missionNamespace getVariable ["KPLIB_buildOverlayActive", false]) exitWith {};
 
-    if ( build_confirmed == 1 ) then {
-        if ( count GRLIB_conflicting_objects > 0 ) then {
+    KPLIB_buildOverlayActive = true;
+    ["KPLIB_buildOverlay", "onEachFrame", {
+        if (build_confirmed isEqualTo 1) then {
             {
-                if ( alive _x ) then {
-                    drawIcon3D [ GRLIB_buildoverlay_icon, GRLIB_buildoverlay_color, [ (getpos _x) select 0, (getpos _x) select 1, 1.5],
-                    1, 1, 0, format [ "%1", getText (GRLIB_buildoverlay_cfg >> typeof _x >> "displayName") ], 2, 0.04, "puristaMedium"];
+                if (alive _x) then {
+                    private _position = getPos _x;
+                    drawIcon3D [
+                        GRLIB_buildoverlay_icon,
+                        GRLIB_buildoverlay_color,
+                        [_position select 0, _position select 1, 1.5],
+                        1,
+                        1,
+                        0,
+                        getText (GRLIB_buildoverlay_cfg >> typeOf _x >> "displayName"),
+                        2,
+                        0.04,
+                        "puristaMedium"
+                    ];
                 };
-            } foreach GRLIB_conflicting_objects;
+            } forEach GRLIB_conflicting_objects;
         };
+    }] call BIS_fnc_addStackedEventHandler;
+};
+
+KPLIB_fnc_stopBuildOverlay = {
+    if (missionNamespace getVariable ["KPLIB_buildOverlayActive", false]) then {
+        ["KPLIB_buildOverlay", "onEachFrame"] call BIS_fnc_removeStackedEventHandler;
+        KPLIB_buildOverlayActive = false;
     };
-}] call BIS_fnc_addStackedEventHandler;
+
+    GRLIB_conflicting_objects = [];
+};
