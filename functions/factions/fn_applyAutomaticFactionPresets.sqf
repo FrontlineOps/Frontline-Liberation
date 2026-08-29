@@ -211,8 +211,6 @@ private _opfor = _catalogs get "opfor";
     opfor_air = (_opfor get "fixedWing") + (_opfor get "rotaryCas");
     opfor_cap = +(_opfor get "fixedWing");
     if (opfor_cap isEqualTo []) then {opfor_cap = +opfor_air};
-    opfor_halo_air = [[0, (_opfor get "rotaryLogistics") + (_opfor get "fixedWing")]];
-
     opfor_tanks = [[0, _heavyPool]];
     opfor_sams = [[0, _aaPool]];
     private _armoredTransports = (_opfor get "heavy") select {

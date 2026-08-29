@@ -1,7 +1,3 @@
-createMarkerLocal ["opfor_bg_marker", markers_reset];
-"opfor_bg_marker" setMarkerTypeLocal "mil_unknown";
-"opfor_bg_marker" setMarkerColorLocal GRLIB_color_enemy_bright;
-
 createMarkerLocal ["opfor_capture_marker", markers_reset];
 "opfor_capture_marker" setMarkerTypeLocal "mil_objective";
 "opfor_capture_marker" setMarkerColorLocal GRLIB_color_enemy_bright;

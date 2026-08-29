@@ -117,11 +117,6 @@ if ((!(_sector in blufor_sectors)) && (([markerPos _sector, _sectorRange, GRLIB_
         // Brief wait so the virtual entities can actually spawn in
         sleep 10;
 
-        /* DISABLED - VIRTUALIZED NOW
-        if ((_sector in sectors_factory) || (_sector in sectors_capture) || (_sector in sectors_bigtown) || (_sector in sectors_military)) then {
-            [_sector] remoteExec ["reinforcements_remote_call",2];
-        };
-        */
     };
 
     if (KP_liberation_sectorspawn_debug > 0) then {[format ["Sector %1 (%2) - populating done", (markerText _sector), _sector], "SECTORSPAWN"] remoteExecCall ["KPLIB_fnc_log", 2];};

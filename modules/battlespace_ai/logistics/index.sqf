@@ -663,8 +663,6 @@ BATTLESPACE_CAPTURE_SECTOR_FOR_OPFOR = {
     publicVariable "blufor_sectors";
     publicVariable "last_blufor_sector_change";
     [_sector, 2] remoteExec ["remote_call_sector", 0];
-    reset_battlegroups_ai = true;
-    publicVariable "reset_battlegroups_ai";
 
     if (!isNil "sectors_under_attack") then {
         sectors_under_attack set [_sector, false];
@@ -966,11 +964,13 @@ BATTLESPACE_STRATEGIC_HANDLE_TASK_FORCE_EVENT = {
             };
         };
         case "REINFORCEMENT";
+        case "AIRBORNE_TRANSPORT";
+        case "AIRBORNE_REINFORCEMENT";
         case "PATROL";
         case "AIR_RESPONSE": {
             private _destinationSector = switch (_operation getOrDefault ["outcome", ""]) do {
                 case "REINFORCED": {_operation getOrDefault ["targetSector", ""]};
-                case "RETURNED": {_operation getOrDefault ["originSector", ""]};
+                case "RETURNED": {_operation getOrDefault ["returnSector", _operation getOrDefault ["originSector", ""]]};
                 default {""};
             };
             if (_destinationSector != "") then {

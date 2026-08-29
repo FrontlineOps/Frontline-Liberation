@@ -60,7 +60,6 @@ if ( GRLIB_endgame == 0 && (_sector in blufor_sectors) ) then {
         };
         publicVariable "blufor_sectors";
         [_sector, 2] remoteExec ["remote_call_sector"];
-        reset_battlegroups_ai = true;
         [] spawn KPLIB_fnc_doSave;
         stats_sectors_lost = stats_sectors_lost + 1;
         {

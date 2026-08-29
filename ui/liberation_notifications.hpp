@@ -80,9 +80,6 @@ class CfgNotifications {
     class lib_incoming: lib_battlegroup {
         description = $STR_NOTIFICATION_INCOMING_TEXT;
     };
-    class lib_incoming_airdrop: lib_battlegroup {
-        description = "Airborne troops are assaulting %1.";
-    };
     class lib_intel: lib_default_notification {
         title = $STR_NOTIFICATION_INTEL_TITLE;
         iconPicture = "res\notif\ui_notif_int.paa";

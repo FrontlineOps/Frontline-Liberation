@@ -34,8 +34,6 @@ sector_to_blufor = createHashMap;
 last_blufor_sector_change = CBA_missionTime;
 stats_sectors_liberated = stats_sectors_liberated + 1;
 
-reset_battlegroups_ai = true; publicVariable "reset_battlegroups_ai";
-
 if (_liberated_sector in sectors_factory) then {
     {
         if (_liberated_sector in _x) exitWith {KP_liberation_production = KP_liberation_production - [_x];};

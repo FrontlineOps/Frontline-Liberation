@@ -168,7 +168,7 @@ BATTLESPACE_TASK_FORCE_DEFAULT_FINISH_SPAWN = {
 				private _destination = _registeredTaskForce param [2, []];
 				private _type = _registeredTaskForce param [0, ""];
 				if (
-					_type in ["Battlegroup", "Convoy", "Defensive Patrol", "Reconnaissance Patrol", "Air Response", "Civilians"]
+					_type in ["Battlegroup", "Convoy", "Defensive Patrol", "Reconnaissance Patrol", "Air Response", "Airborne Transport", "Civilians"]
 					&& {_currentLocation isNotEqualTo []}
 					&& {_destination isNotEqualTo []}
 				) then {
@@ -397,9 +397,6 @@ BATTLESPACE_TASK_FORCE_DEFAULT_TRY_SPAWN = {
 		// If remaining manpower is >= 2, try to spawn passengers if the vehicle supports it
 		// Minimum squad size is SL and medic
 		if(_remainingManpower >= 2) then {
-			//private _compositionEnum = [_x] call classIsWhatCompositionEnum;
-			//private _canHavePassengers = [_compositionEnum] call compositionEnumIsInfantryTransport;
-
 			private _canHavePassengers = true;
 			if(_canHavePassengers && !_garrisonedInfantry) then {
 				private _cargoSpots = fullCrew [_veh, "cargo", true];
@@ -459,7 +456,11 @@ BATTLESPACE_TASK_FORCE_DEFAULT_TRY_SPAWN = {
 				_vehGrp setVariable ["BATTLESPACE_TRANSPORT_VEHICLE", _veh];
 				_vehGrp setVariable ["BATTLESPACE_TRANSPORT_CARGO_GROUP", _infGrp];
 				_infGrp setVariable ["BATTLESPACE_TRANSPORT_PARENT_GROUP", _vehGrp];
-				[_veh, _vehGrp, _infGrp, _destination, false] spawn BATTLESPACE_TASK_FORCE_TRANSPORT_AI;
+				if (_type == "Airborne Transport") then {
+					[_vehGrp, _destination, "FULL", false, true] spawn BATTLESPACE_TASK_FORCE_ADD_WAYPOINTS;
+				} else {
+					[_veh, _vehGrp, _infGrp, _destination, false] spawn BATTLESPACE_TASK_FORCE_TRANSPORT_AI;
+				};
 			} else {
 				[_vehGrp, _destination, _speed, _ambush, true] spawn BATTLESPACE_TASK_FORCE_ADD_WAYPOINTS;
 			};
@@ -548,4 +549,6 @@ BATTLESPACE_TASK_FORCE_DEFAULT_TRY_SPAWN = {
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\models\civilians.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\models\minefield.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\models\airResponse.sqf";
+[] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\models\airborneTransport.sqf";
+[] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\models\airborneInfantry.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\models\antiair.sqf";

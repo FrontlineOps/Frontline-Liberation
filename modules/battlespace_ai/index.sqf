@@ -7,6 +7,7 @@
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\logistics\index.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\battlegroup\index.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\tactical\index.sqf";
+[] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\airborne_reinforcement\index.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\air_response\index.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\fortifications\index.sqf";
 
@@ -49,7 +50,6 @@ if (!isNil { BATTLESPACE_LOCAL_TESTING }) then {
 	GRLIB_side_guerilla = resistance;
 	GRLIB_side_civilian = civilian;
 
-	sectors_airspawn = [];
 	sectors_allSectors = [];
 	sectors_bigtown = [];
 	sectors_capture = [];
@@ -81,7 +81,6 @@ if (!isNil { BATTLESPACE_LOCAL_TESTING }) then {
 			case (_x find "capture" == 0): {sectors_capture pushBack _x; sectors_allSectors pushBack _x;};
 			case (_x find "factory" == 0): {sectors_factory pushBack _x; sectors_allSectors pushBack _x;};
 			case (_x find "military" == 0): {sectors_military pushBack _x; sectors_allSectors pushBack _x;};
-			case (_x find "opfor_airspawn" == 0): {sectors_airspawn pushBack _x;};
 			case (_x find "opfor_point" == 0): {sectors_opfor pushBack _x;};
 			case (_x find "tower" == 0): {sectors_tower pushBack _x; if (isServer) then {_x setMarkerText format ["%1 %2",markerText _x, mapGridPosition (markerPos _x)];}; sectors_allSectors pushBack _x;};
 		};
@@ -103,5 +102,5 @@ if (!isNil { BATTLESPACE_LOCAL_TESTING }) then {
 // - OPFOR objectives spend construction stock on persistent defensive sites.
 // - The strategic decision interval is configured in kp_liberation_config.sqf.
 //
-// Tactical defenders, air responses, artillery/SAM expenditure, and ZEN
-// diagnostics consume the same server-owned stockpiles.
+// Tactical defenders, airborne/air responses, artillery/SAM expenditure, and
+// ZEN diagnostics consume the same server-owned stockpiles.

@@ -857,8 +857,9 @@ BATTLESPACE_SECTOR_STATES = createHashMap;
 	} forEach _resourceDefs;
 } forEach _combatPatrolThresholds;
 
-// Aircraft are paid strategic assets for reactive air-response task forces.
-// Reinforcement, battlegroup, and patrol constructors remain ground-only.
+// Aircraft are paid strategic assets for reactive air responses and airborne
+// transports. Threshold-driven ground reinforcement, battlegroup, and patrol
+// constructors remain ground-only.
 private _aircraftThresholdPolicy = createHashMapFromArray [
 	["MaximumCapacity", 2],
 	["ResupplySend", 0.5],
