@@ -46,8 +46,13 @@ OPFOR_ARSENAL_CRATES = [];
 
 if (isDedicated) then 
 {
+    [] call compileFinal preprocessFileLineNumbers "\userconfig\perms\perms.sqf";
     [] call compileFinal preprocessFileLineNumbers "\userconfig\KOG\KOGWhitelist.sqf";
     publicVariable "KOGFOR";
+};
+if (isServer && hasInterface) then 
+{
+    [] call compileFinal preprocessFileLineNumbers "perms_non_dedicated.sqf";
 };
 
 [] call compileFinal preprocessFileLineNumbers "presets\init_presets.sqf";
