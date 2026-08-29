@@ -1,3 +1,9 @@
+/*
+	Rewrite copBuildandMove.sqf:
+	Optimize and create UI for PB deployment.
+    Make PBs more dynamic and less reliant on hardcoded values.
+*/
+
 params [
     [ "_object", objnull, [objnull] ],
     [ "_side", west, [west] ]

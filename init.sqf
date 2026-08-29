@@ -1,3 +1,9 @@
+/*
+    Init Rewrite
+    - Split init between playerLocalInit and serverInit 
+    - Optimize & Refactor logical so start time is reduced
+*/
+
 KPLIB_init = false;
 // Version of the KP Liberation framework
 KP_liberation_version = [0, 96, "7a"];

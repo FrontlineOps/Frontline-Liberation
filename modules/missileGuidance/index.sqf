@@ -218,3 +218,10 @@ IADS_HandleFiredEvent = {
 	}] call CBA_fnc_addClassEventHandler;
 
 };*/
+
+
+/*
+	Rewrite missile Guidance:
+	We want missile Guidance to universally apply all laws of logic within Missile Guidance to all missiles & vehicles for example rather then having to manually define these vehicles.
+*/
+
