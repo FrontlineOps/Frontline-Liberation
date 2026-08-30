@@ -165,7 +165,7 @@ private _stats = [
     stats_resistance_killed,
     stats_resistance_teamkills,
     stats_resistance_teamkills_by_players,
-    stats_secondary_objectives,
+    0, // Retired secondary-objective statistic slot
     stats_sectors_liberated,
     stats_sectors_lost,
     stats_spartan_respawns,

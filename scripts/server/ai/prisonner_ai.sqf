@@ -12,6 +12,7 @@ if ((_unit isKindOf "Man") && (alive _unit) && (side group _unit == GRLIB_side_e
 
     if (alive _unit) then {
 
+        _unit setVariable ["KPLIB_intelligencePrisoner", true, true];
         removeAllWeapons _unit;
         if (typeof _unit != pilot_classname) then {
             removeHeadgear _unit;

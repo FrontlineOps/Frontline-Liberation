@@ -31,7 +31,6 @@ params [
     "_stats_resistance_killed",
     "_stats_resistance_teamkills",
     "_stats_resistance_teamkills_by_players",
-    "_stats_secondary_objectives",
     "_stats_sectors_liberated",
     "_stats_sectors_lost",
     "_stats_spartan_respawns",
@@ -132,8 +131,7 @@ if (dialog) then {sleep 3};
 [692, format [localize "STR_STATS_SECTORS_LOST", _stats_sectors_lost]] call _addReportLine;
 [693, format [localize "STR_STATS_FOBS_BUILT", _stats_fobs_built]] call _addReportLine;
 [694, format [localize "STR_STATS_FOBS_LOST", _stats_fobs_lost]] call _addReportLine;
-[695, format [localize "STR_STATS_SIDEMISSIONS", _stats_secondary_objectives]] call _addReportLine;
-[696, format [localize "STR_STATS_PRISONERS", _stats_prisoners_captured], true] call _addReportLine;
+[695, format [localize "STR_STATS_PRISONERS", _stats_prisoners_captured], true] call _addReportLine;
 [] call _cleanPage;
 
 // Seventh page

@@ -148,7 +148,6 @@ stats_reinforcements_called = 0;
 stats_resistance_killed = 0;
 stats_resistance_teamkills = 0;
 stats_resistance_teamkills_by_players = 0;
-stats_secondary_objectives = 0;
 stats_sectors_liberated = 0;
 stats_sectors_lost = 0;
 stats_spartan_respawns = 0;
@@ -229,7 +228,6 @@ if (!isNil "_saveData") then {
         stats_resistance_killed                     = _stats select 29;
         stats_resistance_teamkills                  = _stats select 30;
         stats_resistance_teamkills_by_players       = _stats select 31;
-        stats_secondary_objectives                  = _stats select 32;
         stats_sectors_liberated                     = _stats select 33;
         stats_sectors_lost                          = _stats select 34;
         stats_spartan_respawns                      = _stats select 35;
@@ -272,7 +270,6 @@ if (!isNil "_saveData") then {
         stats_sectors_liberated                     = _stats select 11;
         stats_playtime                              = _stats select 12;
         stats_spartan_respawns                      = _stats select 13;
-        stats_secondary_objectives                  = _stats select 14;
         stats_hostile_battlegroups                  = _stats select 15;
         stats_ieds_detonated                        = _stats select 16;
         stats_reinforcements_called                 = _stats select 19;

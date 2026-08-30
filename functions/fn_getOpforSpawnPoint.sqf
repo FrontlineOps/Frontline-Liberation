@@ -49,12 +49,6 @@ private _distances = [];
     _current = _x;
 
     // Shouldn't be too close to the current/last position of a secondary mission
-    if (!isNil "secondary_objective_position" && _valid) then {
-        if !(secondary_objective_position isEqualTo []) then {
-            _valid = !(((markerPos _current) distance2d secondary_objective_position) < 500);
-        };
-    };
-    
 
     if(_valid) then {
 

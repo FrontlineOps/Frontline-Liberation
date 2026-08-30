@@ -203,12 +203,41 @@ GRLIB_color_enemy_bright = "ColorRED";       			// Enemy active sector color
 
 GRLIB_fob_range = 300;                       			// FOB building range
 GRLIB_halo_altitude = 0;                     			// HALO jump altitude
-GRLIB_secondary_missions_costs = [40,15,5];				// Side mission intel cost [FOB hunt, Convoy ambush, SAR]
-GRLIB_secondary_objective_impact = 0.6;      			// FOB hunt awareness hit
 GRLIB_recycling_percentage = 0.6;            			// Recycling return
 KP_liberation_production_interval = 120;      			// Resource production time (min), when resources multiplier set to 1
 KP_liberation_allow_fob_vehcile_building = false;		// Allow building vehicles at FOBs
 KP_liberation_allow_fixedwing_at_fobs = false;			// Allow fixed wing aircraft to be built at FOBs (Only applicable if KP_liberation_allow_fob_vehcile_building is false)
+
+// Player intelligence network. All observations are generated and sanitized by the server.
+KPLIB_intelligence_enabled = true;
+KPLIB_intelligence_tier_costs = [10, 25, 45];            // Activity, tracking, identification
+KPLIB_intelligence_coverage_duration = 1800;             // Seconds per activation or renewal
+KPLIB_intelligence_max_frontline_depth = 2;              // OPFOR regions available for analysis
+KPLIB_intelligence_region_hops = 1;                      // Linked sectors covered around the selected region
+KPLIB_intelligence_reconcile_interval = 15;              // Server observation pass cadence
+KPLIB_intelligence_refresh_intervals = [180, 90, 30];    // Observation age by tier
+KPLIB_intelligence_uncertainty_radii = [1200, 600, 200]; // Position uncertainty by tier
+KPLIB_intelligence_strength_bands = [12, 30];            // Moderate and heavy weighted-strength thresholds
+KPLIB_intelligence_vehicle_strength_weight = 4;
+KPLIB_intelligence_max_reports = 40;
+KPLIB_intelligence_max_reports_per_region = 10;
+KPLIB_intelligence_route_point_limit = 12;
+KPLIB_intelligence_terminal_distance = 75;
+KPLIB_intelligence_interaction_distance = 4;
+KPLIB_intelligence_delivery_distance = 40;
+KPLIB_intelligence_document_yield = [8, 15];
+KPLIB_intelligence_prisoner_yield_militia = [3, 6];
+KPLIB_intelligence_prisoner_yield_opfor = [6, 12];
+KPLIB_intelligence_operation_kinds = [
+    "CONVOY",
+    "BATTLEGROUP",
+    "PATROL",
+    "REINFORCEMENT",
+    "AIR_RESPONSE",
+    "AIRBORNE_TRANSPORT",
+    "AIRBORNE_REINFORCEMENT",
+    "FORTIFICATION"
+];
 
 GRLIB_sector_size = 3000;                    			// Sector activation range
 GRLIB_capture_size = 225;                    			// Sector cap circle size
@@ -236,8 +265,6 @@ KP_liberation_civinfo_max = 10800;           			// Civ informant max spawn time 
 KP_liberation_civinfo_chance = 75;           			// Civ informant spawn chance
 KP_liberation_civinfo_intel = 15;             			// Civ informant intel amount
 KP_liberation_civinfo_duration = 1200;       			// Civ informant despawn timer (sec)
-KP_liberation_civinfo_task_chance = 100;     			// Chance that informant will spawn a time critical task
-KP_liberation_civinfo_task_duration = 900;   			// Duration until the task will despawn if no player is near (sec)
 
 KP_liberation_convoy_ambush_chance = 0;      			// AI logistics (unused)
 KP_liberation_convoy_ambush_duration = 0; 				// AI logistics (unused)

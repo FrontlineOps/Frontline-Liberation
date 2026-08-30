@@ -27,7 +27,7 @@ write_credit_line = compileFinal preprocessFileLineNumbers "scripts\client\ui\wr
 do_load_box = compileFinal preprocessFileLineNumbers "scripts\client\ammoboxes\do_load_box.sqf";
 kp_fuel_consumption = compileFinal preprocessFileLineNumbers "scripts\client\misc\kp_fuel_consumption.sqf";
 
-execVM "scripts\client\actions\intel_manager.sqf";
+[] call KPLIB_INTEL_CLIENT_INIT;
 execVM "scripts\client\actions\recycle_manager.sqf";
 
 _role = [player] call RoleArsenal_DetermineRole;
@@ -50,7 +50,6 @@ execVM "scripts\client\markers\spot_timer.sqf";
 execVM "scripts\client\misc\broadcast_squad_colors.sqf";
 execVM "scripts\client\misc\init_arsenal.sqf";
 if (!KP_liberation_ace) then {execVM "scripts\client\misc\resupply_manager.sqf";};
-execVM "scripts\client\misc\secondary_jip.sqf";
 execVM "scripts\client\misc\synchronise_vars.sqf";
 execVM "scripts\client\misc\synchronise_eco.sqf";
 execVM "scripts\client\misc\playerNamespace.sqf";

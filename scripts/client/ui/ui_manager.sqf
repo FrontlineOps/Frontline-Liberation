@@ -132,8 +132,12 @@ while {true} do {
             //     (_overlay displayCtrl (516)) ctrlSetStructuredText parseText " ";
             //     (_overlay displayCtrl (517)) ctrlShow false;
             // };
-            (_overlay displayCtrl (516)) ctrlSetStructuredText parseText " ";
-            (_overlay displayCtrl (517)) ctrlShow false;
+            if (!isNil "KPLIB_INTEL_CLIENT_UPDATE_HUD") then {
+                [_overlay, _visibleMap] call KPLIB_INTEL_CLIENT_UPDATE_HUD;
+            } else {
+                (_overlay displayCtrl (516)) ctrlSetStructuredText parseText " ";
+                (_overlay displayCtrl (517)) ctrlShow false;
+            };
             _nearest_active_sector = [GRLIB_sector_size] call KPLIB_fnc_getNearestSector;
             if ( _nearest_active_sector != "" && _visibleMap) then {
                 _zone_size = GRLIB_capture_size;

@@ -21,6 +21,7 @@ while {true} do {
 
         private _grp = createGroup [GRLIB_side_civilian, true];
         private _informant = [selectRandom civilians, markerPos _sector, _grp] call KPLIB_fnc_createManagedUnit;
+        _informant setVariable ["KPLIB_intelligenceInformant", true, true];
         private _waiting_time = KP_liberation_civinfo_duration;
 
         _informant setPos (selectRandom (_house buildingPos -1));

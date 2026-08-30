@@ -38,7 +38,7 @@ if (alive _informant) then {
         _informant disableAI "MOVE";
         sleep 5;
         [_informant, "AidlPsitMstpSnonWnonDnon_ground00"] remoteExecCall ["switchMove"];
-        [_informant] remoteExec ["civinfo_delivered",2];
+        [_informant] remoteExecCall ["KPLIB_INTEL_SERVER_DELIVER_INFORMANT", 2];
         if (KP_liberation_civinfo_debug > 0) then {["civinfo_escort -> Informant at FOB", "CIVINFO"] remoteExecCall ["KPLIB_fnc_log", 2];};
         sleep 600;
         deleteVehicle _informant;

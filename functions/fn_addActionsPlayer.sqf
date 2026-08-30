@@ -80,12 +80,11 @@ _player addAction [
     "
 ];
 
-// Secondary missions
-if (player isEqualTo ([] call KPLIB_fnc_getCommander) || (getPlayerUID player) in KP_liberation_commander_actions) then {
-
+// Shared intelligence analysis terminal
+if (KPLIB_intelligence_enabled) then {
     _player addAction [
-        ["<t color='#FFFF00'>", localize "STR_SECONDARY_OBJECTIVES", "</t>"] joinString "",
-        "scripts\client\ui\secondary_ui.sqf",
+        "<t color='#7FC9FF'>Intelligence Analysis</t>",
+        {[] call KPLIB_INTEL_CLIENT_OPEN_DIALOG},
         nil,
         -760,
         false,
@@ -94,11 +93,11 @@ if (player isEqualTo ([] call KPLIB_fnc_getCommander) || (getPlayerUID player) i
         "
             isNull (objectParent _originalTarget)
             && {alive _originalTarget}
+            && {side _originalTarget isEqualTo GRLIB_side_friendly}
             && {
-                _originalTarget getVariable ['KPLIB_fobDist', 99999] < 20
+                _originalTarget getVariable ['KPLIB_fobDist', 99999] < KPLIB_intelligence_terminal_distance
               || {_originalTarget getVariable ['KPLIB_isNearStart', false]}
             }
-            && {_originalTarget getVariable ['KPLIB_hasDirectAccess', false]}
             && {build_confirmed isEqualTo 0}
         "
     ];
