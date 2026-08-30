@@ -2,9 +2,6 @@
 #define DEPLOY_LIST_IDC 201
 #define DEPLOY_BUTTON_IDC 202
 
-if ( isNil "GRLIB_all_cops" ) then { GRLIB_all_cops = [] };
-if ( isNil "OPFOR_all_cops" ) then { OPFOR_all_cops = [] };
-
 KPLIB_respawnPositionsList = [];
 fullmap = 0;
 private _old_fullmap = 0;
@@ -99,24 +96,6 @@ while {true} do {
                 };
             } forEach (vehicles select {alive _x && typeOf _x in GRLIB_kog_trucks});
 
-            {
-                private _nearby = 0;
-                private _nearEntities = (getMarkerPos _x) nearEntities [["Man", "Tank", "Car"], 300];
-                {
-                    if(side (group _x) == GRLIB_side_friendly) then {
-                        _nearby = _nearby + 1;
-                    };
-
-                    if(_nearby >= 3) exitWith {};
-                } forEach _nearEntities;
-
-                if((_nearby < 3) && (count OPFOR_all_cops > 0)) then {
-                    KPLIB_respawnPositionsList pushBack [
-                        format ["PB - %1", mapGridPosition (getMarkerPos _x)],
-                        getMarkerPos _x
-                    ];
-                };
-            } forEach OPFOR_all_cops;
         } else {
             {
                 private _nearby = 0;
@@ -137,24 +116,9 @@ while {true} do {
                 };
             } forEach GRLIB_all_fobs;
 
-            {
-                private _nearby = 0;
-                private _nearEntities = (getMarkerPos _x) nearEntities [["Man", "Tank", "Car"], 300];
-                {
-                    if(side (group _x) == GRLIB_side_enemy) then {
-                        _nearby = _nearby + 1;
-                    };
-
-                    if(_nearby >= 3) exitWith {};
-                } forEach _nearEntities;
-
-                if((_nearby < 3) && (count GRLIB_all_cops > 0)) then {
-                    KPLIB_respawnPositionsList pushBack [
-                        format ["PB - %1", mapGridPosition (getMarkerPos _x)],
-                        getMarkerPos _x
-                    ];
-                };
-            } forEach GRLIB_all_cops;
+            if (!isNil "KPLIB_COPS_CLIENT_GET_DEPLOY_DESTINATIONS") then {
+                KPLIB_respawnPositionsList append ([] call KPLIB_COPS_CLIENT_GET_DEPLOY_DESTINATIONS);
+            };
 
             if (KP_liberation_mobilerespawn) then {
                 if (KP_liberation_respawn_time <= time) then {

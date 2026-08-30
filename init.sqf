@@ -44,6 +44,7 @@ OPFOR_ARSENAL_CRATES = [];
 [] call compileFinal preprocessFileLineNumbers "kp_liberation_config.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\index.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\intelligence\index.sqf";
+[] call compileFinal preprocessFileLineNumbers "modules\COPS\index.sqf";
 
 if (isDedicated) then 
 {
@@ -140,18 +141,6 @@ KPLIB_init = true;
 
 // Notify clients that server is ready
 if (isServer) then {
-    GRLIB_all_cops = [];
-    publicVariable "GRLIB_all_cops";
-    GRLIB_cop_count = 0;
-    publicVariable "GRLIB_cop_count";
-    GRLIB_max_cops = 1;
-    publicVariable "GRLIB_max_cops";
-    OPFOR_all_cops = [];
-    publicVariable "OPFOR_all_cops";
-    OPFOR_cop_count = 0;
-    publicVariable "OPFOR_cop_count";
-    OPFOR_max_cops = 4;
-    publicVariable "OPFOR_max_cops";
     KPLIB_initServer = true;
     publicVariable "KPLIB_initServer";
     AWS_AMS_Disable = true;

@@ -177,7 +177,6 @@ support_vehicles = [
     ["B_Slingload_01_Repair_F",						250,	0,		0,		"Repair Container"],    		// HURON Repair
     ["B_Slingload_01_Ammo_F",						50,		250,	0,		"Ammo Container"],      		// HURON Ammo
 	["B_Slingload_01_Fuel_F",						50,		0,		250,	"Fuel Container"],      		// HURON Fuel
-    //["rhsusf_M1239_M2_Deploy_socom_d",              300,    300,    300,    "COP Truck"],                   // COP Truck
     [FOB_box_typename,								1500,	0,		400],									// FOB Container
     [FOB_truck_typename,							1800,	0,		500]  									// FOB Truck
 ];

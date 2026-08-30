@@ -1415,37 +1415,6 @@ KPLIB_objectInits = [
 ] call CBA_fnc_addClassEventHandler;
 
 
-// COP add action
-["rhsusf_M1239_M2_Deploy_socom_d", "init",
-    {
-        if ( isNil "GRLIB_all_cops" ) then { GRLIB_all_cops = [] };
-        if ( isNil "OPFOR_all_cops" ) then { OPFOR_all_cops = [] };
-        _this select 0 addAction
-        [
-            "Build PB",	// title
-            {[player, GRLIB_side_friendly] execVM "modules\COPS\copBuildandMove.sqf"}, // script
-            nil,		// arguments
-            1.5,		// priority
-            true,		// showWindow
-            true,		// hideOnUse
-            "",			// shortcut
-            "(roleDescription _this find 'Assassin 6' > -1) || (roleDescription _this find 'Platoon Commander' > -1) || (roleDescription _this find 'Odin' > -1)", 	// condition
-            25,			// radius
-            false,		// unconscious
-            "",			// selection
-            ""			// memoryPoint
-        ];
-
-        [
-            _this select 0,
-            ["rhs_woodland",1]
-        ] call BIS_fnc_initVehicle;
-        
-    },
-    true, 
-    [], 
-    true
-] call CBA_fnc_addClassEventHandler;
 
 ["Land_TentHangar_V1_F", "init",
     { 

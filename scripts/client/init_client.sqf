@@ -28,6 +28,7 @@ do_load_box = compileFinal preprocessFileLineNumbers "scripts\client\ammoboxes\d
 kp_fuel_consumption = compileFinal preprocessFileLineNumbers "scripts\client\misc\kp_fuel_consumption.sqf";
 
 [] call KPLIB_INTEL_CLIENT_INIT;
+[] call KPLIB_COPS_CLIENT_INIT;
 execVM "scripts\client\actions\recycle_manager.sqf";
 
 _role = [player] call RoleArsenal_DetermineRole;

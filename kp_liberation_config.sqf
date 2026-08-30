@@ -54,6 +54,26 @@ KP_liberation_fuel_max = 45;
 // Name of the savegame namespace inside of the [ServerProfileName].vars.Arma3Profile file
 GRLIB_save_key = "KP_LIBERATION_" + (toUpper worldName) + "_SAVEGAME";
 
+// BLUFOR patrol base (PB).
+KPLIB_COPS_MAX = 1;
+KPLIB_COPS_MIN_FOB_DISTANCE = 500;
+KPLIB_COPS_SECTOR_SEARCH_DISTANCE = 2500;
+KPLIB_COPS_MIN_HOSTILE_SECTOR_DISTANCE = 1000;
+KPLIB_COPS_CONTEST_RADIUS = 300;
+KPLIB_COPS_CONTEST_COUNT = 3;
+KPLIB_COPS_REDEPLOY_RADIUS = 20;
+KPLIB_COPS_REDEPLOY_REFRESH = 1;
+KPLIB_COPS_REQUEST_COOLDOWN = 2;
+KPLIB_COPS_MARKER_TEXT = "PB";
+KPLIB_COPS_MARKER_OFFSET = [-17, 11, 0];
+KPLIB_COPS_SAVE_KEY = GRLIB_save_key + "_COPS";
+
+// [classname, model-space offset, model-space direction, principal structure]
+KPLIB_COPS_COMPOSITION = [
+    ["Land_Shed_06_F", [-16, 11, 0], [1, 0, 0], true],
+    ["Flag_CW_US", [-10, 7, -0.3], [1, 0, 0], false]
+];
+
 // Used to simulate a different role for quickly testing the role arsenal
 // Note this changes the role of EVERY player on the server so should be cleared when done.
 DEBUG_ARSENAL_ROLE_OVERRIDE = "";

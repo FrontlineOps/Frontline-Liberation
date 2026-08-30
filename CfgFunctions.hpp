@@ -23,7 +23,6 @@ class KPLIB {
         class createClearanceConfirm    {};
         class createCrate               {};
         class createManagedUnit         {};
-        class createPBMarker            {};
         class crGetMulti                {};
         class crGlobalMsg               {};
         class doSave                    {};
@@ -66,7 +65,6 @@ class KPLIB {
         class isBigtownActive           {};
         class isClassUAV                {};
         class isRadio                   {};
-        class isNearFriendlyPB          {};
         class log                       {};
         class potatoScan                {};
         class protectObject             {};

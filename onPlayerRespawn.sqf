@@ -34,6 +34,9 @@ if (side player == GRLIB_side_enemy) then {
 };
 
 [] call KPLIB_fnc_addActionsPlayer; 
+if (!isNil "KPLIB_COPS_CLIENT_INSTALL_ACTION") then {
+    [player] call KPLIB_COPS_CLIENT_INSTALL_ACTION;
+};
 
 // Loop through all arsenals, and init role restricted arsenal.
 // This fixes a bug where when a player joins, 

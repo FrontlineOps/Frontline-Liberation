@@ -30,6 +30,7 @@ _redeployEvaluation = "
                 _originalTarget getVariable ['KPLIB_fobDist', 99999] < 40
                 || {_originalTarget getVariable ['KPLIB_isNearMobRespawn', false]}
                 || {_originalTarget getVariable ['KPLIB_isNearStart', false]}
+                || {!isNil 'KPLIB_COPS_CLIENT_IS_NEAR' && {[_originalTarget] call KPLIB_COPS_CLIENT_IS_NEAR}}
             }
             && {build_confirmed isEqualTo 0}
         ";
@@ -42,7 +43,6 @@ if (playerside isEqualTo GRLIB_side_enemy) then {
             && {alive _originalTarget}
             && {
                 (markerPos 'kog_base') distance player < 20
-                || {[_originalTarget, 20] call kplib_fnc_isNearFriendlyPB}
             }
             && {build_confirmed isEqualTo 0}
         ";
@@ -300,41 +300,6 @@ _player addAction [
 ];
 
 _player addAction [
-    ["<t color='#80FF80'>", "Place PB", "</t>"] joinString "",
-    { [player, side player] execVM "modules\COPS\copBuildandMove.sqf"},
-    nil,
-    -860,
-    false,
-    true,
-    "",
-    "
-        alive _originalTarget
-        && {side _originalTarget == GRLIB_side_friendly}
-        && {[_originalTarget] call RoleArsenal_DetermineRole == 'PL'}
-        && {GRLIB_cop_count < GRLIB_max_cops}
-    "
-];
-
-_player addAction [
-    ["<t color='#80FF80'>", "Place PB", "</t>"] joinString "",
-    { [player, side player] execVM "modules\COPS\copBuildandMove.sqf"},
-    nil,
-    -860,
-    false,
-    true,
-    "",
-    "
-        alive _originalTarget
-        && {side _originalTarget == GRLIB_side_enemy}
-        && {(roleDescription _originalTarget) find 'Detachment Commander' > -1
-        || (roleDescription _originalTarget) find 'Squad Leader' > -1
-        || (roleDescription _originalTarget) find 'Team Leader' > -1}
-        && {(roleDescription _originalTarget) find 'Engineer Team Leader' == -1}
-        && {OPFOR_cop_count < OPFOR_max_cops}
-    "
-];
-
-_player addAction [
     ["<t color='#80FF80'>", "Disable Damage", "</t>"] joinString "",
     { 
         player allowDamage false;
@@ -375,43 +340,5 @@ private _getCoordsScript = {
 private _getCoords = ["GetCoords","Get Coordinates","",_getCoordsScript,{visibleMap}] call ace_interact_menu_fnc_createAction;
 [_player, 1, ["ACE_SelfActions"], _getCoords] call ace_interact_menu_fnc_addActionToObject;
 
-
-// Destroy PB (only for OPFOR, disabled for now)
-/*
-_player addAction [
-    ["<t color='#FF0000'>", "Destroy PB", "</t>"] joinString "",
-    {
-        params ["_target", "_caller", "_actionId", "_arguments"];
-        private _marker = nil;
-        {
-            if (getMarkerPos _x distance2D getPos _caller < 10) then {
-                _marker = _x;
-            };
-        } forEach GRLIB_all_cops;
-
-        if (!isNil "_marker") then {
-            ["lib_admin_notification", ["PB Lost", format ["PB - %1 has been destroyed!", mapGridPosition (getMarkerPos _marker)], "res\notif\ui_notif_sec_los.paa"]] remoteExec ["bis_fnc_shownotification"];
-            deleteMarker _marker;
-            GRLIB_all_cops = GRLIB_all_cops - [_marker];
-            publicVariable "GRLIB_all_cops";
-        };
-    },
-    nil,
-    -860,
-    false,
-    true,
-    "",
-    "
-        alive _originalTarget
-        && {side _originalTarget == GRLIB_side_enemy}
-        && {GRLIB_cop_count >= 1}
-        && {
-            {
-                getMarkerPos _x distance2D getPos _originalTarget < 10
-            } forEach GRLIB_all_cops;
-        }
-    "
-];
-*/
 
 true
