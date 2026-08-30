@@ -57,6 +57,19 @@ BATTLESPACE_DEBUG_INDEPTH = false;
 if (isNil "BATTLESPACE_TASK_FORCE_SPAWN_RESERVATIONS") then {
 	BATTLESPACE_TASK_FORCE_SPAWN_RESERVATIONS = createHashMap;
 };
+if (isNil "BATTLESPACE_TASK_FORCE_SPAWN_QUEUE") then {
+	BATTLESPACE_TASK_FORCE_SPAWN_QUEUE = [];
+};
+if (isNil "BATTLESPACE_TASK_FORCE_ACTIVE_SPAWNS") then {
+	BATTLESPACE_TASK_FORCE_ACTIVE_SPAWNS = createHashMap;
+};
+
+BATTLESPACE_TASK_FORCE_CANCEL_SPAWN_ADMISSION = {
+	params ["_taskForceName"];
+	BATTLESPACE_TASK_FORCE_SPAWN_RESERVATIONS deleteAt _taskForceName;
+	BATTLESPACE_TASK_FORCE_ACTIVE_SPAWNS deleteAt _taskForceName;
+	BATTLESPACE_TASK_FORCE_SPAWN_QUEUE = BATTLESPACE_TASK_FORCE_SPAWN_QUEUE select {_x != _taskForceName};
+};
 
 BATTLESPACE_TASK_FORCE_SAVE_KEY = format ["BATTLESPACE_TASK_FORCES_%1", toUpper worldName];
 
@@ -68,6 +81,69 @@ BATTLESPACE_TASK_FORCE_REGISTER_MODEL = {
 
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\models\index.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\pathfinder.sqf";
+
+BATTLESPACE_TASK_FORCE_PROCESS_SPAWN_QUEUE = {
+	if (!isServer) exitWith {};
+
+	private _now = CBA_missionTime;
+	private _expiredActiveSpawns = [];
+	{
+		private _taskForce = BATTLESPACE_TASK_FORCES get _x;
+		private _expiresAt = _y;
+		if (
+			isNil "_taskForce"
+			|| {_now >= _expiresAt}
+			|| {!(_taskForce param [11, false])}
+		) then {
+			_expiredActiveSpawns pushBack _x;
+		};
+	} forEach BATTLESPACE_TASK_FORCE_ACTIVE_SPAWNS;
+	{
+		[_x] call BATTLESPACE_TASK_FORCE_CANCEL_SPAWN_ADMISSION;
+	} forEach _expiredActiveSpawns;
+
+	private _maxConcurrent = 1 max floor (missionNamespace getVariable ["BATTLESPACE_TASK_FORCE_SPAWN_MAX_CONCURRENT", 8]);
+	if (count BATTLESPACE_TASK_FORCE_ACTIVE_SPAWNS >= _maxConcurrent) exitWith {};
+
+	private _started = false;
+	while {!_started && {BATTLESPACE_TASK_FORCE_SPAWN_QUEUE isNotEqualTo []}} do {
+		private _taskForceName = BATTLESPACE_TASK_FORCE_SPAWN_QUEUE deleteAt 0;
+		private _reservation = BATTLESPACE_TASK_FORCE_SPAWN_RESERVATIONS get _taskForceName;
+		private _taskForce = BATTLESPACE_TASK_FORCES get _taskForceName;
+
+		if (isNil "_reservation" || {isNil "_taskForce"}) then {
+			[_taskForceName] call BATTLESPACE_TASK_FORCE_CANCEL_SPAWN_ADMISSION;
+		} else {
+			private _model = BATTLESPACE_TASK_FORCE_MODELS get (_taskForce param [0, ""]);
+			private _spawning = _taskForce param [11, false];
+			private _activeObjects = _taskForce param [8, []];
+
+			if (
+				isNil "_model"
+				|| {_activeObjects isNotEqualTo []}
+				|| {!([_taskForceName, _taskForce] call (_model get "isAlive"))}
+				|| {!([_taskForceName, _taskForce] call (_model get "canProc"))}
+			) then {
+				[_taskForceName] call BATTLESPACE_TASK_FORCE_CANCEL_SPAWN_ADMISSION;
+			} else {
+				private _reservationExpiresAt = _reservation param [1, _now + 180, [0]];
+				if (_spawning) then {
+					BATTLESPACE_TASK_FORCE_ACTIVE_SPAWNS set [_taskForceName, _reservationExpiresAt];
+					_started = true;
+				} else {
+					[_taskForceName, _taskForce] call (_model get "doSpawn");
+					if (_taskForce param [11, false]) then {
+						BATTLESPACE_TASK_FORCE_ACTIVE_SPAWNS set [_taskForceName, _reservationExpiresAt];
+						_started = true;
+					} else {
+						[_taskForceName] call BATTLESPACE_TASK_FORCE_CANCEL_SPAWN_ADMISSION;
+					};
+				};
+			};
+		};
+	};
+};
+
 BATTLESPACE_TASK_FORCES_LOAD = {
 	diag_log format ["Battlespace Task Forces Loading..."];
 	private _save = profileNamespace getVariable BATTLESPACE_TASK_FORCE_SAVE_KEY;
@@ -250,6 +326,7 @@ BATTLESPACE_TASK_FORCES_SAVE = {
 	{
 		_x params ["_taskForceName", "_taskForce"];
 		BATTLESPACE_TASK_FORCES deleteAt _taskForceName;
+		[_taskForceName] call BATTLESPACE_TASK_FORCE_CANCEL_SPAWN_ADMISSION;
 		["BATTLESPACE/TASKFORCES/DESTROYED", [_taskForceName, _taskForce]] call CBA_fnc_serverEvent;
 	} forEach _invalidTaskForces;
 
@@ -413,6 +490,7 @@ BATTLESPACE_TASK_FORCE_PATH_FAILED = {
 	if (_failureCounts > 10) exitWith {
 		diag_log format ["Task Force %1 failed too much, removing..."];
 		BATTLESPACE_TASK_FORCES deleteAt _taskForceName;
+		[_taskForceName] call BATTLESPACE_TASK_FORCE_CANCEL_SPAWN_ADMISSION;
 	};
 
 	if (_failureCounts > 4) then {
@@ -534,10 +612,11 @@ BATTLESPACE_TASK_FORCES_EVALUATE = {
 	{
 		private _reservedTaskForce = BATTLESPACE_TASK_FORCES get _x;
 		_y params ["_reservedUnits", "_reservationExpiresAt"];
+		private _isQueued = _x in BATTLESPACE_TASK_FORCE_SPAWN_QUEUE;
 		if (
 			isNil "_reservedTaskForce"
 			|| {CBA_missionTime >= _reservationExpiresAt}
-			|| {!(_reservedTaskForce param [11, false])}
+			|| {!_isQueued && {!(_reservedTaskForce param [11, false])}}
 		) then {
 			_expiredReservations pushBack _x;
 		} else {
@@ -545,7 +624,7 @@ BATTLESPACE_TASK_FORCES_EVALUATE = {
 		};
 	} forEach BATTLESPACE_TASK_FORCE_SPAWN_RESERVATIONS;
 	{
-		BATTLESPACE_TASK_FORCE_SPAWN_RESERVATIONS deleteAt _x;
+		[_x] call BATTLESPACE_TASK_FORCE_CANCEL_SPAWN_ADMISSION;
 	} forEach _expiredReservations;
 
 	// 1. Loop through all Task Forces
@@ -582,7 +661,7 @@ BATTLESPACE_TASK_FORCES_EVALUATE = {
 			diag_log format ["Task Force %1 (%2) has invalid simulated location %3, deleting", _taskForceName, _type, _simulatedLocation];
 
 			BATTLESPACE_TASK_FORCES deleteAt _taskForceName;
-			BATTLESPACE_TASK_FORCE_SPAWN_RESERVATIONS deleteAt _taskForceName;
+			[_taskForceName] call BATTLESPACE_TASK_FORCE_CANCEL_SPAWN_ADMISSION;
 
 			["BATTLESPACE/TASKFORCES/DESTROYED", [_x, _y]] call CBA_fnc_serverEvent;
 			continue;
@@ -591,7 +670,7 @@ BATTLESPACE_TASK_FORCES_EVALUATE = {
 
 		if(isNil { _model }) then {
 			BATTLESPACE_TASK_FORCES deleteAt _taskForceName;
-			BATTLESPACE_TASK_FORCE_SPAWN_RESERVATIONS deleteAt _taskForceName;
+			[_taskForceName] call BATTLESPACE_TASK_FORCE_CANCEL_SPAWN_ADMISSION;
 			continue;	
 		};
 
@@ -600,7 +679,7 @@ BATTLESPACE_TASK_FORCES_EVALUATE = {
 
 		if(!_isValid) then {
 			BATTLESPACE_TASK_FORCES deleteAt _taskForceName;
-			BATTLESPACE_TASK_FORCE_SPAWN_RESERVATIONS deleteAt _taskForceName;
+			[_taskForceName] call BATTLESPACE_TASK_FORCE_CANCEL_SPAWN_ADMISSION;
 
 			["BATTLESPACE/TASKFORCES/DESTROYED", [_x, _y]] call CBA_fnc_serverEvent;
 			continue;
@@ -610,7 +689,8 @@ BATTLESPACE_TASK_FORCES_EVALUATE = {
 		// Check for proccing if no active groups
 		private _canProc = [_x, _y] call (_model get "canProc");
 		if(_canProc) then {
-			if (!_spawning && {count _activeObjects <= 0}) then {
+			private _hasSpawnReservation = !isNil {BATTLESPACE_TASK_FORCE_SPAWN_RESERVATIONS get _taskForceName};
+			if (!_spawning && {!_hasSpawnReservation} && {count _activeObjects <= 0}) then {
 				private _manpowerEstimate = _composition getOrDefault ["manpower", 0];
 				private _vehicleEstimate = count (_composition getOrDefault ["vehicles", []]);
 				private _staticEstimate = {
@@ -627,7 +707,7 @@ BATTLESPACE_TASK_FORCES_EVALUATE = {
 					];
 					_reservationTotal = _reservationTotal + _spawnEstimate;
 					_y set [9, false];
-					[_x, _y] call (_model get "doSpawn");
+					BATTLESPACE_TASK_FORCE_SPAWN_QUEUE pushBackUnique _taskForceName;
 				};
 			};
 			_y set [7, 0];
@@ -670,7 +750,7 @@ BATTLESPACE_TASK_FORCES_EVALUATE = {
 					_y set [3, _composition];
 					// Reset states
 					BATTLESPACE_TASK_FORCE_PATHS deleteAt _taskForceName;
-					BATTLESPACE_TASK_FORCE_SPAWN_RESERVATIONS deleteAt _taskForceName;
+					[_taskForceName] call BATTLESPACE_TASK_FORCE_CANCEL_SPAWN_ADMISSION;
 					_y set [8, []];
 					_y set [4, []];
 					_y set [7, 0];
@@ -684,7 +764,7 @@ BATTLESPACE_TASK_FORCES_EVALUATE = {
 		private _done = [_x, _y] call (_model get "onDecisionTick");
 		if(_done) then {
 			BATTLESPACE_TASK_FORCES deleteAt _taskForceName;
-			BATTLESPACE_TASK_FORCE_SPAWN_RESERVATIONS deleteAt _taskForceName;
+			[_taskForceName] call BATTLESPACE_TASK_FORCE_CANCEL_SPAWN_ADMISSION;
 
 			["BATTLESPACE/TASKFORCES/DONE", [_x, _y]] call CBA_fnc_serverEvent;
 			continue;
@@ -795,6 +875,7 @@ if (isServer) then {
 		while { true } do {
 			_state call BATTLESPACE_TASK_FORCES_EVALUATE;
 			_clusteringState call BATTLESPACE_TASK_FORCES_CLUSTER_BLUFOR;
+			[] call BATTLESPACE_TASK_FORCE_PROCESS_SPAWN_QUEUE;
 			sleep 1;
 		};
 	};

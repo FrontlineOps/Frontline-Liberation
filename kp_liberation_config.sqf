@@ -84,6 +84,12 @@ DEBUG_PLAYER_COUNT_OVERRIDE = -1;
 // 10 default
 BATTLESPACE_UNIT_CAP = 200;
 
+// Pace physical task-force materialization without changing proc eligibility.
+// The manager admits one new force per one-second pass; entity creation yields
+// briefly so large forces are distributed across scheduler frames.
+BATTLESPACE_TASK_FORCE_SPAWN_MAX_CONCURRENT = 8;
+BATTLESPACE_TASK_FORCE_SPAWN_ENTITY_YIELD = 0.01;
+
 // Depth and Length in actuality adds up to 2x the listed value
 // Length / Depth should be a multiple of the Gap
 BATTLESPACE_AT_MINE_LENGTH = 50;

@@ -413,7 +413,7 @@ BATTLESPACE_TACTICAL_ABANDON_CAPTURED_DEFENDERS = {
         BATTLESPACE_STRATEGIC_OPERATIONS deleteAt _x;
         BATTLESPACE_TASK_FORCES deleteAt _x;
         BATTLESPACE_TASK_FORCE_PATHS deleteAt _x;
-        BATTLESPACE_TASK_FORCE_SPAWN_RESERVATIONS deleteAt _x;
+        [_x] call BATTLESPACE_TASK_FORCE_CANCEL_SPAWN_ADMISSION;
         if (!isNil "_taskForce") then {[_taskForce] call BATTLESPACE_STRATEGIC_RETIRE_PHYSICAL_FORCE};
     } forEach _abandoned;
     if (_abandoned isNotEqualTo []) then {

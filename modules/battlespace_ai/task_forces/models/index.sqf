@@ -187,7 +187,7 @@ BATTLESPACE_TASK_FORCE_DEFAULT_FINISH_SPAWN = {
 		];
 	};
 
-	BATTLESPACE_TASK_FORCE_SPAWN_RESERVATIONS deleteAt _taskForceName;
+	[_taskForceName] call BATTLESPACE_TASK_FORCE_CANCEL_SPAWN_ADMISSION;
 	_success && {!isNil "_registeredTaskForce"}
 };
 
@@ -219,6 +219,10 @@ BATTLESPACE_TASK_FORCE_DEFAULT_TRY_SPAWN = {
 	private _structures = _composition getOrDefault ["structures", []];
 	private _structureCrewFromManpower = _composition getOrDefault ["structureCrewFromManpower", false];
 	private _structureCrewCount = 0;
+	private _entitySpawnYield = 0 max (missionNamespace getVariable ["BATTLESPACE_TASK_FORCE_SPAWN_ENTITY_YIELD", 0.01]);
+	private _yieldAfterEntity = {
+		if (_entitySpawnYield > 0) then {sleep _entitySpawnYield};
+	};
 
 	diag_log format ["  Unit cap within bounds, spawning Task Force"];
 	diag_log format ["    Manpower %1", _manpower];
@@ -294,6 +298,7 @@ BATTLESPACE_TASK_FORCE_DEFAULT_TRY_SPAWN = {
 			};
 		};
 		_activeObjects pushBack _building;
+		call _yieldAfterEntity;
 	} forEach _structures;
 
 	sleep 5;
@@ -440,6 +445,7 @@ BATTLESPACE_TASK_FORCE_DEFAULT_TRY_SPAWN = {
 					_unit moveInCargo _veh;
 					_unit setVariable ["TASKFORCEID", _taskForceName];
 					_unit addMPEventHandler ["MPKilled", { ["MANPOWER", _this] call BATTLESPACE_TASK_FORCE_OBJECT_KILLED }];
+					call _yieldAfterEntity;
 		
 				} foreach _baseSquad;
 			};
@@ -467,6 +473,7 @@ BATTLESPACE_TASK_FORCE_DEFAULT_TRY_SPAWN = {
 		} else {
 			// Defensive orders, don't make it explicitly move.
 		};
+		call _yieldAfterEntity;
 	} forEach _vehicles;
 
 	// Spawn remaining infantry squads
@@ -508,6 +515,7 @@ BATTLESPACE_TASK_FORCE_DEFAULT_TRY_SPAWN = {
 				_activeObjects pushBack _unit;
 				_unit setVariable ["TASKFORCEID", _taskForceName];
 				_unit addMPEventHandler ["MPKilled", { ["MANPOWER", _this] call BATTLESPACE_TASK_FORCE_OBJECT_KILLED }];
+				call _yieldAfterEntity;
 
 			} foreach _baseSquad;
 
