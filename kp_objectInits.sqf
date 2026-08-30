@@ -141,12 +141,6 @@ KPLIB_objectInits = [
             _this setVariable ["LESH_WheelOffset", [0,-1.5]];
         }
     ],
-    [
-        ["Flag_White_F"],
-        {   
-            _this setFlagTexture "res\klogobg.paa";
-        }
-    ],
 	[
         ["SignAd_SponsorS_ARMEX_F"],
         { 
@@ -178,81 +172,15 @@ KPLIB_objectInits = [
 		}
     ],
     [
-        ["Land_Billboard_03_supermarket_F"],
-        {
-            _this setObjectTextureGlobal [0, "res\KarmaRoles.paa"];
-        }
-    ],
-    [
         ["Land_Billboard_03_blank_F"],
         {
             _this setObjectTextureGlobal [0, "res\KarmaAdmin.paa"];
-        }
-    ],
-	[
-        ["Land_Billboard_F"],
-        {
-            _this setObjectTextureGlobal [0, "res\KarmaRules.paa"];
-        }
-    ],
-    [
-        ["Land_Billboard_03_bluking_F"],
-        {
-            _this setObjectTextureGlobal [0, "res\KarmaBanner.paa"];
-        }
-    ],
-	[
-        ["Land_Billboard_03_aan_F"],
-        {
-            _this setObjectTextureGlobal [0, "res\KarmaRadio.paa"];
-        }
-    ],
-	[
-        ["Land_Billboard_03_koke_F"],
-        {
-            _this setObjectTextureGlobal [0, "res\KarmaOdin.paa"];
-        }
-    ],
-	[
-        ["Land_Billboard_03_cheese_F"],
-        {
-            _this setObjectTextureGlobal [0, "res\KarmaTutorial.paa"];
-        }
-    ],
-    [
-        ["Land_Billboard_03_ionbase_F"],
-        {
-            _this setObjectTextureGlobal [0, "res\KCRadioSpreadsheet.paa"];
-        }
-    ],
-    [
-        ["Land_Billboard_03_argois_F"],
-        {
-            _this setObjectTextureGlobal [0, "res\Karmainsurance.paa"];
-        }
-    ],
-    [
-        ["Land_Billboard_03_lyfe_F"],
-        {
-            _this setObjectTextureGlobal [0, "res\KarmaResourcesbillboard.paa"];
-        }
-    ],
-    [
-        ["Land_Billboard_03_ygont_F"],
-        {
-            _this setObjectTextureGlobal [0, "res\KarmaBuilders.paa"];
         }
     ],
     [
         ["SignAd_SponsorS_Suatmm_F"],
         {
             _this setObjectTextureGlobal [0, "res\KarmaArtyPitSign.paa"];
-        }
-    ],
-    [
-        ["SignAd_SponsorS_Fuel_white_F"],
-        {
-            _this setObjectTextureGlobal [0, "res\KarmaArsenal.paa"];
         }
     ],
     [
