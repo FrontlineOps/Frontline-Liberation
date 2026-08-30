@@ -6,7 +6,7 @@
     License: MIT License - http://www.opensource.org/licenses/MIT
 
     Description:
-        Returns the number of connected players without counting headless clients.
+        Returns the number of connected players.
         Set DEBUG_PLAYER_COUNT to a value other than -1 to override count for testing.
 
     Parameter(s):
@@ -16,7 +16,7 @@
         Amount of players [NUMBER]
 */
 
-private _playerCount = count(allPlayers - entities "HeadlessClient_F");
+private _playerCount = count allPlayers;
 if (DEBUG_PLAYER_COUNT_OVERRIDE != -1) then {
     // Allow us to simulate different play conditions
     _playerCount = DEBUG_PLAYER_COUNT_OVERRIDE;

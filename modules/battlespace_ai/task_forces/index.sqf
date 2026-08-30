@@ -468,7 +468,7 @@ BATTLESPACE_TASK_FORCES_CLUSTER_BLUFOR = {
 	BATTLESPACE_TASK_FORCES_BLUFOR_CLUSTERS = [];
 	
 
-	private _remainingPlayers = allPlayers - entities "HeadlessClient_F";
+	private _remainingPlayers = +allPlayers;
 
 	_remainingPlayers = _remainingPlayers select {
 		side _x == GRLIB_side_friendly

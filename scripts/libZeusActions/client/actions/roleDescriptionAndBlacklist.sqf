@@ -62,7 +62,7 @@ KC_DEBUG_ROLE_PFH = {
 				drawIcon3D ["\a3\ui_f\data\IGUI\Cfg\Cursors\selectover_ca.paa", KC_BLACKLIST_COLOR, (ASLtoAGL getPosASLVisual _x) vectorAdd [0,0,5], 0.75, 0.75, 0, format ["HAS BLACKLISTED ITEMS: %1", _itemsNotInRA], 1, 0.025, "TahomaB"];
 			};
 			drawIcon3D ["\a3\ui_f\data\IGUI\Cfg\Cursors\selectover_ca.paa", [0,1,0,1], ASLtoAGL getPosASLVisual _x, 0.75, 0.75, 0, format ["R %1", roleDescription _x], 1, 0.025, "RobotoCondensed"];
-		} forEach (allPlayers - entities "HeadlessClient_F");
+		} forEach allPlayers;
 	} else {
 
 		[_this select 1] call CBA_fnc_removePerFrameHandler;

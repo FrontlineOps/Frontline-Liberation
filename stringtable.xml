@@ -1584,46 +1584,46 @@
             <Czech>100% - Doporučeno pro dedikované servery</Czech>
         </Key>
         <Key ID="STR_PARAMS_UNITCAP4">
-            <Original>125% - Dedicated server with headless client recommended</Original>
-            <French>125% - Serveur dédié avec headless client recommandé</French>
-            <German>125 % - Dezidierter Server mit Headless Client empfohlen</German>
-            <Spanish>125% - Recomendado para servidor dedicado con cliente descabezado</Spanish>
-            <Russian>125% - Выделенный сервер вместе с headless client рекомендуется</Russian>
-            <Italian>125% - Raccomandato per server dedicati con headless client</Italian>
-            <Chinesesimp>125% - 适用于有Headless Client辅助的服务器</Chinesesimp>
-            <Chinese>125% - 適合有無頭客戶端的伺服器使用</Chinese>
-            <Turkish>125% - Headless client'e sahip dedicated sunucu için önerilen</Turkish>
-            <Portuguese>125% - Recomendado para servidor com headless client</Portuguese>
-            <Korean>125% - 단일 CPU의 헤드리스서버(다른PC와 사용자에게 서비스를 제공하는 서버종류)에서 실행할때 권장</Korean>
-            <Czech>125% - Doporučeno pro dedikované servery s Headless klienty</Czech>
+            <Original>125%</Original>
+            <French>125%</French>
+            <German>125%</German>
+            <Spanish>125%</Spanish>
+            <Russian>125%</Russian>
+            <Italian>125%</Italian>
+            <Chinesesimp>125%</Chinesesimp>
+            <Chinese>125%</Chinese>
+            <Turkish>125%</Turkish>
+            <Portuguese>125%</Portuguese>
+            <Korean>125%</Korean>
+            <Czech>125%</Czech>
         </Key>
         <Key ID="STR_PARAMS_UNITCAP5">
-            <Original>150% - Dedicated server with headless client recommended</Original>
-            <French>150% - Serveur dédié avec clients headless multiples recommandé</French>
-            <German>150 % - Dezidierter Server mit Headless Client empfohlen</German>
-            <Spanish>150% - Recomendado para servidor dedicado con múltiples clientes descabezados</Spanish>
-            <Russian>150% - Выделенный сервер вместе с несколькими headless client рекомендуется</Russian>
-            <Italian>150% - Raccomandato per server dedicati con molti headless client</Italian>
-            <Chinesesimp>150% - 适用于有多个Headless Client辅助的服务器</Chinesesimp>
-            <Chinese>150% - 適合有多個無頭客戶端的伺服器使用</Chinese>
-            <Turkish>150% - Birkaç headless client'e sahip dedicated sunucu için önerilen</Turkish>
-            <Portuguese>150% - Recomendado para servidor com mútiplos headless clients</Portuguese>
-            <Korean>150% - CPU 2개 이상, 또는 다중 헤드리스서버에서 실행할때 권장</Korean>
-            <Czech>150% - Doporučeno pro dedikované servery s vícero Headless klienty</Czech>
+            <Original>150%</Original>
+            <French>150%</French>
+            <German>150%</German>
+            <Spanish>150%</Spanish>
+            <Russian>150%</Russian>
+            <Italian>150%</Italian>
+            <Chinesesimp>150%</Chinesesimp>
+            <Chinese>150%</Chinese>
+            <Turkish>150%</Turkish>
+            <Portuguese>150%</Portuguese>
+            <Korean>150%</Korean>
+            <Czech>150%</Czech>
         </Key>
         <Key ID="STR_PARAMS_UNITCAP6">
-            <Original>200% - Dedicated server with multiple headless clients recommended</Original>
-            <French>200% - Serveur dédié avec clients headless multiples recommandés</French>
-            <German>200 % - Dezidierter Server mit mehreren Headless Clients empfohlen</German>
-            <Spanish>200% - Recomendado para servidor dedicado con múltiples clientes descabezados</Spanish>
-            <Russian>200% - Выделенный сервер вместе с несколькими headless client рекомендуется</Russian>
-            <Italian>200% - Raccomandato per server dedicati con tanti headless client</Italian>
-            <Chinesesimp>200% - 适用于有多个Headless Client辅助的服务器</Chinesesimp>
-            <Chinese>200% - 適合有多個無頭客戶端的伺服器使用</Chinese>
-            <Turkish>200% - Birkaç headless client'e sahip dedicated sunucu için önerilen</Turkish>
-            <Portuguese>200% - Recomendado para servidor com mútiplos headless clients</Portuguese>
-            <Korean>200% - CPU 2개 이상, 또는 다중 헤드리스서버에서 실행할때 권장</Korean>
-            <Czech>200% - Doporučeno pro dedikované servery s vícero Headless klienty</Czech>
+            <Original>200%</Original>
+            <French>200%</French>
+            <German>200%</German>
+            <Spanish>200%</Spanish>
+            <Russian>200%</Russian>
+            <Italian>200%</Italian>
+            <Chinesesimp>200%</Chinesesimp>
+            <Chinese>200%</Chinese>
+            <Turkish>200%</Turkish>
+            <Portuguese>200%</Portuguese>
+            <Korean>200%</Korean>
+            <Czech>200%</Czech>
         </Key>
         <Key ID="STR_PARAMS_CIVILIANS">
             <Original>Civilian activity</Original>

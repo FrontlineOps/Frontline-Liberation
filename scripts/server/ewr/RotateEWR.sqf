@@ -15,7 +15,7 @@ RotateEWR = {
 		
 	
 		
-		diag_log format ["ROTATE EWR (%1, %2, HC: %3)", _radarVeh, _currentFacing];
+		diag_log format ["ROTATE EWR (%1, %2)", _radarVeh, _currentFacing];
 		_newExecCount = 0;
 	};
 

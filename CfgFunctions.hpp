@@ -35,7 +35,6 @@ class KPLIB {
         class getFobName                {};
         class getFobResources           {};
         class getGroupType              {};
-        class getLessLoadedHC           {};
         class getLocalCap               {};
         class getLocationName           {};
         class getMobileRespawns         {};

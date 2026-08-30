@@ -243,7 +243,7 @@ BATTLESPACE_TASK_FORCE_DEFAULT_TRY_SPAWN = {
 					_lowest = _dist;
 					_dirToBlufor = _currentLoc getDir (getPos _x);
 				};
-			} forEach (allPlayers - entities "HeadlessClient_F");
+			} forEach allPlayers;
 
 			_dir = _dirToBlufor;
 

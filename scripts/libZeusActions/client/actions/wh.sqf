@@ -13,7 +13,7 @@ KC_DEBUG_WH_PFH = {
  
    _size = _size max 0.1; 
             drawIcon3D ["\a3\ui_f\data\IGUI\Cfg\Cursors\selectover_ca.paa", [0,1,0,_size * 0.6], ASLToAGL (_x modelToWorldVisualWorld (getCenterOfMass _x)), _size, _size, 0, name _x, 0, _size * 0.03, "TahomaB"]; 
-        } forEach (allPlayers - entities "HeadlessClient_F"); 
+        } forEach allPlayers;
     } else { 
  
         [_this select 1] call CBA_fnc_removePerFrameHandler; 

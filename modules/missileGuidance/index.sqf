@@ -213,7 +213,6 @@ IADS_HandleFiredEvent = {
 			diag_log format ["FiredMan triggered on local, projectile %1 from %2 out of %3, owner of projectile: %4, owner of unit: %5, owner of vehicle: %6, missile target of projectile %7", _projectile, _unit, _vehicle, owner _projectile, owner _unit, owner _vehicle, missileTarget _projectile];
 		};
 		// If something was local then they have the projectile on the event while others don't, however the logic should be guided by the server... probably.
-		// Headless clients would run this too.. theoretically as they are not a server.
 		[_unit, _weapon, _muzzle, _mode, _ammo, _magazine, _projectile, _vehicle, missileTarget _projectile] remoteExec ["IADS_HandleFiredEvent", 2];
 	}] call CBA_fnc_addClassEventHandler;
 

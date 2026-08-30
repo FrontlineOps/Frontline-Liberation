@@ -12,24 +12,6 @@
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\fortifications\index.sqf";
 
 if (!isNil { BATTLESPACE_LOCAL_TESTING }) then {
-	KPLIB_fnc_getLessLoadedHC = {
-
-		private _hcArray = [];
-		private _hc = objNull;
-
-		{
-			_hc = _x;
-			_hcArray pushBack [count (allUnits select {(owner _x) isEqualTo (owner _hc)}), _hc];
-		} forEach (entities "HeadlessClient_F");
-
-		if !(_hcArray isEqualTo []) then {
-			_hcArray sort true;
-			(_hcArray select 0) select 1
-		} else {
-			objNull
-		};
-		
-	};
 	KPLIB_fnc_addObjectInit = {};
 	// Depth and Length in actuality adds up to 2x the listed value
 	// Length / Depth should be a multiple of the Gap

@@ -90,14 +90,6 @@ if (isServer) then {
 
 };
 
-if (!isServer && !hasInterface) then {
-    execVM "scripts\server\offloading\hc_manager.sqf";
-    setViewDistance 1600;
-
-    // If you're enabling the hc_manager.sqf, delete this
-    //execVM "scripts\server\offloading\show_fps.sqf";
-};
-
 if (!isDedicated && hasInterface) then {
 
     [] call compileFinal preprocessFileLineNumbers "scripts\ragequitblocker\index.sqf";

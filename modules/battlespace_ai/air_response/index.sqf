@@ -32,7 +32,7 @@ BATTLESPACE_AIR_RESPONSE_COLLECT_CONTACTS = {
         _position set [2, 0];
         private _score = ([100, 200] select (_kind == "AIR")) + (10 * count ((crew _vehicle) select {isPlayer _x}));
         _contacts pushBack [_score, _kind, _position, netId _vehicle, typeOf _vehicle];
-    } forEach (allPlayers - entities "HeadlessClient_F");
+    } forEach allPlayers;
     [_contacts, [], {_x param [0, 0]}, "DESCEND"] call BIS_fnc_sortBy
 };
 

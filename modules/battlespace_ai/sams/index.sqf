@@ -301,7 +301,6 @@ BATTLESPACE_SAM_SITE_CREATE = {
 		_crew joinSilent _grp;
 
 		{ 
-			_x setVariable ["acex_headless_blacklist", true, true]; 
 			_x setVariable ["Vcm_Disable", true, true];
 			_x setVariable ["BSAFundingSector", _sectorToSpawnIn, true];
 			_x addEventHandler ["Killed", {

@@ -304,7 +304,6 @@ BATTLESPACE_SPAWN_BATTERY = {
 
 		_vehs pushBack _newVeh;
 
-		_newVeh setVariable ["acex_headless_blacklist", true, true]; 
 		_newVeh setVehicleAmmo 0;
 		_newVeh setVariable ["BSAFundingSector", _sectorToSpawnIn, true];
 		_newVeh addEventHandler ["Killed", {
@@ -325,7 +324,6 @@ BATTLESPACE_SPAWN_BATTERY = {
 			_x setUnitCombatMode "BLUE";
 			_x disableAI "FSM";
 			_x disableAI "AUTOTARGET";
-			_x setVariable ["acex_headless_blacklist", true, true]; 
 			_x setVariable ["BSAFundingSector", _sectorToSpawnIn, true];
 			_x addEventHandler ["Killed", {
 				params ["_unit"];
@@ -354,7 +352,6 @@ BATTLESPACE_SPAWN_BATTERY = {
 	_fcrGrp setVariable ["BSAState", ["READY", 0, getPos ((units _fcrGrp)#0)], true];
 	_fcrGrp setVariable ["BSAFundingSector", _sectorToSpawnIn, true];
 	_fcrGrp setVariable ["BSAPieceResource", _pieceResource, true];
-	_fcrGrp setVariable ["acex_headless_blacklist", true, true];
 	_fcrGrp setVariable ["Vcm_Disable", true, true];
 	BATTLESPACE_ARTILLERY_SECTIONS pushBack _fcrGrp;
 

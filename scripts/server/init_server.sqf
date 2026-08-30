@@ -32,7 +32,7 @@ execVM "scripts\server\game\spawn_radio_towers.sqf";
 execVM "scripts\server\game\synchronise_vars.sqf";
 execVM "scripts\server\game\synchronise_eco.sqf";
 execVM "scripts\server\game\zeus_synchro.sqf";
-execVM "scripts\server\offloading\show_fps.sqf";
+execVM "scripts\server\game\show_fps.sqf";
 execVM "scripts\server\resources\manage_resources.sqf";
 execVM "scripts\server\resources\recalculate_resources.sqf";
 execVM "scripts\server\resources\recalculate_timer.sqf";
@@ -63,8 +63,8 @@ execVM "scripts\server\civrep\init_module.sqf";
 // Civil Informant
 execVM "scripts\server\civinformant\init_module.sqf";
 
-// Groupcheck for deletion when empty
-execVM "scripts\server\offloading\group_diag.sqf";
+// Periodically mark groups for deletion when empty.
+execVM "scripts\server\ai\group_cleanup.sqf";
 
 {
     if ((_x != player) && (_x distance (markerPos GRLIB_respawn_marker) < 200 )) then {

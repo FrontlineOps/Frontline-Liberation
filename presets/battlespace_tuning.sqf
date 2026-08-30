@@ -101,28 +101,3 @@ BATTLESPACE_MORTAR_OVERRIDE_EXPRESSIONS = [
 
 // TODO: Move mortar stuff it to its own file eventually
 BATTLESPACE_MORTARS = [];
-
-BATTLESPACE_BLACKLIST_MORTAR_FROM_HC = {
-	params ["_mortar"];
-
-	_mortar setVariable ["acex_headless_blacklist", true, true];
-	{
-		_x setVariable ["acex_headless_blacklist", true, true];
-	} forEach (crew _mortar);
-
-	(group _mortar) setVariable ["acex_headless_blacklist", true, true];
-
-};
-
-{
-	[
-		_x,
-		"init",
-		{
-			[(_this#0)] call BATTLESPACE_BLACKLIST_MORTAR_FROM_HC
-		},
-		true,
-		[],
-		true
-	] call CBA_fnc_addClassEventHandler;
-} forEach BATTLESPACE_MORTARS;

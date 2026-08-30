@@ -347,7 +347,7 @@ BATTLESPACE_BATTLEGROUP_ON_DECISION_TICK = {
                 if (CBA_missionTime - _captureStartedAt < _captureDelay) exitWith { false };
 
                 private _procRange = missionNamespace getVariable ["BATTLESPACE_UNIT_PROC_RANGE", 1175];
-                private _friendlyPlayers = (allPlayers - entities "HeadlessClient_F") select {
+                private _friendlyPlayers = allPlayers select {
                     alive _x
                     && {side group _x == GRLIB_side_friendly}
                     && {_x distance2D (getMarkerPos _targetSector) <= _procRange}
