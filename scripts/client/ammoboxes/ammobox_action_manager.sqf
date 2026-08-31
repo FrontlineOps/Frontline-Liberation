@@ -12,8 +12,6 @@ _managed_areas = [];
 
 while {true} do {
 
-    if (!(getPlayerUID player in karmaLibBlacklisted)) then {
-
         _nearammoboxes = ((getpos player) nearEntities [KPLIB_crates, 10]);
         _neartransporttrucks = ((getpos player) nearEntities [KPLIB_transport_classes, 10]);
         _nearstorageareas = nearestObjects [player, KPLIB_storageBuildings, 10];
@@ -119,8 +117,6 @@ while {true} do {
             }
 
         } foreach _managed_areas;
-
-    };
 
     sleep (missionNamespace getVariable ["KP_liberation_client_action_refresh_interval", 5]);
 

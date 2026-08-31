@@ -86,6 +86,16 @@ private _squad = {
     if (count _result > _size) then {_result resize _size};
     _result
 };
+private _transportConfigClasses = KPLIB_transportConfigs apply {toLower (_x select 0)};
+private _registerTransportConfig = {
+    params ["_vehicleClass"];
+    private _classLower = toLower _vehicleClass;
+    if (_vehicleClass isEqualTo "" || {_classLower in _transportConfigClasses}) exitWith {};
+
+    private _vehicleSize = (sizeOf _vehicleClass) max 4;
+    KPLIB_transportConfigs pushBack [_vehicleClass, -((_vehicleSize / 2) + 2), [0, -1, 1]];
+    _transportConfigClasses pushBack _classLower;
+};
 
 private _blufor = _catalogs get "blufor";
     private _specialized =
@@ -110,6 +120,10 @@ private _blufor = _catalogs get "blufor";
     rotarycas_vehicles = [_blufor get "rotaryCas", "rotaryCas"] call _makeEntries;
     fixedwing_vehicles = [_blufor get "fixedWing", "fixedWing"] call _makeEntries;
     static_vehicles = [_blufor get "static", "static"] call _makeEntries;
+
+    {
+        [_x select 0] call _registerTransportConfig;
+    } forEach (groundlogi_vehicles + rotarylogi_vehicles);
 
     private _units = _blufor get "units";
     private _groups = _blufor get "infantryGroups";
@@ -233,10 +247,7 @@ private _opfor = _catalogs get "opfor";
     opfor_ammobox_transport = [_logisticsPool, _generalClass] call _first;
     opfor_fuel_truck = [_logisticsPool, _generalClass] call _last;
     opfor_ammo_truck = [_logisticsPool, _generalClass] call _first;
-    if (opfor_ammobox_transport != "" && {!((toLower opfor_ammobox_transport) in (KPLIB_transportConfigs apply {toLower (_x select 0)}))}) then {
-        private _vehicleSize = (sizeOf opfor_ammobox_transport) max 4;
-        KPLIB_transportConfigs pushBack [opfor_ammobox_transport, -((_vehicleSize / 2) + 2), [0, -1, 1]];
-    };
+    [opfor_ammobox_transport] call _registerTransportConfig;
 
     BATTLESPACE_DEFENDERS_VEHICLE_CLASSES = opfor_vehicles + opfor_battlegroup_vehicles;
     BATTLESPACE_DEFENDERS_STATIC_CLASSES = +(_opfor get "static");

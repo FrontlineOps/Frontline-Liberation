@@ -1267,35 +1267,6 @@ KPLIB_objectInits = [
 // ---------------------- BLUFOR TOWING ----------------------
 
 
-// ---------------------- Disable ACE cargo for resource crates ----------------------
-
-[KP_liberation_supply_crate, "init",
-    {
-        [_this select 0, 999] call ace_cargo_fnc_setSize;
-    },
-    true, 
-    [], 
-    true
-] call CBA_fnc_addClassEventHandler;
-
-[KP_liberation_ammo_crate, "init",
-    {
-        [_this select 0, 999] call ace_cargo_fnc_setSize;
-    },
-    true, 
-    [], 
-    true
-] call CBA_fnc_addClassEventHandler;
-
-[KP_liberation_fuel_crate, "init",
-    {
-        [_this select 0, 999] call ace_cargo_fnc_setSize;
-    },
-    true, 
-    [], 
-    true
-] call CBA_fnc_addClassEventHandler;
-
 ["B_Slingload_01_Repair_F", "init",
     {
         [_this select 0, 9] call ace_cargo_fnc_setSize;
