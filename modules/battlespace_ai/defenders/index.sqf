@@ -583,18 +583,45 @@ BATTLESPACE_DEFENDERS_CREATE_TASK_FORCES = {
         
     };
 
-    // Handle spawning Civilians
-    private _spawncivs = _sector in sectors_bigtown || _sector in sectors_capture || _sector in sectors_factory;
-    if(_spawncivs) then {
-        
-        for "_i" from 1 to 4 do {
+    // Ambient civilians are persistent Battlespace forces. Reuse the sector
+    // identity across ownership changes so OPFOR recapture cannot duplicate them.
+    private _spawnCivilians = _sector in sectors_bigtown || _sector in sectors_capture || _sector in sectors_factory;
+    if (_spawnCivilians) then {
+        private _targetCivilianCount = round (2 * GRLIB_civilian_activity);
+        private _existingCivilianCount = 0;
 
-            private _composition = createHashMapFromArray [
-                ["manpower", 1],
-                ["vehicles", []],
-                ["structures", []]
-            ];
-            ["Civilians", _composition, _objPos, _objPos, _objPos, GRLIB_side_civilian] call BATTLESPACE_TASK_FORCES_INIT;
+        {
+            private _taskForce = _y;
+            if ((_taskForce param [0, ""]) != "Civilians") then {continue};
+            if ((_taskForce param [6, GRLIB_side_enemy]) != GRLIB_side_civilian) then {continue};
+
+            private _homeSector = _taskForce param [12, ""];
+            if (_homeSector == "") then {
+                private _homePoint = _taskForce param [10, []];
+                if (_homePoint isEqualType [] && {(count _homePoint) in [2, 3]}) then {
+                    _homeSector = [sectors_allSectors, _homePoint] call BIS_fnc_nearestPosition;
+                    _taskForce set [12, _homeSector];
+                };
+            };
+
+            if (_homeSector == _sector) then {
+                _existingCivilianCount = _existingCivilianCount + 1;
+            };
+        } forEach BATTLESPACE_TASK_FORCES;
+
+        private _missingCivilianCount = _targetCivilianCount - _existingCivilianCount;
+        if (_missingCivilianCount > 0) then {
+            for "_i" from 1 to _missingCivilianCount do {
+                private _composition = createHashMapFromArray [
+                    ["manpower", 1],
+                    ["vehicles", []],
+                    ["structures", []]
+                ];
+                private _taskForceName = ["Civilians", _composition, _objPos, _objPos, _objPos, GRLIB_side_civilian] call BATTLESPACE_TASK_FORCES_INIT;
+                if (_taskForceName != "") then {
+                    (BATTLESPACE_TASK_FORCES get _taskForceName) set [12, _sector];
+                };
+            };
         };
     };
 

@@ -15,7 +15,6 @@ waitUntil {!isNil "sector_to_blufor"};
 
 private _sectorpos = markerPos _sector;
 private _stopit = false;
-private _spawncivs = false;
 private _building_ai_max = 0;
 private _infsquad = "army";
 private _building_range = 50;
@@ -92,13 +91,6 @@ if ((!(_sector in blufor_sectors)) && (([markerPos _sector, _sectorRange, GRLIB_
     if(_count >= _req) then {
         // DISABLED - VIRTUALIZED NOW
         // [_sector, _managed_units] spawn BATTLESPACE_DEFENDERS_SPAWN;
-
-        // Populate the sector with some Civilians if the right type
-        private _spawncivs = _sector in sectors_bigtown || _sector in sectors_capture || _sector in sectors_factory;
-        if (_spawncivs && GRLIB_civilian_activity > 0) then {
-            _managed_units = _managed_units + ([_sector] call KPLIB_fnc_spawnCivilians);
-        };
-        
 
         // If a sector was just flipped from blufor within the the last time interval, don't spawn more defenders
         private _capTime = blufor_sectors_cap_times getOrDefault [_sector, -1200];

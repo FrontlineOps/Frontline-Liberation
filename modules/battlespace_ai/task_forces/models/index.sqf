@@ -476,8 +476,10 @@ BATTLESPACE_TASK_FORCE_DEFAULT_TRY_SPAWN = {
 		call _yieldAfterEntity;
 	} forEach _vehicles;
 
-	// Spawn remaining infantry squads
-	if(_remainingManpower >= ([2, 1] select _structureCrewFromManpower)) then {
+	// Civilian task forces intentionally contain one person. Combat infantry
+	// keeps the existing SL-and-medic minimum unless a structure needs crew.
+	private _minimumInfantry = [2, 1] select (_structureCrewFromManpower || {_civilian});
+	if(_remainingManpower >= _minimumInfantry) then {
 		private _nearbyHouses = (_currentLoc) nearObjects ["Building", 200];
 		// NOTE: Yes, for some reason lamps and power lines are considered a house. What the fuck.
 		_nearbyHouses = _nearbyHouses select {

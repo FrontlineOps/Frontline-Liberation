@@ -23,7 +23,6 @@ class KPLIB {
         class crGetMulti         {};
         class crGlobalMsg        {};
         class getResistanceTier  {};
-        class spawnCivilians     {};
         class spawnGuerillaGroup {};
     };
     class functions_common {
