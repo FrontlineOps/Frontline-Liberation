@@ -291,6 +291,16 @@ BATTLESPACE_BATTLEGROUP_ON_DECISION_TICK = {
         _patrolDone
     };
 
+    private _friendlyPlayerNearTarget = {
+        private _targetPosition = getMarkerPos _targetSector;
+        private _procRange = missionNamespace getVariable ["BATTLESPACE_UNIT_PROC_RANGE", 1175];
+        (allPlayers findIf {
+            alive _x
+            && {side group _x == GRLIB_side_friendly}
+            && {_x distance2D _targetPosition <= _procRange}
+        }) >= 0
+    };
+
     if (_phase in ["ENROUTE", "ASSAULTING"] && {
         ([_taskForce, _operation] call BATTLESPACE_STRATEGIC_GET_SURVIVAL_RATIO) < _retreatRatio
     }) then {
@@ -326,9 +336,10 @@ BATTLESPACE_BATTLEGROUP_ON_DECISION_TICK = {
                     false
                 } else {
                     if (_currentLocation distance2D (getMarkerPos _targetSector) <= 100) then {
+                        _operation set ["phase", "SECURING"];
                         _operation set ["outcome", "REINFORCED"];
                         BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceId, _operation];
-                        true
+                        false
                     } else {
                         false
                     }
@@ -337,22 +348,17 @@ BATTLESPACE_BATTLEGROUP_ON_DECISION_TICK = {
             case "ASSAULTING": {
                 if !(_targetSector in blufor_sectors) exitWith {
                     [_targetSector, "OPFOR"] call BATTLESPACE_SECTOR_SET_OWNER;
+                    _operation set ["phase", "SECURING"];
                     _operation set ["outcome", "CAPTURED"];
                     BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceId, _operation];
-                    true
+                    false
                 };
 
                 private _captureDelay = missionNamespace getVariable ["GRLIB_vulnerability_timer", 840];
                 private _captureStartedAt = _operation getOrDefault ["captureStartedAt", CBA_missionTime];
                 if (CBA_missionTime - _captureStartedAt < _captureDelay) exitWith { false };
 
-                private _procRange = missionNamespace getVariable ["BATTLESPACE_UNIT_PROC_RANGE", 1175];
-                private _friendlyPlayers = allPlayers select {
-                    alive _x
-                    && {side group _x == GRLIB_side_friendly}
-                    && {_x distance2D (getMarkerPos _targetSector) <= _procRange}
-                };
-                if (_friendlyPlayers isNotEqualTo []) exitWith { false };
+                if (call _friendlyPlayerNearTarget) exitWith { false };
 
                 if ([_targetSector] call BATTLESPACE_CAPTURE_SECTOR_FOR_OPFOR) then {
                     _operation set ["outcome", "CAPTURED"];
@@ -360,6 +366,17 @@ BATTLESPACE_BATTLEGROUP_ON_DECISION_TICK = {
                     true
                 } else {
                     false
+                }
+            };
+            case "SECURING": {
+                if (_targetSector in blufor_sectors) then {
+                    _operation set ["phase", "ASSAULTING"];
+                    _operation set ["captureStartedAt", CBA_missionTime];
+                    _operation set ["outcome", ""];
+                    BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceId, _operation];
+                    false
+                } else {
+                    !(call _friendlyPlayerNearTarget)
                 }
             };
             case "RETURNING": {
