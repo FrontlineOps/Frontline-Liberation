@@ -12,6 +12,7 @@
         _pos - Description [POSITION, defaults to [0, 0, 0]
         _radius - Description [NUMBER, defaults to 100]
         _side - Description [SIDE, defaults to GRLIB_side_friendly]
+        _includeAir - Count crew inside air vehicles [BOOL, defaults to true]
 
     Returns:
         Amount of units [NUMBER]
@@ -24,19 +25,13 @@ params [
     ["_includeAir", true]
 ];
 
-private _vehicleKinds =  ["Car", "Tank", "Boat"];
+private _entityKinds = ["Man", "Car", "Tank", "Boat"];
 
-if(_includeAir) then {
-    _vehicleKinds pushBack "Air";
+if (_includeAir) then {
+    _entityKinds pushBack "Air";
 };
-private _amount = _side countSide ((_pos nearEntities ["Man", _radius]) select {!(captive _x) && !(side _x == GRLIB_side_enemy && (isPlayer _x)) && ((getpos _x) select 2 < 500)});
-{
-    {
-        if(_x isKindOf "Man" && (side _x) == _side) then {
-            _amount = _amount + 1;
-        };
-    } forEach (crew _x);
-} forEach ((_pos nearEntities [_vehicleKinds, _radius]) select {((getpos _x) select 2 < 500) && count (crew _x) > 0});
 
-_amount
+private _nearbyEntities = _pos nearEntities [_entityKinds, _radius];
+
+[_nearbyEntities, _side, _includeAir] call KPLIB_fnc_countUnitsBySide
  

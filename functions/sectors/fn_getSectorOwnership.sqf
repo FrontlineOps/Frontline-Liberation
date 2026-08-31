@@ -24,8 +24,9 @@ params [
 private _capCount = 3;
 private _capRatio = 0.85;
 private _capRatioMin = 0.51;
-private _blufor = [_pos, _radius, GRLIB_side_friendly, false] call KPLIB_fnc_getUnitsCount;
-private _opfor = [_pos, _radius, GRLIB_side_enemy] call KPLIB_fnc_getUnitsCount;
+private _nearbyEntities = _pos nearEntities [["Man", "Car", "Tank", "Boat", "Air"], _radius];
+private _blufor = [_nearbyEntities, GRLIB_side_friendly, false] call KPLIB_fnc_countUnitsBySide;
+private _opfor = [_nearbyEntities, GRLIB_side_enemy, true] call KPLIB_fnc_countUnitsBySide;
 private _ratio = 0;
 
 if (_blufor + _opfor != 0) then {

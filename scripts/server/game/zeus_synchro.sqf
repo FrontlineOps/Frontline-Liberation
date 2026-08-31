@@ -20,12 +20,18 @@ private _vehicleClassnames = [toLower huron_typename];
 ];
 if (KP_liberation_enemies_zeus) then {_vehicleClassnames append KPLIB_o_allVeh_classes;};
 
+private _vehicleClassIndex = createHashMap;
+{
+    _vehicleClassIndex set [_x, true];
+} forEach _vehicleClassnames;
+
 private _valids = [];
 private _toRemove = [];
 private _toAdd = [];
 
 while {true} do {
-    if (allCurators isEqualTo []) then {
+    private _curators = allCurators;
+    if (_curators isEqualTo []) then {
         sleep 1;
         continue;
     };
@@ -44,7 +50,7 @@ while {true} do {
     _valids append (vehicles select {
         (alive _x)                                                                              // Alive
         && {
-            ((toLower (typeOf _x)) in _vehicleClassnames)                                       // In valid classnames
+            (_vehicleClassIndex getOrDefault [toLower (typeOf _x), false])                       // In valid classnames
             || (_x getVariable ["KPLIB_captured", false])                                       // or captured
             || (_x getVariable ["KPLIB_seized", false])                                         // or seized
         }
@@ -56,15 +62,21 @@ while {true} do {
     _valids append playableUnits;
 
     {
+        private _editable = curatorEditableObjects _x;
+
         // Remove death or attached units
-        _toRemove = ((curatorEditableObjects _x) select {!(alive _x) || !(isNull (attachedTo _x))});
+        _toRemove = _editable select {!(alive _x) || !(isNull (attachedTo _x))};
 
         // Filter already added units of this curator
-        _toAdd = _valids - (curatorEditableObjects _x);
+        _toAdd = _valids - _editable;
 
         // Add and remove units
-        _x addCuratorEditableObjects [_toAdd, true];
-        _x removeCuratorEditableObjects [_toRemove, true];
-    } forEach allCurators;
+        if !(_toAdd isEqualTo []) then {
+            _x addCuratorEditableObjects [_toAdd, true];
+        };
+        if !(_toRemove isEqualTo []) then {
+            _x removeCuratorEditableObjects [_toRemove, true];
+        };
+    } forEach _curators;
     sleep (missionNamespace getVariable ["KP_liberation_zeus_sync_interval", 15]);
 };
