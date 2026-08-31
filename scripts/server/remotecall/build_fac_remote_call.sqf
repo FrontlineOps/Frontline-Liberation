@@ -1,7 +1,8 @@
 if (!isServer) exitWith {};
 
-params ["_sector", "_fac","_clientID"];
+params ["_sector", "_fac"];
 
+private _clientID = remoteExecutedOwner;
 private _tempProduction = +KP_liberation_production;
 private _checkFor = 0;
 private _price_s = 100;
@@ -16,7 +17,7 @@ switch (_fac) do {
 };
 
 {
-    if ((_x select 1) == (_sector select 1)) exitWith {
+    if ((_x select 1) == _sector) exitWith {
         if (((_x select 9) >= _price_s) && ((_x select 10) >= _price_a) && ((_x select 11) >= _price_f)) then {
             stats_supplies_spent = stats_supplies_spent + _price_s;
             stats_ammo_spent = stats_ammo_spent + _price_a;

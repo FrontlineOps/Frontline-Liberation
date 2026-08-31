@@ -1,7 +1,7 @@
 params ["_sector", "_opforcount"];
 
 private _start = diag_tickTime;
-[format ["Sector %1 (%2) - Waiting to spawn sector...", (markerText _sector), _sector], "SECTORSPAWN"] remoteExecCall ["KPLIB_fnc_log", 2];
+[format ["Sector %1 (%2) - Waiting to spawn sector...", (markerText _sector), _sector], "SECTORSPAWN"] call KPLIB_fnc_log;
 
 private _corrected_size = [_opforcount] call KPLIB_fnc_getSectorRange;
 sleep 0.1;
@@ -41,4 +41,4 @@ if (_unitscount == 1) then {
     sleep 5;
 };
 
-[format ["Sector %1 (%2) - Waiting done - Time needed: %3 seconds", (markerText _sector), _sector, diag_tickTime - _start], "SECTORSPAWN"] remoteExecCall ["KPLIB_fnc_log", 2];
+[format ["Sector %1 (%2) - Waiting done - Time needed: %3 seconds", (markerText _sector), _sector, diag_tickTime - _start], "SECTORSPAWN"] call KPLIB_fnc_log;

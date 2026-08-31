@@ -11,7 +11,7 @@ params ["_sector"];
 waitUntil {!isNil "combat_readiness"};
 waitUntil {!isNil "sector_to_blufor"};
 
-[format ["Sector %1 (%2) activated - Managed on: %3", (markerText _sector), _sector, debug_source], "SECTORSPAWN"] remoteExecCall ["KPLIB_fnc_log", 2];
+[format ["Sector %1 (%2) activated - Managed on: %3", (markerText _sector), _sector, debug_source], "SECTORSPAWN"] call KPLIB_fnc_log;
 
 private _sectorpos = markerPos _sector;
 private _stopit = false;
@@ -119,27 +119,23 @@ if ((!(_sector in blufor_sectors)) && (([markerPos _sector, _sectorRange, GRLIB_
 
     };
 
-    if (KP_liberation_sectorspawn_debug > 0) then {[format ["Sector %1 (%2) - populating done", (markerText _sector), _sector], "SECTORSPAWN"] remoteExecCall ["KPLIB_fnc_log", 2];};
+    if (KP_liberation_sectorspawn_debug > 0) then {[format ["Sector %1 (%2) - populating done", (markerText _sector), _sector], "SECTORSPAWN"] call KPLIB_fnc_log;};
 
     private _activationTime = time;
     // sector lifetime loop
     while {!_stopit} do {
         // sector was captured
         if (!(_sector in blufor_sectors) && ([_sectorpos, _local_capture_size] call KPLIB_fnc_getSectorOwnership == GRLIB_side_friendly) && (GRLIB_endgame == 0)) then {
-            if (isServer) then {
-                [_sector] spawn sector_liberated_remote_call;
-            } else {
-                [_sector] remoteExec ["sector_liberated_remote_call",2];
-            };
+            [_sector] spawn sector_liberated_remote_call;
 
             _stopit = true;
-            private _nearbyCount = count ((markerPos _sector) nearEntities [["Man"], _local_capture_size * 1.2]);
+            private _nearbyMen = _sectorpos nearEntities [["Man"], _local_capture_size * 1.2];
 
             // Spawn some civ prisoners to heal
-            if(_nearbyCount < 7) then {
+            if ((count _nearbyMen) < 7) then {
                 {
                     [_x] spawn prisonner_ai;
-                } forEach ((markerPos _sector) nearEntities [["Man"], _local_capture_size * 1.2]);
+                } forEach _nearbyMen;
             };
 
             sleep 60;
@@ -193,4 +189,4 @@ if ((!(_sector in blufor_sectors)) && (([markerPos _sector, _sectorRange, GRLIB_
     active_sectors = active_sectors - [_sector]; publicVariable "active_sectors";
 };
 
-[format ["Sector %1 (%2) deactivated - Was managed on: %3", (markerText _sector), _sector, debug_source], "SECTORSPAWN"] remoteExecCall ["KPLIB_fnc_log", 2];
+[format ["Sector %1 (%2) deactivated - Was managed on: %3", (markerText _sector), _sector, debug_source], "SECTORSPAWN"] call KPLIB_fnc_log;

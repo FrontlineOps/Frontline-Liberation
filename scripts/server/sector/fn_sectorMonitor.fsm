@@ -106,6 +106,8 @@ class FSM
                          "private _sector = """";" \n
                          "private _opforCount = 0;" \n
                          "private _range = 0;" \n
+                         "private _sectorPosition = [];" \n
+                         "private _friendlyPositions = [];" \n
                          "private _nextPassAt = 0;" \n
                          "private _nextSectorAt = 0;" \n
                          "private _logDelay = 300;" \n
@@ -162,7 +164,17 @@ class FSM
                                         action=/*%FSM<ACTION""">*/"_allSectors = sectors_allSectors - blufor_sectors;" \n
                                          "_allSectors = _allSectors - active_sectors;" \n
                                          "_opforCount = [] call KPLIB_fnc_getOpforCap;" \n
-                                         "_range = [_opforCount] call KPLIB_fnc_getSectorRange;"/*%FSM</ACTION""">*/;
+                                         "_range = [_opforCount] call KPLIB_fnc_getSectorRange;" \n
+                                         "// Broad once-per-pass shortlist; the existing exact count remains the activation gate." \n
+                                         "_friendlyPositions = ((allUnits select {(side _x) == GRLIB_side_friendly}) apply {getPos _x});" \n
+                                         "{" \n
+                                         "    if (" \n
+                                         "        (_x isKindOf ""Car"" || {_x isKindOf ""Tank""} || {_x isKindOf ""Boat""})" \n
+                                         "        && {((crew _x) findIf {(side _x) == GRLIB_side_friendly}) >= 0}" \n
+                                         "    ) then {" \n
+                                         "        _friendlyPositions pushBack (getPos _x);" \n
+                                         "    };" \n
+                                         "} forEach vehicles;"/*%FSM</ACTION""">*/;
                                 };
                                 /*%FSM</LINK>*/
                         };
@@ -200,7 +212,7 @@ class FSM
                 {
                         name = "Get_adjusted_sector";
                         itemno = 10;
-                        init = /*%FSM<STATEINIT""">*/""/*%FSM</STATEINIT""">*/;
+                        init = /*%FSM<STATEINIT""">*/"_sectorPosition = markerPos _sector;"/*%FSM</STATEINIT""">*/;
                         precondition = /*%FSM<STATEPRECONDITION""">*/""/*%FSM</STATEPRECONDITION""">*/;
                         class Links
                         {
@@ -213,12 +225,10 @@ class FSM
                                         precondition = /*%FSM<CONDPRECONDITION""">*/""/*%FSM</CONDPRECONDITION""">*/;
                                         condition=/*%FSM<CONDITION""">*/"_opforCount < GRLIB_sector_cap" \n
                                          "&& {" \n
-                                         "    if (isDedicated) then {" \n
-                                         "        ([markerPos _sector, _range, GRLIB_side_friendly, false] call KPLIB_fnc_getUnitsCount) >= 1" \n
-                                         "    }" \n
-                                         "    else {" \n
-                                         "        ([markerPos _sector, _range, GRLIB_side_friendly, false] call KPLIB_fnc_getUnitsCount) >= 1" \n
-                                         "    };" \n
+                                         "    (_friendlyPositions findIf {(_x distance2D _sectorPosition) <= (_range + 500)}) >= 0" \n
+                                         "}" \n
+                                         "&& {" \n
+                                         "    ([_sectorPosition, _range, GRLIB_side_friendly, false] call KPLIB_fnc_getUnitsCount) >= 1" \n
                                          "};"/*%FSM</CONDITION""">*/;
                                         action=/*%FSM<ACTION""">*/""/*%FSM</ACTION""">*/;
                                 };

@@ -12,25 +12,32 @@ if (KP_liberation_production_markers isEqualTo []) then {
     } forEach sectors_factory;
 };
 
-private _KP_liberation_production_old = [0];
+private _productionMarkerIndex = createHashMap;
+{
+    private _sector = _x select 0;
+    if !(_sector in _productionMarkerIndex) then {
+        _productionMarkerIndex set [_sector, _forEachIndex];
+    };
+} forEach KP_liberation_production_markers;
+
+private _productionOld = [0];
 
 while {true} do {
 
     waitUntil {sleep (missionNamespace getVariable ["KP_liberation_state_sync_poll_interval", 1]);
-        !(_KP_liberation_production_old isEqualTo KP_liberation_production)
+        !(_productionOld isEqualTo KP_liberation_production)
     };
     {
-        private _sector = _x;
-        {
-            if ((_sector select 1) == (_x select 0)) exitWith {
-                _x set [1, (_sector select 4)];
-                _x set [2, (_sector select 5)];
-                _x set [3, (_sector select 6)];
-            };
-        } forEach KP_liberation_production_markers;
+        private _markerIndex = _productionMarkerIndex getOrDefault [_x select 1, -1];
+        if (_markerIndex != -1) then {
+            private _markerData = KP_liberation_production_markers select _markerIndex;
+            _markerData set [1, _x select 4];
+            _markerData set [2, _x select 5];
+            _markerData set [3, _x select 6];
+        };
     } forEach KP_liberation_production;
     sync_eco = [KP_liberation_production, KP_liberation_production_markers];
     publicVariable "sync_eco";
 
-    _KP_liberation_production_old = +KP_liberation_production;
+    _productionOld = +KP_liberation_production;
 };

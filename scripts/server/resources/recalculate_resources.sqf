@@ -13,6 +13,19 @@ please_recalculate = true;
 
 waitUntil {time > 1};
 
+// Only these configured classes can affect FOB resources or build capacity.
+// Querying them directly avoids walking every vehicle, unit, decoration, and
+// building inside every FOB on each reconciliation pass.
+private _trackedFobClasses = [
+    KP_liberation_small_storage_building,
+    KP_liberation_large_storage_building,
+    KP_liberation_heli_slot_building,
+    KP_liberation_plane_slot_building,
+    KP_liberation_air_vehicle_building,
+    KP_liberation_recycle_building
+];
+_trackedFobClasses = _trackedFobClasses arrayIntersect _trackedFobClasses;
+
 while {true} do {
     waitUntil {sleep 0.5; please_recalculate};
     please_recalculate = false;
@@ -26,18 +39,27 @@ while {true} do {
     private _local_infantry_cap = 50 * GRLIB_resources_multiplier;
 
     {
-        private _fob_buildings = _x nearobjects GRLIB_fob_range;
-        private _storage_areas = [];
+        private _fobBuildings = nearestObjects [_x, _trackedFobClasses, GRLIB_fob_range, false];
         private _heliSlots = 0;
         private _planeSlots = 0;
         private _hasAirBuilding = false;
         private _hasRecBuilding = false;
+        private _supplyValue = 0;
+        private _ammoValue = 0;
+        private _fuelValue = 0;
 
-        // Classify each FOB object once instead of filtering the same array repeatedly.
+        // Classify and total each relevant FOB object in one pass.
         {
             private _className = typeOf _x;
             if ((_x getVariable ["KP_liberation_storage_type", -1]) == 0) then {
-                _storage_areas pushBack _x;
+                {
+                    switch (typeOf _x) do {
+                        case KP_liberation_supply_crate: {_supplyValue = _supplyValue + (_x getVariable ["KP_liberation_crate_value", 0]);};
+                        case KP_liberation_ammo_crate: {_ammoValue = _ammoValue + (_x getVariable ["KP_liberation_crate_value", 0]);};
+                        case KP_liberation_fuel_crate: {_fuelValue = _fuelValue + (_x getVariable ["KP_liberation_crate_value", 0]);};
+                        default {[format ["Invalid object (%1) at storage area", typeOf _x], "ERROR"] call KPLIB_fnc_log;};
+                    };
+                } forEach (attachedObjects _x);
             };
             if (_className isEqualTo KP_liberation_heli_slot_building) then {
                 _heliSlots = _heliSlots + 1;
@@ -51,22 +73,7 @@ while {true} do {
             if (_className isEqualTo KP_liberation_recycle_building) then {
                 _hasRecBuilding = true;
             };
-        } forEach _fob_buildings;
-
-        private _supplyValue = 0;
-        private _ammoValue = 0;
-        private _fuelValue = 0;
-
-        {
-            {
-                switch ((typeOf _x)) do {
-                    case KP_liberation_supply_crate: {_supplyValue = _supplyValue + (_x getVariable ["KP_liberation_crate_value",0]);};
-                    case KP_liberation_ammo_crate: {_ammoValue = _ammoValue + (_x getVariable ["KP_liberation_crate_value",0]);};
-                    case KP_liberation_fuel_crate: {_fuelValue = _fuelValue + (_x getVariable ["KP_liberation_crate_value",0]);};
-                    default {[format ["Invalid object (%1) at storage area", (typeOf _x)], "ERROR"] call KPLIB_fnc_log;};
-                };
-            } forEach (attachedObjects _x);
-        } forEach _storage_areas;
+        } forEach _fobBuildings;
 
         _local_fob_resources pushBack [_x, _supplyValue, _ammoValue, _fuelValue, _hasAirBuilding, _hasRecBuilding];
         _local_supplies_global = _local_supplies_global + _supplyValue;

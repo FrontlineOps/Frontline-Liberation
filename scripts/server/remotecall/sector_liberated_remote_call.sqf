@@ -1,3 +1,5 @@
+if (!isServer) exitWith {};
+
 params ["_liberated_sector"];
 
 private _combat_readiness_increase = 0;

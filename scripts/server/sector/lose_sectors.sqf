@@ -10,7 +10,7 @@ sectors_under_attack = createHashMap;
 while { GRLIB_endgame == 0 } do {
 
     {
-        _ownership = [ markerpos _x ] call KPLIB_fnc_getSectorOwnership;
+        private _ownership = [markerPos _x] call KPLIB_fnc_getSectorOwnership;
         private _tempTime = time;
         
         if ( _ownership == GRLIB_side_enemy ) then {
@@ -18,8 +18,7 @@ while { GRLIB_endgame == 0 } do {
             private _set = sectors_under_attack getOrDefault [_x, false];
 
             while {time <= _tempTime + 120 && _ownership == GRLIB_side_enemy} do {
-                _ownership = [ markerpos _x ] call KPLIB_fnc_getSectorOwnership;
-                systemChat format["Sleeping...", _ownership];
+                _ownership = [markerPos _x] call KPLIB_fnc_getSectorOwnership;
                 sleep 5;
             };
 
@@ -33,7 +32,7 @@ while { GRLIB_endgame == 0 } do {
     } foreach blufor_sectors;
 
     {
-        _ownership = [ _x ] call KPLIB_fnc_getSectorOwnership;
+        private _ownership = [_x] call KPLIB_fnc_getSectorOwnership;
         if ( _ownership == GRLIB_side_enemy ) then {
             private _set = sectors_under_attack getOrDefault [_x, false];
 

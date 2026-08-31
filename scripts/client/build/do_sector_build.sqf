@@ -101,8 +101,11 @@ if (_classname isEqualTo KP_liberation_small_storage_building) then {
     player removeAction _vectorAction;
 
     recalculate_sectors = true;
-    publicVariable "recalculate_sectors";
+    if (!isServer) then {
+        publicVariableServer "recalculate_sectors";
+    };
     build_confirmed = 0;
 } else {
-    [player getVariable ["KPLIB_nearProd", []], _classname, clientOwner] remoteExec ["build_fac_remote_call", 2];
+    private _production = player getVariable ["KPLIB_nearProd", []];
+    [_production param [1, ""], _classname] remoteExec ["build_fac_remote_call", 2];
 };

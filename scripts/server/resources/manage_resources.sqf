@@ -19,11 +19,11 @@ while {GRLIB_endgame == 0} do {
         waitUntil {sleep 0.5; !sectors_recalculating};
         sectors_recalculating = true;
 
-        private _time_update = false;
-        if (sectors_timer) then {_time_update = true; sectors_timer = false;};
+        private _timeUpdate = sectors_timer;
+        if (_timeUpdate) then {sectors_timer = false;};
 
         _start = diag_tickTime;
-        if (KP_liberation_production_debug > 0) then {[format ["Production interval started: %1 - _time_update: %2", diag_tickTime, _time_update], "PRODUCTION"] call KPLIB_fnc_log;};
+        if (KP_liberation_production_debug > 0) then {[format ["Production interval started: %1 - _timeUpdate: %2", diag_tickTime, _timeUpdate], "PRODUCTION"] call KPLIB_fnc_log;};
 
         private _tempProduction = [];
         {
@@ -33,18 +33,19 @@ while {GRLIB_endgame == 0} do {
             private _fuelValue = 0;
             private _time = _x select 8;
 
-            private _storage = nearestObjects [(markerPos (_x select 1)), [KP_liberation_small_storage_building], 100];
-            _storage = _storage select {(_x getVariable ["KP_liberation_storage_type",-1]) == 1};
-            if ((count _storage) > 0) then {
-                _storage = (_storage select 0);
+            private _storageCandidates = nearestObjects [markerPos (_x select 1), [KP_liberation_small_storage_building], 100];
+            private _storageIndex = _storageCandidates findIf {(_x getVariable ["KP_liberation_storage_type", -1]) == 1};
+            if (_storageIndex != -1) then {
+                private _storage = _storageCandidates select _storageIndex;
                 _storageArray = [(getPosATL _storage),(getDir _storage),(vectorUpVisual _storage)];
+                private _storedCrates = attachedObjects _storage;
 
-                if (_time_update) then {
+                if (_timeUpdate) then {
 
                     if ((_time - 1) < 1) then {
                         _time = [] call KC_DETERMINE_PRODUCTION_INTERVAL;
 
-                        if (((count (attachedObjects _storage)) < 12) && !((_x select 7) == 3)) then {
+                        if (((count _storedCrates) < 12) && !((_x select 7) == 3)) then {
                             private _crateType = KP_liberation_supply_crate;
                             switch (_x select 7) do {
                                 case 1: {_crateType = KP_liberation_ammo_crate; stats_ammo_produced = stats_ammo_produced + 100;};
@@ -54,6 +55,7 @@ while {GRLIB_endgame == 0} do {
 
                             private _crate = [_crateType, 100, getPosATL _storage] call KPLIB_fnc_createCrate;
                             [_crate, _storage] call KPLIB_fnc_crateToStorage;
+                            _storedCrates = attachedObjects _storage;
                         };
                     } else {
                         _time = _time - 1;
@@ -67,7 +69,7 @@ while {GRLIB_endgame == 0} do {
                         case KP_liberation_fuel_crate: {_fuelValue = _fuelValue + (_x getVariable ["KP_liberation_crate_value",0]);};
                         default {[format ["Invalid object (%1) at storage area", (typeOf _x)], "ERROR"] call KPLIB_fnc_log;};
                     };
-                } forEach (attachedObjects _storage);
+                } forEach _storedCrates;
             };
 
             _tempProduction pushBack [

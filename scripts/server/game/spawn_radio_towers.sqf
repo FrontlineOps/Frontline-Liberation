@@ -1,21 +1,26 @@
 uiSleep 3;
 
-private _sector = "";
-private _saved = [];
-private _classname = "";
-private _tower = objNull;
+private _savedTowerClasses = createHashMap;
+{
+    private _sector = _x select 0;
+    if !(_sector in _savedTowerClasses) then {
+        _savedTowerClasses set [_sector, _x select 1];
+    };
+} forEach KPLIB_sectorTowers;
 
 {
-    _sector = _x;
-    _saved = KPLIB_sectorTowers select {(_x select 0) isEqualTo _sector};
-    if (_saved isEqualTo []) then {
+    private _sector = _x;
+    private _hasSavedClass = _sector in _savedTowerClasses;
+    private _classname = _savedTowerClasses getOrDefault [_sector, ""];
+    if (!_hasSavedClass) then {
         _classname = selectRandom KPLIB_radioTowerClassnames;
         KPLIB_sectorTowers pushBack [_sector, _classname];
-    } else {
-        _classname = (_saved select 0) select 1;
+        _savedTowerClasses set [_sector, _classname];
     };
-    _tower = _classname createVehicle (markerpos _x);
-    _tower setPos (markerpos _x);
+
+    private _sectorPos = markerPos _sector;
+    private _tower = _classname createVehicle _sectorPos;
+    _tower setPos _sectorPos;
     _tower setVectorUp [0, 0, 1];
     _tower addEventHandler ["HandleDamage", {0}];
 } forEach sectors_tower;
