@@ -5,7 +5,6 @@
             "canProc",
             {
                 params ["_taskForceName", "_taskForce"];
-                if ((_taskForce param [8, []]) isNotEqualTo []) exitWith {true};
                 private _currentLocation = _taskForce param [1, []];
                 private _requiredPlayers = [] call BATTLESPACE_TASK_FORCE_GET_NEEDED_PLAYERCOUNT_FOR_PROC;
                 private _procRange = ["Airborne Transport"] call BATTLESPACE_TASK_FORCE_GET_PROC_RANGE;

@@ -307,12 +307,6 @@ BATTLESPACE_AIRBORNE_INFANTRY_ON_DECISION_TICK = {
     if (isNil "_operation") exitWith {false};
     private _targetSector = _operation getOrDefault ["targetSector", ""];
     private _targetState = BATTLESPACE_SECTOR_STATES get _targetSector;
-    if (isNil "_targetState" || {(_targetState getOrDefault ["owner", ""]) != "OPFOR"}) exitWith {
-        _operation set ["outcome", "LOST"];
-        BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceId, _operation];
-        true
-    };
-
     private _activeGroups = (_taskForce param [4, []]) select {!isNull _x && {units _x findIf {alive _x} >= 0}};
     private _activeObjects = (_taskForce param [8, []]) select {!isNull _x && {alive _x}};
     _taskForce set [4, _activeGroups];
@@ -322,10 +316,36 @@ BATTLESPACE_AIRBORNE_INFANTRY_ON_DECISION_TICK = {
         if (!isNull _leader) then {_taskForce set [1, getPosATL _leader]};
     };
 
+    private _targetPosition = getMarkerPos _targetSector;
+    private _currentPosition = _taskForce param [1, _targetPosition];
+    private _procRange = ["Airborne Infantry"] call BATTLESPACE_TASK_FORCE_GET_PROC_RANGE;
+    private _friendlyPlayerNearFight = (allPlayers findIf {
+        alive _x
+        && {side group _x == GRLIB_side_friendly}
+        && {
+            _x distance2D _targetPosition <= _procRange
+            || {_x distance2D _currentPosition <= _procRange}
+        }
+    }) >= 0;
+
+    if (isNil "_targetState" || {(_targetState getOrDefault ["owner", ""]) != "OPFOR"}) exitWith {
+        if (_friendlyPlayerNearFight) then {
+            false
+        } else {
+            _operation set ["outcome", "LOST"];
+            BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceId, _operation];
+            true
+        }
+    };
+
     if (CBA_missionTime >= (_operation getOrDefault ["expiresAt", CBA_missionTime])) exitWith {
-        _operation set ["outcome", "REINFORCED"];
-        BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceId, _operation];
-        true
+        if (_friendlyPlayerNearFight) then {
+            false
+        } else {
+            _operation set ["outcome", "REINFORCED"];
+            BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceId, _operation];
+            true
+        }
     };
     false
 };
