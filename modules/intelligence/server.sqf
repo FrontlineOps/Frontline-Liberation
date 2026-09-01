@@ -16,7 +16,7 @@ KPLIB_INTEL_SERVER_IS_NEAR_TERMINAL = {
     if (isNull _player) exitWith {false};
 
     private _distance = missionNamespace getVariable ["KPLIB_intelligence_terminal_distance", 75];
-    private _nearTerminal = (_player distance2D (getMarkerPos GRLIB_respawn_marker)) <= _distance;
+    private _nearTerminal = (_player distance2D (getMarkerPos "startbase_marker")) <= _distance;
     if (!_nearTerminal) then {
         {
             if ((_player distance2D _x) <= _distance) exitWith {_nearTerminal = true};
