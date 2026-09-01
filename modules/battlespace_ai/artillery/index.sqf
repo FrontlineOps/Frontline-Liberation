@@ -354,6 +354,7 @@ BATTLESPACE_SPAWN_BATTERY = {
 	_fcrGrp setVariable ["BSAPieceResource", _pieceResource, true];
 	_fcrGrp setVariable ["Vcm_Disable", true, true];
 	BATTLESPACE_ARTILLERY_SECTIONS pushBack _fcrGrp;
+	[format ["Artillery battery registered (group=%1, sector=%2, pieces=%3, crew=%4)", _fcrGrp, _sectorToSpawnIn, count _vehs, count units _fcrGrp], "BATTLESPACE"] call KPLIB_fnc_log;
 
 
 	
@@ -376,22 +377,15 @@ BATTLESPACE_ARTILLERY_GET_READY_BATTERIES = {
 		{
 			private _veh = (vehicle _x);
 
-			if(_veh isEqualTo _x) then {
+			if(!alive _x || {_veh isEqualTo _x} || {!alive _veh}) then {
 				continue;
 			};
 
-			if(!(canFire _veh)) then {
-				continue;
-			};
-			_vehs pushBack _veh;
+			_vehs pushBackUnique _veh;
 		} forEach (units _x);
 
 		if((count _vehs) <= 0) then {
-			_invalids pushBack _x;
-			continue;
-		};
-
-		if(count ((units _x) select { alive _x }) <= 0) then {
+			[format ["Artillery battery removed (group=%1, sector=%2, reason=no living crewed pieces)", _x, _x getVariable ["BSAFundingSector", ""]], "BATTLESPACE"] call KPLIB_fnc_log;
 			_invalids pushBack _x;
 			continue;
 		};
@@ -742,6 +736,9 @@ BATTLESPACE_ARTILLERY_FULFILL_REQUEST = {
 	if (_readyVehicles isEqualTo []) exitWith {
 		{_x setVehicleAmmo 0} forEach _vehicles;
 		[_battery getVariable ["BSAFundingSector", ""], createHashMapFromArray [["rockets", _reservedRounds]]] call BATTLESPACE_RESOURCE_DEPOSIT_CLAMPED;
+		[format ["Artillery battery removed (group=%1, sector=%2, reason=no fire-capable pieces after paid reload)", _battery, _battery getVariable ["BSAFundingSector", ""]], "BATTLESPACE"] call KPLIB_fnc_log;
+		BATTLESPACE_ARTILLERY_SECTIONS = BATTLESPACE_ARTILLERY_SECTIONS - [_battery];
+		publicVariable "BATTLESPACE_ARTILLERY_SECTIONS";
 	};
 	private _usableReservation = _reservedRounds min (_salvos * count _readyVehicles);
 	private _immediateRefund = _reservedRounds - _usableReservation;
