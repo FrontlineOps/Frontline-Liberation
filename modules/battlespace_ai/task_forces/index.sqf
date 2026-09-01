@@ -173,6 +173,7 @@ BATTLESPACE_TASK_FORCES_LOAD = {
 				case "WEST": {west};
 				case "INDEPENDENT": {resistance};
 				case "GUER": {resistance};
+				case "CIV";
 				case "CIVILIAN": {civilian};
 				default {east};
 			};

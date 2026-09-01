@@ -101,32 +101,23 @@
 					["_hpSector", nil] // 12
 				];
 				
-				// Validate active groups
-				if(count _activeGroups > 0) then {
-					private _invalids = [];
-					{
-						private _aliveUnits = (units _x) select { alive _x };
-
-						
-			
-						if(count _aliveUnits <= 0) then {
-							_invalids pushBack _x;
-						};
-					} forEach _activeGroups;
-
-					_taskForce set [4, _activeGroups - _invalids];
+				_activeGroups = _activeGroups select {
+					!isNull _x && {(units _x) findIf {alive _x} >= 0}
 				};
-
-				private _alive = true;
-
-				if(count _activeObjects <= 0) then {
-					private _currentManpower = _composition getOrDefault ["manpower", 0];
-					// For the sake of performance and etc.. need a minimal amount to continue to save / be valid.
-					if(_currentManpower <= 0) then {
-						_alive = false;
-					};
+				_activeObjects = _activeObjects select {
+					!isNull _x && {alive _x}
 				};
+				_taskForce set [4, _activeGroups];
+				_taskForce set [8, _activeObjects];
 
+				private _currentManpower = _composition getOrDefault ["manpower", 0];
+				private _alive = _currentManpower > 0 || {_activeObjects isNotEqualTo []};
+				if (!_alive) then {
+					diag_log format [
+						"[BATTLESPACE][CIVILIANS] Retiring zero strength task force %1",
+						_taskForceName
+					];
+				};
 				_alive
 			}
 		],
