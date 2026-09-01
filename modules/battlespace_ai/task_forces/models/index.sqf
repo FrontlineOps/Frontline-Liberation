@@ -168,7 +168,7 @@ BATTLESPACE_TASK_FORCE_DEFAULT_FINISH_SPAWN = {
 				private _destination = _registeredTaskForce param [2, []];
 				private _type = _registeredTaskForce param [0, ""];
 				if (
-					_type in ["Battlegroup", "Convoy", "Defensive Patrol", "Reconnaissance Patrol", "Air Response", "Airborne Transport", "Civilians"]
+					_type in ["Battlegroup", "Deep Reconnaissance Patrol", "Convoy", "Defensive Patrol", "Reconnaissance Patrol", "Air Response", "Airborne Transport", "Civilians"]
 					&& {_currentLocation isNotEqualTo []}
 					&& {_destination isNotEqualTo []}
 				) then {
@@ -552,6 +552,7 @@ BATTLESPACE_TASK_FORCE_DEFAULT_TRY_SPAWN = {
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\models\convoy.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\models\defensivePatrol.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\models\reconnaissancePatrol.sqf";
+[] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\models\deepReconnaissancePatrol.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\models\ambushPatrol.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\models\battlegroup.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\models\garrison.sqf";

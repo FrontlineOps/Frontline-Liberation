@@ -183,7 +183,7 @@ BATTLESPACE_STRATEGIC_RECORD_CASUALTY = {
     if (!isServer) exitWith {};
     private _operation = BATTLESPACE_STRATEGIC_OPERATIONS get _taskForceId;
     if (isNil "_operation") exitWith {};
-    if !((_operation getOrDefault ["kind", ""]) in ["DEFENDER", "PATROL", "REINFORCEMENT", "AIRBORNE_REINFORCEMENT"]) exitWith {};
+    if !((_operation getOrDefault ["kind", ""]) in ["DEFENDER", "DEEP RECONNAISSANCE PATROL", "REINFORCEMENT", "AIRBORNE_REINFORCEMENT"]) exitWith {};
     [
         _operation getOrDefault ["pressureSector", ""],
         if (_lossType == "MANPOWER") then {1} else {4}
@@ -246,7 +246,7 @@ BATTLESPACE_REINFORCEMENT_DISPATCH = {
     _dispatched
 };
 
-BATTLESPACE_PATROL_GET_FRONTLINE_TARGETS = {
+BATTLESPACE_DEEP_RECON_GET_FRONTLINE_TARGETS = {
     params ["_originSector"];
     private _network = NETWORKED_SECTORS get _originSector;
     if (isNil "_network") exitWith {[]};
@@ -254,98 +254,98 @@ BATTLESPACE_PATROL_GET_FRONTLINE_TARGETS = {
     (_network getOrDefault ["Links", []]) select {_x in _capturableBlufor}
 };
 
-BATTLESPACE_PATROL_HAS_ACTIVE_CORRIDOR = {
-    params ["_originSector", "_targetSector"];
+BATTLESPACE_DEEP_RECON_GET_ROUTES = {
+    params ["_originSector"];
+    private _routes = [];
+    private _capturableBlufor = blufor_sectors arrayIntersect sectors_allSectors;
+    private _frontlineTargets = [_originSector] call BATTLESPACE_DEEP_RECON_GET_FRONTLINE_TARGETS;
+    {
+        private _entrySector = _x;
+        _routes pushBack [
+            format ["FRONTLINE>%1>%2", _originSector, _entrySector],
+            _entrySector,
+            _originSector,
+            _entrySector
+        ];
+
+        private _entryNetwork = NETWORKED_SECTORS get _entrySector;
+        if (isNil "_entryNetwork") then {continue};
+        {
+            private _deepSector = _x;
+            if (_deepSector in _capturableBlufor && {!(_deepSector in _frontlineTargets)}) then {
+                _routes pushBack [
+                    format ["DEEP>%1>%2>%3", _originSector, _entrySector, _deepSector],
+                    _deepSector,
+                    _entrySector,
+                    _deepSector
+                ];
+            };
+        } forEach (_entryNetwork getOrDefault ["Links", []]);
+    } forEach _frontlineTargets;
+    _routes
+};
+
+BATTLESPACE_DEEP_RECON_HAS_ACTIVE_ROUTE = {
+    params ["_routeKey"];
     private _found = false;
     {
         if (
-            (_y getOrDefault ["kind", ""]) == "PATROL"
-            && {
-                (_y getOrDefault ["originSector", ""]) == _originSector
-                || {(_y getOrDefault ["targetSector", ""]) == _targetSector}
-            }
+            (_y getOrDefault ["kind", ""]) == "DEEP RECONNAISSANCE PATROL"
+            && {(_y getOrDefault ["reconRouteKey", ""]) == _routeKey}
         ) exitWith {_found = true};
     } forEach BATTLESPACE_STRATEGIC_OPERATIONS;
     _found
 };
 
-BATTLESPACE_PATROL_BUILD_PROBE_POSITIONS = {
-    params ["_originSector", "_targetSector"];
-    private _origin = getMarkerPos _originSector;
-    private _target = getMarkerPos _targetSector;
-    private _distance = _origin distance2D _target;
+BATTLESPACE_DEEP_RECON_BUILD_OBSERVATION_POSITION = {
+    params ["_fromSector", "_toSector"];
+    private _from = getMarkerPos _fromSector;
+    private _to = getMarkerPos _toSector;
+    private _distance = _from distance2D _to;
     if (_distance < 400) exitWith {[]};
 
-    private _direction = _origin getDir _target;
-    private _standoff = 100 max (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_PATROL_BLUFOR_STANDOFF", 350]);
-    private _lateralLimit = 0 max (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_PATROL_LATERAL_OFFSET", 250]);
-    private _positions = [];
-    private _project = {
-        params ["_forward", "_lateral"];
-        private _axis = _direction;
-        if (_forward < 0) then {_axis = _axis + 180};
-        private _position = _origin getPos [abs _forward, _axis];
-        if (_lateral != 0) then {
-            private _lateralDirection = _direction + ([90, -90] select (_lateral < 0));
-            _position = _position getPos [abs _lateral, _lateralDirection];
-        };
-        _position set [2, 0];
-        _position
-    };
-    private _isValid = {
-        params ["_position"];
-        if (
-            (_position param [0, -1]) < 0
-            || {(_position param [1, -1]) < 0}
-            || {(_position param [0, worldSize + 1]) > worldSize}
-            || {(_position param [1, worldSize + 1]) > worldSize}
-            || {surfaceIsWater _position}
-            || {_position distance2D _target < _standoff}
-            || {_positions findIf {_x distance2D _position < 150} >= 0}
-        ) exitWith {false};
-        true
-    };
+    private _direction = _from getDir _to;
+    private _standoff = 100 max (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DEEP_RECON_TARGET_STANDOFF", 350]);
+    private _routeRatio = ((missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DEEP_RECON_ROUTE_RATIO", 0.55]) max 0.15) min 0.80;
+    private _forwardDistance = (_distance * _routeRatio) min ((_distance - _standoff) max 0);
+    if (_forwardDistance < 100) exitWith {[]};
 
-    private _rearRange = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_PATROL_REAR_SCREEN_RANGE", [150, 350]];
-    private _rearMinimum = 50 max (_rearRange param [0, 150]);
-    private _rearMaximum = _rearMinimum max (_rearRange param [1, 350]);
-    for "_attempt" from 1 to 8 do {
-        private _rearDistance = -(_rearMinimum + random (_rearMaximum - _rearMinimum));
+    private _position = _from getPos [_forwardDistance, _direction];
+    private _lateralLimit = (0 max (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DEEP_RECON_LATERAL_OFFSET", 250])) min (_distance * 0.2);
+    if (_lateralLimit > 0) then {
         private _lateral = -_lateralLimit + random (2 * _lateralLimit);
-        private _candidate = [_rearDistance, _lateral] call _project;
-        if ([_candidate] call _isValid) exitWith {_positions pushBack _candidate};
+        _position = _position getPos [abs _lateral, _direction + ([90, -90] select (_lateral < 0))];
     };
+    _position set [2, 0];
 
-    private _forwardRatios = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_PATROL_FORWARD_RATIOS", [0.35, 0.60]];
-    private _maximumForward = (_distance - _standoff) max 0;
-    {
-        private _baseRatio = (_x max 0.15) min 0.80;
-        for "_attempt" from 1 to 8 do {
-            private _ratio = (((_baseRatio - 0.08) + random 0.16) max 0.15) min 0.80;
-            private _forwardDistance = (_distance * _ratio) min _maximumForward;
-            if (_forwardDistance < 100) then {continue};
-            private _legLateralLimit = _lateralLimit min (_distance * 0.2);
-            private _lateral = -_legLateralLimit + random (2 * _legLateralLimit);
-            private _candidate = [_forwardDistance, _lateral] call _project;
-            if ([_candidate] call _isValid) exitWith {_positions pushBack _candidate};
-        };
-    } forEach _forwardRatios;
-
-    if (count _positions < 2) exitWith {[]};
-    _positions
+    if (
+        (_position param [0, -1]) < 0
+        || {(_position param [1, -1]) < 0}
+        || {(_position param [0, worldSize + 1]) > worldSize}
+        || {(_position param [1, worldSize + 1]) > worldSize}
+        || {surfaceIsWater _position}
+        || {_position distance2D _to < _standoff}
+    ) exitWith {[]};
+    _position
 };
 
-BATTLESPACE_PATROL_DISPATCH = {
-    params ["_originSector", "_targetSector"];
-    if (["PATROL"] call BATTLESPACE_STRATEGIC_COUNT_OPERATIONS >= (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_ACTIVE_PATROLS", 8])) exitWith {false};
-    if !(_targetSector in ([_originSector] call BATTLESPACE_PATROL_GET_FRONTLINE_TARGETS)) exitWith {false};
-    if ([_originSector, _targetSector] call BATTLESPACE_PATROL_HAS_ACTIVE_CORRIDOR) exitWith {false};
+BATTLESPACE_DEEP_RECON_DISPATCH = {
+    params ["_originSector", "_routeKey"];
+    if (["DEEP RECONNAISSANCE PATROL"] call BATTLESPACE_STRATEGIC_COUNT_OPERATIONS >= (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_ACTIVE_DEEP_RECON", 8])) exitWith {false};
+    if ([_routeKey] call BATTLESPACE_DEEP_RECON_HAS_ACTIVE_ROUTE) exitWith {false};
+    private _routes = [_originSector] call BATTLESPACE_DEEP_RECON_GET_ROUTES;
+    private _routeIndex = _routes findIf {(_x param [0, ""]) == _routeKey};
+    if (_routeIndex < 0) exitWith {false};
+    private _route = _routes select _routeIndex;
+    _route params ["_validatedRouteKey", "_targetSector", "_segmentFrom", "_segmentTo"];
+
     private _state = BATTLESPACE_SECTOR_STATES get _originSector;
     if (isNil "_state" || {(_state getOrDefault ["owner", ""]) != "OPFOR"}) exitWith {false};
+    if (CBA_missionTime < (_state getOrDefault ["nextDeepReconAt", 0])) exitWith {false};
     private _sectorType = _state get "type";
     private _resources = _state get "resources";
-    private _thresholds = [_sectorType, "Patrol"] call BATTLESPACE_SECTOR_GET_THRESHOLD_MAP;
-    private _manpower = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_PATROL_MANPOWER", 7];
+    private _thresholds = [_sectorType, "Deep Reconnaissance Patrol"] call BATTLESPACE_SECTOR_GET_THRESHOLD_MAP;
+    private _manpower = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DEEP_RECON_MANPOWER", 7];
     private _threshold = _thresholds getOrDefault ["manpower", -1];
     if (_threshold < 0 || {(_resources getOrDefault ["manpower", 0]) < ceil (([_sectorType, "manpower"] call BATTLESPACE_SECTOR_GET_CAPACITY) * _threshold)}) exitWith {false};
 
@@ -359,44 +359,44 @@ BATTLESPACE_PATROL_DISPATCH = {
     } forEach ["car", "apc", "ifv"];
     private _composition = createHashMapFromArray [["manpower", _manpower], ["vehicles", _vehicles], ["structures", []]];
     private _origin = getMarkerPos _originSector;
-    private _probePositions = [_originSector, _targetSector] call BATTLESPACE_PATROL_BUILD_PROBE_POSITIONS;
-    if (count _probePositions < 2) exitWith {
-        [format ["Rejected patrol corridor %1 -> %2 because fewer than two valid probe legs were found", _originSector, _targetSector], "WARNING"] call BATTLESPACE_STRATEGIC_LOG;
+    private _target = [_segmentFrom, _segmentTo] call BATTLESPACE_DEEP_RECON_BUILD_OBSERVATION_POSITION;
+    if !((count _target) in [2, 3]) exitWith {
+        [format ["Rejected Deep Reconnaissance Patrol route %1 because its observation position is invalid", _routeKey], "WARNING"] call BATTLESPACE_STRATEGIC_LOG;
         false
     };
-    private _target = _probePositions select 0;
     private _id = [
-        "Battlegroup", _composition, _origin, _target, _origin, _originSector, "PATROL",
+        "Deep Reconnaissance Patrol", _composition, _origin, _target, _origin, _originSector, "Deep Reconnaissance Patrol",
         createHashMapFromArray [
-            ["phase", "OUTBOUND"], ["targetSector", _targetSector], ["targetPosition", _target],
-            ["probePositions", _probePositions], ["probeIndex", 0]
+            ["phase", "INFILTRATING"], ["targetSector", _targetSector], ["targetPosition", _target],
+            ["reconRouteKey", _validatedRouteKey]
         ]
     ] call BATTLESPACE_STRATEGIC_CREATE_FUNDED_TASK_FORCE;
     if (_id == "") exitWith {false};
-    _state set ["nextPatrolAt", CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_PATROL_COOLDOWN", 2400])];
+    _state set ["nextDeepReconAt", CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DEEP_RECON_COOLDOWN", 2400])];
     BATTLESPACE_SECTOR_STATES set [_originSector, _state];
     [] call BATTLESPACE_LOGISTICS_SAVE;
-    [format ["Dispatched strategic patrol %1 through corridor %2 -> %3", _id, _originSector, _targetSector]] call BATTLESPACE_STRATEGIC_LOG;
+    [format ["Dispatched Deep Reconnaissance Patrol %1 from %2 toward %3 on route %4", _id, _originSector, _targetSector, _validatedRouteKey]] call BATTLESPACE_STRATEGIC_LOG;
     true
 };
 
-BATTLESPACE_PATROL_DECISION_TICK = {
+BATTLESPACE_DEEP_RECON_DECISION_TICK = {
     if !([] call BATTLESPACE_STRATEGIC_SERVER_CALL_ALLOWED) exitWith {};
     private _candidates = [];
     {
-        if ((_y getOrDefault ["owner", ""]) != "OPFOR" || {CBA_missionTime < (_y getOrDefault ["nextPatrolAt", 0])}) then {continue};
+        if ((_y getOrDefault ["owner", ""]) != "OPFOR" || {CBA_missionTime < (_y getOrDefault ["nextDeepReconAt", 0])}) then {continue};
         private _originSector = _x;
-        private _priority = ((_y getOrDefault ["casualtyPressure", 0]) * 1000000) + ((CBA_missionTime - (_y getOrDefault ["nextPatrolAt", 0])) max 0);
+        private _priority = ((_y getOrDefault ["casualtyPressure", 0]) * 1000000) + ((CBA_missionTime - (_y getOrDefault ["nextDeepReconAt", 0])) max 0);
         {
-            if !([_originSector, _x] call BATTLESPACE_PATROL_HAS_ACTIVE_CORRIDOR) then {
-                _candidates pushBack [_priority, _originSector, _x];
+            private _routeKey = _x param [0, ""];
+            if !([_routeKey] call BATTLESPACE_DEEP_RECON_HAS_ACTIVE_ROUTE) then {
+                _candidates pushBack [_priority, _originSector, _routeKey];
             };
-        } forEach ([_originSector] call BATTLESPACE_PATROL_GET_FRONTLINE_TARGETS);
+        } forEach ([_originSector] call BATTLESPACE_DEEP_RECON_GET_ROUTES);
     } forEach BATTLESPACE_SECTOR_STATES;
     _candidates = [_candidates, [], {_x param [0, 0]}, "DESCEND"] call BIS_fnc_sortBy;
     {
-        if (["PATROL"] call BATTLESPACE_STRATEGIC_COUNT_OPERATIONS >= (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_ACTIVE_PATROLS", 8])) exitWith {};
-        [_x param [1, ""], _x param [2, ""]] call BATTLESPACE_PATROL_DISPATCH;
+        if (["DEEP RECONNAISSANCE PATROL"] call BATTLESPACE_STRATEGIC_COUNT_OPERATIONS >= (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_ACTIVE_DEEP_RECON", 8])) exitWith {};
+        [_x param [1, ""], _x param [2, ""]] call BATTLESPACE_DEEP_RECON_DISPATCH;
     } forEach _candidates;
 };
 
@@ -500,7 +500,7 @@ BATTLESPACE_STRATEGIC_BUILD_SECTOR_SNAPSHOT = {
             ((_state getOrDefault ["nextResupplyAt", 0]) - CBA_missionTime) max 0,
             ((_state getOrDefault ["nextEmergencyAt", 0]) - CBA_missionTime) max 0,
             ((_state getOrDefault ["nextReinforcementAt", 0]) - CBA_missionTime) max 0,
-            ((_state getOrDefault ["nextPatrolAt", 0]) - CBA_missionTime) max 0,
+            ((_state getOrDefault ["nextDeepReconAt", 0]) - CBA_missionTime) max 0,
             ((_state getOrDefault ["nextBattlegroupAt", 0]) - CBA_missionTime) max 0,
             ((_state getOrDefault ["nextAirResponseAt", 0]) - CBA_missionTime) max 0,
             ((_state getOrDefault ["nextFortificationAt", 0]) - CBA_missionTime) max 0
@@ -647,7 +647,7 @@ BATTLESPACE_STRATEGIC_BUILD_INTEGRITY_AUDIT = {
     };
     {
         private _type = _y param [0, ""];
-        if (_type in ["Battlegroup", "Convoy", "Air Response", "Airborne Transport", "Airborne Infantry"] && {isNil {BATTLESPACE_STRATEGIC_OPERATIONS get _x}}) then {
+        if (_type in ["Battlegroup", "Deep Reconnaissance Patrol", "Convoy", "Air Response", "Airborne Transport", "Airborne Infantry"] && {isNil {BATTLESPACE_STRATEGIC_OPERATIONS get _x}}) then {
             _warnings pushBack format ["Task force %1 (%2) has no operation", _x, _type];
         };
     } forEach BATTLESPACE_TASK_FORCES;
@@ -693,7 +693,7 @@ BATTLESPACE_STRATEGIC_BUILD_BALANCE_REPORT = {
         ["REINFORCEMENT", missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_ACTIVE_REINFORCEMENTS", 3]],
         ["AIRBORNE_TRANSPORT", missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_ACTIVE_AIRBORNE_TRANSPORTS", 2]],
         ["AIRBORNE_REINFORCEMENT", -1],
-        ["PATROL", missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_ACTIVE_PATROLS", 8]],
+        ["DEEP RECONNAISSANCE PATROL", missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_ACTIVE_DEEP_RECON", 8]],
         ["AIR_RESPONSE", missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_ACTIVE_AIR_RESPONSES", 2]],
         ["FORTIFICATION", missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_ACTIVE_FORTIFICATIONS", 48]],
         ["DEFENDER", -1]
@@ -704,7 +704,7 @@ BATTLESPACE_STRATEGIC_BUILD_BALANCE_REPORT = {
         missionNamespace getVariable ["BATTLESPACE_STRATEGIC_CASUALTY_RESPONSE_THRESHOLD", 8],
         missionNamespace getVariable ["BATTLESPACE_STRATEGIC_EMERGENCY_COOLDOWN", 900],
         missionNamespace getVariable ["BATTLESPACE_STRATEGIC_REINFORCEMENT_COOLDOWN", 1200],
-        missionNamespace getVariable ["BATTLESPACE_STRATEGIC_PATROL_COOLDOWN", 2400],
+        missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DEEP_RECON_COOLDOWN", 2400],
         missionNamespace getVariable ["BATTLESPACE_STRATEGIC_AIR_RESPONSE_COOLDOWN", 1800],
         missionNamespace getVariable ["BATTLESPACE_STRATEGIC_FORTIFICATION_COOLDOWN", 1800]
     ]]
@@ -840,7 +840,7 @@ BATTLESPACE_ZEN_EXECUTE_VALIDATED_ACTION = {
         case "RUN_DECISION": {
             [] call BATTLESPACE_LOGISTICS_DECISION_TICK;
             [] call BATTLESPACE_BATTLEGROUP_DECISION_TICK;
-            [] call BATTLESPACE_PATROL_DECISION_TICK;
+            [] call BATTLESPACE_DEEP_RECON_DECISION_TICK;
             [] call BATTLESPACE_AIR_RESPONSE_DECISION_TICK;
             [] call BATTLESPACE_FORTIFICATION_DECISION_TICK;
         };
@@ -892,7 +892,7 @@ BATTLESPACE_ZEN_EXECUTE_VALIDATED_ACTION = {
     if (_action == "SELF_TEST") exitWith {};
     private _payload = if (_action in ["RUN_DECISION", "SAVE"]) then {
         private _counts = [];
-        {_counts pushBack [_x, [_x] call BATTLESPACE_STRATEGIC_COUNT_OPERATIONS]} forEach ["CONVOY", "BATTLEGROUP", "DEFENDER", "REINFORCEMENT", "AIRBORNE_TRANSPORT", "AIRBORNE_REINFORCEMENT", "PATROL", "AIR_RESPONSE", "FORTIFICATION"];
+        {_counts pushBack [_x, [_x] call BATTLESPACE_STRATEGIC_COUNT_OPERATIONS]} forEach ["CONVOY", "BATTLEGROUP", "DEFENDER", "REINFORCEMENT", "AIRBORNE_TRANSPORT", "AIRBORNE_REINFORCEMENT", "DEEP RECONNAISSANCE PATROL", "AIR_RESPONSE", "FORTIFICATION"];
         [count BATTLESPACE_SECTOR_STATES, count BATTLESPACE_TASK_FORCES, _counts]
     } else {
         [_nearest] call BATTLESPACE_STRATEGIC_BUILD_SECTOR_SNAPSHOT
@@ -927,7 +927,7 @@ BATTLESPACE_ZEN_SERVER_REQUEST = {
     } else {
         if (_action == "OVERVIEW") then {
             private _counts = [];
-            {_counts pushBack [_x, [_x] call BATTLESPACE_STRATEGIC_COUNT_OPERATIONS]} forEach ["CONVOY", "BATTLEGROUP", "DEFENDER", "REINFORCEMENT", "AIRBORNE_TRANSPORT", "AIRBORNE_REINFORCEMENT", "PATROL", "AIR_RESPONSE", "FORTIFICATION"];
+            {_counts pushBack [_x, [_x] call BATTLESPACE_STRATEGIC_COUNT_OPERATIONS]} forEach ["CONVOY", "BATTLEGROUP", "DEFENDER", "REINFORCEMENT", "AIRBORNE_TRANSPORT", "AIRBORNE_REINFORCEMENT", "DEEP RECONNAISSANCE PATROL", "AIR_RESPONSE", "FORTIFICATION"];
             _payload = [count BATTLESPACE_SECTOR_STATES, count BATTLESPACE_TASK_FORCES, _counts];
         } else {
             if (_action == "OVERLAY") then {

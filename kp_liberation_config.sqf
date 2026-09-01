@@ -165,14 +165,13 @@ BATTLESPACE_STRATEGIC_AIRBORNE_DROP_RADIUS = 600;
 BATTLESPACE_STRATEGIC_AIRBORNE_RETURN_RADIUS = 500;
 BATTLESPACE_STRATEGIC_AIRBORNE_FLIGHT_HEIGHT = 300;
 BATTLESPACE_STRATEGIC_AIRBORNE_DEPLOYMENT_DURATION = 900;
-BATTLESPACE_STRATEGIC_MAX_ACTIVE_PATROLS = 8;
-BATTLESPACE_STRATEGIC_PATROL_MANPOWER = 7;
-BATTLESPACE_STRATEGIC_PATROL_COOLDOWN = 2400;
-BATTLESPACE_STRATEGIC_PATROL_DURATION = 1200;
-BATTLESPACE_STRATEGIC_PATROL_FORWARD_RATIOS = [0.35, 0.60];
-BATTLESPACE_STRATEGIC_PATROL_REAR_SCREEN_RANGE = [150, 350];
-BATTLESPACE_STRATEGIC_PATROL_LATERAL_OFFSET = 250;
-BATTLESPACE_STRATEGIC_PATROL_BLUFOR_STANDOFF = 350;
+BATTLESPACE_STRATEGIC_MAX_ACTIVE_DEEP_RECON = 8;
+BATTLESPACE_STRATEGIC_DEEP_RECON_MANPOWER = 7;
+BATTLESPACE_STRATEGIC_DEEP_RECON_COOLDOWN = 2400;
+BATTLESPACE_STRATEGIC_DEEP_RECON_DURATION = 1200;
+BATTLESPACE_STRATEGIC_DEEP_RECON_ROUTE_RATIO = 0.55;
+BATTLESPACE_STRATEGIC_DEEP_RECON_LATERAL_OFFSET = 250;
+BATTLESPACE_STRATEGIC_DEEP_RECON_TARGET_STANDOFF = 350;
 BATTLESPACE_STRATEGIC_AIR_RESPONSE_INITIAL_DELAY = 600;
 BATTLESPACE_STRATEGIC_AIR_RESPONSE_DECISION_INTERVAL = 60;
 BATTLESPACE_STRATEGIC_MAX_ACTIVE_AIR_RESPONSES = 2;
@@ -257,7 +256,7 @@ KPLIB_intelligence_prisoner_yield_opfor = [6, 12];
 KPLIB_intelligence_operation_kinds = [
     "CONVOY",
     "BATTLEGROUP",
-    "PATROL",
+    "DEEP RECONNAISSANCE PATROL",
     "REINFORCEMENT",
     "AIR_RESPONSE",
     "AIRBORNE_TRANSPORT",
@@ -697,7 +696,23 @@ KP_liberation_small_storage_positions = [
 // DO NOT CHANGE (unless you know what you are doing)
 GRLIB_endgame = 0;
 // KP_liberation_production_interval = ceil (KP_liberation_production_interval / GRLIB_resources_multiplier);
-GRLIB_battlegroup_size = GRLIB_battlegroup_size * (sqrt GRLIB_unitcap) * (sqrt GRLIB_csat_aggressivity);
+private _battlegroupBaseSize = GRLIB_battlegroup_size;
+private _battlegroupAggressivityScale = 0.25 + (0.75 * (GRLIB_csat_aggressivity / 4));
+GRLIB_battlegroup_size = 2 max (round (
+    _battlegroupBaseSize
+    * GRLIB_unitcap
+    * _battlegroupAggressivityScale
+));
+if (isServer) then {
+    [format [
+        "Battlegroup vehicle limit scaled from %1 to %2 (AI amount %3, OPFOR aggressiveness %4, scale %5)",
+        _battlegroupBaseSize,
+        GRLIB_battlegroup_size,
+        GRLIB_unitcap,
+        GRLIB_csat_aggressivity,
+        _battlegroupAggressivityScale
+    ], "BATTLESPACE"] call KPLIB_fnc_log;
+};
 GRLIB_blufor_cap = (GRLIB_blufor_cap * GRLIB_unitcap) min 100;
 GRLIB_sector_cap = GRLIB_sector_cap * GRLIB_unitcap;
 GRLIB_kog_trucks = ["UK3CB_ARD_O_GAZ_Vodnik"];//"vn_o_wheeled_z157_01_vcmf"rhs_ka60_grey

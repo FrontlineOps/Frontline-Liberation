@@ -673,12 +673,12 @@ private _sendBattlegroupThresholds = [
 	]
 ];
 
-// Higher ratios affect that the sector type needs more resources to mount a patrol towards BLUFOR territory
-// Negative ratios means that the resource type is unavailable to send for a patrol.
+// Higher ratios require more sector stock before dispatching deep reconnaissance.
+// Negative ratios make that resource unavailable to deep reconnaissance.
 // NOTE: This one does not need to meet all thresholds to send. It will only send what it deems is capable.
 // The resource types used for this is primarily
 // manpower, cars, and ifv or apc.
-private _combatPatrolThresholds = [
+private _deepReconThresholds = [
 	[
 		"military",
 		createHashMapFromArray [
@@ -853,12 +853,12 @@ BATTLESPACE_SECTOR_STATES = createHashMap;
 	{
 		private _resourceType = _x;
 		private _value = _y;
-		[_sectorType, "Patrol", _resourceType, _value] call BATTLESPACE_SET_THRESHOLD;
+		[_sectorType, "Deep Reconnaissance Patrol", _resourceType, _value] call BATTLESPACE_SET_THRESHOLD;
 	} forEach _resourceDefs;
-} forEach _combatPatrolThresholds;
+} forEach _deepReconThresholds;
 
 // Aircraft are paid strategic assets for reactive air responses and airborne
-// transports. Threshold-driven ground reinforcement, battlegroup, and patrol
+// transports. Threshold-driven ground reinforcement, battlegroup, and deep recon
 // constructors remain ground-only.
 private _aircraftThresholdPolicy = createHashMapFromArray [
 	["MaximumCapacity", 2],
@@ -867,7 +867,7 @@ private _aircraftThresholdPolicy = createHashMapFromArray [
 	["Resupply", 0.5],
 	["EmergencyResupply", 0.5],
 	["Battlegroup", -1],
-	["Patrol", -1]
+	["Deep Reconnaissance Patrol", -1]
 ];
 {
 	private _sectorType = _x;
@@ -891,7 +891,7 @@ private _constructionThresholdPolicy = createHashMapFromArray [
 	["Resupply", 1.0],
 	["EmergencyResupply", -1],
 	["Battlegroup", -1],
-	["Patrol", -1],
+	["Deep Reconnaissance Patrol", -1],
 	["Fortification", 0.5]
 ];
 {

@@ -107,7 +107,7 @@ BATTLESPACE_SECTOR_CREATE_STATE = {
         ["nextBattlegroupAt", 0],
         ["nextEmergencyAt", 0],
         ["nextReinforcementAt", 0],
-        ["nextPatrolAt", 0],
+        ["nextDeepReconAt", 0],
         ["nextAirResponseAt", 0],
         ["nextFortificationAt", 0],
         ["casualtyPressure", 0],
@@ -146,7 +146,7 @@ BATTLESPACE_SECTOR_SET_OWNER = {
     ];
     _state set ["nextEmergencyAt", CBA_missionTime];
     _state set ["nextReinforcementAt", CBA_missionTime];
-    _state set ["nextPatrolAt", CBA_missionTime];
+    _state set ["nextDeepReconAt", CBA_missionTime];
     _state set ["nextAirResponseAt", CBA_missionTime];
     _state set ["nextFortificationAt", CBA_missionTime];
     _state set ["casualtyPressure", 0];
@@ -295,7 +295,7 @@ BATTLESPACE_LOGISTICS_SAVE = {
             ["battlegroupCooldown", ((_state getOrDefault ["nextBattlegroupAt", 0]) - CBA_missionTime) max 0],
             ["emergencyCooldown", ((_state getOrDefault ["nextEmergencyAt", 0]) - CBA_missionTime) max 0],
             ["reinforcementCooldown", ((_state getOrDefault ["nextReinforcementAt", 0]) - CBA_missionTime) max 0],
-            ["patrolCooldown", ((_state getOrDefault ["nextPatrolAt", 0]) - CBA_missionTime) max 0],
+            ["deepReconCooldown", ((_state getOrDefault ["nextDeepReconAt", 0]) - CBA_missionTime) max 0],
             ["airResponseCooldown", ((_state getOrDefault ["nextAirResponseAt", 0]) - CBA_missionTime) max 0],
             ["fortificationCooldown", ((_state getOrDefault ["nextFortificationAt", 0]) - CBA_missionTime) max 0],
             ["casualtyPressure", (_state getOrDefault ["casualtyPressure", 0]) max 0],
@@ -372,7 +372,7 @@ BATTLESPACE_LOGISTICS_LOAD = {
                 _state set ["nextBattlegroupAt", CBA_missionTime + (_savedState getOrDefault ["battlegroupCooldown", 0])];
                 _state set ["nextEmergencyAt", CBA_missionTime + (_savedState getOrDefault ["emergencyCooldown", 0])];
                 _state set ["nextReinforcementAt", CBA_missionTime + (_savedState getOrDefault ["reinforcementCooldown", 0])];
-                _state set ["nextPatrolAt", CBA_missionTime + (_savedState getOrDefault ["patrolCooldown", 0])];
+                _state set ["nextDeepReconAt", CBA_missionTime + (_savedState getOrDefault ["deepReconCooldown", 0])];
                 _state set ["nextAirResponseAt", CBA_missionTime + (_savedState getOrDefault ["airResponseCooldown", 0])];
                 _state set ["nextFortificationAt", CBA_missionTime + (_savedState getOrDefault ["fortificationCooldown", 0])];
                 _state set ["casualtyPressure", (_savedState getOrDefault ["casualtyPressure", 0]) max 0];
@@ -966,7 +966,7 @@ BATTLESPACE_STRATEGIC_HANDLE_TASK_FORCE_EVENT = {
         case "REINFORCEMENT";
         case "AIRBORNE_TRANSPORT";
         case "AIRBORNE_REINFORCEMENT";
-        case "PATROL";
+        case "DEEP RECONNAISSANCE PATROL";
         case "AIR_RESPONSE": {
             private _destinationSector = switch (_operation getOrDefault ["outcome", ""]) do {
                 case "REINFORCED": {_operation getOrDefault ["targetSector", ""]};
@@ -1043,8 +1043,8 @@ if (isServer) then {
                 if (!isNil "BATTLESPACE_BATTLEGROUP_DECISION_TICK") then {
                     [] call BATTLESPACE_BATTLEGROUP_DECISION_TICK;
                 };
-                if (!isNil "BATTLESPACE_PATROL_DECISION_TICK") then {
-                    [] call BATTLESPACE_PATROL_DECISION_TICK;
+                if (!isNil "BATTLESPACE_DEEP_RECON_DECISION_TICK") then {
+                    [] call BATTLESPACE_DEEP_RECON_DECISION_TICK;
                 };
                 if (!isNil "BATTLESPACE_FORTIFICATION_DECISION_TICK") then {
                     [] call BATTLESPACE_FORTIFICATION_DECISION_TICK;

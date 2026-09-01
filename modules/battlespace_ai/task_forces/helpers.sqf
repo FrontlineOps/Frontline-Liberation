@@ -204,7 +204,7 @@ BATTLESPACE_TASK_FORCE_APPLY_ROUTE_TO_ACTIVE = {
 	if (_route isEqualTo []) exitWith {};
 	private _type = _taskForce param [0, ""];
 	private _destination = _taskForce param [2, []];
-	private _speed = ["LIMITED", "FULL"] select (_type in ["Battlegroup", "Convoy", "Air Response", "Airborne Transport"]);
+	private _speed = ["LIMITED", "FULL"] select (_type in ["Battlegroup", "Deep Reconnaissance Patrol", "Convoy", "Air Response", "Airborne Transport"]);
 	{
 		if (isNull _x || {!local _x}) then {continue};
 		private _parentTransport = _x getVariable ["BATTLESPACE_TRANSPORT_PARENT_GROUP", grpNull];

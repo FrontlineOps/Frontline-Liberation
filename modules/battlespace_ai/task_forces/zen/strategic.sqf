@@ -19,12 +19,12 @@ BATTLESPACE_ZEN_SHOW_SECTOR_SNAPSHOT = {
 		private _ratio = if (_capacity > 0) then {round (100 * _amount / _capacity)} else {0};
 		_lines pushBack format ["%1%2: %3 / %4 (%5%%)<br/>", if (_shortage) then {"<t color='#ff9c75'>SHORT </t>"} else {""}, _resource, _amount, _capacity, _ratio];
 	} forEach _stock;
-	_cooldowns params ["_resupply", "_emergency", "_reinforcement", "_patrol", "_battlegroup", ["_airResponse", 0], ["_fortification", 0]];
-	_lines pushBack format ["<br/>Cooldowns — supply %1, emergency %2, reinforcement %3, patrol %4, battlegroup %5, air %6, construction %7<br/>",
+	_cooldowns params ["_resupply", "_emergency", "_reinforcement", "_deepRecon", "_battlegroup", ["_airResponse", 0], ["_fortification", 0]];
+	_lines pushBack format ["<br/>Cooldowns — supply %1, emergency %2, reinforcement %3, deep recon %4, battlegroup %5, air %6, construction %7<br/>",
 		[_resupply] call BATTLESPACE_ZEN_FORMAT_DURATION,
 		[_emergency] call BATTLESPACE_ZEN_FORMAT_DURATION,
 		[_reinforcement] call BATTLESPACE_ZEN_FORMAT_DURATION,
-		[_patrol] call BATTLESPACE_ZEN_FORMAT_DURATION,
+		[_deepRecon] call BATTLESPACE_ZEN_FORMAT_DURATION,
 		[_battlegroup] call BATTLESPACE_ZEN_FORMAT_DURATION,
 		[_airResponse] call BATTLESPACE_ZEN_FORMAT_DURATION,
 		[_fortification] call BATTLESPACE_ZEN_FORMAT_DURATION
@@ -63,14 +63,14 @@ BATTLESPACE_ZEN_RECEIVE_SNAPSHOT = {
 			} forEach _resourceRows;
 			_lines pushBack "<br/>Operation pressure:<br/>";
 			{_lines pushBack format ["%1: %2%3<br/>", _x#0, _x#1, if ((_x#2) < 0) then {""} else {" / " + str (_x#2)}]} forEach _operationRows;
-			_settings params [["_decision", 0], ["_airDecision", 0], ["_pressure", 0], ["_emergency", 0], ["_reinforcement", 0], ["_patrol", 0], ["_airResponse", 0], ["_fortification", 0]];
-			_lines pushBack format ["<br/>Strategic decision %1; air decision %2; casualty trigger %3; cooldowns E/R/P/A/F %4/%5/%6/%7/%8",
+			_settings params [["_decision", 0], ["_airDecision", 0], ["_pressure", 0], ["_emergency", 0], ["_reinforcement", 0], ["_deepRecon", 0], ["_airResponse", 0], ["_fortification", 0]];
+			_lines pushBack format ["<br/>Strategic decision %1; air decision %2; casualty trigger %3; cooldowns E/R/D/A/F %4/%5/%6/%7/%8",
 				[_decision] call BATTLESPACE_ZEN_FORMAT_DURATION,
 				[_airDecision] call BATTLESPACE_ZEN_FORMAT_DURATION,
 				_pressure,
 				[_emergency] call BATTLESPACE_ZEN_FORMAT_DURATION,
 				[_reinforcement] call BATTLESPACE_ZEN_FORMAT_DURATION,
-				[_patrol] call BATTLESPACE_ZEN_FORMAT_DURATION,
+				[_deepRecon] call BATTLESPACE_ZEN_FORMAT_DURATION,
 				[_airResponse] call BATTLESPACE_ZEN_FORMAT_DURATION,
 				[_fortification] call BATTLESPACE_ZEN_FORMAT_DURATION
 			];
