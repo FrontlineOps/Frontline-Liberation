@@ -71,6 +71,72 @@ BATTLESPACE_TASK_FORCE_CANCEL_SPAWN_ADMISSION = {
 	BATTLESPACE_TASK_FORCE_SPAWN_QUEUE = BATTLESPACE_TASK_FORCE_SPAWN_QUEUE select {_x != _taskForceName};
 };
 
+BATTLESPACE_TASK_FORCE_REFRESH_SPAWN_RESERVATIONS = {
+	private _reservationTotal = 0;
+	private _expiredReservations = [];
+	{
+		private _reservedTaskForce = BATTLESPACE_TASK_FORCES get _x;
+		_y params ["_reservedUnits", "_reservationExpiresAt"];
+		private _isQueued = _x in BATTLESPACE_TASK_FORCE_SPAWN_QUEUE;
+		if (
+			isNil "_reservedTaskForce"
+			|| {CBA_missionTime >= _reservationExpiresAt}
+			|| {!_isQueued && {!(_reservedTaskForce param [11, false])}}
+		) then {
+			_expiredReservations pushBack _x;
+		} else {
+			_reservationTotal = _reservationTotal + _reservedUnits;
+		};
+	} forEach BATTLESPACE_TASK_FORCE_SPAWN_RESERVATIONS;
+	{
+		[_x] call BATTLESPACE_TASK_FORCE_CANCEL_SPAWN_ADMISSION;
+	} forEach _expiredReservations;
+	_reservationTotal
+};
+
+BATTLESPACE_TASK_FORCE_TRY_ADMIT_SPAWN = {
+	params ["_taskForceName", "_taskForce", "_unitCount", "_reservationTotal", ["_source", ""]];
+
+	private _hasSpawnReservation = !isNil {BATTLESPACE_TASK_FORCE_SPAWN_RESERVATIONS get _taskForceName};
+	private _spawning = _taskForce param [11, false];
+	private _activeObjects = _taskForce param [8, []];
+	if (_spawning || {_hasSpawnReservation} || {_activeObjects isNotEqualTo []}) exitWith {
+		[false, _reservationTotal]
+	};
+
+	private _composition = _taskForce param [3, createHashMap];
+	private _manpowerEstimate = _composition getOrDefault ["manpower", 0];
+	private _vehicleEstimate = count (_composition getOrDefault ["vehicles", []]);
+	private _staticEstimate = {
+		private _className = _x getOrDefault ["className", ""];
+		_className isKindOf "StaticWeapon"
+	} count (_composition getOrDefault ["structures", []]);
+	private _spawnEstimate = 1 max (_manpowerEstimate + (4 * (_vehicleEstimate + _staticEstimate)));
+	if ((_unitCount + _reservationTotal + _spawnEstimate) > BATTLESPACE_UNIT_CAP) exitWith {
+		[false, _reservationTotal]
+	};
+
+	BATTLESPACE_TASK_FORCE_SPAWN_RESERVATIONS set [
+		_taskForceName,
+		[_spawnEstimate, CBA_missionTime + 180]
+	];
+	_taskForce set [9, false];
+	BATTLESPACE_TASK_FORCE_SPAWN_QUEUE pushBackUnique _taskForceName;
+	if (_source != "") then {
+		[
+			format [
+				"Task Force %1 admitted to the existing spawn queue by %2 (estimate=%3 reservedTotal=%4)",
+				_taskForceName,
+				_source,
+				_spawnEstimate,
+				_reservationTotal + _spawnEstimate
+			],
+			"BATTLESPACE"
+		] call KPLIB_fnc_log;
+	};
+	[true, _reservationTotal + _spawnEstimate]
+};
+
 BATTLESPACE_TASK_FORCE_SAVE_KEY = format ["BATTLESPACE_TASK_FORCES_%1", toUpper worldName];
 
 BATTLESPACE_TASK_FORCE_REGISTER_MODEL = {
@@ -81,6 +147,23 @@ BATTLESPACE_TASK_FORCE_REGISTER_MODEL = {
 
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\models\index.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\pathfinder.sqf";
+
+if (isServer) then {
+	private _losProcState = if (missionNamespace getVariable ["BATTLESPACE_LOS_PROC_ENABLED", false]) then {"ENABLED"} else {"DISABLED"};
+	[
+		format [
+			"LoS proc prototype %1: closeRange=%2m footprintRadius=%3m scanInterval=%4s includeBluforAI=%5 groundHeight=%6m airHeight=%7m evaluatorCadence=10s",
+			_losProcState,
+			missionNamespace getVariable ["BATTLESPACE_LOS_PROC_CLOSE_RANGE", 200],
+			missionNamespace getVariable ["BATTLESPACE_LOS_PROC_FOOTPRINT_RADIUS", 125],
+			missionNamespace getVariable ["BATTLESPACE_LOS_PROC_SCAN_INTERVAL", 1],
+			missionNamespace getVariable ["BATTLESPACE_LOS_PROC_INCLUDE_BLUFOR_AI", false],
+			missionNamespace getVariable ["BATTLESPACE_LOS_PROC_GROUND_TARGET_HEIGHT", 1.5],
+			missionNamespace getVariable ["BATTLESPACE_LOS_PROC_AIR_TARGET_HEIGHT", 50]
+		],
+		"BATTLESPACE"
+	] call KPLIB_fnc_log;
+};
 
 BATTLESPACE_TASK_FORCE_PROCESS_SPAWN_QUEUE = {
 	if (!isServer) exitWith {};
@@ -122,7 +205,7 @@ BATTLESPACE_TASK_FORCE_PROCESS_SPAWN_QUEUE = {
 				isNil "_model"
 				|| {_activeObjects isNotEqualTo []}
 				|| {!([_taskForceName, _taskForce] call (_model get "isAlive"))}
-				|| {!([_taskForceName, _taskForce] call (_model get "canProc"))}
+				|| {!([_taskForceName, _taskForce, _model] call BATTLESPACE_TASK_FORCE_CAN_PROC)}
 			) then {
 				[_taskForceName] call BATTLESPACE_TASK_FORCE_CANCEL_SPAWN_ADMISSION;
 			} else {
@@ -542,12 +625,26 @@ BATTLESPACE_TASK_FORCES_CLUSTER_BLUFOR = {
 
 
 	if(CBA_missionTime < _nextTick) exitWith {};
-	// Update clusters every 10s for now.
-	(_this select 0) set [0, CBA_missionTime + 10];
+	private _clusterInterval = if (missionNamespace getVariable ["BATTLESPACE_LOS_PROC_ENABLED", false]) then {
+		0.25 max (missionNamespace getVariable ["BATTLESPACE_LOS_PROC_SCAN_INTERVAL", 1])
+	} else {
+		10
+	};
+	(_this select 0) set [0, CBA_missionTime + _clusterInterval];
 	BATTLESPACE_TASK_FORCES_BLUFOR_CLUSTERS = [];
 	
 
 	private _remainingPlayers = +allPlayers;
+	if (
+		missionNamespace getVariable ["BATTLESPACE_LOS_PROC_ENABLED", false]
+		&& {missionNamespace getVariable ["BATTLESPACE_LOS_PROC_INCLUDE_BLUFOR_AI", false]}
+	) then {
+		{
+			if (!isPlayer _x && {alive _x} && {side _x == GRLIB_side_friendly}) then {
+				_remainingPlayers pushBack _x;
+			};
+		} forEach allUnits;
+	};
 
 	_remainingPlayers = _remainingPlayers select {
 		side _x == GRLIB_side_friendly
@@ -594,6 +691,48 @@ BATTLESPACE_TASK_FORCES_CLUSTER_BLUFOR = {
 	// publicVariable "BATTLESPACE_TASK_FORCES_BLUFOR_CLUSTERS";
 	// diag_log format ["Blufor Clustering Process clustered %1 BLUFOR into %2 clusters", count allPlayers, count BATTLESPACE_TASK_FORCES_BLUFOR_CLUSTERS];
 };
+
+BATTLESPACE_TASK_FORCES_FAST_PROC_ADMISSION = {
+	if (!isServer || {!(missionNamespace getVariable ["BATTLESPACE_LOS_PROC_ENABLED", false])}) exitWith {};
+
+	private _candidates = [];
+	{
+		private _taskForceName = _x;
+		private _taskForce = _y;
+		private _activeObjects = _taskForce param [8, []];
+		private _spawning = _taskForce param [11, false];
+		private _hasSpawnReservation = !isNil {BATTLESPACE_TASK_FORCE_SPAWN_RESERVATIONS get _taskForceName};
+		if (_spawning || {_hasSpawnReservation} || {_activeObjects isNotEqualTo []}) then {continue};
+
+		private _model = BATTLESPACE_TASK_FORCE_MODELS get (_taskForce param [0, ""]);
+		if (isNil "_model") then {continue};
+		if !([_taskForceName, _taskForce] call (_model get "isAlive")) then {continue};
+		if ([_taskForceName, _taskForce, _model] call BATTLESPACE_TASK_FORCE_CAN_PROC) then {
+			_candidates pushBack [_taskForceName, _taskForce];
+		};
+	} forEach BATTLESPACE_TASK_FORCES;
+
+	if (_candidates isEqualTo []) exitWith {};
+	private _unitCount = [] call KPLIB_fnc_getOpforCap;
+	private _reservationTotal = [] call BATTLESPACE_TASK_FORCE_REFRESH_SPAWN_RESERVATIONS;
+	{
+		_x params ["_taskForceName", "_taskForce"];
+		private _admission = [
+			_taskForceName,
+			_taskForce,
+			_unitCount,
+			_reservationTotal,
+			"FAST_LOS"
+		] call BATTLESPACE_TASK_FORCE_TRY_ADMIT_SPAWN;
+		_admission params ["_admitted", "_newReservationTotal"];
+		_reservationTotal = _newReservationTotal;
+		if (_admitted) then {
+			_taskForce set [7, 0];
+			BATTLESPACE_TASK_FORCES set [_taskForceName, _taskForce];
+		};
+	} forEach _candidates;
+};
+
 BATTLESPACE_TASK_FORCES_EVALUATE = {
 	(_this select 0) params [
 		["_nextTick", 0],
@@ -608,25 +747,7 @@ BATTLESPACE_TASK_FORCES_EVALUATE = {
 	
 	private _startTime = diag_tickTime;
 	private _unitCount = ([] call KPLIB_fnc_getOpforCap);
-	private _reservationTotal = 0;
-	private _expiredReservations = [];
-	{
-		private _reservedTaskForce = BATTLESPACE_TASK_FORCES get _x;
-		_y params ["_reservedUnits", "_reservationExpiresAt"];
-		private _isQueued = _x in BATTLESPACE_TASK_FORCE_SPAWN_QUEUE;
-		if (
-			isNil "_reservedTaskForce"
-			|| {CBA_missionTime >= _reservationExpiresAt}
-			|| {!_isQueued && {!(_reservedTaskForce param [11, false])}}
-		) then {
-			_expiredReservations pushBack _x;
-		} else {
-			_reservationTotal = _reservationTotal + _reservedUnits;
-		};
-	} forEach BATTLESPACE_TASK_FORCE_SPAWN_RESERVATIONS;
-	{
-		[_x] call BATTLESPACE_TASK_FORCE_CANCEL_SPAWN_ADMISSION;
-	} forEach _expiredReservations;
+	private _reservationTotal = [] call BATTLESPACE_TASK_FORCE_REFRESH_SPAWN_RESERVATIONS;
 
 	// 1. Loop through all Task Forces
 	// 2. Validate task forces are still valid (the ones that are procced)
@@ -688,29 +809,15 @@ BATTLESPACE_TASK_FORCES_EVALUATE = {
 
 		
 		// Check for proccing if no active groups
-		private _canProc = [_x, _y] call (_model get "canProc");
+		private _canProc = [_x, _y, _model] call BATTLESPACE_TASK_FORCE_CAN_PROC;
 		if(_canProc) then {
-			private _hasSpawnReservation = !isNil {BATTLESPACE_TASK_FORCE_SPAWN_RESERVATIONS get _taskForceName};
-			if (!_spawning && {!_hasSpawnReservation} && {count _activeObjects <= 0}) then {
-				private _manpowerEstimate = _composition getOrDefault ["manpower", 0];
-				private _vehicleEstimate = count (_composition getOrDefault ["vehicles", []]);
-				private _staticEstimate = {
-					private _className = _x getOrDefault ["className", ""];
-					_className isKindOf "StaticWeapon"
-				} count (_composition getOrDefault ["structures", []]);
-				private _spawnEstimate = 1 max (_manpowerEstimate + (4 * (_vehicleEstimate + _staticEstimate)));
-
-				// Reserve asynchronous spawn capacity before any objects are created.
-				if ((_unitCount + _reservationTotal + _spawnEstimate) <= BATTLESPACE_UNIT_CAP) then {
-					BATTLESPACE_TASK_FORCE_SPAWN_RESERVATIONS set [
-						_taskForceName,
-						[_spawnEstimate, CBA_missionTime + 180]
-					];
-					_reservationTotal = _reservationTotal + _spawnEstimate;
-					_y set [9, false];
-					BATTLESPACE_TASK_FORCE_SPAWN_QUEUE pushBackUnique _taskForceName;
-				};
-			};
+			private _admission = [
+				_taskForceName,
+				_y,
+				_unitCount,
+				_reservationTotal
+			] call BATTLESPACE_TASK_FORCE_TRY_ADMIT_SPAWN;
+			_reservationTotal = _admission select 1;
 			_y set [7, 0];
 		} else {
 			if(!_spawning && {count _activeObjects > 0}) then {
@@ -772,6 +879,16 @@ BATTLESPACE_TASK_FORCES_EVALUATE = {
 		};
 		BATTLESPACE_TASK_FORCES set [_x, _y];
 	} forEach BATTLESPACE_TASK_FORCES;
+
+	private _staleLoSDecisions = [];
+	{
+		if (isNil {BATTLESPACE_TASK_FORCES get _x}) then {
+			_staleLoSDecisions pushBack _x;
+		};
+	} forEach BATTLESPACE_TASK_FORCE_LOS_PROC_DECISIONS;
+	{
+		BATTLESPACE_TASK_FORCE_LOS_PROC_DECISIONS deleteAt _x;
+	} forEach _staleLoSDecisions;
 
 	private _newTickCounter = _tickCounter + 1;
 	if(_newTickCounter >= 9) then {
@@ -874,8 +991,9 @@ if (isServer) then {
 
 		private _clusteringState = [[], 1];
 		while { true } do {
-			_state call BATTLESPACE_TASK_FORCES_EVALUATE;
 			_clusteringState call BATTLESPACE_TASK_FORCES_CLUSTER_BLUFOR;
+			[] call BATTLESPACE_TASK_FORCES_FAST_PROC_ADMISSION;
+			_state call BATTLESPACE_TASK_FORCES_EVALUATE;
 			[] call BATTLESPACE_TASK_FORCE_PROCESS_SPAWN_QUEUE;
 			sleep 1;
 		};
@@ -964,10 +1082,142 @@ BATTLESPACE_TASK_FORCE_DRAW_ROUTE_3D = {
 };
 
 RENDER_BATTLESPACE_AI = false;
+RENDER_BATTLESPACE_AI_PFH_ID = -1;
+RENDER_BATTLESPACE_LOS_PROC = false;
+
+BATTLESPACE_TASK_FORCE_DRAW_LOS_PROC_DEBUG = {
+	params ["_taskForceName", "_taskForce"];
+	if !(missionNamespace getVariable ["BATTLESPACE_LOS_PROC_ENABLED", false]) exitWith {
+		private _position = +(_taskForce param [1, []]);
+		if (count _position == 2) then {_position pushBack 0};
+		_position set [2, (_position param [2, 0]) + 12];
+		drawIcon3D [
+			"\A3\ui_f\data\map\groupicons\selector_selectedEnemy_ca.paa",
+			[1, 0.65, 0.1, 1],
+			_position,
+			0.8,
+			0.8,
+			0,
+			"LOS PROC PROTOTYPE DISABLED",
+			1,
+			0.03,
+			"TahomaB"
+		];
+	};
+
+	private _cache = uiNamespace getVariable ["BATTLESPACE_ZEN_LOS_PROC_DEBUG_CACHE", ["", 0, false, []]];
+	_cache params ["_cachedTaskForceName", "_nextProbe", "_broadPhase", "_probe"];
+	if (_cachedTaskForceName != _taskForceName || {diag_tickTime >= _nextProbe}) then {
+		private _model = BATTLESPACE_TASK_FORCE_MODELS get (_taskForce param [0, ""]);
+		_broadPhase = !isNil "_model" && {[_taskForceName, _taskForce] call (_model get "canProc")};
+		private _eligibleObservers = if (_broadPhase) then {
+			[_taskForce] call BATTLESPACE_TASK_FORCE_GET_LOS_PROC_OBSERVERS
+		} else {
+			[]
+		};
+		_probe = [_taskForce, _eligibleObservers] call BATTLESPACE_TASK_FORCE_PROBE_LOS;
+		if (!_broadPhase) then {
+			_probe set [0, false];
+			_probe set [1, "BROAD_PHASE"];
+		};
+		uiNamespace setVariable ["BATTLESPACE_ZEN_LOS_PROC_DEBUG_CACHE", [_taskForceName, diag_tickTime + 0.1, _broadPhase, _probe]];
+	};
+
+	_probe params ["_allowed", "_reason", "_nearestDistance", "_targetPositionsASL", "_rayRequests", "_intersections", "_observers"];
+	if (_targetPositionsASL isEqualTo []) exitWith {};
+	private _targetPositionAGL = ASLToAGL (_targetPositionsASL select 0);
+	private _resultColor = switch (_reason) do {
+		case "LINE_OF_SIGHT": {[0.1, 1, 0.2, 1]};
+		case "CLOSE_RANGE": {[0.1, 0.8, 1, 1]};
+		case "OCCLUDED": {[1, 0.15, 0.1, 1]};
+		default {[0.65, 0.65, 0.65, 1]};
+	};
+	{
+		drawIcon3D [
+			"\A3\ui_f\data\map\markers\military\dot_CA.paa",
+			_resultColor,
+			ASLToAGL _x,
+			0.24,
+			0.24,
+			0,
+			"",
+			0,
+			0.02,
+			"TahomaB"
+		];
+	} forEach _targetPositionsASL;
+
+	if (_reason == "CLOSE_RANGE") then {
+		{
+			drawLine3D [ASLToAGL (eyePos _x), _targetPositionAGL, [0.1, 0.8, 1, 0.75], 2];
+		} forEach _observers;
+	} else {
+		{
+			private _request = _x;
+			private _startPositionAGL = ASLToAGL (_request select 0);
+			private _rayTargetPositionAGL = ASLToAGL (_request select 1);
+			private _hits = _intersections param [_forEachIndex, []];
+			if (_hits isEqualTo []) then {
+				drawLine3D [_startPositionAGL, _rayTargetPositionAGL, [0.1, 1, 0.2, 0.9], 2];
+			} else {
+				private _firstIntersection = _hits select 0;
+				private _intersectionPositionAGL = ASLToAGL (_firstIntersection select 0);
+				drawLine3D [_startPositionAGL, _intersectionPositionAGL, [1, 0.1, 0.05, 0.95], 3];
+				drawLine3D [_intersectionPositionAGL, _rayTargetPositionAGL, [1, 0.1, 0.05, 0.25], 1];
+				drawIcon3D [
+					"\A3\ui_f\data\map\markers\military\dot_CA.paa",
+					[1, 0.1, 0.05, 1],
+					_intersectionPositionAGL,
+					0.3,
+					0.3,
+					0,
+					"",
+					0,
+					0.02,
+					"TahomaB"
+				];
+			};
+		} forEach _rayRequests;
+	};
+
+	private _nearestText = if (_nearestDistance < 0) then {"N/A"} else {format ["%1m", round _nearestDistance]};
+	private _decisionText = ["BLOCK", "ALLOW"] select _allowed;
+	private _forceText = format ["%1 %2", _taskForce param [0, ""], _taskForceName];
+	private _serverCheckInterval = missionNamespace getVariable ["BATTLESPACE_LOS_PROC_SCAN_INTERVAL", 1];
+	private _label = format [
+		"LOS PROC LIVE | %1 | %2/%3 | BROAD %4 | OBS %5 | SAMPLES %6 | RAYS %7 | NEAREST %8 | SERVER CHECK <=%9s",
+		_forceText,
+		_decisionText,
+		_reason,
+		["NO", "YES"] select _broadPhase,
+		count _observers,
+		count _targetPositionsASL,
+		count _rayRequests,
+		_nearestText,
+		_serverCheckInterval
+	];
+	drawIcon3D [
+		"\A3\ui_f\data\map\groupicons\selector_selectedEnemy_ca.paa",
+		_resultColor,
+		_targetPositionAGL,
+		1,
+		1,
+		0,
+		_label,
+		1,
+		0.03,
+		"TahomaB"
+	];
+};
+
 RENDER_BATTLESPACE_AI_PFH = {
 
 
 	(_this select 0) params [["_nextTick", 0]];
+	if(!RENDER_BATTLESPACE_AI) exitWith {
+		[_this select 1] call CBA_fnc_removePerFrameHandler;
+		RENDER_BATTLESPACE_AI_PFH_ID = -1;
+	};
 	if(isNull curatorCamera) exitWith {};
 	if(accTime <= 0 || isGamePaused) exitWith {};
 
@@ -976,8 +1226,9 @@ RENDER_BATTLESPACE_AI_PFH = {
 		(_this select 0) set [0, CBA_missionTime + 5];
 	};
 
-	if(!RENDER_BATTLESPACE_AI) exitWith { [_this select 1] call CBA_fnc_removePerFrameHandler; };
-
+	private _mousePos = screenToWorld getMousePosition;
+	private _losDebugCandidate = [];
+	private _losDebugCandidateDistance = 1e10;
 	{
 		_y params [
 			["_type", ""],
@@ -1043,10 +1294,13 @@ RENDER_BATTLESPACE_AI_PFH = {
 		private _routeData = BATTLESPACE_TASK_FORCE_ROUTE_SNAPSHOT getOrDefault [_x, []];
 		[_simulatedLocation, _routeData, _color] call BATTLESPACE_TASK_FORCE_DRAW_ROUTE_3D;
 		private _text = "";
-		private _mousePos = screenToWorld getMousePosition;
 		private _scale = 0.5;
 
 		private _dist = _pos distance2D _mousePos;
+		if (RENDER_BATTLESPACE_LOS_PROC && {_dist <= 500} && {_dist < _losDebugCandidateDistance}) then {
+			_losDebugCandidate = [_x, _y];
+			_losDebugCandidateDistance = _dist;
+		};
 		if(_dist <= 500) then {
 			_scale = 0.75 + 0.25 * ((500 - _dist) / 300);
 			_scale = 1 min _scale;
@@ -1071,6 +1325,9 @@ RENDER_BATTLESPACE_AI_PFH = {
 		};
 		drawIcon3D [_targetMarker, _color, _pos, _scale, _scale, 0, _text, 1, 0.03, "TahomaB"];
 	} forEach BATTLESPACE_TASK_FORCES;
+	if (_losDebugCandidate isNotEqualTo []) then {
+		_losDebugCandidate call BATTLESPACE_TASK_FORCE_DRAW_LOS_PROC_DEBUG;
+	};
 
 	{
 		private _cluster = _x;
@@ -1084,7 +1341,6 @@ RENDER_BATTLESPACE_AI_PFH = {
 		private _players = _cluster get "Players";
 		private _targetMarker = "\A3\ui_f\data\map\markers\nato\b_inf.paa";
 		private _text = "";
-		private _mousePos = screenToWorld getMousePosition;
 		private _scale = 0.5;
 
 		private _dist = _pos distance2D _mousePos;

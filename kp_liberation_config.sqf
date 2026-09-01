@@ -112,6 +112,17 @@ BATTLESPACE_MINEFIELD_PROC_RANGE = 1125;
 BATTLESPACE_AA_PROC_RANGE = 2500;
 BATTLESPACE_AIR_PROC_RANGE = 1500; // How far e.g. CAS defenders will spawn
 
+// Test-LoS-Proc prototype. Distance remains the broad phase; task forces outside
+// the close safety radius require a clear server-side VIEW/FIRE ray to any point
+// in the bounded force footprint. The scan interval affects proc admission only.
+BATTLESPACE_LOS_PROC_ENABLED = true;
+BATTLESPACE_LOS_PROC_INCLUDE_BLUFOR_AI = true;
+BATTLESPACE_LOS_PROC_CLOSE_RANGE = 200;
+BATTLESPACE_LOS_PROC_FOOTPRINT_RADIUS = 125;
+BATTLESPACE_LOS_PROC_SCAN_INTERVAL = 1;
+BATTLESPACE_LOS_PROC_GROUND_TARGET_HEIGHT = 1.5;
+BATTLESPACE_LOS_PROC_AIR_TARGET_HEIGHT = 50;
+
 // How many units should be in each OPFOR squad
 BATTLESPACE_SQUAD_SIZE = 7;
 

@@ -27,6 +27,213 @@ BATTLESPACE_TASK_FORCE_GET_PROC_RANGE = {
 
 	_range
 };
+
+if (isNil "BATTLESPACE_TASK_FORCE_LOS_PROC_DECISIONS") then {
+	BATTLESPACE_TASK_FORCE_LOS_PROC_DECISIONS = createHashMap;
+};
+
+BATTLESPACE_TASK_FORCE_LOG_LOS_PROC_DECISION = {
+	params ["_taskForceName", "_taskForceType", "_allowed", "_reason", "_nearestDistance", "_observerCount", "_rayCount"];
+
+	private _signature = [_allowed, _reason];
+	private _previous = BATTLESPACE_TASK_FORCE_LOS_PROC_DECISIONS getOrDefault [_taskForceName, []];
+	if (_previous isEqualTo _signature) exitWith {};
+
+	BATTLESPACE_TASK_FORCE_LOS_PROC_DECISIONS set [_taskForceName, _signature];
+	private _result = if (_allowed) then {"ALLOWED"} else {"BLOCKED"};
+	[
+		format [
+			"LoS proc %1 Task Force %2 (%3): reason=%4 nearest=%5m observers=%6 rays=%7",
+			_result,
+			_taskForceName,
+			_taskForceType,
+			_reason,
+			round _nearestDistance,
+			_observerCount,
+			_rayCount
+		],
+		"BATTLESPACE"
+	] call KPLIB_fnc_log;
+};
+
+BATTLESPACE_TASK_FORCE_GET_LOS_PROC_OBSERVERS = {
+	params ["_taskForce"];
+
+	private _taskForceType = _taskForce param [0, ""];
+	private _currentLocation = _taskForce param [1, []];
+	private _procRange = [_taskForceType] call BATTLESPACE_TASK_FORCE_GET_PROC_RANGE;
+	private _requiredObservers = [] call BATTLESPACE_TASK_FORCE_GET_NEEDED_PLAYERCOUNT_FOR_PROC;
+	private _eligibleObservers = [];
+
+	{
+		private _clusterPosition = _x getOrDefault ["Position", []];
+		private _clusterObservers = _x getOrDefault ["Players", []];
+		if (
+			count _clusterObservers >= _requiredObservers
+			&& {_clusterPosition isNotEqualTo []}
+			&& {_clusterPosition distance2D _currentLocation <= _procRange}
+		) then {
+			{
+				if (!isNull _x && {alive _x}) then {
+					_eligibleObservers pushBackUnique _x;
+				};
+			} forEach _clusterObservers;
+		};
+	} forEach BATTLESPACE_TASK_FORCES_BLUFOR_CLUSTERS;
+
+	_eligibleObservers
+};
+
+BATTLESPACE_TASK_FORCE_GET_LOS_TARGET_SAMPLES = {
+	params ["_taskForce"];
+
+	private _currentLocation = _taskForce param [1, []];
+	if (_currentLocation isEqualTo []) exitWith {[]};
+
+	private _composition = _taskForce param [3, createHashMap];
+	private _livingObjects = (_taskForce param [8, []]) select {!isNull _x && {alive _x}};
+	private _maximumSamples = 9;
+	private _samples = [];
+
+	if (_livingObjects isNotEqualTo []) exitWith {
+		private _sampleCount = _maximumSamples min count _livingObjects;
+		for "_sampleIndex" from 0 to (_sampleCount - 1) do {
+			private _objectIndex = floor (_sampleIndex * (count _livingObjects) / _sampleCount);
+			private _targetObject = _livingObjects select _objectIndex;
+			_samples pushBack [aimPos _targetObject, _targetObject];
+		};
+		_samples
+	};
+
+	private _vehicles = _composition getOrDefault ["vehicles", []];
+	private _allAir = _vehicles isNotEqualTo [] && {_vehicles findIf {!(_x isKindOf "Air")} < 0};
+	private _targetHeight = if (_allAir) then {
+		missionNamespace getVariable ["BATTLESPACE_LOS_PROC_AIR_TARGET_HEIGHT", 50]
+	} else {
+		missionNamespace getVariable ["BATTLESPACE_LOS_PROC_GROUND_TARGET_HEIGHT", 1.5]
+	};
+	private _sampleHeight = (_currentLocation param [2, 0]) + (0 max _targetHeight);
+	private _footprintRadius = 0 max (missionNamespace getVariable ["BATTLESPACE_LOS_PROC_FOOTPRINT_RADIUS", 125]);
+	private _centerX = _currentLocation param [0, 0];
+	private _centerY = _currentLocation param [1, 0];
+
+	_samples pushBack [AGLToASL [_centerX, _centerY, _sampleHeight], objNull];
+	for "_angle" from 0 to 315 step 45 do {
+		_samples pushBack [
+			AGLToASL [
+				_centerX + ((sin _angle) * _footprintRadius),
+				_centerY + ((cos _angle) * _footprintRadius),
+				_sampleHeight
+			],
+			objNull
+		];
+	};
+
+	_samples
+};
+
+BATTLESPACE_TASK_FORCE_PROBE_LOS = {
+	params ["_taskForce", ["_eligibleObservers", []]];
+
+	private _taskForceType = _taskForce param [0, ""];
+	private _currentLocation = _taskForce param [1, []];
+	private _procRange = [_taskForceType] call BATTLESPACE_TASK_FORCE_GET_PROC_RANGE;
+	private _closeRange = _procRange min (0 max (missionNamespace getVariable ["BATTLESPACE_LOS_PROC_CLOSE_RANGE", 200]));
+	_eligibleObservers = _eligibleObservers select {!isNull _x && {alive _x}};
+
+	private _nearestDistance = 1e10;
+	private _insideCloseRange = false;
+	{
+		private _distance = _x distance2D _currentLocation;
+		_nearestDistance = _nearestDistance min _distance;
+		if (_distance <= _closeRange) then {
+			_insideCloseRange = true;
+		};
+	} forEach _eligibleObservers;
+	if (_nearestDistance == 1e10) then {
+		_nearestDistance = -1;
+	};
+
+	private _targetSamples = [_taskForce] call BATTLESPACE_TASK_FORCE_GET_LOS_TARGET_SAMPLES;
+	private _targetPositionsASL = _targetSamples apply {_x select 0};
+	if (_eligibleObservers isEqualTo []) exitWith {
+		[false, "NO_OBSERVER", _nearestDistance, _targetPositionsASL, [], [], _eligibleObservers]
+	};
+	if (_insideCloseRange) exitWith {
+		[true, "CLOSE_RANGE", _nearestDistance, _targetPositionsASL, [], [], _eligibleObservers]
+	};
+	if (_targetSamples isEqualTo []) exitWith {
+		[false, "NO_TARGET", _nearestDistance, [], [], [], _eligibleObservers]
+	};
+
+	private _rayRequests = [];
+	{
+		private _observer = _x;
+		{
+			_x params ["_targetPositionASL", "_targetObject"];
+			_rayRequests pushBack [
+				eyePos _observer,
+				_targetPositionASL,
+				vehicle _observer,
+				_targetObject,
+				true,
+				1,
+				"VIEW",
+				"FIRE",
+				true
+			];
+		} forEach _targetSamples;
+	} forEach _eligibleObservers;
+
+	private _intersections = lineIntersectsSurfaces [_rayRequests];
+	private _visible = _intersections findIf {_x isEqualTo []} >= 0;
+	[
+		_visible,
+		["OCCLUDED", "LINE_OF_SIGHT"] select _visible,
+		_nearestDistance,
+		_targetPositionsASL,
+		_rayRequests,
+		_intersections,
+		_eligibleObservers
+	]
+};
+
+BATTLESPACE_TASK_FORCE_HAS_LOS_FOR_PROC = {
+	params ["_taskForceName", "_taskForce"];
+
+	private _taskForceType = _taskForce param [0, ""];
+	private _eligibleObservers = [_taskForce] call BATTLESPACE_TASK_FORCE_GET_LOS_PROC_OBSERVERS;
+	private _probe = [_taskForce, _eligibleObservers] call BATTLESPACE_TASK_FORCE_PROBE_LOS;
+	_probe params ["_allowed", "_reason", "_nearestDistance", "_targetPositionsASL", "_rayRequests", "_intersections", "_observers"];
+
+	[
+		_taskForceName,
+		_taskForceType,
+		_allowed,
+		_reason,
+		_nearestDistance,
+		count _observers,
+		count _rayRequests
+	] call BATTLESPACE_TASK_FORCE_LOG_LOS_PROC_DECISION;
+	_allowed
+};
+
+BATTLESPACE_TASK_FORCE_CAN_PROC = {
+	params ["_taskForceName", "_taskForce", "_model"];
+
+	private _distanceEligible = [_taskForceName, _taskForce] call (_model get "canProc");
+	if (!_distanceEligible) exitWith {
+		BATTLESPACE_TASK_FORCE_LOS_PROC_DECISIONS deleteAt _taskForceName;
+		false
+	};
+	if !(missionNamespace getVariable ["BATTLESPACE_LOS_PROC_ENABLED", false]) exitWith {
+		BATTLESPACE_TASK_FORCE_LOS_PROC_DECISIONS deleteAt _taskForceName;
+		true
+	};
+
+	[_taskForceName, _taskForce] call BATTLESPACE_TASK_FORCE_HAS_LOS_FOR_PROC
+};
+
 BATTLESPACE_TASK_FORCE_SPAWN_VEHICLE = {
 	params ["_pos", "_class"];
 
