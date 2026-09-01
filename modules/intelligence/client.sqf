@@ -332,7 +332,13 @@ KPLIB_INTEL_CLIENT_INIT = {
             "KPLIB_INTEL_ESCORT",
             "Escort for debrief",
             "",
-            {params ["_target", "_player"]; [_target] joinSilent group _player},
+            {
+                params ["_target", "_player"];
+                if (_target getVariable ["KPLIB_intelligencePrisoner", false]) then {
+                    [_target] remoteExecCall ["KPLIB_INTEL_SERVER_REGISTER_PRISONER_ESCORT", 2];
+                };
+                [_target] joinSilent group _player;
+            },
             {
                 params ["_target", "_player"];
                 alive _target

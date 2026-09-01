@@ -442,6 +442,102 @@ KPLIB_INTEL_SERVER_REJECT = {
     };
 };
 
+KPLIB_INTEL_SERVER_COMMIT_PRISONER = {
+    params [
+        ["_unit", objNull, [objNull]],
+        ["_caller", objNull, [objNull]],
+        ["_source", "unknown", [""]]
+    ];
+
+    private _unitId = if (isNull _unit) then {"null"} else {netId _unit};
+    if !(missionNamespace getVariable ["KPLIB_intelligence_enabled", true]) exitWith {
+        [format ["Prisoner intelligence delivery rejected (unit=%1, source=%2, reason=disabled)", _unitId, _source], "INTELLIGENCE"] call KPLIB_fnc_log;
+        false
+    };
+    if (isNull _caller || {!alive _caller} || {side group _caller != GRLIB_side_friendly}) exitWith {
+        [format ["Prisoner intelligence delivery rejected (unit=%1, source=%2, reason=invalid escort)", _unitId, _source], "INTELLIGENCE"] call KPLIB_fnc_log;
+        false
+    };
+    if (isNull _unit || {!alive _unit} || {!(_unit isKindOf "Man")} || {isPlayer _unit}) exitWith {
+        [format ["Prisoner intelligence delivery rejected (unit=%1, source=%2, reason=invalid prisoner)", _unitId, _source], "INTELLIGENCE"] call KPLIB_fnc_log;
+        false
+    };
+    if !(_unit getVariable ["KPLIB_intelligencePrisoner", false]) exitWith {
+        [format ["Prisoner intelligence delivery rejected (unit=%1, source=%2, reason=missing prisoner flag)", _unitId, _source], "INTELLIGENCE"] call KPLIB_fnc_log;
+        false
+    };
+    if (_unit getVariable ["KPLIB_intelligenceDelivered", false]) exitWith {true};
+
+    private _deliveryDistance = missionNamespace getVariable ["KPLIB_intelligence_delivery_distance", 40];
+    if ((_caller distance _unit) > _deliveryDistance) exitWith {
+        [format ["Prisoner intelligence delivery rejected (unit=%1, source=%2, reason=escort beyond %3m)", _unitId, _source, _deliveryDistance], "INTELLIGENCE"] call KPLIB_fnc_log;
+        false
+    };
+    if !([_caller] call KPLIB_INTEL_SERVER_IS_NEAR_TERMINAL) exitWith {
+        [format ["Prisoner intelligence delivery rejected (unit=%1, source=%2, reason=escort outside terminal)", _unitId, _source], "INTELLIGENCE"] call KPLIB_fnc_log;
+        false
+    };
+
+    _unit setVariable ["KPLIB_intelligenceDelivered", true, true];
+    private _range = if ((typeOf _unit) in militia_squad) then {
+        missionNamespace getVariable ["KPLIB_intelligence_prisoner_yield_militia", [3, 6]]
+    } else {
+        missionNamespace getVariable ["KPLIB_intelligence_prisoner_yield_opfor", [6, 12]]
+    };
+    private _amount = [_range] call KPLIB_INTEL_SERVER_RANDOM_YIELD;
+    stats_prisoners_captured = (missionNamespace getVariable ["stats_prisoners_captured", 0]) + 1;
+    [_amount, "prisoner"] call KPLIB_INTEL_SERVER_ADD_RESERVE;
+    [format ["Prisoner intelligence delivery committed (unit=%1, source=%2, intel=%3)", _unitId, _source, _amount], "INTELLIGENCE"] call KPLIB_fnc_log;
+    [_unit] spawn {
+        params ["_deliveredUnit"];
+        sleep 600;
+        if (!isNull _deliveredUnit && {_deliveredUnit getVariable ["KPLIB_intelligenceDelivered", false]}) then {
+            [format ["Prisoner intelligence cleanup (unit=%1, class=%2)", netId _deliveredUnit, typeOf _deliveredUnit], "INTELLIGENCE"] call KPLIB_fnc_log;
+            deleteVehicle _deliveredUnit;
+        };
+    };
+    true
+};
+
+KPLIB_INTEL_SERVER_REGISTER_PRISONER_ESCORT = {
+    params [["_unit", objNull, [objNull]]];
+
+    private _caller = call KPLIB_INTEL_SERVER_GET_CALLER;
+    private _unitId = if (isNull _unit) then {"null"} else {netId _unit};
+    if (isNull _caller || {!alive _caller} || {vehicle _caller isNotEqualTo _caller} || {side group _caller != GRLIB_side_friendly}) exitWith {
+        [format ["Prisoner intelligence escort registration rejected (unit=%1, reason=invalid player)", _unitId], "INTELLIGENCE"] call KPLIB_fnc_log;
+    };
+    if (isNull _unit || {!alive _unit} || {!(_unit isKindOf "Man")} || {isPlayer _unit} || {!(_unit getVariable ["KPLIB_intelligencePrisoner", false])}) exitWith {
+        [format ["Prisoner intelligence escort registration rejected (unit=%1, reason=invalid prisoner)", _unitId], "INTELLIGENCE"] call KPLIB_fnc_log;
+    };
+    if (_unit getVariable ["KPLIB_intelligenceDelivered", false]) exitWith {};
+
+    private _interactionDistance = missionNamespace getVariable ["KPLIB_intelligence_interaction_distance", 4];
+    if ((_caller distance _unit) > _interactionDistance) exitWith {
+        [format ["Prisoner intelligence escort registration rejected (unit=%1, reason=player beyond %2m)", _unitId, _interactionDistance], "INTELLIGENCE"] call KPLIB_fnc_log;
+    };
+
+    private _previousEscort = _unit getVariable ["KPLIB_intelligenceEscort", objNull];
+    _unit setVariable ["KPLIB_intelligenceEscort", _caller];
+    if (_previousEscort isNotEqualTo _caller) then {
+        [format ["Prisoner intelligence escort registered (unit=%1, class=%2, playerOwner=%3)", _unitId, typeOf _unit, owner _caller], "INTELLIGENCE"] call KPLIB_fnc_log;
+    };
+
+    if ([_caller] call KPLIB_INTEL_SERVER_IS_NEAR_TERMINAL) then {
+        [_unit, _caller, "terminal escort action"] call KPLIB_INTEL_SERVER_COMMIT_PRISONER;
+    };
+};
+
+KPLIB_INTEL_SERVER_COMPLETE_REGISTERED_PRISONER = {
+    params [["_unit", objNull, [objNull]]];
+    if (!isRemoteExecuted || {isNull _unit} || {remoteExecutedOwner != owner _unit}) exitWith {
+        private _unitId = if (isNull _unit) then {"null"} else {netId _unit};
+        [format ["Prisoner intelligence delivery rejected (unit=%1, source=registered escort, reason=invalid unit locality)", _unitId], "INTELLIGENCE"] call KPLIB_fnc_log;
+    };
+    private _caller = if (isNull _unit) then {objNull} else {_unit getVariable ["KPLIB_intelligenceEscort", objNull]};
+    [_unit, _caller, "registered escort"] call KPLIB_INTEL_SERVER_COMMIT_PRISONER;
+};
+
 KPLIB_INTEL_SERVER_ACTIVATE_COVERAGE = {
     params [["_region", "", [""]], ["_tier", 0, [0]]];
     if !(missionNamespace getVariable ["KPLIB_intelligence_enabled", true]) exitWith {};
@@ -487,20 +583,8 @@ KPLIB_INTEL_SERVER_COLLECT_DOCUMENT = {
 
 KPLIB_INTEL_SERVER_DELIVER_PRISONER = {
     params [["_unit", objNull, [objNull]]];
-    if !(missionNamespace getVariable ["KPLIB_intelligence_enabled", true]) exitWith {};
     private _caller = call KPLIB_INTEL_SERVER_GET_CALLER;
-    if (isNull _caller || {!alive _caller} || {isNull _unit} || {!alive _unit} || {side group _caller != GRLIB_side_friendly}) exitWith {};
-    if !(_unit getVariable ["KPLIB_intelligencePrisoner", false]) exitWith {};
-    if (_unit getVariable ["KPLIB_intelligenceDelivered", false]) exitWith {};
-    if ((_caller distance _unit) > (missionNamespace getVariable ["KPLIB_intelligence_delivery_distance", 40]) || {!([_caller] call KPLIB_INTEL_SERVER_IS_NEAR_TERMINAL)}) exitWith {};
-    _unit setVariable ["KPLIB_intelligenceDelivered", true, true];
-    private _range = if ((typeOf _unit) in militia_squad) then {
-        missionNamespace getVariable ["KPLIB_intelligence_prisoner_yield_militia", [3, 6]]
-    } else {
-        missionNamespace getVariable ["KPLIB_intelligence_prisoner_yield_opfor", [6, 12]]
-    };
-    stats_prisoners_captured = (missionNamespace getVariable ["stats_prisoners_captured", 0]) + 1;
-    [[_range] call KPLIB_INTEL_SERVER_RANDOM_YIELD, "prisoner"] call KPLIB_INTEL_SERVER_ADD_RESERVE;
+    [_unit, _caller, "player request"] call KPLIB_INTEL_SERVER_COMMIT_PRISONER;
 };
 
 KPLIB_INTEL_SERVER_DELIVER_INFORMANT = {
