@@ -488,14 +488,8 @@ KPLIB_INTEL_SERVER_COMMIT_PRISONER = {
     stats_prisoners_captured = (missionNamespace getVariable ["stats_prisoners_captured", 0]) + 1;
     [_amount, "prisoner"] call KPLIB_INTEL_SERVER_ADD_RESERVE;
     [format ["Prisoner intelligence delivery committed (unit=%1, source=%2, intel=%3)", _unitId, _source, _amount], "INTELLIGENCE"] call KPLIB_fnc_log;
-    [_unit] spawn {
-        params ["_deliveredUnit"];
-        sleep 600;
-        if (!isNull _deliveredUnit && {_deliveredUnit getVariable ["KPLIB_intelligenceDelivered", false]}) then {
-            [format ["Prisoner intelligence cleanup (unit=%1, class=%2)", netId _deliveredUnit, typeOf _deliveredUnit], "INTELLIGENCE"] call KPLIB_fnc_log;
-            deleteVehicle _deliveredUnit;
-        };
-    };
+    [format ["Prisoner intelligence cleanup (unit=%1, class=%2)", _unitId, typeOf _unit], "INTELLIGENCE"] call KPLIB_fnc_log;
+    deleteVehicle _unit;
     true
 };
 
