@@ -427,7 +427,16 @@ BATTLESPACE_TACTICAL_MAINTENANCE_TICK = {
     [] call BATTLESPACE_TACTICAL_ABANDON_CAPTURED_DEFENDERS;
     private _threshold = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_CASUALTY_RESPONSE_THRESHOLD", 8];
     {
-        if ((_y getOrDefault ["owner", ""]) != "OPFOR" || {(_y getOrDefault ["casualtyPressure", 0]) < _threshold}) then {continue};
+        private _pressure = _y getOrDefault ["casualtyPressure", 0];
+        if ((_y getOrDefault ["owner", ""]) != "OPFOR" || {_pressure <= 0}) then {continue};
+        if !(_x in active_sectors) then {
+            _y set ["casualtyPressure", 0];
+            _y set ["lastCasualtyAt", -1];
+            BATTLESPACE_SECTOR_STATES set [_x, _y];
+            [format ["Cleared casualty pressure %1 at %2 after the sector threat deactivated", _pressure, _x]] call BATTLESPACE_STRATEGIC_LOG;
+            continue;
+        };
+        if (_pressure < _threshold) then {continue};
         private _handled = false;
         if (CBA_missionTime >= (_y getOrDefault ["nextReinforcementAt", 0])) then {
             _handled = [_x] call BATTLESPACE_REINFORCEMENT_DISPATCH;
@@ -444,8 +453,8 @@ BATTLESPACE_TACTICAL_MAINTENANCE_TICK = {
             };
         };
         if (_handled) then {
-            _y set ["casualtyPressure", ((_y getOrDefault ["casualtyPressure", 0]) - _threshold) max 0];
             BATTLESPACE_SECTOR_STATES set [_x, _y];
+            [format ["Retained casualty pressure %1 at active sector %2 after strategic response dispatch", _pressure, _x]] call BATTLESPACE_STRATEGIC_LOG;
         };
     } forEach BATTLESPACE_SECTOR_STATES;
 };
