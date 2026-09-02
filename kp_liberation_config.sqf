@@ -151,6 +151,12 @@ BATTLESPACE_STRATEGIC_RESUPPLY_COOLDOWN = 1800;
 BATTLESPACE_STRATEGIC_BATTLEGROUP_COOLDOWN = 3600;
 BATTLESPACE_STRATEGIC_RETREAT_STRENGTH_RATIO = 0.35;
 BATTLESPACE_STRATEGIC_BATTLEGROUP_MANPOWER = 28;
+// [formation name, preferred target sector types, repeating dominant vehicle categories]
+BATTLESPACE_STRATEGIC_BATTLEGROUP_FORMATIONS = [
+    ["ARMORED", ["military", "factory"], ["tanks", "tanks", "ifv", "apc"]],
+    ["MECHANIZED", ["military", "factory", "bigtown", "capture"], ["ifv", "ifv", "apc", "apc"]],
+    ["MOTORIZED", ["bigtown", "capture", "tower"], ["car", "car", "car", "apc"]]
+];
 BATTLESPACE_STRATEGIC_CONVOY_MANPOWER = 8;
 BATTLESPACE_STRATEGIC_CONVOY_TRUCKS = 2;
 BATTLESPACE_TASK_FORCES_PERSISTENT = true;

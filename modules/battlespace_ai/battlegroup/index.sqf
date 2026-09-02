@@ -6,7 +6,7 @@
 */
 
 BATTLESPACE_BATTLEGROUP_BUILD_DEFINITION = {
-    params ["_originSector"];
+    params ["_originSector", "_targetSector"];
     private _empty = createHashMap;
     private _state = BATTLESPACE_SECTOR_STATES get _originSector;
     if (isNil "_state" || {(_state getOrDefault ["owner", ""]) != "OPFOR"}) exitWith { _empty };
@@ -28,37 +28,65 @@ BATTLESPACE_BATTLEGROUP_BUILD_DEFINITION = {
     private _cost = createHashMapFromArray [["manpower", _manpowerCost]];
     private _vehicles = [];
     private _vehicleManifest = [];
-    private _categories = ["tanks", "ifv", "apc", "spaag", "car"];
     private _vehicleLimit = (missionNamespace getVariable ["GRLIB_battlegroup_size", 4]) max 1;
-    private _progress = true;
+    private _canAllocate = {
+        params ["_resourceType"];
+        private _threshold = _thresholds getOrDefault [_resourceType, -1];
+        private _capacity = [_sectorType, _resourceType] call BATTLESPACE_SECTOR_GET_CAPACITY;
+        private _available = _resources getOrDefault [_resourceType, 0];
+        private _alreadyUsed = _cost getOrDefault [_resourceType, 0];
+        _threshold >= 0
+        && {_capacity > 0}
+        && {_available > _alreadyUsed}
+        && {_available >= ceil (_capacity * _threshold)}
+        && {(BATTLESPACE_RESOURCE_CLASS_POOLS getOrDefault [_resourceType, []]) isNotEqualTo []}
+    };
+    private _tryAddVehicle = {
+        params ["_resourceType"];
+        if !([_resourceType] call _canAllocate) exitWith { false };
 
+        private _class = [_resourceType] call BATTLESPACE_STRATEGIC_GET_CLASS_FOR_RESOURCE;
+        if (_class == "") exitWith { false };
+        _vehicles pushBack _class;
+        _vehicleManifest pushBack [_class, _resourceType];
+        _cost set [_resourceType, (_cost getOrDefault [_resourceType, 0]) + 1];
+        true
+    };
+
+    private _formations = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_BATTLEGROUP_FORMATIONS", []];
+    private _viableFormations = _formations select {
+        _x params ["_formationName", "_targetTypes", "_sequence"];
+        (_sequence findIf {[_x] call _canAllocate}) >= 0
+    };
+    if (_viableFormations isEqualTo []) exitWith { _empty };
+
+    private _targetState = BATTLESPACE_SECTOR_STATES get _targetSector;
+    private _targetType = if (isNil "_targetState") then {""} else {_targetState getOrDefault ["type", ""]};
+    private _preferredFormations = _viableFormations select {
+        _targetType in (_x param [1, []])
+    };
+    private _formation = selectRandom ([_viableFormations, _preferredFormations] select (_preferredFormations isNotEqualTo []));
+    _formation params ["_formationName", "_targetTypes", "_categories"];
+
+    // Larger formations may carry one air-defense vehicle without losing their dominant character.
+    if (_vehicleLimit >= 4) then {
+        ["spaag"] call _tryAddVehicle;
+    };
+
+    private _progress = true;
     while {_progress && {count _vehicles < _vehicleLimit}} do {
         _progress = false;
         {
             if (count _vehicles >= _vehicleLimit) exitWith {};
-            private _resourceType = _x;
-            private _threshold = _thresholds getOrDefault [_resourceType, -1];
-            private _capacity = [_sectorType, _resourceType] call BATTLESPACE_SECTOR_GET_CAPACITY;
-            private _available = _resources getOrDefault [_resourceType, 0];
-            private _alreadyUsed = _cost getOrDefault [_resourceType, 0];
-            if (
-                _threshold < 0
-                || {_capacity <= 0}
-                || {_available <= _alreadyUsed}
-                || {_available < ceil (_capacity * _threshold)}
-            ) then { continue };
-
-            private _class = [_resourceType] call BATTLESPACE_STRATEGIC_GET_CLASS_FOR_RESOURCE;
-            if (_class == "") then { continue };
-            _vehicles pushBack _class;
-            _vehicleManifest pushBack [_class, _resourceType];
-            _cost set [_resourceType, _alreadyUsed + 1];
-            _progress = true;
+            if ([_x] call _tryAddVehicle) then {
+                _progress = true;
+            };
         } forEach _categories;
     };
 
     if (_vehicles isEqualTo []) exitWith { _empty };
     createHashMapFromArray [
+        ["formation", _formationName],
         ["cost", _cost],
         ["vehicleManifest", _vehicleManifest],
         ["initialStrength", _manpowerCost + (4 * count _vehicles)],
@@ -289,7 +317,7 @@ BATTLESPACE_BATTLEGROUP_ON_DECISION_TICK = {
 BATTLESPACE_BATTLEGROUP_DISPATCH = {
     params ["_originSector", "_targetSector"];
     if !([] call BATTLESPACE_STRATEGIC_SERVER_CALL_ALLOWED) exitWith { false };
-    private _definition = [_originSector] call BATTLESPACE_BATTLEGROUP_BUILD_DEFINITION;
+    private _definition = [_originSector, _targetSector] call BATTLESPACE_BATTLEGROUP_BUILD_DEFINITION;
     if (count _definition == 0) exitWith { false };
 
     private _cost = _definition get "cost";
@@ -334,7 +362,15 @@ BATTLESPACE_BATTLEGROUP_DISPATCH = {
     BATTLESPACE_SECTOR_STATES set [_originSector, _originState];
     stats_hostile_battlegroups = (missionNamespace getVariable ["stats_hostile_battlegroups", 0]) + 1;
     [] call BATTLESPACE_LOGISTICS_SAVE;
-    [format ["Dispatched battlegroup %1 from %2 toward %3 for %4", _taskForceId, _originSector, _targetSector, _cost]] call BATTLESPACE_STRATEGIC_LOG;
+    [format [
+        "Dispatched %1 battlegroup %2 from %3 toward %4 with %5 for %6",
+        toLower (_definition get "formation"),
+        _taskForceId,
+        _originSector,
+        _targetSector,
+        (_definition get "vehicleManifest") apply {_x select 0},
+        _cost
+    ]] call BATTLESPACE_STRATEGIC_LOG;
     true
 };
 
