@@ -15,9 +15,24 @@ KPLIB_COPS_SERVER_GET_CALLER = {
     (allPlayers select {isPlayer _x && {owner _x == _ownerId}}) param [0, objNull]
 };
 
-KPLIB_COPS_SERVER_IS_SQUAD_LEADER = {
+KPLIB_COPS_SERVER_IS_GROUP_LEADER = {
     params [["_unit", objNull, [objNull]]];
-    !isNull _unit && {(toLower roleDescription _unit) find "squad leader" >= 0}
+    !isNull _unit && {leader (group _unit) isEqualTo _unit}
+};
+
+KPLIB_COPS_SERVER_INITIALIZE_OBJECT = {
+    params [["_object", objNull, [objNull]]];
+    if (isNull _object) exitWith {false};
+
+    if (_object isKindOf "FlagCarrierCore") exitWith {
+        _object enableSimulationGlobal true;
+        _object setFlagTexture KPLIB_COPS_FLAG_TEXTURE;
+        _object setFlagSide GRLIB_side_friendly;
+        true
+    };
+
+    _object enableSimulationGlobal false;
+    true
 };
 
 KPLIB_COPS_SERVER_POSITION_VALID = {
@@ -173,7 +188,7 @@ KPLIB_COPS_SERVER_CREATE_FROM_PLAYER = {
 
         _object setPosATL _position;
         _object setVectorDirAndUp [_player vectorModelToWorld _direction, surfaceNormal _position];
-        _object enableSimulationGlobal false;
+        [_object] call KPLIB_COPS_SERVER_INITIALIZE_OBJECT;
         _objects pushBack _object;
         if (_isPrimary) then {_primary = _object};
     } forEach KPLIB_COPS_COMPOSITION;
@@ -218,7 +233,7 @@ KPLIB_COPS_SERVER_RESTORE_ENTRY = {
         if (isNull _object) exitWith {_valid = false};
         _object setPosWorld _position;
         _object setVectorDirAndUp [_vectorDir, _vectorUp];
-        _object enableSimulationGlobal false;
+        [_object] call KPLIB_COPS_SERVER_INITIALIZE_OBJECT;
         _objects pushBack _object;
 
         if (_isPrimary) then {
@@ -281,7 +296,7 @@ KPLIB_COPS_SERVER_VALIDATE_DEPLOYMENT = {
     if (isNull _player || {!isPlayer _player} || {!alive _player}) exitWith {"Unable to deploy a PB while dead."};
     if (side _player != GRLIB_side_friendly) exitWith {"PB deployment is available only to BLUFOR."};
     if !(isNull objectParent _player) exitWith {"Leave your vehicle before deploying a PB."};
-    if !([_player] call KPLIB_COPS_SERVER_IS_SQUAD_LEADER) exitWith {"Only a Squad Leader may deploy the PB."};
+    if !([_player] call KPLIB_COPS_SERVER_IS_GROUP_LEADER) exitWith {"Only the current group leader may deploy the PB."};
     if (count KPLIB_COPS_STATE >= KPLIB_COPS_MAX) exitWith {"The PB limit has already been reached."};
 
     private _position = getPosATL _player;
@@ -336,6 +351,13 @@ KPLIB_COPS_SERVER_REQUEST_DEPLOY = {
     KPLIB_COPS_REVISION = KPLIB_COPS_REVISION + 1;
     [] spawn KPLIB_COPS_SERVER_SAVE;
     [-1] call KPLIB_COPS_SERVER_SEND_SNAPSHOT;
+    [format [
+        "PB deployed (id=%1, position=%2, hostileObjectiveStandoff=%3m, composition=%4)",
+        _id,
+        _markerPos,
+        KPLIB_COPS_MIN_HOSTILE_SECTOR_DISTANCE,
+        KPLIB_COPS_COMPOSITION apply {_x select 0}
+    ], "COPS"] call KPLIB_COPS_SERVER_LOG;
     [true, "PB deployed."] remoteExecCall ["KPLIB_COPS_CLIENT_RECEIVE_RESULT", _ownerId];
 };
 

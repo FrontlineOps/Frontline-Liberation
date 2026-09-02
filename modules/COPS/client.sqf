@@ -54,9 +54,9 @@ KPLIB_COPS_CLIENT_APPLY_SNAPSHOT = {
     KPLIB_COPS_CLIENT_DEPLOY_CACHE_AT = 0;
 };
 
-KPLIB_COPS_CLIENT_IS_SQUAD_LEADER = {
+KPLIB_COPS_CLIENT_IS_GROUP_LEADER = {
     params [["_unit", player, [objNull]]];
-    !isNull _unit && {(toLower roleDescription _unit) find "squad leader" >= 0}
+    !isNull _unit && {leader (group _unit) isEqualTo _unit}
 };
 
 KPLIB_COPS_CLIENT_CAN_DEPLOY = {
@@ -65,7 +65,7 @@ KPLIB_COPS_CLIENT_CAN_DEPLOY = {
         && {alive _unit}
         && {side _unit == GRLIB_side_friendly}
         && {isNull objectParent _unit}
-        && {[_unit] call KPLIB_COPS_CLIENT_IS_SQUAD_LEADER}
+        && {[_unit] call KPLIB_COPS_CLIENT_IS_GROUP_LEADER}
         && {!KPLIB_COPS_CLIENT_REQUEST_PENDING}
         && {count (KPLIB_COPS_CLIENT_SNAPSHOT select 2) < (KPLIB_COPS_CLIENT_SNAPSHOT select 1)}
 };

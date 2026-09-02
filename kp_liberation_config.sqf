@@ -58,7 +58,7 @@ GRLIB_save_key = "KP_LIBERATION_" + (toUpper worldName) + "_SAVEGAME";
 KPLIB_COPS_MAX = 1;
 KPLIB_COPS_MIN_FOB_DISTANCE = 500;
 KPLIB_COPS_SECTOR_SEARCH_DISTANCE = 2500;
-KPLIB_COPS_MIN_HOSTILE_SECTOR_DISTANCE = 1000;
+KPLIB_COPS_MIN_HOSTILE_SECTOR_DISTANCE = 500;
 KPLIB_COPS_CONTEST_RADIUS = 300;
 KPLIB_COPS_CONTEST_COUNT = 3;
 KPLIB_COPS_REDEPLOY_RADIUS = 20;
@@ -70,9 +70,10 @@ KPLIB_COPS_SAVE_KEY = GRLIB_save_key + "_COPS";
 
 // [classname, model-space offset, model-space direction, principal structure]
 KPLIB_COPS_COMPOSITION = [
-    ["Land_Shed_06_F", [-16, 11, 0], [1, 0, 0], true],
-    ["Flag_CW_US", [-10, 7, -0.3], [1, 0, 0], false]
+    ["Land_MedicalTent_01_NATO_generic_inner_F", [-16, 11, 0], [1, 0, 0], true],
+    ["Flag_Blue_F", [-10, 7, -0.3], [1, 0, 0], false]
 ];
+KPLIB_COPS_FLAG_TEXTURE = "\A3\Data_F\Flags\flag_blue_CO.paa";
 
 // Used to simulate a different role for quickly testing the role arsenal
 // Note this changes the role of EVERY player on the server so should be cleared when done.
