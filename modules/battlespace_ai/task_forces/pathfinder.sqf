@@ -3,6 +3,7 @@
 
     Ground vehicles: terrain-grid connector -> road-object trunk -> terrain-grid connector.
     Infantry: terrain-grid route.
+    Optional rural mode: terrain-grid route with roads costlier but still traversable.
     All-air compositions: direct route.
 
     Searches share the binary heap from networked_sectors/priority_queue.sqf and
@@ -45,15 +46,19 @@ BATTLESPACE_PATHFIND_ROUTE_IS_VALID = {
 };
 
 BATTLESPACE_PATHFIND_GET_PROFILE = {
-    params ["_taskForce"];
+    params ["_taskForce", ["_useRural", false, [true]]];
     private _composition = _taskForce param [3, createHashMap];
     private _vehicles = _composition getOrDefault ["vehicles", []];
-    if (_vehicles isEqualTo []) exitWith {"INFANTRY"};
+    if (_vehicles isEqualTo []) exitWith {
+        ["INFANTRY", "RURAL"] select _useRural
+    };
 
     private _groundCount = {_x isKindOf "LandVehicle" || {_x isKindOf "Ship"}} count _vehicles;
-    if (_groundCount > 0) exitWith {"GROUND_VEHICLE"};
+    if (_groundCount > 0) exitWith {
+        ["GROUND_VEHICLE", "RURAL_VEHICLE"] select _useRural
+    };
     if ({_x isKindOf "Air"} count _vehicles == count _vehicles) exitWith {"AIR"};
-    "GROUND_VEHICLE"
+    ["GROUND_VEHICLE", "RURAL_VEHICLE"] select _useRural
 };
 
 BATTLESPACE_PATHFIND_GRID_INDEX = {
@@ -247,9 +252,10 @@ BATTLESPACE_PATHFIND_CAN_TRAVERSE_LINE = {
     if (_distance <= 1) exitWith {true};
     private _gridSize = missionNamespace getVariable ["BATTLESPACE_PATHFIND_GRID_SIZE", 100];
     private _steps = 1 max ceil (_distance / (_gridSize * 0.5));
+    private _vehicleProfile = _profile in ["GROUND_VEHICLE", "RURAL_VEHICLE"];
     private _maxSlope = missionNamespace getVariable [
-        ["BATTLESPACE_PATHFIND_INFANTRY_MAX_SLOPE", "BATTLESPACE_PATHFIND_VEHICLE_MAX_SLOPE"] select (_profile == "GROUND_VEHICLE"),
-        [1.0, 0.45] select (_profile == "GROUND_VEHICLE")
+        ["BATTLESPACE_PATHFIND_INFANTRY_MAX_SLOPE", "BATTLESPACE_PATHFIND_VEHICLE_MAX_SLOPE"] select _vehicleProfile,
+        [1.0, 0.45] select _vehicleProfile
     ];
     private _previous = +_from;
     private _previousHeight = getTerrainHeightASL _previous;
@@ -391,9 +397,11 @@ BATTLESPACE_PATHFIND_STEP_GRID = {
     private _costContext = _search get "costContext";
     private _weight = missionNamespace getVariable ["BATTLESPACE_PATHFIND_WEIGHT", 1.12];
     private _gridSize = missionNamespace getVariable ["BATTLESPACE_PATHFIND_GRID_SIZE", 100];
+    private _vehicleProfile = _profile in ["GROUND_VEHICLE", "RURAL_VEHICLE"];
+    private _ruralProfile = _profile in ["RURAL", "RURAL_VEHICLE"];
     private _maxSlope = missionNamespace getVariable [
-        ["BATTLESPACE_PATHFIND_INFANTRY_MAX_SLOPE", "BATTLESPACE_PATHFIND_VEHICLE_MAX_SLOPE"] select (_profile == "GROUND_VEHICLE"),
-        [1.0, 0.45] select (_profile == "GROUND_VEHICLE")
+        ["BATTLESPACE_PATHFIND_INFANTRY_MAX_SLOPE", "BATTLESPACE_PATHFIND_VEHICLE_MAX_SLOPE"] select _vehicleProfile,
+        [1.0, 0.45] select _vehicleProfile
     ];
     private _maxExpansions = missionNamespace getVariable ["BATTLESPACE_PATHFIND_MAX_EXPANSIONS", 12000];
     private _offsets = [[-1,-1],[0,-1],[1,-1],[-1,0],[1,0],[-1,1],[0,1],[1,1]];
@@ -442,8 +450,14 @@ BATTLESPACE_PATHFIND_STEP_GRID = {
             private _slope = abs ((_nextNode select 1) - _currentHeight) / (1 max _edgeDistance);
             if (_slope > _maxSlope) then {continue};
 
-            private _terrainMultiplier = if (_nextRoad) then {1} else {
-                [1.05, 1.35] select (_profile == "GROUND_VEHICLE")
+            private _terrainMultiplier = if (_ruralProfile) then {
+                if (_nextRoad) then {
+                    1 max (missionNamespace getVariable ["BATTLESPACE_PATHFIND_RURAL_ROAD_MULTIPLIER", 2.25])
+                } else {
+                    1
+                }
+            } else {
+                if (_nextRoad) then {1} else {[1.05, 1.35] select _vehicleProfile}
             };
             private _slopeMultiplier = 1 + (2 min (_slope * 2));
             private _dynamicMultiplier = [_costContext, _nextKey, _nextPosition] call BATTLESPACE_PATHFIND_GET_DYNAMIC_MULTIPLIER;
@@ -528,7 +542,7 @@ BATTLESPACE_PATHFIND_APPEND_SEGMENT = {
 };
 
 BATTLESPACE_PATHFIND_CREATE_JOB = {
-    params ["_taskForceName", "_origin", "_destination", "_generation"];
+    params ["_taskForceName", "_origin", "_destination", "_generation", ["_useRural", false, [true]]];
     private _taskForce = BATTLESPACE_TASK_FORCES get _taskForceName;
     if (isNil "_taskForce") exitWith {
         createHashMapFromArray [
@@ -538,7 +552,16 @@ BATTLESPACE_PATHFIND_CREATE_JOB = {
             ["destination", +_destination]
         ]
     };
-    private _profile = [_taskForce] call BATTLESPACE_PATHFIND_GET_PROFILE;
+    private _profile = [_taskForce, _useRural] call BATTLESPACE_PATHFIND_GET_PROFILE;
+    if (_useRural) then {
+        diag_log format [
+            "[BATTLESPACE][PATH] %1 selected %2 routing from %3 to %4",
+            _taskForceName,
+            _profile,
+            _origin,
+            _destination
+        ];
+    };
     private _cacheKey = [_origin, _destination, _profile] call BATTLESPACE_PATHFIND_CACHE_KEY;
     private _cached = [_cacheKey, _origin, _destination] call BATTLESPACE_PATHFIND_GET_CACHED_ROUTE;
     private _snapshots = [_taskForceName] call BATTLESPACE_PATHFIND_BUILD_SNAPSHOTS;
@@ -670,7 +693,7 @@ BATTLESPACE_PATHFIND_STEP_JOB = {
 };
 
 QUEUE_PATHFIND_REQUEST = {
-    params ["_taskForceName", "_origin", "_destination"];
+    params ["_taskForceName", "_origin", "_destination", ["_useRural", false, [true]]];
     if (!isServer) exitWith {false};
     _origin = [_origin] call BATTLESPACE_PATHFIND_NORMALIZE_POSITION;
     _destination = [_destination] call BATTLESPACE_PATHFIND_NORMALIZE_POSITION;
@@ -692,14 +715,15 @@ QUEUE_PATHFIND_REQUEST = {
     };
     if (_alreadyQueued) exitWith {true};
     private _pendingIndex = QUEUED_PATHFIND_REQUESTS findIf {
-        (_x select 0) == _taskForceName && {(_x select 2) distance2D _destination <= 1}
+        (_x select 0) == _taskForceName
+        && {(_x select 2) distance2D _destination <= 1}
     };
     if (_pendingIndex >= 0) exitWith {true};
 
     private _generation = (BATTLESPACE_PATHFIND_REQUEST_GENERATIONS getOrDefault [_taskForceName, 0]) + 1;
     BATTLESPACE_PATHFIND_REQUEST_GENERATIONS set [_taskForceName, _generation];
     QUEUED_PATHFIND_REQUESTS = QUEUED_PATHFIND_REQUESTS select {(_x select 0) != _taskForceName};
-    QUEUED_PATHFIND_REQUESTS pushBack [_taskForceName, _origin, _destination, _generation];
+    QUEUED_PATHFIND_REQUESTS pushBack [_taskForceName, _origin, _destination, _generation, _useRural];
     true
 };
 
@@ -708,12 +732,12 @@ FULFILL_PATHFIND_REQUESTS = {
     if (isNil "BATTLESPACE_PATHFIND_ACTIVE_JOB") then {
         while {isNil "BATTLESPACE_PATHFIND_ACTIVE_JOB" && {QUEUED_PATHFIND_REQUESTS isNotEqualTo []}} do {
             private _request = QUEUED_PATHFIND_REQUESTS deleteAt 0;
-            _request params ["_taskForceName", "_origin", "_destination", "_generation"];
+            _request params ["_taskForceName", "_origin", "_destination", "_generation", ["_useRural", false, [true]]];
             if (
                 !isNil {BATTLESPACE_TASK_FORCES get _taskForceName}
                 && {_generation == (BATTLESPACE_PATHFIND_REQUEST_GENERATIONS getOrDefault [_taskForceName, -1])}
             ) then {
-                BATTLESPACE_PATHFIND_ACTIVE_JOB = [_taskForceName, _origin, _destination, _generation] call BATTLESPACE_PATHFIND_CREATE_JOB;
+                BATTLESPACE_PATHFIND_ACTIVE_JOB = [_taskForceName, _origin, _destination, _generation, _useRural] call BATTLESPACE_PATHFIND_CREATE_JOB;
             };
         };
     };
@@ -730,7 +754,7 @@ FULFILL_PATHFIND_REQUESTS = {
             if (_isCurrent && {_status == "FOUND"}) then {
                 private _route = _job getOrDefault ["result", []];
                 if ([_route] call BATTLESPACE_PATHFIND_ROUTE_IS_VALID) then {
-                    if ([_taskForceName, _route] call BATTLESPACE_TASK_FORCE_PATH_FOUND) then {
+                    if ([_taskForceName, _route, _job getOrDefault ["profile", ""]] call BATTLESPACE_TASK_FORCE_PATH_FOUND) then {
                         [_job get "cacheKey", _route] call BATTLESPACE_PATHFIND_CACHE_ROUTE;
                     };
                 } else {

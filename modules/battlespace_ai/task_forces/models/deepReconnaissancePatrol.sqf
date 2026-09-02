@@ -1,5 +1,12 @@
 /*
-    Finite strategic reconnaissance force: infiltrate, observe, and return.
+    Finite strategic reconnaissance force: infiltrate, interdict, and return.
+
+    TODO: Minic Russian DRG Tactics, as DRGs get behind the first frontline sectors of BLUFOR.
+    They can also begin attempting to capture undefended sectors if there's 2+ DRGs nearby.
+    They also seperate throughout the backlines using the exist arc type pattern we have.
+    This will expand into a zone control mechanic for OPFOR in which DRGs will try to capture influence over in-between zones
+    That will be between every connection of sectors. This basically means that if BLUFOR doesn't secure the sectors behind them,
+    OPFOR can begin to capture the sectors behind BLUFOR, creating a dynamic frontline and potentially cutting off BLUFOR forces and collapsing fronts.
 */
 
 BATTLESPACE_DEEP_RECON_BEGIN_RETURN = {
@@ -24,7 +31,7 @@ BATTLESPACE_DEEP_RECON_BEGIN_RETURN = {
     BATTLESPACE_TASK_FORCE_PATHS deleteAt _taskForceId;
     BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceId, _operation];
     BATTLESPACE_TASK_FORCES set [_taskForceId, _taskForce];
-    [_taskForceId, _taskForce param [1, []], _destination] call QUEUE_PATHFIND_REQUEST;
+    [_taskForceId, _taskForce param [1, []], _destination, true] call QUEUE_PATHFIND_REQUEST;
     [format ["Deep Reconnaissance Patrol %1 returning to %2 (%3)", _taskForceId, _returnSector, _reason]] call BATTLESPACE_STRATEGIC_LOG;
     true
 };
@@ -50,16 +57,37 @@ BATTLESPACE_DEEP_RECON_ON_DECISION_TICK = {
     };
 
     private _phase = _operation getOrDefault ["phase", "INFILTRATING"];
-    private _originSector = _operation getOrDefault ["originSector", ""];
     private _targetSector = _operation getOrDefault ["targetSector", ""];
-    private _originState = BATTLESPACE_SECTOR_STATES get _originSector;
-    private _routeInvalid = _targetSector == ""
-        || {!(_targetSector in blufor_sectors)}
-        || {isNil "_originState"}
-        || {(_originState getOrDefault ["owner", ""]) != "OPFOR"};
+    private _targetState = BATTLESPACE_SECTOR_STATES get _targetSector;
+    private _routeInvalid = _targetSector == "" || {isNil "_targetState"};
     private _strengthLow = ([_taskForce, _operation] call BATTLESPACE_STRATEGIC_GET_SURVIVAL_RATIO)
         < (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_RETREAT_STRENGTH_RATIO", 0.35]);
     private _finished = false;
+
+    private _friendlyPlayerNearPatrol = {
+        private _targetPosition = _operation getOrDefault ["targetPosition", _currentLocation];
+        private _procRange = ["Deep Reconnaissance Patrol"] call BATTLESPACE_TASK_FORCE_GET_PROC_RANGE;
+        (allPlayers findIf {
+            alive _x
+            && {side group _x == GRLIB_side_friendly}
+            && {
+                _x distance2D _targetPosition <= _procRange
+                || {_x distance2D _currentLocation <= _procRange}
+            }
+        }) >= 0
+    };
+
+    if (
+        _phase != "RETURNING"
+        && {!isNil "_targetState"}
+        && {(_targetState getOrDefault ["owner", ""]) == "OPFOR"}
+        && {!(call _friendlyPlayerNearPatrol)}
+    ) exitWith {
+        _operation set ["outcome", "REINFORCED"];
+        BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceId, _operation];
+        [format ["Deep Reconnaissance Patrol %1 was absorbed into %2", _taskForceId, _targetSector]] call BATTLESPACE_STRATEGIC_LOG;
+        true
+    };
 
     if (_phase != "RETURNING" && {_routeInvalid || {_strengthLow}}) then {
         private _returnReason = if (_routeInvalid) then {"route invalid"} else {"combat losses"};
@@ -89,14 +117,19 @@ BATTLESPACE_DEEP_RECON_ON_DECISION_TICK = {
         } else {
             if (_phase == "INFILTRATING" && {_currentLocation distance2D _observationPosition <= 100}) then {
                 _phase = "OBSERVING";
+                private _durationRange = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DEEP_RECON_DURATION", [2400, 3600]];
+                private _minimumDuration = (_durationRange param [0, 2400, [0]]) max 1;
+                private _maximumDuration = (_durationRange param [1, 3600, [0]]) max _minimumDuration;
+                private _duration = _minimumDuration + random (_maximumDuration - _minimumDuration);
                 _operation set ["phase", _phase];
-                _operation set ["expiresAt", CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DEEP_RECON_DURATION", 1200])];
+                _operation set ["expiresAt", CBA_missionTime + _duration];
                 BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceId, _operation];
-                [format ["Deep Reconnaissance Patrol %1 began observing %2", _taskForceId, _targetSector]] call BATTLESPACE_STRATEGIC_LOG;
+                [format ["Deep Reconnaissance Patrol %1 began interdicting %2 for %3 minutes", _taskForceId, _targetSector, round (_duration / 60)]] call BATTLESPACE_STRATEGIC_LOG;
             };
             if (
                 _phase == "OBSERVING"
                 && {CBA_missionTime >= (_operation getOrDefault ["expiresAt", CBA_missionTime])}
+                && {!(call _friendlyPlayerNearPatrol)}
             ) then {
                 if ([_taskForceId, _taskForce, _operation, "observation complete"] call BATTLESPACE_DEEP_RECON_BEGIN_RETURN) then {
                     _operation = BATTLESPACE_STRATEGIC_OPERATIONS get _taskForceId;
@@ -130,7 +163,7 @@ BATTLESPACE_DEEP_RECON_ON_DECISION_TICK = {
     if (_finished) exitWith {true};
 
     if (_activeGroups isNotEqualTo [] || {_phase == "OBSERVING"}) exitWith {false};
-    [_taskForceId, _taskForce] call BATTLESPACE_TASK_FORCE_MOVE_SIMULATED_GROUP;
+    [_taskForceId, _taskForce, true] call BATTLESPACE_TASK_FORCE_MOVE_SIMULATED_GROUP;
     false
 };
 
@@ -159,7 +192,7 @@ BATTLESPACE_DEEP_RECON_ON_DECISION_TICK = {
                     [_taskForceName, _taskForce] spawn {
                         params ["_taskForceName", "_taskForce"];
                         private _success = [_taskForceName, _taskForce, false] call BATTLESPACE_TASK_FORCE_DEFAULT_TRY_SPAWN;
-                        [_taskForceName, _taskForce, _success] call BATTLESPACE_TASK_FORCE_DEFAULT_FINISH_SPAWN;
+                        [_taskForceName, _taskForce, _success, true] call BATTLESPACE_TASK_FORCE_DEFAULT_FINISH_SPAWN;
                     };
                 };
             }

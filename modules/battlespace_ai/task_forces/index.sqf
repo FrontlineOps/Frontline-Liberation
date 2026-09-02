@@ -228,8 +228,12 @@ BATTLESPACE_TASK_FORCE_BUILD_ROUTE_SNAPSHOT = {
 			_offset = (0 max (_absoluteIndex - _historyNodes)) min (_totalNodes - _pointLimit);
 		};
 		private _nodes = _route select [_offset, _pointLimit];
+		private _routeProfile = [_taskForce, false] call BATTLESPACE_PATHFIND_GET_PROFILE;
+		if (_state isEqualType []) then {
+			_routeProfile = _state param [3, _routeProfile, [""]];
+		};
 		_snapshot set [_taskForceName, [
-			[_taskForce] call BATTLESPACE_PATHFIND_GET_PROFILE,
+			_routeProfile,
 			_absoluteIndex,
 			_totalNodes,
 			_offset,
@@ -409,7 +413,7 @@ BATTLESPACE_TASK_FORCES_INIT = {
 };
 
 BATTLESPACE_TASK_FORCE_PATH_FOUND = {
-	params ["_taskForceName", "_path"];
+	params ["_taskForceName", "_path", ["_profile", "", [""]]];
 	
 	private _taskForce = BATTLESPACE_TASK_FORCES get _taskForceName;
 	
@@ -435,11 +439,13 @@ BATTLESPACE_TASK_FORCE_PATH_FOUND = {
 		["_hpSector", nil] // 12
 	];
 	if !(_state isEqualType []) then {_state = ["IDLE", 0, 0]};
+	if (_profile == "") then {_profile = [_taskForce, false] call BATTLESPACE_PATHFIND_GET_PROFILE};
 	private _endNode = _path param [(count _path) - 1, []];
 	private _normalizedDestination = [_destination] call BATTLESPACE_PATHFIND_NORMALIZE_POSITION;
 
 	_state set [1, 0];
 	_state set [2, 0];
+	_state set [3, _profile];
 
 	_taskForce set [5, _state];
 	// This seems to be as a result of being stuck and no valid path can be found

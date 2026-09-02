@@ -1,5 +1,5 @@
 BATTLESPACE_TASK_FORCE_MOVE_SIMULATED_GROUP = {
-	params ["_taskForceName", "_taskForce"];
+	params ["_taskForceName", "_taskForce", ["_useRural", false, [true]]];
 	_taskForce params [
 					"_taskForceType", // 0
 					"_currentLoc", // 1
@@ -43,7 +43,7 @@ BATTLESPACE_TASK_FORCE_MOVE_SIMULATED_GROUP = {
 			_currentLoc,
 			_destination
 		];
-		[_taskForceName, _currentLoc, _destination] call QUEUE_PATHFIND_REQUEST;
+		[_taskForceName, _currentLoc, _destination, _useRural] call QUEUE_PATHFIND_REQUEST;
 		false
 	};
 
@@ -54,7 +54,7 @@ BATTLESPACE_TASK_FORCE_MOVE_SIMULATED_GROUP = {
 
 		_state set [1, 0];
 		_taskForce set [5, _state];
-		[_taskForceName, _currentLoc, _destination] call QUEUE_PATHFIND_REQUEST;
+		[_taskForceName, _currentLoc, _destination, _useRural] call QUEUE_PATHFIND_REQUEST;
 		false
 		
 	};
@@ -133,7 +133,7 @@ BATTLESPACE_TASK_FORCE_MOVE_SIMULATED_GROUP = {
 };
 
 BATTLESPACE_TASK_FORCE_DEFAULT_FINISH_SPAWN = {
-	params ["_taskForceName", "_spawnedTaskForce", "_success"];
+	params ["_taskForceName", "_spawnedTaskForce", "_success", ["_useRural", false, [true]]];
 
 	private _activeGroups = +(_spawnedTaskForce param [4, []]);
 	private _activeObjects = +(_spawnedTaskForce param [8, []]);
@@ -172,7 +172,7 @@ BATTLESPACE_TASK_FORCE_DEFAULT_FINISH_SPAWN = {
 					&& {_currentLocation isNotEqualTo []}
 					&& {_destination isNotEqualTo []}
 				) then {
-					[_taskForceName, _currentLocation, _destination] call QUEUE_PATHFIND_REQUEST;
+					[_taskForceName, _currentLocation, _destination, _useRural] call QUEUE_PATHFIND_REQUEST;
 				};
 			};
 		};

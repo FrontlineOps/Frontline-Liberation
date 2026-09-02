@@ -297,35 +297,61 @@ BATTLESPACE_DEEP_RECON_HAS_ACTIVE_ROUTE = {
     _found
 };
 
+BATTLESPACE_DEEP_RECON_GET_OCCUPIED_POSITIONS = {
+    params ["_targetSector"];
+    private _positions = [];
+    {
+        if (
+            (_y getOrDefault ["kind", ""]) == "DEEP RECONNAISSANCE PATROL"
+            && {(_y getOrDefault ["targetSector", ""]) == _targetSector}
+            && {(_y getOrDefault ["phase", ""]) != "RETURNING"}
+            && {(_y getOrDefault ["outcome", ""]) == ""}
+        ) then {
+            private _position = _y getOrDefault ["targetPosition", []];
+            if (
+                _position isEqualType []
+                && {(count _position) in [2, 3]}
+                && {_position findIf {!(_x isEqualType 0)} < 0}
+            ) then {
+                _positions pushBack _position;
+            };
+        };
+    } forEach BATTLESPACE_STRATEGIC_OPERATIONS;
+    _positions
+};
+
 BATTLESPACE_DEEP_RECON_BUILD_OBSERVATION_POSITION = {
-    params ["_fromSector", "_toSector"];
+    params ["_fromSector", "_toSector", ["_occupiedPositions", [], [[]]]];
     private _from = getMarkerPos _fromSector;
     private _to = getMarkerPos _toSector;
     private _distance = _from distance2D _to;
-    if (_distance < 400) exitWith {[]};
+    private _minimumStandoff = (GRLIB_capture_size + 100) max (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DEEP_RECON_TARGET_STANDOFF", 350]);
+    private _maximumStandoff = _minimumStandoff max (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DEEP_RECON_MAX_STANDOFF", 750]);
+    private _arcHalfAngle = (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DEEP_RECON_ARC_HALF_ANGLE", 75]) max 0 min 90;
+    private _minimumSeparation = (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DEEP_RECON_MIN_SEPARATION", 450]) max 0;
+    if (_distance <= _minimumStandoff + 100) exitWith {[]};
 
-    private _direction = _from getDir _to;
-    private _standoff = 100 max (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DEEP_RECON_TARGET_STANDOFF", 350]);
-    private _routeRatio = ((missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DEEP_RECON_ROUTE_RATIO", 0.55]) max 0.15) min 0.80;
-    private _forwardDistance = (_distance * _routeRatio) min ((_distance - _standoff) max 0);
-    if (_forwardDistance < 100) exitWith {[]};
+    // Continue the selected sector link through the target and spread DRGs across its rear arc.
+    private _rearDirection = _from getDir _to;
+    private _position = [];
+    for "_attempt" from 1 to 8 do {
+        private _radius = _minimumStandoff + random (_maximumStandoff - _minimumStandoff);
+        private _direction = _rearDirection - _arcHalfAngle + random (2 * _arcHalfAngle);
+        private _candidate = _to getPos [_radius, _direction];
+        _candidate set [2, 0];
 
-    private _position = _from getPos [_forwardDistance, _direction];
-    private _lateralLimit = (0 max (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DEEP_RECON_LATERAL_OFFSET", 250])) min (_distance * 0.2);
-    if (_lateralLimit > 0) then {
-        private _lateral = -_lateralLimit + random (2 * _lateralLimit);
-        _position = _position getPos [abs _lateral, _direction + ([90, -90] select (_lateral < 0))];
+        if (
+            (_candidate param [0, -1]) >= 0
+            && {(_candidate param [1, -1]) >= 0}
+            && {(_candidate param [0, worldSize + 1]) <= worldSize}
+            && {(_candidate param [1, worldSize + 1]) <= worldSize}
+            && {!surfaceIsWater _candidate}
+            && {_candidate distance2D _to >= _minimumStandoff}
+            && {_occupiedPositions findIf {_candidate distance2D _x < _minimumSeparation} < 0}
+        ) exitWith {
+            _position = _candidate;
+        };
     };
-    _position set [2, 0];
-
-    if (
-        (_position param [0, -1]) < 0
-        || {(_position param [1, -1]) < 0}
-        || {(_position param [0, worldSize + 1]) > worldSize}
-        || {(_position param [1, worldSize + 1]) > worldSize}
-        || {surfaceIsWater _position}
-        || {_position distance2D _to < _standoff}
-    ) exitWith {[]};
     _position
 };
 
@@ -349,19 +375,12 @@ BATTLESPACE_DEEP_RECON_DISPATCH = {
     private _threshold = _thresholds getOrDefault ["manpower", -1];
     if (_threshold < 0 || {(_resources getOrDefault ["manpower", 0]) < ceil (([_sectorType, "manpower"] call BATTLESPACE_SECTOR_GET_CAPACITY) * _threshold)}) exitWith {false};
 
-    private _vehicles = [];
-    {
-        private _vehicleThreshold = _thresholds getOrDefault [_x, -1];
-        private _capacity = [_sectorType, _x] call BATTLESPACE_SECTOR_GET_CAPACITY;
-        if (_vehicleThreshold < 0 || {(_resources getOrDefault [_x, 0]) <= ceil (_capacity * _vehicleThreshold)}) then {continue};
-        private _class = [_x] call BATTLESPACE_STRATEGIC_GET_CLASS_FOR_RESOURCE;
-        if (_class != "") exitWith {_vehicles pushBack _class};
-    } forEach ["car", "apc", "ifv"];
-    private _composition = createHashMapFromArray [["manpower", _manpower], ["vehicles", _vehicles], ["structures", []]];
+    private _composition = createHashMapFromArray [["manpower", _manpower], ["vehicles", []], ["structures", []]];
     private _origin = getMarkerPos _originSector;
-    private _target = [_segmentFrom, _segmentTo] call BATTLESPACE_DEEP_RECON_BUILD_OBSERVATION_POSITION;
+    private _occupiedPositions = [_targetSector] call BATTLESPACE_DEEP_RECON_GET_OCCUPIED_POSITIONS;
+    private _target = [_segmentFrom, _segmentTo, _occupiedPositions] call BATTLESPACE_DEEP_RECON_BUILD_OBSERVATION_POSITION;
     if !((count _target) in [2, 3]) exitWith {
-        [format ["Rejected Deep Reconnaissance Patrol route %1 because its observation position is invalid", _routeKey], "WARNING"] call BATTLESPACE_STRATEGIC_LOG;
+        [format ["Rejected Deep Reconnaissance Patrol route %1 because no valid separated rear-arc position was found after 8 attempts (%2 same-target positions occupied)", _routeKey, count _occupiedPositions], "WARNING"] call BATTLESPACE_STRATEGIC_LOG;
         false
     };
     private _id = [
@@ -375,7 +394,7 @@ BATTLESPACE_DEEP_RECON_DISPATCH = {
     _state set ["nextDeepReconAt", CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DEEP_RECON_COOLDOWN", 2400])];
     BATTLESPACE_SECTOR_STATES set [_originSector, _state];
     [] call BATTLESPACE_LOGISTICS_SAVE;
-    [format ["Dispatched Deep Reconnaissance Patrol %1 from %2 toward %3 on route %4", _id, _originSector, _targetSector, _validatedRouteKey]] call BATTLESPACE_STRATEGIC_LOG;
+    [format ["Dispatched Deep Reconnaissance Patrol %1 from %2 toward %3 on route %4 to rear-arc position %5 (%6 same-target positions already occupied)", _id, _originSector, _targetSector, _validatedRouteKey, _target, count _occupiedPositions]] call BATTLESPACE_STRATEGIC_LOG;
     true
 };
 
