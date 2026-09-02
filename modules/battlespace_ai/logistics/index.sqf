@@ -766,6 +766,130 @@ BATTLESPACE_LOGISTICS_FIND_OFFMAP_SOURCE = {
     _sorted param [0, ""]
 };
 
+BATTLESPACE_LOGISTICS_CLAIM_CONVOY_CRATE = {
+    params [
+        ["_crate", objNull, [objNull]],
+        ["_reason", "recovered", [""]]
+    ];
+    if (
+        !isServer
+        || {isNull _crate}
+        || {_crate getVariable ["BATTLESPACE_CONVOY_CARGO_CLAIMED", false]}
+    ) exitWith { false };
+
+    private _taskForceId = _crate getVariable ["TASKFORCEID", ""];
+    private _operation = BATTLESPACE_STRATEGIC_OPERATIONS get _taskForceId;
+    if (isNil "_operation" || {(_operation getOrDefault ["kind", ""]) != "CONVOY"}) exitWith { false };
+
+    _crate setVariable ["BATTLESPACE_CONVOY_CARGO_CLAIMED", true, true];
+    _crate setVariable ["KPLIB_captured", true, true];
+    detach _crate;
+    [_crate, true] remoteExec ["enableRopeAttach"];
+    private _originalCarrier = _crate getVariable ["BATTLESPACE_CONVOY_CARGO_CARRIER", objNull];
+    if (!isNull _originalCarrier) then {
+        _originalCarrier setVariable ["BATTLESPACE_CONVOY_CARGO_OBJECT", objNull];
+        _originalCarrier setVariable ["GRLIB_ammo_truck_load", 0, true];
+    };
+
+    private _total = (_operation getOrDefault ["cargoCrateCount", 0]) max 0;
+    private _lost = ((_operation getOrDefault ["cargoCratesLost", 0]) + 1) min _total;
+    _operation set ["cargoCratesLost", _lost];
+    BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceId, _operation];
+
+    [format [
+        "Convoy %1 cargo crate claimed (%2); %3/%4 cargo shares lost",
+        _taskForceId,
+        _reason,
+        _lost,
+        _total
+    ]] call BATTLESPACE_STRATEGIC_LOG;
+    true
+};
+
+BATTLESPACE_LOGISTICS_ATTACH_CONVOY_CRATES = {
+    params ["_taskForceId", "_taskForce"];
+    if (!isServer) exitWith { false };
+
+    private _operation = BATTLESPACE_STRATEGIC_OPERATIONS get _taskForceId;
+    if (isNil "_operation" || {(_operation getOrDefault ["kind", ""]) != "CONVOY"}) exitWith { false };
+
+    private _activeObjects = +(_taskForce param [8, []]);
+    if (_activeObjects findIf {
+        !isNull _x && {_x getVariable ["BATTLESPACE_CONVOY_CARGO_CRATE", false]}
+    } >= 0) exitWith { true };
+
+    private _remainingTruckClasses = ((_operation getOrDefault ["vehicleManifest", []]) select {
+        (_x param [1, ""]) == "truck"
+    }) apply {
+        _x param [0, ""]
+    };
+    private _trucks = [];
+    {
+        if (isNull _x || {_x isKindOf "Man"}) then { continue };
+        private _truckIndex = _remainingTruckClasses find (typeOf _x);
+        if (_truckIndex >= 0) then {
+            _trucks pushBack _x;
+            _remainingTruckClasses deleteAt _truckIndex;
+        };
+    } forEach _activeObjects;
+
+    private _crateValue = round (
+        (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_CONVOY_CRATE_VALUE", 100])
+        * GRLIB_resources_multiplier
+    ) max 1;
+    private _attached = 0;
+    {
+        private _truck = _x;
+        private _crate = [selectRandom KPLIB_crates, _crateValue, getPosATL _truck] call KPLIB_fnc_createCrate;
+        if (isNull _crate) then { continue };
+
+        private _offset = [0, -1, 1];
+        private _configIndex = KPLIB_transportConfigs findIf {
+            toLower (_x param [0, ""]) == toLower (typeOf _truck)
+        };
+        if (_configIndex >= 0) then {
+            _offset = (KPLIB_transportConfigs select _configIndex) param [2, _offset];
+        };
+
+        _crate setVariable ["BATTLESPACE_CONVOY_CARGO_CRATE", true, true];
+        _crate setVariable ["BATTLESPACE_CONVOY_CARGO_CLAIMED", false, true];
+        _crate setVariable ["BATTLESPACE_CONVOY_CARGO_CARRIER", _truck, true];
+        _crate setVariable ["TASKFORCEID", _taskForceId];
+        _crate attachTo [_truck, _offset];
+        [_crate, false] remoteExec ["enableRopeAttach"];
+
+        _truck setVariable ["BATTLESPACE_CONVOY_CARGO_OBJECT", _crate];
+        _truck setVariable ["GRLIB_ammo_truck_load", 1, true];
+        _truck addMPEventHandler ["MPKilled", {
+            params ["_vehicle"];
+            private _crate = _vehicle getVariable ["BATTLESPACE_CONVOY_CARGO_OBJECT", objNull];
+            if (!isNull _crate) then {
+                detach _crate;
+                _crate setPosATL ((getPosATL _vehicle) vectorAdd [0, 0, 0.5]);
+                [_crate, "carrier destroyed"] call BATTLESPACE_LOGISTICS_CLAIM_CONVOY_CRATE;
+            };
+        }];
+        _crate addMPEventHandler ["MPKilled", {
+            params ["_crate"];
+            [_crate, "crate destroyed"] call BATTLESPACE_LOGISTICS_CLAIM_CONVOY_CRATE;
+        }];
+
+        _activeObjects pushBack _crate;
+        _attached = _attached + 1;
+    } forEach _trucks;
+
+    _taskForce set [8, _activeObjects];
+    BATTLESPACE_TASK_FORCES set [_taskForceId, _taskForce];
+    [format [
+        "Convoy %1 materialized with %2/%3 recoverable crates at %4 resources each",
+        _taskForceId,
+        _attached,
+        _operation getOrDefault ["cargoCrateCount", 0],
+        _crateValue
+    ]] call BATTLESPACE_STRATEGIC_LOG;
+    true
+};
+
 BATTLESPACE_LOGISTICS_BUILD_CONVOY = {
     private _vehicles = [];
     private _manifest = [];
@@ -778,10 +902,18 @@ BATTLESPACE_LOGISTICS_BUILD_CONVOY = {
     };
     if (_vehicles isEqualTo []) exitWith { createHashMap };
 
-    private _escort = ["car"] call BATTLESPACE_STRATEGIC_GET_CLASS_FOR_RESOURCE;
-    if (_escort != "") then {
-        _vehicles pushBack _escort;
-        _manifest pushBack [_escort, "car"];
+    private _car = ["car"] call BATTLESPACE_STRATEGIC_GET_CLASS_FOR_RESOURCE;
+    if (_car == "") exitWith { createHashMap };
+    _vehicles pushBack _car;
+    _manifest pushBack [_car, "car"];
+
+    private _apcChance = ((missionNamespace getVariable ["BATTLESPACE_STRATEGIC_CONVOY_APC_CHANCE", 25]) max 0) min 100;
+    if (random 100 < _apcChance) then {
+        private _apc = ["apc"] call BATTLESPACE_STRATEGIC_GET_CLASS_FOR_RESOURCE;
+        if (_apc != "") then {
+            _vehicles pushBack _apc;
+            _manifest pushBack [_apc, "apc"];
+        };
     };
 
     private _manpower = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_CONVOY_MANPOWER", 8];
@@ -802,7 +934,7 @@ BATTLESPACE_LOGISTICS_DISPATCH = {
 
     private _convoyDefinition = [] call BATTLESPACE_LOGISTICS_BUILD_CONVOY;
     if (count _convoyDefinition == 0) exitWith {
-        [format ["No generated OPFOR logistics vehicle can service %1", _targetSector], "WARNING"] call BATTLESPACE_STRATEGIC_LOG;
+        [format ["No generated OPFOR logistics trucks/car escort can service %1", _targetSector], "WARNING"] call BATTLESPACE_STRATEGIC_LOG;
         false
     };
 
@@ -867,6 +999,10 @@ BATTLESPACE_LOGISTICS_DISPATCH = {
         ["cargo", _cargo],
         ["debit", _debit],
         ["vehicleManifest", _convoyDefinition get "vehicleManifest"],
+        ["cargoCrateCount", {
+            (_x param [1, ""]) == "truck"
+        } count (_convoyDefinition get "vehicleManifest")],
+        ["cargoCratesLost", 0],
         ["initialStrength", _convoyDefinition get "initialStrength"],
         ["outcome", ""]
     ]];
@@ -878,7 +1014,14 @@ BATTLESPACE_LOGISTICS_DISPATCH = {
     ];
     BATTLESPACE_SECTOR_STATES set [_targetSector, _targetState];
     [] call BATTLESPACE_LOGISTICS_SAVE;
-    [format ["Dispatched convoy %1 from %2 to %3 with %4", _taskForceId, _sourceMarker, _targetSector, _cargo]] call BATTLESPACE_STRATEGIC_LOG;
+    [format [
+        "Dispatched convoy %1 from %2 to %3 with vehicles %4 and cargo %5",
+        _taskForceId,
+        _sourceMarker,
+        _targetSector,
+        _convoyDefinition get "vehicleManifest",
+        _cargo
+    ]] call BATTLESPACE_STRATEGIC_LOG;
     true
 };
 
@@ -942,7 +1085,13 @@ BATTLESPACE_STRATEGIC_HANDLE_TASK_FORCE_EVENT = {
             };
 
             if (_destinationSector != "") then {
-                private _ratio = [_taskForce, _operation] call BATTLESPACE_STRATEGIC_GET_SURVIVAL_RATIO;
+                private _crateCount = (_operation getOrDefault ["cargoCrateCount", 0]) max 0;
+                private _cratesLost = (_operation getOrDefault ["cargoCratesLost", 0]) max 0 min _crateCount;
+                private _ratio = if (_crateCount > 0) then {
+                    (_crateCount - _cratesLost) / _crateCount
+                } else {
+                    [_taskForce, _operation] call BATTLESPACE_STRATEGIC_GET_SURVIVAL_RATIO
+                };
                 private _cargo = [
                     _operation getOrDefault ["cargo", createHashMap],
                     _ratio
@@ -955,7 +1104,15 @@ BATTLESPACE_STRATEGIC_HANDLE_TASK_FORCE_EVENT = {
                     _cargo set [_x, (_cargo getOrDefault [_x, 0]) + _y];
                 } forEach _survivingForce;
                 private _accepted = [_destinationSector, _cargo] call BATTLESPACE_RESOURCE_DEPOSIT_CLAMPED;
-                [format ["Convoy %1 %2 at %3; cargo and surviving force accepted %4", _taskForceId, toLower _outcome, _destinationSector, _accepted]] call BATTLESPACE_STRATEGIC_LOG;
+                [format [
+                    "Convoy %1 %2 at %3 with %4/%5 cargo shares; cargo and surviving force accepted %6",
+                    _taskForceId,
+                    toLower _outcome,
+                    _destinationSector,
+                    _crateCount - _cratesLost,
+                    _crateCount,
+                    _accepted
+                ]] call BATTLESPACE_STRATEGIC_LOG;
             };
         };
         case "BATTLEGROUP": {
