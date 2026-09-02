@@ -107,7 +107,7 @@ if (!isDedicated && hasInterface) then {
 		];
 
 } else {
-    setViewDistance 1600;
+    setViewDistance 3000;
 };
 
 KPLIB_init = true;
