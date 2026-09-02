@@ -135,7 +135,6 @@ stats_fobs_lost = 0;
 stats_fuel_produced = 0;
 stats_fuel_spent = 0;
 stats_hostile_battlegroups = 0;
-stats_ieds_detonated = 0;
 stats_opfor_killed_by_players = 0;
 stats_opfor_soldiers_killed = 0;
 stats_opfor_vehicles_killed = 0;
@@ -215,7 +214,6 @@ if (!isNil "_saveData") then {
         stats_fuel_produced                         = _stats select 16;
         stats_fuel_spent                            = _stats select 17;
         stats_hostile_battlegroups                  = _stats select 18;
-        stats_ieds_detonated                        = _stats select 19;
         stats_opfor_killed_by_players               = _stats select 20;
         stats_opfor_soldiers_killed                 = _stats select 21;
         stats_opfor_vehicles_killed                 = _stats select 22;
@@ -271,7 +269,6 @@ if (!isNil "_saveData") then {
         stats_playtime                              = _stats select 12;
         stats_spartan_respawns                      = _stats select 13;
         stats_hostile_battlegroups                  = _stats select 15;
-        stats_ieds_detonated                        = _stats select 16;
         stats_reinforcements_called                 = _stats select 19;
         stats_prisoners_captured                    = _stats select 20;
         stats_blufor_teamkills                      = _stats select 21;
@@ -506,7 +503,6 @@ if (!isNil "_saveData") then {
 };
 
 publicVariable "stats_civilian_vehicles_seized";
-publicVariable "stats_ieds_detonated";
 
 
 blufor_military_sectors = [];

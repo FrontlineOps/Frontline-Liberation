@@ -6005,20 +6005,6 @@
             <Korean>전체 위협도 상승값 : %1</Korean>
             <Czech>Bojová připravenost: %1</Czech>
         </Key>
-        <Key ID="STR_STATS_IEDS">
-            <Original>IEDs detonated: %1</Original>
-            <French>Explosions d'IED: %1</French>
-            <German>IEDs ausgelöst: %1</German>
-            <Spanish>IEDs detonados: %1</Spanish>
-            <Russian>СВУ взорвано: %1</Russian>
-            <Italian>IED detonato: %1</Italian>
-            <Chinesesimp>被引爆的IED： %1</Chinesesimp>
-            <Chinese>被引爆的IED： %1</Chinese>
-            <Turkish>Patlatılan mayınlar: %1</Turkish>
-            <Portuguese>IEDs detonadas: %1</Portuguese>
-            <Korean>폭파된 폭발물 : %1</Korean>
-            <Czech>Výbuch miny: %1</Czech>
-        </Key>
         <Key ID="STR_STATS_POTATO">
             <Original>Number of Potato 01 losses: %1</Original>
             <French>Pertes de Potato 01: %1</French>

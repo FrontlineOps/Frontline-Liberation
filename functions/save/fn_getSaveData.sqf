@@ -152,7 +152,7 @@ private _stats = [
     stats_fuel_produced,
     stats_fuel_spent,
     stats_hostile_battlegroups,
-    stats_ieds_detonated,
+    0, // Retired IED statistic slot; remove in a future save-breaking update
     stats_opfor_killed_by_players,
     stats_opfor_soldiers_killed,
     stats_opfor_vehicles_killed,

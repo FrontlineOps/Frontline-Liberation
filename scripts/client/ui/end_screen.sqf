@@ -18,7 +18,6 @@ params [
     "_stats_fuel_produced",
     "_stats_fuel_spent",
     "_stats_hostile_battlegroups",
-    "_stats_ieds_detonated",
     "_stats_opfor_killed_by_players",
     "_stats_opfor_soldiers_killed",
     "_stats_opfor_vehicles_killed",
@@ -138,9 +137,8 @@ if (dialog) then {sleep 3};
 [691, format [localize "STR_STATS_BATTLEGROUPS", _stats_hostile_battlegroups]] call _addReportLine;
 [692, format [localize "STR_STATS_REINFORCEMENTS", _stats_reinforcements_called]] call _addReportLine;
 [693, format [localize "STR_STATS_COMBATREADINESS", round _stats_readiness_earned]] call _addReportLine;
-[694, format [localize "STR_STATS_IEDS", _stats_ieds_detonated]] call _addReportLine;
-[695, format [localize "STR_STATS_POTATO", _stats_spartan_respawns]] call _addReportLine;
-[696, format [localize "STR_STATS_RABBITS", _stats_rabbits_killed], true] call _addReportLine;
+[694, format [localize "STR_STATS_POTATO", _stats_spartan_respawns]] call _addReportLine;
+[695, format [localize "STR_STATS_RABBITS", _stats_rabbits_killed], true] call _addReportLine;
 [] call _cleanPage;
 
 // Eighth page
