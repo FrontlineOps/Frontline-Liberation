@@ -39,7 +39,6 @@ KC_FIX_AI_LOADOUT = {
 					"OPFOR Unit %1: Doesn't have valid uniform, replacing with: %3]",
 					str (typeOf _x), str _uniformDef
 				];
-				systemChat _logMsg;
 				diag_log _logMsg;
 
 				// Apply updated loadout to unit

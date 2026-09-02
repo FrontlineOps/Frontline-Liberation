@@ -161,7 +161,6 @@ if (isServer) then {
                 
                     [KP_liberation_cr_kill_penalty, true] spawn F_cr_changeCR;
 
-                    // Admin Log Event: killedCivilian
                     if (isPlayer _killer) then {
                         [_killer, _unit] remoteExec ["KPLIB_fnc_civKillWarning", _killer]; 
                     };

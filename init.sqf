@@ -10,11 +10,6 @@ KP_liberation_version = [0, 96, "7a"];
 
 enableSaving [ false, false ];
 
-// INIT ADMIN LOG MODULE ON SERVER
-if (isServer) then {
-    [] call compileFinal preprocessFileLineNumbers "modules\admin_log\server\index.sqf";
-};
-
 cleanUpBodies = 
 {
     diag_log "cleanUpBodies - Cleaning up all dead bodies.";

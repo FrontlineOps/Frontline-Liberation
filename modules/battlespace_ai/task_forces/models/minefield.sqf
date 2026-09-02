@@ -185,7 +185,6 @@
 
 					private _compositionStructs = _composition get "structures";
 					{
-						systemChat format ["Deleting mine at %1 | %2", _x, _offset];
 						_compositionStructs deleteAt (_x - _offset);
 						_offset = _offset + 1;
 					} forEach _noExists; 

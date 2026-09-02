@@ -158,7 +158,6 @@ BATTLESPACE_DEFENDERS_CREATE_TASK_FORCES = {
         "Sector %1 defenders: Statics: %2, Infantry: [%3, %4, %5, %6]",
         str _sector, _numberOfStatics, _garrisonCount, _defensivePatrols, _patrollingSquads, _ambushSquads
     ];
-    systemChat _logMsg;
     diag_log _logMsg;
 
     // Patrolling infantry squads

@@ -117,6 +117,3 @@ if !((getPlayerUID player) in KP_liberation_commander_actions) then {
     // Arsenal Enforcement applies to all non-elevated players
     execVM "scripts\client\misc\enforced_arsenal.sqf";
 };
-
-// ADMINISTRATIVE EH's (CLIENT)
-call compileFinal preprocessFileLineNumbers "modules\admin_log\client\index.sqf";

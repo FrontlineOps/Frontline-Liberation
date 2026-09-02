@@ -214,7 +214,6 @@ KP_liberation_client_state_refresh_interval = 2;
 KP_liberation_client_action_refresh_interval = 5;
 KP_liberation_client_marker_refresh_interval = 10;
 KP_liberation_runtime_diagnostics = false;
-KP_liberation_admin_log_limit = 250;
 
 GRLIB_side_friendly = WEST;                  			// Friendly side
 GRLIB_side_enemy = EAST;                     			// Enemy side

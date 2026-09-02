@@ -7,4 +7,3 @@ private _rootAction = ["KarmaLibRoot", "Liberation Actions", "", {}, { true }] c
 [] call compileFinal preprocessFileLineNumbers "scripts\libZeusActions\client\actions\roleDescriptionAndBlacklist.sqf";
 [] call compileFinal preprocessFileLineNumbers "scripts\libZeusActions\client\actions\wh.sqf";
 [] call compileFinal preprocessFileLineNumbers "scripts\libZeusActions\client\actions\tglEnforcedArsenal.sqf";
-[] call compileFinal preprocessFileLineNumbers "scripts\libZeusActions\client\actions\openLog.sqf";
