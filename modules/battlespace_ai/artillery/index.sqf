@@ -2,30 +2,112 @@ BATTLESPACE_DISABLE_ARTILLERY = false;
 BATTLESPACE_ARTILLERY_DEBUG = false;
 BATTLESPACE_ARTILLERY_SECTIONS = [];
 BATTLESPACE_ARTILLERY_OBSERVER_TARGETS = createHashMap;
-BATTLESPACE_ARTILLERY_PIECE = "rhs_2s3_tv";
+BATTLESPACE_ARTILLERY_PIECE_CLASSES = [];
 BATTLESPACE_ARTILLERY_PIECES_PER_BATTERY = 2;
 BATTLESPACE_ARTILLERY_SPAWN_COOLDOWN = 3600;
 BATTLESPACE_LAST_ARTILLERY_SPAWN = -BATTLESPACE_ARTILLERY_SPAWN_COOLDOWN;
-BATTLESPACE_ARTILLERY_POLL_COOLDOWN = 10;
-BATTLESPACE_ARTILLERY_COOLDOWN_PER_SHELL = 90;
-BATTLESPACE_ARTILLERY_MIN_COOLDOWN = 90;
-BATTLESPACE_ARTILLERY_MAX_COOLDOWN = 180;
 BATTLESPACE_ARTILLERY_MIN_SUPPRESSION_TIME_PER_SHELL = 50;
 BATTLESPACE_ARTILLERY_MAX_SUPPRESSION_TIME_PER_SHELL = 75;
-BATTLESPACE_ARTILLERY_SHELL = "rhs_mag_HE_2a33";
-BATTLESPACE_ARTILLERY_WP_SHELL = "rhs_mag_WP_2a33";
+
+BATTLESPACE_ARTILLERY_RESOLVE_AMMUNITION = {
+	params [["_vehicle", objNull, [objNull]]];
+	if (isNull _vehicle) exitWith {["", "", []]};
+
+	private _available = getArtilleryAmmo [_vehicle];
+	private _heShell = "";
+	private _heScore = -1;
+	private _smokeShell = "";
+	private _smokeScore = -1;
+
+	{
+		private _magazine = _x;
+		private _magazineCfg = configFile >> "CfgMagazines" >> _magazine;
+		if !(isClass _magazineCfg) then {continue};
+
+		private _ammoClass = getText (_magazineCfg >> "ammo");
+		private _ammoCfg = configFile >> "CfgAmmo" >> _ammoClass;
+		if !(isClass _ammoCfg) then {continue};
+
+		private _description = toLower format [
+			"%1 %2 %3",
+			_magazine,
+			getText (_magazineCfg >> "displayName"),
+			_ammoClass
+		];
+		private _usageFlags = getNumber (_ammoCfg >> "aiAmmoUsageFlags");
+		private _hasConcealmentFlag = ((floor (_usageFlags / 4)) mod 2) == 1;
+		private _hasWPName = (_description find "phosph") >= 0 || {(_description find "_wp") >= 0} || {(_description find "mmwp") >= 0} || {(_description find " wp") >= 0};
+		private _hasSmokeName = (_description find "smoke") >= 0;
+		// effectsSmoke is a visual projectile effect and is also configured on HE rounds.
+		private _isSmoke = _hasConcealmentFlag || _hasWPName || _hasSmokeName;
+		private _isIllumination = (_description find "illum") >= 0 || {(_description find "flare") >= 0};
+		private _isGuided = (_description find "guided") >= 0 || {(_description find "laser") >= 0} || {(_description find "_lg") >= 0} || {(_description find "mmlg") >= 0};
+		private _isAntiTank = (_description find "anti-tank") >= 0 || {(_description find "_at_") >= 0} || {(_description find "mmat_") >= 0} || {(_description find " at ") >= 0};
+		private _indirectHit = getNumber (_ammoCfg >> "indirectHit");
+		private _indirectHitRange = getNumber (_ammoCfg >> "indirectHitRange");
+
+		if (_isSmoke) then {
+			private _candidateScore = 100;
+			if (_hasConcealmentFlag) then {_candidateScore = _candidateScore + 25};
+			if (_hasSmokeName) then {_candidateScore = _candidateScore + 100};
+			if (_hasWPName) then {_candidateScore = _candidateScore + 200};
+			if (_candidateScore > _smokeScore) then {
+				_smokeScore = _candidateScore;
+				_smokeShell = _magazine;
+			};
+		};
+
+		if ((_indirectHit > 0 || {_indirectHitRange > 0}) && {!_isSmoke} && {!_isIllumination} && {!_isGuided} && {!_isAntiTank}) then {
+			private _hasHEName = (_description find "high explosive") >= 0 || {(_description find "_he") >= 0} || {(_description find "mmhe") >= 0} || {(_description find " he ") >= 0};
+			private _candidateScore = _indirectHit + (5 * _indirectHitRange);
+			if (_hasHEName) then {_candidateScore = _candidateScore + 10000};
+			if (_candidateScore > _heScore) then {
+				_heScore = _candidateScore;
+				_heShell = _magazine;
+			};
+		};
+	} forEach _available;
+
+	[_heShell, _smokeShell, _available]
+};
+
+BATTLESPACE_ARTILLERY_CAN_REACH_AREA = {
+	params [
+		["_piece", objNull, [objNull]],
+		["_targetPos", [], [[]]],
+		["_shellType", "", [""]],
+		["_margin", 0, [0]]
+	];
+	if (isNull _piece || {_targetPos isEqualTo []} || {_shellType == ""}) exitWith {false};
+
+	private _testPositions = [+_targetPos];
+	if (_margin > 0) then {
+		for "_bearing" from 0 to 315 step 45 do {
+			_testPositions pushBack (_targetPos getPos [_margin, _bearing]);
+		};
+	};
+
+	(_testPositions findIf {
+		!(_x inRangeOfArtillery [[_piece], _shellType])
+	}) == -1
+};
+
+BATTLESPACE_ARTILLERY_GET_ROCKET_RIPPLE = {
+	params [["_shellType", "", [""]]];
+	private _magazineCapacity = getNumber (configFile >> "CfgMagazines" >> _shellType >> "count");
+	if (_magazineCapacity <= 0) exitWith {[1, 1]};
+
+	private _rippleSize = 5 min _magazineCapacity;
+	if ((_magazineCapacity mod 6) == 0) then {
+		_rippleSize = 3 min _magazineCapacity;
+	};
+	[_rippleSize max 1, _magazineCapacity]
+};
 // Base cooldown for a counter battery request to be generated.
 // Base, because high readiness will tick faster.
 // See POLL_REQUESTS function to further balance
 BATTLESPACE_ARTILLERY_COUNTER_BATTERY_BASE_COOLDOWN = 0;
 BATTLESPACE_ARTILLERY_BASE_ACCURACY_BUILDUP = 9;
-
-// Cycle range for it to roll a chance to swap from network on to network off.
-// Minimum 40 * 15 to 240 * 15.
-// See poll rate math in poll requests 
-BATTLESPACE_ARTILLERY_MINIMUM_CYCLES_TO_SWAP = 17;
-BATTLESPACE_ARTILLERY_MAXIMUM_CYCLES_TO_SWAP = 22;
-
 
 BATTLESPACE_ARTILLERY_LAST_COUNTER_BATTERY_DATA = [];
 BATTLESPACE_ARTILLERY_FIRING_LOCATIONS = [];
@@ -45,7 +127,7 @@ missionNameSpace setVariable ["itc_land_cobra_activeShells", []];
 BATTLESPACE_ARTILLERY_REPORT_SHELL_IMPACT = {
 	params ["_impactLocation"];
 
-	private _nearbyArty = _impactLocation nearEntities [[BATTLESPACE_ARTILLERY_PIECE], 200];
+	private _nearbyArty = _impactLocation nearEntities [BATTLESPACE_ARTILLERY_PIECE_CLASSES, 200];
 
 	if((count _nearbyArty) > 0) then {
 
@@ -200,6 +282,51 @@ BATTLESPACE_SPAWN_BATTERY = {
 
 	if((diag_tickTime - BATTLESPACE_LAST_ARTILLERY_SPAWN) < BATTLESPACE_ARTILLERY_SPAWN_COOLDOWN ) exitWith {};
 	if((count BATTLESPACE_ARTILLERY_SECTIONS) >= 2) exitWith {};
+	if (BATTLESPACE_ARTILLERY_PIECE_CLASSES isEqualTo []) exitWith {
+		BATTLESPACE_DISABLE_ARTILLERY = true;
+		["Artillery battery spawn disabled (reason=generated artillery pool is empty)", "BATTLESPACE"] call KPLIB_fnc_log;
+	};
+
+	private _targetPos = _target getPos [0, 0];
+	private _pieceClass = selectRandom BATTLESPACE_ARTILLERY_PIECE_CLASSES;
+	private _pieceResource = [_pieceClass] call BATTLESPACE_STRATEGIC_GET_RESOURCE_FOR_CLASS;
+	if !(_pieceResource in ["rocket_artillery", "howitzers", "mortars"]) then {_pieceResource = "howitzers"};
+	private _targetRangeMargin = [400, 600] select (_pieceResource == "rocket_artillery");
+	private _siteRangeMargin = _targetRangeMargin + 200;
+	private _rangeProbe = _pieceClass createVehicle [0, 0, 1000];
+	if (isNull _rangeProbe) exitWith {
+		BATTLESPACE_ARTILLERY_PIECE_CLASSES = BATTLESPACE_ARTILLERY_PIECE_CLASSES - [_pieceClass];
+		BATTLESPACE_DISABLE_ARTILLERY = BATTLESPACE_ARTILLERY_PIECE_CLASSES isEqualTo [];
+		[format ["Artillery battery spawn rejected (pieceClass=%1, reason=range probe creation failed, remainingPool=%2)", _pieceClass, BATTLESPACE_ARTILLERY_PIECE_CLASSES], "BATTLESPACE"] call KPLIB_fnc_log;
+	};
+	_rangeProbe allowDamage false;
+	_rangeProbe hideObjectGlobal true;
+	_rangeProbe setVehicleAmmoDef 1;
+	private _rangeProbeGroup = createVehicleCrew _rangeProbe;
+	{_x allowDamage false; _x hideObjectGlobal true} forEach crew _rangeProbe;
+	private _cleanupRangeProbe = {
+		if (!isNull _rangeProbeGroup) then {_rangeProbeGroup deleteGroupWhenEmpty true};
+		if (!isNull _rangeProbe) then {
+			{_rangeProbe deleteVehicleCrew _x} forEach crew _rangeProbe;
+			deleteVehicle _rangeProbe;
+		};
+		if (!isNull _rangeProbeGroup) then {deleteGroup _rangeProbeGroup};
+	};
+	sleep 0.1;
+	if ((crew _rangeProbe) isEqualTo [] || {isNull gunner _rangeProbe}) exitWith {
+		call _cleanupRangeProbe;
+		BATTLESPACE_ARTILLERY_PIECE_CLASSES = BATTLESPACE_ARTILLERY_PIECE_CLASSES - [_pieceClass];
+		BATTLESPACE_DISABLE_ARTILLERY = BATTLESPACE_ARTILLERY_PIECE_CLASSES isEqualTo [];
+		[format ["Artillery battery spawn rejected (pieceClass=%1, reason=configured crew did not occupy range probe gunner seat, remainingPool=%2)", _pieceClass, BATTLESPACE_ARTILLERY_PIECE_CLASSES], "BATTLESPACE"] call KPLIB_fnc_log;
+	};
+	([_rangeProbe] call BATTLESPACE_ARTILLERY_RESOLVE_AMMUNITION) params ["_probeHE", "_probeWP", "_probeAvailable"];
+	if (_probeHE == "") exitWith {
+		call _cleanupRangeProbe;
+		BATTLESPACE_ARTILLERY_PIECE_CLASSES = BATTLESPACE_ARTILLERY_PIECE_CLASSES - [_pieceClass];
+		BATTLESPACE_DISABLE_ARTILLERY = BATTLESPACE_ARTILLERY_PIECE_CLASSES isEqualTo [];
+		[format ["Artillery battery spawn rejected (pieceClass=%1, reason=no usable HE magazine, artilleryAmmo=%2, remainingPool=%3)", _pieceClass, _probeAvailable, BATTLESPACE_ARTILLERY_PIECE_CLASSES], "BATTLESPACE"] call KPLIB_fnc_log;
+	};
+	[format ["Artillery range probe ready (pieceClass=%1, crew=%2, HE=%3, artilleryAmmo=%4)", _pieceClass, count crew _rangeProbe, _probeHE, _probeAvailable], "BATTLESPACE"] call KPLIB_fnc_log;
 	
 	private _costDepth = 8;
 	private _spawnSectors = [blufor_sectors, _costDepth] call NETWORKED_SECTORS_GET_SECTORS_UP_TO_COST;
@@ -221,13 +348,24 @@ BATTLESPACE_SPAWN_BATTERY = {
 
 				private _alreadyHasArty = false;
 
-				private _nearbyArty = _mPos nearEntities [[BATTLESPACE_ARTILLERY_PIECE] + BATTLESPACE_SAM_SITE_TELS + BATTLESPACE_SAM_SITE_FCRS, 1000];
+				private _nearbyArty = _mPos nearEntities [BATTLESPACE_ARTILLERY_PIECE_CLASSES + BATTLESPACE_SAM_SITE_TELS + BATTLESPACE_SAM_SITE_FCRS, 1000];
 
 				_nearbyArty = _nearbyArty select { alive _x };
 
 				_alreadyHasArty = (count _nearbyArty) > 0;
+				private _hasCandidateRange = false;
+				private _candidateSourcePositions = [_mPos];
+				for "_bearing" from 0 to 315 step 45 do {
+					_candidateSourcePositions pushBack (_mPos getPos [600, _bearing]);
+				};
+				{
+					_rangeProbe setPosATL _x;
+					if ([_rangeProbe, _targetPos, _probeHE, 0] call BATTLESPACE_ARTILLERY_CAN_REACH_AREA) exitWith {
+						_hasCandidateRange = true;
+					};
+				} forEach _candidateSourcePositions;
 
-				(_mPos distance2D (_target getPos [0,0])) > 9000 || _alreadyHasArty
+				!_hasCandidateRange || _alreadyHasArty
 			};
 
 			_validSectors = _validSectors - _invalids;
@@ -250,8 +388,9 @@ BATTLESPACE_SPAWN_BATTERY = {
 	};
 
 	if(_sectorToSpawnIn == "") exitWith {
+		call _cleanupRangeProbe;
 		if (BATTLESPACE_ARTILLERY_DEBUG) then {systemChat "Unable to find sector to spawn artillery for";};
-		diag_log format ["Unable to find sector to spawn artillery for"];
+		[format ["Artillery battery spawn skipped (pieceClass=%1, shell=%2, target=%3, reason=no eligible sector inside weapon range)", _pieceClass, _probeHE, _targetPos], "BATTLESPACE"] call KPLIB_fnc_log;
 	};
 	private _wantHouses = false;
 	private _expr = format ["4 * hills - (10 * sea) - (3 * houses) - (2 * trees) - (4 * forest)"];
@@ -267,19 +406,20 @@ BATTLESPACE_SPAWN_BATTERY = {
 
 	{
 		_x params ["_pos", "_expr"];
-		private _spawn = _pos findEmptyPosition [0, 125, BATTLESPACE_ARTILLERY_PIECE];
+		private _spawn = _pos findEmptyPosition [0, 125, _pieceClass];
+		if (_spawn isEqualTo []) then {continue};
 
-		if(!(_spawn isEqualTo [])) exitWith {
-			_spawnPoint = _pos;
+		_rangeProbe setPosATL _spawn;
+		if ([_rangeProbe, _targetPos, _probeHE, _siteRangeMargin] call BATTLESPACE_ARTILLERY_CAN_REACH_AREA) exitWith {
+			_spawnPoint = _spawn;
 		};
 	} forEach _potentialSpawnPoints;
 
 	if(isNil "_spawnPoint") exitWith {
-		if (BATTLESPACE_ARTILLERY_DEBUG) then {systemChat format ["Could not find a valid spawn point for %1", BATTLESPACE_ARTILLERY_PIECE];};
-		diag_log format ["Unable to find sector to spawn artillery for"];
+		call _cleanupRangeProbe;
+		if (BATTLESPACE_ARTILLERY_DEBUG) then {systemChat format ["Could not find a valid spawn point for %1", _pieceClass];};
+		[format ["Artillery battery spawn skipped (sector=%1, pieceClass=%2, shell=%3, targetDistance=%4, rangeMargin=%5, reason=no clear in-range spawn point)", _sectorToSpawnIn, _pieceClass, _probeHE, round ((getMarkerPos _sectorToSpawnIn) distance2D _targetPos), _siteRangeMargin], "BATTLESPACE"] call KPLIB_fnc_log;
 	};
-	private _pieceResource = [BATTLESPACE_ARTILLERY_PIECE] call BATTLESPACE_STRATEGIC_GET_RESOURCE_FOR_CLASS;
-	if !(_pieceResource in ["rocket_artillery", "howitzers", "mortars"]) then {_pieceResource = "howitzers"};
 	private _crewPerPiece = missionNamespace getVariable ["BATTLESPACE_ARTILLERY_CREW_PER_PIECE", 3];
 	private _batteryCost = createHashMapFromArray [
 		[_pieceResource, BATTLESPACE_ARTILLERY_PIECES_PER_BATTERY],
@@ -288,23 +428,50 @@ BATTLESPACE_SPAWN_BATTERY = {
 	private _batteryDebit = createHashMap;
 	{_batteryDebit set [_x, -_y]} forEach _batteryCost;
 	if !([_sectorToSpawnIn, _batteryDebit] call BATTLESPACE_RESOURCE_APPLY_STRICT) exitWith {
-		[format ["Artillery battery at %1 skipped: insufficient stock for %2", _sectorToSpawnIn, _batteryCost], "BATTLESPACE"] call KPLIB_fnc_log;
+		call _cleanupRangeProbe;
+		[format ["Artillery battery spawn skipped (sector=%1, pieceClass=%2, reason=insufficient stock, cost=%3)", _sectorToSpawnIn, _pieceClass, _batteryCost], "BATTLESPACE"] call KPLIB_fnc_log;
 	};
 	private _fcrGrp = createGroup [_sideEnemy, true];
 	private _vehs = [];
+	private _heShell = "";
+	private _wpShell = "";
+	private _availableShells = [];
+	private _ammunitionValidated = false;
+	private _ammunitionRejected = false;
+	private _rangeRejectedPieces = 0;
 
 	
 	for "_i" from 1 to BATTLESPACE_ARTILLERY_PIECES_PER_BATTERY do {
+		if (_ammunitionRejected) then {continue};
 
-		private _spawn = _spawnPoint findEmptyPosition [10, 200, BATTLESPACE_ARTILLERY_PIECE];
+		private _spawn = _spawnPoint findEmptyPosition [10, 200, _pieceClass];
 		if (_spawn isEqualTo []) then {continue};
+		_rangeProbe setPosATL _spawn;
+		private _canCoverTargetArea = [_rangeProbe, _targetPos, _probeHE, _targetRangeMargin] call BATTLESPACE_ARTILLERY_CAN_REACH_AREA;
+		_rangeProbe setPosATL [0, 0, 1000];
+		if (!_canCoverTargetArea) then {
+			_rangeRejectedPieces = _rangeRejectedPieces + 1;
+			continue;
+		};
 		
-		private _newVeh = BATTLESPACE_ARTILLERY_PIECE createVehicle _spawn;	
+		private _newVeh = _pieceClass createVehicle _spawn;
+		if (!_ammunitionValidated) then {
+			([_newVeh] call BATTLESPACE_ARTILLERY_RESOLVE_AMMUNITION) params ["_resolvedHE", "_resolvedWP", "_resolvedAvailable"];
+			_heShell = _resolvedHE;
+			_wpShell = _resolvedWP;
+			_availableShells = _resolvedAvailable;
+			_ammunitionValidated = true;
+			if (_heShell == "") then {
+				_ammunitionRejected = true;
+				deleteVehicle _newVeh;
+			};
+		};
+		if (_ammunitionRejected) then {continue};
 
 
 		_vehs pushBack _newVeh;
 
-		_newVeh setVehicleAmmo 0;
+		_newVeh setVehicleAmmoDef 0;
 		_newVeh setVariable ["BSAFundingSector", _sectorToSpawnIn, true];
 		_newVeh addEventHandler ["Killed", {
 			params ["_vehicle"];
@@ -341,6 +508,14 @@ BATTLESPACE_SPAWN_BATTERY = {
 
 		
 	};
+	call _cleanupRangeProbe;
+	if (_ammunitionRejected) exitWith {
+		BATTLESPACE_ARTILLERY_PIECE_CLASSES = BATTLESPACE_ARTILLERY_PIECE_CLASSES - [_pieceClass];
+		BATTLESPACE_DISABLE_ARTILLERY = BATTLESPACE_ARTILLERY_PIECE_CLASSES isEqualTo [];
+		[_sectorToSpawnIn, _batteryCost] call BATTLESPACE_RESOURCE_DEPOSIT_CLAMPED;
+		deleteGroup _fcrGrp;
+		[format ["Artillery battery rejected (sector=%1, pieceClass=%2, reason=no usable HE magazine, artilleryAmmo=%3, remainingPool=%4)", _sectorToSpawnIn, _pieceClass, _availableShells, BATTLESPACE_ARTILLERY_PIECE_CLASSES], "BATTLESPACE"] call KPLIB_fnc_log;
+	};
 	private _missingPieces = (BATTLESPACE_ARTILLERY_PIECES_PER_BATTERY - count _vehs) max 0;
 	if (_missingPieces > 0) then {
 		[_sectorToSpawnIn, createHashMapFromArray [
@@ -348,13 +523,18 @@ BATTLESPACE_SPAWN_BATTERY = {
 			["manpower", _missingPieces * _crewPerPiece]
 		]] call BATTLESPACE_RESOURCE_DEPOSIT_CLAMPED;
 	};
-	if (_vehs isEqualTo []) exitWith {deleteGroup _fcrGrp};
+	if (_vehs isEqualTo []) exitWith {
+		deleteGroup _fcrGrp;
+		[format ["Artillery battery spawn skipped (sector=%1, pieceClass=%2, shell=%3, targetDistance=%4, rangeMargin=%5, rejectedPieces=%6, reason=no final piece position can cover target area)", _sectorToSpawnIn, _pieceClass, _heShell, round (_spawnPoint distance2D _targetPos), _targetRangeMargin, _rangeRejectedPieces], "BATTLESPACE"] call KPLIB_fnc_log;
+	};
 	_fcrGrp setVariable ["BSAState", ["READY", 0, getPos ((units _fcrGrp)#0)], true];
 	_fcrGrp setVariable ["BSAFundingSector", _sectorToSpawnIn, true];
 	_fcrGrp setVariable ["BSAPieceResource", _pieceResource, true];
+	_fcrGrp setVariable ["BSAHEShell", _heShell, true];
+	_fcrGrp setVariable ["BSAWPShell", _wpShell, true];
 	_fcrGrp setVariable ["Vcm_Disable", true, true];
 	BATTLESPACE_ARTILLERY_SECTIONS pushBack _fcrGrp;
-	[format ["Artillery battery registered (group=%1, sector=%2, pieces=%3, crew=%4)", _fcrGrp, _sectorToSpawnIn, count _vehs, count units _fcrGrp], "BATTLESPACE"] call KPLIB_fnc_log;
+	[format ["Artillery battery registered (group=%1, sector=%2, pieceClass=%3, resource=%4, pieces=%5, crew=%6, HE=%7, WP=%8, artilleryAmmo=%9, targetDistance=%10, rangeMargin=%11, rejectedPieces=%12)", _fcrGrp, _sectorToSpawnIn, _pieceClass, _pieceResource, count _vehs, count units _fcrGrp, _heShell, _wpShell, _availableShells, round (_spawnPoint distance2D _targetPos), _targetRangeMargin, _rangeRejectedPieces], "BATTLESPACE"] call KPLIB_fnc_log;
 
 
 	
@@ -419,6 +599,17 @@ BATTLESPACE_ARTILLERY_POLL_REQUESTS = {
 
 
 	if(CBA_missionTime < _nextTick) exitWith {};
+	if (_nextCycleSwap <= 0) then {
+		_nextCycleSwap = BATTLESPACE_ARTILLERY_MINIMUM_CYCLES_TO_SWAP + floor (random (BATTLESPACE_ARTILLERY_MAXIMUM_CYCLES_TO_SWAP - BATTLESPACE_ARTILLERY_MINIMUM_CYCLES_TO_SWAP));
+		_cycleCount = -1;
+		(_this select 0) set [3, _nextCycleSwap];
+		(_this select 0) set [4, _networkEnabled];
+		BATTLESPACE_ARTILLERY_CYCLES_REQUIRED = _nextCycleSwap;
+		BATTLESPACE_ARTILLERY_NETWORK_ENABLED = _networkEnabled;
+		publicVariable "BATTLESPACE_ARTILLERY_CYCLES_REQUIRED";
+		publicVariable "BATTLESPACE_ARTILLERY_NETWORK_ENABLED";
+		[format ["Artillery observer network initialized (enabled=%1, window=%2 seconds)", _networkEnabled, _nextCycleSwap * BATTLESPACE_ARTILLERY_POLL_COOLDOWN], "BATTLESPACE"] call KPLIB_fnc_log;
+	};
 
 	
 
@@ -429,28 +620,7 @@ BATTLESPACE_ARTILLERY_POLL_REQUESTS = {
 
 	(_this select 0) set [2, BATTLESPACE_ARTILLERY_CURRENT_CYCLE];
 	if(BATTLESPACE_ARTILLERY_CURRENT_CYCLE >= _nextCycleSwap) then {
-
-		if(isNil { BATTLESPACE_ARTILLERY_SAME_ROLLS } ) then {
-			BATTLESPACE_ARTILLERY_SAME_ROLLS = 0;
-		};
-
-		private _swap = (random 100) <= (50 + (BATTLESPACE_ARTILLERY_SAME_ROLLS * 20));
-		
-		if(_swap) then {
-			_newNetworkEnabled = !_newNetworkEnabled;
-		};
-
-		if(_newNetworkEnabled == _networkEnabled) then {
-			BATTLESPACE_ARTILLERY_SAME_ROLLS = BATTLESPACE_ARTILLERY_SAME_ROLLS + 1;
-		} else {
-			BATTLESPACE_ARTILLERY_SAME_ROLLS = 0;
-		};
-
-		publicVariable "BATTLESPACE_ARTILLERY_SAME_ROLLS";
-
-		
-		
-
+		_newNetworkEnabled = !_networkEnabled;
 		private _nextSwap = BATTLESPACE_ARTILLERY_MINIMUM_CYCLES_TO_SWAP + floor (random (BATTLESPACE_ARTILLERY_MAXIMUM_CYCLES_TO_SWAP - BATTLESPACE_ARTILLERY_MINIMUM_CYCLES_TO_SWAP));
 		(_this select 0) set [2, 0];
 		(_this select 0) set [3, _nextSwap];
@@ -461,27 +631,15 @@ BATTLESPACE_ARTILLERY_POLL_REQUESTS = {
 		publicVariable "BATTLESPACE_ARTILLERY_CURRENT_CYCLE";
 		publicVariable "BATTLESPACE_ARTILLERY_CYCLES_REQUIRED";
 		publicVariable "BATTLESPACE_ARTILLERY_NETWORK_ENABLED";
-		
+		if ((count BATTLESPACE_ARTILLERY_OBSERVER_TARGETS) > 0) then {
+			[format ["Artillery observer network toggled (enabled=%1, nextWindow=%2 seconds, activeTargets=%3)", _newNetworkEnabled, _nextSwap * BATTLESPACE_ARTILLERY_POLL_COOLDOWN, count BATTLESPACE_ARTILLERY_OBSERVER_TARGETS], "BATTLESPACE"] call KPLIB_fnc_log;
+		};
 	};
 
 	
 
 	private _lowPop = ([] call KPLIB_fnc_getPlayerCount) <= 20;
-	private _adjustedCooldown = BATTLESPACE_ARTILLERY_POLL_COOLDOWN;
-	// 40 * 40 = 80
-	if(combat_readiness < 100) then {
-		_adjustedCooldown = _adjustedCooldown * 2;
-	};
-	// 80 * 80 = 160
-	if(combat_readiness < 50) then {
-		_adjustedCooldown = _adjustedCooldown * 2;
-	};
-	// 160 * 1.5 = 240
-	// 80 * 1.5 = 120
-	// 40 * 1.5 = 60
-	if(_lowPop) then {
-		_adjustedCooldown = _adjustedCooldown * 1.5;
-	};
+	private _pollCooldown = BATTLESPACE_ARTILLERY_POLL_COOLDOWN;
 	
 
 	private _counterBatteryMultiplier = 1;
@@ -497,11 +655,11 @@ BATTLESPACE_ARTILLERY_POLL_REQUESTS = {
 
 	
 	
-	BATTLESPACE_ARTILLERY_NEXT_TICK_TIME = CBA_missionTime + _adjustedCooldown;
+	BATTLESPACE_ARTILLERY_NEXT_TICK_TIME = CBA_missionTime + _pollCooldown;
 	publicVariable "BATTLESPACE_ARTILLERY_NEXT_TICK_TIME";
 	(_this select 0) set [0, BATTLESPACE_ARTILLERY_NEXT_TICK_TIME];
 
-	(_this select 0) set [1, _counter + _adjustedCooldown * _counterBatteryMultiplier];
+	(_this select 0) set [1, _counter + _pollCooldown * _counterBatteryMultiplier];
 	
 
 	BATTLESPACE_ARTILLERY_COUNTER_BATTERY_TIMER = _counter;
@@ -725,18 +883,41 @@ BATTLESPACE_ARTILLERY_FULFILL_REQUEST = {
 		if (_vehicle isNotEqualTo _x && {alive _vehicle}) then {_vehicles pushBackUnique _vehicle};
 	} forEach units _battery;
 	if (_vehicles isEqualTo []) exitWith {};
+	private _heShell = _battery getVariable ["BSAHEShell", ""];
+	private _wpShell = _battery getVariable ["BSAWPShell", ""];
+	if (_heShell == "") exitWith {
+		if !(_battery getVariable ["BSAAmmoFailureLogged", false]) then {
+			_battery setVariable ["BSAAmmoFailureLogged", true];
+			[format ["Artillery request rejected (group=%1, sector=%2, reason=battery has no resolved HE magazine)", _battery, _battery getVariable ["BSAFundingSector", ""]], "BATTLESPACE"] call KPLIB_fnc_log;
+		};
+	};
+	if (_wp && {_wpShell == ""}) then {
+		_wp = false;
+		_req set [5, false];
+		[format ["Artillery smoke request converted to HE (group=%1, sector=%2, pieceClass=%3, reason=no compatible smoke/WP magazine)", _battery, _battery getVariable ["BSAFundingSector", ""], typeOf (_vehicles select 0)], "BATTLESPACE"] call KPLIB_fnc_log;
+	};
+	private _shellType = [_heShell, _wpShell] select _wp;
 	private _salvos = [_req] call BATTLESPACE_ARTILLERY_GET_REQUEST_SALVOS;
+	if ((_battery getVariable ["BSAPieceResource", ""]) == "rocket_artillery") then {
+		([_shellType] call BATTLESPACE_ARTILLERY_GET_ROCKET_RIPPLE) params ["_minimumRipple"];
+		_salvos = _salvos max _minimumRipple;
+	};
 	private _requestedRounds = _salvos * count _vehicles;
 	private _reservedRounds = [_battery, _requestedRounds] call BATTLESPACE_ARTILLERY_RESERVE_AMMUNITION;
 	if (_reservedRounds <= 0) exitWith {
 		if (BATTLESPACE_ARTILLERY_DEBUG) then {systemChat format ["Battery %1 has no paid ammunition", _battery]};
+		if !(_battery getVariable ["BSANoPaidAmmoLogged", false]) then {
+			_battery setVariable ["BSANoPaidAmmoLogged", true];
+			[format ["Artillery battery awaiting ammunition (group=%1, sector=%2, requested=%3 rockets)", _battery, _battery getVariable ["BSAFundingSector", ""], _requestedRounds], "BATTLESPACE"] call KPLIB_fnc_log;
+		};
 	};
-	{_x setVehicleAmmo 1} forEach _vehicles;
-	private _readyVehicles = _vehicles select {canFire _x};
+	_battery setVariable ["BSANoPaidAmmoLogged", false];
+	{_x setVehicleAmmoDef 1} forEach _vehicles;
+	private _readyVehicles = _vehicles select {canFire _x && {_shellType in getArtilleryAmmo [_x]}};
 	if (_readyVehicles isEqualTo []) exitWith {
-		{_x setVehicleAmmo 0} forEach _vehicles;
+		{_x setVehicleAmmoDef 0} forEach _vehicles;
 		[_battery getVariable ["BSAFundingSector", ""], createHashMapFromArray [["rockets", _reservedRounds]]] call BATTLESPACE_RESOURCE_DEPOSIT_CLAMPED;
-		[format ["Artillery battery removed (group=%1, sector=%2, reason=no fire-capable pieces after paid reload)", _battery, _battery getVariable ["BSAFundingSector", ""]], "BATTLESPACE"] call KPLIB_fnc_log;
+		[format ["Artillery battery removed (group=%1, sector=%2, shell=%3, reason=no compatible fire-capable pieces after paid reload)", _battery, _battery getVariable ["BSAFundingSector", ""], _shellType], "BATTLESPACE"] call KPLIB_fnc_log;
 		BATTLESPACE_ARTILLERY_SECTIONS = BATTLESPACE_ARTILLERY_SECTIONS - [_battery];
 		publicVariable "BATTLESPACE_ARTILLERY_SECTIONS";
 	};
@@ -745,8 +926,10 @@ BATTLESPACE_ARTILLERY_FULFILL_REQUEST = {
 	if (_immediateRefund > 0) then {
 		[_battery getVariable ["BSAFundingSector", ""], createHashMapFromArray [["rockets", _immediateRefund]]] call BATTLESPACE_RESOURCE_DEPOSIT_CLAMPED;
 	};
-	{if !(_x in _readyVehicles) then {_x setVehicleAmmo 0}} forEach _vehicles;
+	{if !(_x in _readyVehicles) then {_x setVehicleAmmoDef 0}} forEach _vehicles;
 	_req set [6, _usableReservation];
+	_req set [7, _shellType];
+	_req set [8, _salvos];
 
 	_state set [0, "IN MISSION"];
 
@@ -761,16 +944,17 @@ BATTLESPACE_ARTILLERY_FULFILL_REQUEST = {
 
 	_battery setVariable ["BSAState", _state, true];
 
-
+	[format ["Artillery mission accepted (group=%1, sector=%2, type=%3, shell=%4, pieces=%5, rounds=%6)", _battery, _battery getVariable ["BSAFundingSector", ""], ["HE", "WP/SMOKE"] select _wp, _shellType, count _readyVehicles, _usableReservation], "BATTLESPACE"] call KPLIB_fnc_log;
 	[_battery, _req, _obsKey] spawn BATTLESPACE_ARTILLERY_DO_REQUEST;
 
 };
 BATTLESPACE_ARTILLERY_DO_REQUEST = {
 	params ["_battery", "_req", "_obsKey"];
 
-	(_req) params [["_observer", objNull], ["_target", nil], ["_accuracy", 0], ["_systemTargeted", false], ["_targetedAt", CBA_missionTime], ["_wp", false], ["_reservedRounds", 0]];
+	(_req) params [["_observer", objNull], ["_target", nil], ["_accuracy", 0], ["_systemTargeted", false], ["_targetedAt", CBA_missionTime], ["_wp", false], ["_reservedRounds", 0], ["_shellType", ""], ["_plannedSalvos", -1]];
 
 	private _shells = [_req] call BATTLESPACE_ARTILLERY_GET_REQUEST_SALVOS;
+	if (_plannedSalvos > 0) then {_shells = _plannedSalvos};
 
 
 	private _vehs = [];
@@ -778,7 +962,7 @@ BATTLESPACE_ARTILLERY_DO_REQUEST = {
 	{
 		private _veh = (vehicle _x);
 
-		if(_veh isEqualTo _x || {!alive _veh} || {!canFire _veh}) then {
+		if(_veh isEqualTo _x || {!alive _veh} || {!canFire _veh} || {!(_shellType in getArtilleryAmmo [_veh])}) then {
 		continue;
 		};
 		_veh doWatch (_target getPos [0,0]);
@@ -786,6 +970,19 @@ BATTLESPACE_ARTILLERY_DO_REQUEST = {
 	} forEach (units _battery);
 
 	_vehs = _vehs arrayIntersect _vehs;
+	private _isRocketArtillery = (_battery getVariable ["BSAPieceResource", ""]) == "rocket_artillery";
+	private _rocketMagazineCapacity = 0;
+	private _rocketRippleSize = 1;
+	private _roundsPerPiece = _shells;
+	private _fireOrdersPerPiece = _shells;
+	if (_isRocketArtillery) then {
+		([_shellType] call BATTLESPACE_ARTILLERY_GET_ROCKET_RIPPLE) params ["_resolvedRippleSize", "_resolvedMagazineCapacity"];
+		_rocketRippleSize = _resolvedRippleSize;
+		_rocketMagazineCapacity = _resolvedMagazineCapacity;
+		_roundsPerPiece = _shells min _rocketMagazineCapacity;
+		_fireOrdersPerPiece = ceil (_roundsPerPiece / _rocketRippleSize);
+		[format ["Rocket artillery ripple started (group=%1, shell=%2, pieces=%3, paidRounds=%4, roundsPerPiece=%5, rippleSize=%6, ordersPerPiece=%7)", _battery, _shellType, count _vehs, _reservedRounds, _roundsPerPiece, _rocketRippleSize, _fireOrdersPerPiece], "BATTLESPACE"] call KPLIB_fnc_log;
+	};
 
 
 
@@ -796,17 +993,24 @@ BATTLESPACE_ARTILLERY_DO_REQUEST = {
 	private _shellsFired = 0;
 	private _roundsRemaining = _reservedRounds;
 
-	private _shellType = [BATTLESPACE_ARTILLERY_SHELL, BATTLESPACE_ARTILLERY_WP_SHELL] select _wp;
-
 	if (BATTLESPACE_ARTILLERY_DEBUG) then {systemChat format ["We are shooting %1", _shellType];};
-	for "_i" from 1 to _shells do {
+	for "_i" from 1 to _fireOrdersPerPiece do {
 		if (_roundsRemaining <= 0) exitWith {};
 		{	
 			if (_roundsRemaining <= 0) then {continue};
+			private _roundsThisOrder = 1;
+			if (_isRocketArtillery) then {
+				_roundsThisOrder = (_rocketRippleSize min (_roundsPerPiece - ((_i - 1) * _rocketRippleSize))) min _roundsRemaining;
+			};
+			if (_roundsThisOrder <= 0) then {continue};
 
 			
 			private _minDispersion = [_accuracy, _wp] call BATTLESPACE_GET_MIN_DISPERSION;
 			private _maxDispersion = [_accuracy, _wp] call BATTLESPACE_GET_MAX_DISPERSION;
+			if (_isRocketArtillery) then {
+				_minDispersion = _minDispersion * 1.5;
+				_maxDispersion = _maxDispersion * 1.5;
+			};
 
 			
 
@@ -828,11 +1032,11 @@ BATTLESPACE_ARTILLERY_DO_REQUEST = {
 					};
 				};
 
-				_inRange = _tLoc inRangeOfArtillery [[_x], _shellType];
+				_inRange = _new inRangeOfArtillery [[_x], _shellType];
 
 				if(_inRange) then {
-					_shellsFired = _shellsFired + 1;
-					_roundsRemaining = _roundsRemaining - 1;
+					_shellsFired = _shellsFired + _roundsThisOrder;
+					_roundsRemaining = _roundsRemaining - _roundsThisOrder;
 					_tLoc = _new;
 					_execs = 26;
 				};
@@ -853,7 +1057,7 @@ BATTLESPACE_ARTILLERY_DO_REQUEST = {
 
 				
 
-				_x commandArtilleryFire [_tLoc, _shellType, 1];
+				_x commandArtilleryFire [_tLoc, _shellType, _roundsThisOrder];
 			};
 		
 		} forEach _vehs;
@@ -910,29 +1114,17 @@ BATTLESPACE_ARTILLERY_DO_REQUEST = {
 	[_obsKey] remoteExec ["BATTLESPACE_ARTILLERY_BROADCAST_CLEAR_TARGET", 2];
 	
 
-	{[_x, 0] remoteExec ["setVehicleAmmo", _x]} forEach _vehs;
+	{[_x, 0] remoteExec ["setVehicleAmmoDef", _x]} forEach _vehs;
 	private _unusedRounds = (_reservedRounds - _shellsFired) max 0;
 	if (_unusedRounds > 0) then {
 		private _fundingSector = _battery getVariable ["BSAFundingSector", ""];
 		[_fundingSector, createHashMapFromArray [["rockets", _unusedRounds]]] call BATTLESPACE_RESOURCE_DEPOSIT_CLAMPED;
 	};
-
-	
-	
-	private _lowPop = ([] call KPLIB_fnc_getPlayerCount) <= 35;
-
-	private _cdMultiplier = 1;
-
-	if(_lowPop) then {
-		_cdMultiplier = 2;
-	};
-
+	private _cooldown = BATTLESPACE_ARTILLERY_MIN_COOLDOWN max (_shells * BATTLESPACE_ARTILLERY_COOLDOWN_PER_SHELL);
+	_cooldown = BATTLESPACE_ARTILLERY_MAX_COOLDOWN min _cooldown;
 	if(combat_readiness < 50) then {
-		_cdMultiplier = _cdMultiplier * 1.5;
+		_cooldown = _cooldown * 1.5;
 	};
-	private _cooldown =  (BATTLESPACE_ARTILLERY_MIN_COOLDOWN * _cdMultiplier) max (_shells * (BATTLESPACE_ARTILLERY_COOLDOWN_PER_SHELL));
-
-	_cooldown = (BATTLESPACE_ARTILLERY_MAX_COOLDOWN * _cdMultiplier) min _cooldown;
 
 	_state = _battery getVariable "BSAState";
 	// Because now the battery may get suppressed mid way through the mission, we need to check if the state is same as before setting to the next state
@@ -942,6 +1134,7 @@ BATTLESPACE_ARTILLERY_DO_REQUEST = {
 	// We still set the cooldown time though, that way if something is suppressed and their timer elapses, then we'd set it to COOLING DOWN instead of READY
 	_state set [9, CBA_missionTime + _cooldown];
 	_battery setVariable ["BSAState", _state, true];
+	[format ["Artillery mission completed (group=%1, sector=%2, type=%3, shell=%4, fired=%5, refunded=%6, cooldown=%7 seconds)", _battery, _battery getVariable ["BSAFundingSector", ""], ["HE", "WP/SMOKE"] select _wp, _shellType, _shellsFired, _unusedRounds, _cooldown], "BATTLESPACE"] call KPLIB_fnc_log;
 	_cooldown = _cooldown - 15;
 
 	sleep 15;

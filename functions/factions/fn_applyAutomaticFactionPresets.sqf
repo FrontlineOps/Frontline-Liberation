@@ -265,35 +265,7 @@ private _opfor = _catalogs get "opfor";
 
     private _artillery = _opfor get "artillery";
     if (_artillery isNotEqualTo []) then {
-        BATTLESPACE_ARTILLERY_PIECE = _artillery select 0;
-        private _weaponClasses = getArray (configFile >> "CfgVehicles" >> BATTLESPACE_ARTILLERY_PIECE >> "weapons");
-        private _collectTurretWeapons = {
-            params ["_root"];
-            {
-                _weaponClasses append getArray (_x >> "weapons");
-                [_x >> "Turrets"] call _collectTurretWeapons;
-            } forEach (configProperties [_root, "isClass _x", true]);
-        };
-        [configFile >> "CfgVehicles" >> BATTLESPACE_ARTILLERY_PIECE >> "Turrets"] call _collectTurretWeapons;
-
-        private _shells = [];
-        {
-            {
-                private _ammo = getText (configFile >> "CfgMagazines" >> _x >> "ammo");
-                private _ammoCfg = configFile >> "CfgAmmo" >> _ammo;
-                if (isClass _ammoCfg && {getNumber (_ammoCfg >> "indirectHit") > 0}) then {
-                    _shells pushBackUnique _x;
-                };
-            } forEach getArray (configFile >> "CfgWeapons" >> _x >> "magazines");
-        } forEach _weaponClasses;
-        if (_shells isNotEqualTo []) then {
-            BATTLESPACE_ARTILLERY_SHELL = _shells select 0;
-            private _wpIndex = _shells findIf {
-                private _text = toLower format ["%1 %2", _x, getText (configFile >> "CfgMagazines" >> _x >> "displayName")];
-                (_text find "white phosphorus") >= 0 || {(_text find " wp") >= 0} || {(_text find "smoke") >= 0}
-            };
-            BATTLESPACE_ARTILLERY_WP_SHELL = _shells select (_wpIndex max 0);
-        };
+        BATTLESPACE_ARTILLERY_PIECE_CLASSES = +_artillery;
     } else {
         BATTLESPACE_DISABLE_ARTILLERY = true;
     };
