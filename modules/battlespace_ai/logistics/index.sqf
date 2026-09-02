@@ -1065,6 +1065,9 @@ BATTLESPACE_STRATEGIC_HANDLE_TASK_FORCE_EVENT = {
     // Claim settlement before doing any side effects so duplicate events are harmless.
     BATTLESPACE_STRATEGIC_OPERATIONS deleteAt _taskForceId;
     private _kind = _operation getOrDefault ["kind", ""];
+    if (_kind == "AIR_RESPONSE") then {
+        [_taskForceId, _operation, _eventType] call BATTLESPACE_AIR_RESPONSE_APPLY_TARGET_COOLDOWN;
+    };
 
     if (_eventType == "DESTROYED") exitWith {
         if (_operation getOrDefault ["attackNotified", false]) then {
@@ -1120,6 +1123,7 @@ BATTLESPACE_STRATEGIC_HANDLE_TASK_FORCE_EVENT = {
                 [_taskForceId, _taskForce, _operation] call BATTLESPACE_BATTLEGROUP_SETTLE;
             };
         };
+        case "DEFENDER";
         case "REINFORCEMENT";
         case "AIRBORNE_TRANSPORT";
         case "AIRBORNE_REINFORCEMENT";

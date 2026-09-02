@@ -273,6 +273,7 @@ BATTLESPACE_TASK_FORCES_SAVE = {
 	private _invalidTaskForces = [];
 
 	{
+		[_x, _y] call BATTLESPACE_TASK_FORCE_RELEASE_ABANDONED_VEHICLES;
 		_y params [
 			"_taskForceType", // 0
 			"_currentLoc", // 1
@@ -600,6 +601,111 @@ BATTLESPACE_TASK_FORCES_CLUSTER_BLUFOR = {
 	// publicVariable "BATTLESPACE_TASK_FORCES_BLUFOR_CLUSTERS";
 	// diag_log format ["Blufor Clustering Process clustered %1 BLUFOR into %2 clusters", count allPlayers, count BATTLESPACE_TASK_FORCES_BLUFOR_CLUSTERS];
 };
+
+BATTLESPACE_TASK_FORCE_RELEASE_ABANDONED_VEHICLES = {
+	params ["_taskForceName", "_taskForce"];
+	private _activeObjects = _taskForce param [8, []];
+	private _composition = _taskForce param [3, createHashMap];
+	private _vehicles = +(_composition getOrDefault ["vehicles", []]);
+	if (_activeObjects isEqualTo [] || {_vehicles isEqualTo []}) exitWith {0};
+
+	private _personnel = _activeObjects select {
+		!isNull _x && {_x isKindOf "Man"} && {alive _x}
+	};
+	private _retainedObjects = [];
+	private _releasedClasses = [];
+	{
+		private _vehicle = _x;
+		private _vehicleIndex = if (
+			!isNull _vehicle
+			&& {alive _vehicle}
+			&& {!(_vehicle isKindOf "Man")}
+			&& {!(_vehicle isKindOf "Air")}
+			&& {!(_vehicle getVariable ["KPLIB_captured", false])}
+		) then {
+			_vehicles find (typeOf _vehicle)
+		} else {
+			-1
+		};
+
+		private _hasLivingCrew = _vehicleIndex >= 0 && {
+			_personnel findIf {
+				private _unit = _x;
+				vehicle _unit isEqualTo _vehicle
+				|| {assignedVehicle _unit isEqualTo _vehicle}
+			} >= 0
+		};
+
+		if (_vehicleIndex >= 0 && {!_hasLivingCrew}) then {
+			_vehicles deleteAt _vehicleIndex;
+			_releasedClasses pushBack (typeOf _vehicle);
+			_vehicle setVariable ["TASKFORCEID", nil];
+		} else {
+			_retainedObjects pushBack _vehicle;
+		};
+	} forEach _activeObjects;
+
+	if (_releasedClasses isNotEqualTo []) then {
+		_composition set ["vehicles", _vehicles];
+		_taskForce set [3, _composition];
+		_taskForce set [8, _retainedObjects];
+		[
+			format [
+				"Task force %1 (%2) released %3 abandoned vehicle(s) from logical strength: %4",
+				_taskForceName,
+				_taskForce param [0, ""],
+				count _releasedClasses,
+				_releasedClasses
+			],
+			"BATTLESPACE"
+		] call KPLIB_fnc_log;
+	};
+
+	count _releasedClasses
+};
+
+BATTLESPACE_TASK_FORCE_RELEASE_PERSON = {
+	params [["_unit", objNull, [objNull]]];
+	if (!isServer || {isRemoteExecuted} || {isNull _unit}) exitWith {false};
+
+	private _taskForceName = _unit getVariable ["TASKFORCEID", ""];
+	private _countsAsManpower = _taskForceName isNotEqualTo "";
+	private _unitGroup = group _unit;
+	if (_taskForceName isEqualTo "") then {
+		if (!isNull _unitGroup) then {
+			_taskForceName = _unitGroup getVariable ["TASKFORCEID", ""];
+		};
+	};
+	if (_taskForceName isEqualTo "") then {
+		{
+			if ((_y param [8, []]) find _unit >= 0) exitWith {
+				_taskForceName = _x;
+			};
+		} forEach BATTLESPACE_TASK_FORCES;
+	};
+	if (_taskForceName isEqualTo "") exitWith {false};
+
+	private _taskForce = BATTLESPACE_TASK_FORCES get _taskForceName;
+	if (isNil "_taskForce") exitWith {
+		_unit setVariable ["TASKFORCEID", nil];
+		false
+	};
+
+	private _composition = _taskForce param [3, createHashMap];
+	if (_countsAsManpower) then {
+		private _manpower = floor ((_composition getOrDefault ["manpower", 0]) max 0);
+		_composition set ["manpower", (_manpower - 1) max 0];
+		_taskForce set [3, _composition];
+	};
+	_taskForce set [8, (_taskForce param [8, []]) select {_x isNotEqualTo _unit}];
+	if (!isNull _unitGroup && {count units _unitGroup <= 1}) then {
+		_taskForce set [4, (_taskForce param [4, []]) select {_x isNotEqualTo _unitGroup}];
+	};
+	BATTLESPACE_TASK_FORCES set [_taskForceName, _taskForce];
+	_unit setVariable ["TASKFORCEID", nil];
+	true
+};
+
 BATTLESPACE_TASK_FORCES_EVALUATE = {
 	(_this select 0) params [
 		["_nextTick", 0],
@@ -680,6 +786,8 @@ BATTLESPACE_TASK_FORCES_EVALUATE = {
 			[_taskForceName] call BATTLESPACE_TASK_FORCE_CANCEL_SPAWN_ADMISSION;
 			continue;	
 		};
+
+		[_taskForceName, _y] call BATTLESPACE_TASK_FORCE_RELEASE_ABANDONED_VEHICLES;
 
 		// Check if valid still
 		private _isValid = [_x, _y] call (_model get "isAlive");

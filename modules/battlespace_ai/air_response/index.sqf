@@ -6,6 +6,30 @@ if (isNil "BATTLESPACE_AIR_RESPONSE_NEXT_CLASS_WARNING") then {
     BATTLESPACE_AIR_RESPONSE_NEXT_CLASS_WARNING = 0;
 };
 
+BATTLESPACE_AIR_RESPONSE_APPLY_TARGET_COOLDOWN = {
+    params ["_taskForceId", "_operation", "_eventType"];
+    private _targetNetId = _operation getOrDefault ["targetNetId", ""];
+    if (_targetNetId == "") exitWith {false};
+
+    private _target = objectFromNetId _targetNetId;
+    if (isNull _target || {!alive _target}) exitWith {false};
+
+    private _duration = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_AIR_RESPONSE_TARGET_COOLDOWN", 600];
+    private _cooldownUntil = (_target getVariable ["BATTLESPACE_AIR_RESPONSE_TARGET_COOLDOWN_UNTIL", 0]) max (CBA_missionTime + _duration);
+    private _outcome = _operation getOrDefault ["outcome", ""];
+    if (_outcome == "") then {_outcome = _eventType};
+    _target setVariable ["BATTLESPACE_AIR_RESPONSE_TARGET_COOLDOWN_UNTIL", _cooldownUntil];
+    [format [
+        "Air response %1 ended as %2; target %3 (%4) cannot trigger a new response for %5 seconds",
+        _taskForceId,
+        _outcome,
+        typeOf _target,
+        _targetNetId,
+        round (_cooldownUntil - CBA_missionTime)
+    ]] call BATTLESPACE_STRATEGIC_LOG;
+    true
+};
+
 BATTLESPACE_AIR_RESPONSE_CLASSIFY_CONTACT = {
     params ["_vehicle"];
     if (isNull _vehicle || {!alive _vehicle}) exitWith {""};
@@ -25,6 +49,7 @@ BATTLESPACE_AIR_RESPONSE_COLLECT_CONTACTS = {
         if (!alive _x || {side group _x != GRLIB_side_friendly}) then {continue};
         private _vehicle = vehicle _x;
         if (_vehicle isEqualTo _x || {_vehicle in _seen}) then {continue};
+        if (CBA_missionTime < (_vehicle getVariable ["BATTLESPACE_AIR_RESPONSE_TARGET_COOLDOWN_UNTIL", 0])) then {continue};
         private _kind = [_vehicle] call BATTLESPACE_AIR_RESPONSE_CLASSIFY_CONTACT;
         if (_kind == "") then {continue};
         _seen pushBack _vehicle;

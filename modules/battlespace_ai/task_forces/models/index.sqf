@@ -548,6 +548,148 @@ BATTLESPACE_TASK_FORCE_DEFAULT_TRY_SPAWN = {
 	true
 };
 
+BATTLESPACE_TASK_FORCE_RELEASE_DISABLED_AIRCRAFT = {
+	params ["_taskForceName", "_taskForce"];
+	private _activeObjects = _taskForce param [8, []];
+	if (_activeObjects isEqualTo []) exitWith {false};
+
+	private _aircraft = objNull;
+	{
+		if (!isNull _x && {!(_x isKindOf "Man")} && {_x isKindOf "Air"}) exitWith {
+			_aircraft = _x;
+		};
+	} forEach _activeObjects;
+	private _driver = if (isNull _aircraft) then {objNull} else {driver _aircraft};
+	private _reason = switch (true) do {
+		case (isNull _aircraft): {"aircraft missing"};
+		case (!alive _aircraft): {"airframe destroyed"};
+		case (!canMove _aircraft): {"aircraft immobile"};
+		case (isNull _driver || {!alive _driver}): {"driver lost"};
+		default {""};
+	};
+	if (_reason == "") exitWith {false};
+
+	private _operation = BATTLESPACE_STRATEGIC_OPERATIONS get _taskForceName;
+	if (!isNil "_operation") then {
+		_operation set ["phase", "LOST"];
+		_operation set ["outcome", "LOST"];
+		BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceName, _operation];
+	};
+	{
+		if (!isNull _x) then {_x setVariable ["TASKFORCEID", nil]};
+	} forEach _activeObjects;
+	{
+		if (!isNull _x) then {_x setVariable ["TASKFORCEID", nil]};
+	} forEach (_taskForce param [4, []]);
+	_taskForce set [4, []];
+	_taskForce set [8, []];
+	BATTLESPACE_TASK_FORCE_PATHS deleteAt _taskForceName;
+	[format [
+		"Air task force %1 (%2) released after physical loss: %3",
+		_taskForceName,
+		_taskForce param [0, ""],
+		_reason
+	]] call BATTLESPACE_STRATEGIC_LOG;
+	true
+};
+
+BATTLESPACE_TASK_FORCE_DEFENDER_RETREAT_TICK = {
+	params ["_taskForceName", "_taskForce"];
+	if (isNil "BATTLESPACE_STRATEGIC_OPERATIONS") exitWith {[false, false]};
+
+	private _operation = BATTLESPACE_STRATEGIC_OPERATIONS get _taskForceName;
+	if (isNil "_operation" || {(_operation getOrDefault ["kind", ""]) != "DEFENDER"}) exitWith {[false, false]};
+
+	private _composition = _taskForce param [3, createHashMap];
+	private _manpower = _composition getOrDefault ["manpower", 0];
+	private _retreatThreshold = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DEFENDER_RETREAT_MANPOWER", 3];
+	private _phase = _operation getOrDefault ["phase", "ACTIVE"];
+	private _activeGroups = (_taskForce param [4, []]) select {
+		!isNull _x && {(units _x) findIf {alive _x} >= 0}
+	};
+	_taskForce set [4, _activeGroups];
+
+	private _currentLocation = _taskForce param [1, []];
+	if (_activeGroups isNotEqualTo []) then {
+		_currentLocation = getPos (leader (_activeGroups select 0));
+		_taskForce set [1, _currentLocation];
+	};
+
+	if (_phase != "RETURNING" && {_manpower > 0} && {_manpower < _retreatThreshold}) then {
+		private _returnSector = _operation getOrDefault ["originSector", _operation getOrDefault ["fundingSector", ""]];
+		private _returnState = BATTLESPACE_SECTOR_STATES get _returnSector;
+		if (_returnSector != "" && {!isNil "_returnState"} && {(_returnState getOrDefault ["owner", ""]) == "OPFOR"}) then {
+			private _returnPosition = getMarkerPos _returnSector;
+			_phase = "RETURNING";
+			_operation set ["phase", _phase];
+			_operation set ["returnSector", _returnSector];
+			_taskForce set [2, _returnPosition];
+			BATTLESPACE_TASK_FORCE_PATHS deleteAt _taskForceName;
+			BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceName, _operation];
+			[format [
+				"Funded defender %1 (%2) is returning to %3 with %4 manpower",
+				_taskForceName,
+				_taskForce param [0, ""],
+				_returnSector,
+				_manpower
+			]] call BATTLESPACE_STRATEGIC_LOG;
+		};
+	};
+
+	if (_phase != "RETURNING") exitWith {[false, false]};
+
+	private _returnSector = _operation getOrDefault ["returnSector", _operation getOrDefault ["originSector", ""]];
+	private _returnState = BATTLESPACE_SECTOR_STATES get _returnSector;
+	if (_returnSector == "" || {isNil "_returnState"} || {(_returnState getOrDefault ["owner", ""]) != "OPFOR"}) exitWith {[false, false]};
+
+	private _returnPosition = getMarkerPos _returnSector;
+	private _returnRadius = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DEFENDER_RETURN_RADIUS", 100];
+	private _arrived = if (_activeGroups isNotEqualTo []) then {
+		_activeGroups findIf {
+			private _groupLeader = leader _x;
+			isNull _groupLeader || {_groupLeader distance2D _returnPosition > _returnRadius}
+		} < 0
+	} else {
+		_currentLocation distance2D _returnPosition <= _returnRadius
+	};
+
+	if (_arrived) exitWith {
+		_operation set ["outcome", "RETURNED"];
+		BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceName, _operation];
+		[format [
+			"Funded defender %1 (%2) returned to %3 and will be absorbed with %4 manpower",
+			_taskForceName,
+			_taskForce param [0, ""],
+			_returnSector,
+			_manpower
+		]] call BATTLESPACE_STRATEGIC_LOG;
+		[true, true]
+	};
+
+	if (_activeGroups isEqualTo []) then {
+		[_taskForceName, _taskForce] call BATTLESPACE_TASK_FORCE_MOVE_SIMULATED_GROUP;
+	} else {
+		private _newReturnGroups = _activeGroups select {
+			!(_x getVariable ["BATTLESPACE_DEFENDER_RETURNING", false])
+		};
+		if (_newReturnGroups isNotEqualTo []) then {
+			{
+				[_x, true, true] call KPLIB_fnc_taskReset;
+				_x setVariable ["BATTLESPACE_DEFENDER_RETURNING", true];
+			} forEach _newReturnGroups;
+			private _route = BATTLESPACE_TASK_FORCE_PATHS getOrDefault [_taskForceName, []];
+			if ([_route] call BATTLESPACE_PATHFIND_ROUTE_IS_VALID) then {
+				[_taskForceName, _taskForce, _route] call BATTLESPACE_TASK_FORCE_APPLY_ROUTE_TO_ACTIVE;
+			};
+		};
+		if !([BATTLESPACE_TASK_FORCE_PATHS getOrDefault [_taskForceName, []]] call BATTLESPACE_PATHFIND_ROUTE_IS_VALID) then {
+			[_taskForceName, _currentLocation, _returnPosition] call QUEUE_PATHFIND_REQUEST;
+		};
+	};
+
+	[true, false]
+};
+
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\models\outpost.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\models\convoy.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\models\defensivePatrol.sqf";

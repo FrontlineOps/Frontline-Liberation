@@ -123,15 +123,8 @@
 					_taskForce set [4, _activeGroups - _invalids];
 				};
 
-				private _alive = true;
-
 				private _currentManpower = _composition getOrDefault ["manpower", 0];
-				// For the sake of performance and etc.. need a minimal amount to continue to save / be valid.
-				if(_currentManpower < BATTLESPACE_TASK_FORCE_MINIMUM_SIZE) then {
-					_alive = false;
-				};
-
-				_alive
+				_currentManpower > 0
 			}
 		],
 		[
@@ -153,6 +146,10 @@
 					["_spawning", false], // 11
 					["_hpSector", nil] // 12
 				];
+
+				private _retreat = [_taskForceName, _taskForce] call BATTLESPACE_TASK_FORCE_DEFENDER_RETREAT_TICK;
+				_retreat params ["_retreating", "_retreatDone"];
+				if (_retreating) exitWith {_retreatDone};
 
 				_state params ["_status", ["_currentPathIndex", 0]];
 				

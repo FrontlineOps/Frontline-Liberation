@@ -50,25 +50,23 @@
             {
                 params ["_taskForceName", "_taskForce"];
                 private _composition = _taskForce param [3, createHashMap];
-                if ((_composition getOrDefault ["vehicles", []]) isEqualTo []) exitWith {false};
                 private _activeObjects = _taskForce param [8, []];
-                if (_activeObjects isEqualTo []) exitWith {true};
-                _activeObjects findIf {
-                    !isNull _x
-                    && {!(_x isKindOf "Man")}
-                    && {_x isKindOf "Air"}
-                    && {alive _x}
-                    && {canMove _x}
-                    && {!(_x getVariable ["KPLIB_captured", false])}
-                    && {!isNull (driver _x)}
-                    && {alive (driver _x)}
-                } >= 0
+                if (_activeObjects isNotEqualTo []) exitWith {
+                    _activeObjects findIf {
+                        !isNull _x
+                        && {!(_x isKindOf "Man")}
+                        && {_x isKindOf "Air"}
+                        && {_x getVariable ["KPLIB_captured", false]}
+                    } < 0
+                };
+                (_composition getOrDefault ["vehicles", []]) isNotEqualTo []
             }
         ],
         [
             "onDecisionTick",
             {
                 params ["_taskForceName", "_taskForce"];
+                if ([_taskForceName, _taskForce] call BATTLESPACE_TASK_FORCE_RELEASE_DISABLED_AIRCRAFT) exitWith {true};
                 if (isNil "BATTLESPACE_AIRBORNE_TRANSPORT_ON_DECISION_TICK") exitWith {false};
                 [_taskForceName, _taskForce] call BATTLESPACE_AIRBORNE_TRANSPORT_ON_DECISION_TICK
             }
