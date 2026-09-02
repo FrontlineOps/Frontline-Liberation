@@ -49,6 +49,9 @@ class KPLIB {
         file = "functions\players";
 
         class bluforKillWarning {};
+        class configureChatChannels {
+            postInit = 1;
+        };
         class getCommander      {};
         class getLocalCap       {};
         class getNearbyPlayers  {};

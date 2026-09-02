@@ -116,17 +116,6 @@ taskManagement_markers3D = 0;
 taskManagement_propagate = 0;
 taskManagement_drawDist = 0;
 
-// Chat settings  
-// {id, text, voice}
-disableChannels[] = {
-    {0,true,true},
-    {1,false,true},
-    {2,true,true},
-    {3,true,true},
-    {4,true,true},
-    {5,true,true}
-};
-
 class CfgDebriefing {
     #include "KPLIB_debriefs.hpp"
 };

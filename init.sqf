@@ -106,20 +106,6 @@ if (!isDedicated && hasInterface) then {
 			}
 		];
 
-        //--- Removes system chat
-        addmissioneventhandler [ 
-        	"eachframe", 
-        	{ 
-        		if ( 
-        			shownchat 
-        			&& (
-        				!( localnamespace getvariable [ "DebugEnableChat", false ] ) 
-            			&& !( localnamespace getvariable [ "AdminSlot", false ] ) 
-        			)
-        		) then { showchat false } 
-        	} 
-        ]
-
 } else {
     setViewDistance 1600;
 };
