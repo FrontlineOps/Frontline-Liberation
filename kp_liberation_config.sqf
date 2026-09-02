@@ -311,7 +311,9 @@ KP_liberation_resistance_at_chance = 50;     			// RPG chance (tier 2 and 3)
 KP_liberation_resistance_sector_chance = 75; 			// Guerilla chance to join ongoing attack
 KP_liberation_resistance_ambush_chance = 80; 			// Guerilla spawn in BLUFOR sectors at low civrep
 
-KP_liberation_sector_resource_chance = 40;   			// BLUFOR sector random resources chance on capping civvie sector
+KP_liberation_sector_resource_chance = 100;  			// BLUFOR sector resource chance on capture
+KP_liberation_sector_resource_crate_count = [3, 5];	// Inclusive physical crate count range
+KP_liberation_sector_resource_crate_value = 100;		// Base value per crate before resource multiplier
 
 // Remove terrain objects around battlegroup spawns
 KP_liberation_battlegroup_clearance = [];
