@@ -291,7 +291,11 @@ GRLIB_defended_buildingpos_part = 0.7;       			// Multiplier for defenders in b
 GRLIB_battlegroup_size = 4;                  			// Battlegroup size
 GRLIB_vulnerability_timer = 840;             			// OPFOR sector cap timer (sec)
 GRLIB_radiotower_size = 2500;                			// Radio tower range
-GRLIB_surrender_chance = 60;                 			// Surrender after heavy losses chance
+KPLIB_surrender_chance = 40;                 			// Surrender chance after a group breaks or a battle is resolved
+KPLIB_surrender_max_prisoners_per_event = 6;			// Maximum prisoners created by one surrender event
+KPLIB_surrender_group_survivor_ratio = 0.5;			// Maximum surviving share before a casualty-depleted group may surrender
+KPLIB_surrender_player_witness_distance = 500;		// A living BLUFOR player must be this close to a broken group (m)
+KPLIB_surrender_escort_break_distance = 150;			// Distance at which an abandoned escorted prisoner escapes (m)
 
 GRLIB_cleanup_delay = 250;                   			// Corpse cleanup time (sec)
 

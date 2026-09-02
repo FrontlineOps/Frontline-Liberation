@@ -511,25 +511,17 @@ KPLIB_INTEL_SERVER_REGISTER_PRISONER_ESCORT = {
         [format ["Prisoner intelligence escort registration rejected (unit=%1, reason=player beyond %2m)", _unitId, _interactionDistance], "INTELLIGENCE"] call KPLIB_fnc_log;
     };
 
-    private _previousEscort = _unit getVariable ["KPLIB_intelligenceEscort", objNull];
-    _unit setVariable ["KPLIB_intelligenceEscort", _caller];
-    if (_previousEscort isNotEqualTo _caller) then {
-        [format ["Prisoner intelligence escort registered (unit=%1, class=%2, playerOwner=%3)", _unitId, typeOf _unit, owner _caller], "INTELLIGENCE"] call KPLIB_fnc_log;
-    };
-
     if ([_caller] call KPLIB_INTEL_SERVER_IS_NEAR_TERMINAL) then {
+        _unit setVariable ["KPLIB_intelligenceEscort", _caller];
         [_unit, _caller, "terminal escort action"] call KPLIB_INTEL_SERVER_COMMIT_PRISONER;
+    } else {
+        if (isNil "KPLIB_SURRENDER_SERVER_BEGIN_ESCORT") exitWith {
+            [format ["Prisoner intelligence escort rejected (unit=%1, reason=surrender subsystem unavailable)", _unitId], "INTELLIGENCE"] call KPLIB_fnc_log;
+        };
+        if !([_unit, _caller] call KPLIB_SURRENDER_SERVER_BEGIN_ESCORT) then {
+            [format ["Prisoner intelligence escort rejected (unit=%1, reason=surrender subsystem refused transition)", _unitId], "INTELLIGENCE"] call KPLIB_fnc_log;
+        };
     };
-};
-
-KPLIB_INTEL_SERVER_COMPLETE_REGISTERED_PRISONER = {
-    params [["_unit", objNull, [objNull]]];
-    if (!isRemoteExecuted || {isNull _unit} || {remoteExecutedOwner != owner _unit}) exitWith {
-        private _unitId = if (isNull _unit) then {"null"} else {netId _unit};
-        [format ["Prisoner intelligence delivery rejected (unit=%1, source=registered escort, reason=invalid unit locality)", _unitId], "INTELLIGENCE"] call KPLIB_fnc_log;
-    };
-    private _caller = if (isNull _unit) then {objNull} else {_unit getVariable ["KPLIB_intelligenceEscort", objNull]};
-    [_unit, _caller, "registered escort"] call KPLIB_INTEL_SERVER_COMMIT_PRISONER;
 };
 
 KPLIB_INTEL_SERVER_ACTIVATE_COVERAGE = {
@@ -573,12 +565,6 @@ KPLIB_INTEL_SERVER_COLLECT_DOCUMENT = {
     _object setVariable ["KPLIB_intelligenceCollected", true, true];
     deleteVehicle _object;
     [[missionNamespace getVariable ["KPLIB_intelligence_document_yield", [8, 15]]] call KPLIB_INTEL_SERVER_RANDOM_YIELD, "documents"] call KPLIB_INTEL_SERVER_ADD_RESERVE;
-};
-
-KPLIB_INTEL_SERVER_DELIVER_PRISONER = {
-    params [["_unit", objNull, [objNull]]];
-    private _caller = call KPLIB_INTEL_SERVER_GET_CALLER;
-    [_unit, _caller, "player request"] call KPLIB_INTEL_SERVER_COMMIT_PRISONER;
 };
 
 KPLIB_INTEL_SERVER_DELIVER_INFORMANT = {

@@ -38,6 +38,7 @@ OPFOR_ARSENAL_CRATES = [];
 [] call compileFinal preprocessFileLineNumbers "scripts\shared\fetch_params.sqf";
 [] call compileFinal preprocessFileLineNumbers "kp_liberation_config.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\index.sqf";
+[] call compileFinal preprocessFileLineNumbers "modules\surrender\index.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\intelligence\index.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\COPS\index.sqf";
 

@@ -336,8 +336,9 @@ KPLIB_INTEL_CLIENT_INIT = {
                 params ["_target", "_player"];
                 if (_target getVariable ["KPLIB_intelligencePrisoner", false]) then {
                     [_target] remoteExecCall ["KPLIB_INTEL_SERVER_REGISTER_PRISONER_ESCORT", 2];
+                } else {
+                    [_target] joinSilent group _player;
                 };
-                [_target] joinSilent group _player;
             },
             {
                 params ["_target", "_player"];
