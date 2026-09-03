@@ -195,12 +195,7 @@ if (hasInterface) then {
         {
             params ["_target", "_player"];
             _target isEqualTo _player
-                && {alive _player}
-                && {side group _player == GRLIB_side_friendly}
-                && {isNull objectParent _player}
                 && {_player getVariable ["ace_medical_medicclass", 0] == 2}
-                && {(getPosATL _player select 2) <= KPLIB_fieldHospital_groundTolerance}
-                && {!(surfaceIsWater (getPosATL _player))}
                 && {isNull KPLIB_FIELD_HOSPITAL_CLIENT_HOSPITAL || {!alive KPLIB_FIELD_HOSPITAL_CLIENT_HOSPITAL}}
         }
     ] call ace_interact_menu_fnc_createAction;
@@ -247,6 +242,8 @@ if (hasInterface) then {
         }
     ] call ace_interact_menu_fnc_createAction;
     [KPLIB_fieldHospital_classname, 0, ["ACE_MainActions"], _repackAction, true] call ace_interact_menu_fnc_addActionToClass;
+
+    ["Field hospital ACE actions registered (deployRequirement=doctor, perPlayerCap=1)", "FIELD HOSPITAL"] call KPLIB_fnc_log;
 
     [
         {!isNull player},

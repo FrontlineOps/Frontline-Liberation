@@ -308,11 +308,23 @@ KPLIB_SURRENDER_SERVER_BEGIN_ESCORT = {
     };
     _unit setCaptive true;
     _unit setUnitPos "AUTO";
-    private _escortGroup = createGroup [GRLIB_side_civilian, true];
+    private _escortGroup = group _caller;
     [_unit] joinSilent _escortGroup;
+    if (group _unit isNotEqualTo _escortGroup) exitWith {
+        _unit setVariable ["KPLIB_intelligenceEscort", objNull];
+        _unit setVariable ["KPLIB_surrenderEscortActive", nil];
+        if (KP_liberation_ace) then {
+            ["ace_captives_setSurrendered", [_unit, true], _unit] call CBA_fnc_targetEvent;
+        } else {
+            _unit disableAI "ANIM";
+            _unit disableAI "MOVE";
+        };
+        [format ["Prisoner escort rejected (unit=%1, reason=failed to join player group)", netId _unit], "SURRENDER"] call KPLIB_fnc_log;
+        false
+    };
     _unit doMove (getPosATL _caller);
 
-    [format ["Prisoner escort started (unit=%1, playerOwner=%2)", netId _unit, owner _caller], "SURRENDER"] call KPLIB_fnc_log;
+    [format ["Prisoner escort started (unit=%1, playerOwner=%2, group=%3)", netId _unit, owner _caller, groupId _escortGroup], "SURRENDER"] call KPLIB_fnc_log;
     [_unit, _caller] spawn KPLIB_SURRENDER_SERVER_MONITOR_ESCORT;
     true
 };

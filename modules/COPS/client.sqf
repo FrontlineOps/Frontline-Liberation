@@ -125,28 +125,23 @@ KPLIB_COPS_CLIENT_REQUEST_DEPLOY = {
     [{KPLIB_COPS_CLIENT_REQUEST_PENDING = false}, [], 5] call CBA_fnc_waitAndExecute;
 };
 
-KPLIB_COPS_CLIENT_INSTALL_ACTION = {
-    params [["_unit", player, [objNull]]];
-    if (!hasInterface || {isNull _unit} || {!local _unit}) exitWith {false};
-    if ((_unit getVariable ["KPLIB_COPS_ACTION_ID", -1]) >= 0) exitWith {true};
-
-    private _actionId = _unit addAction [
-        "<t color='#80FF80'>Place PB</t>",
-        {[] call KPLIB_COPS_CLIENT_REQUEST_DEPLOY},
-        nil,
-        -860,
-        false,
-        true,
-        "",
-        "[_originalTarget] call KPLIB_COPS_CLIENT_CAN_DEPLOY"
-    ];
-    _unit setVariable ["KPLIB_COPS_ACTION_ID", _actionId, false];
-    true
-};
-
 KPLIB_COPS_CLIENT_INIT = {
     if (!hasInterface || {KPLIB_COPS_CLIENT_INITIALIZED}) exitWith {};
     KPLIB_COPS_CLIENT_INITIALIZED = true;
-    [player] call KPLIB_COPS_CLIENT_INSTALL_ACTION;
+
+    private _deployAction = [
+        "KPLIB_COPS_DEPLOY",
+        "Place PB",
+        "res\ui_build.paa",
+        {[] call KPLIB_COPS_CLIENT_REQUEST_DEPLOY},
+        {
+            params ["_target", "_player"];
+            _target isEqualTo _player
+                && {[_player] call KPLIB_COPS_CLIENT_CAN_DEPLOY}
+        }
+    ] call ace_interact_menu_fnc_createAction;
+    ["CAManBase", 1, ["ACE_SelfActions"], _deployAction, true] call ace_interact_menu_fnc_addActionToClass;
+
+    ["PB ACE self-action registered for current group leaders", "COPS"] call KPLIB_fnc_log;
     [] remoteExecCall ["KPLIB_COPS_SERVER_REQUEST_SNAPSHOT", 2];
 };
