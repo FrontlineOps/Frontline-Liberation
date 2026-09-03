@@ -33,6 +33,9 @@ if (isNil "BATTLESPACE_SECTOR_STATES") then {
 if (isNil "BATTLESPACE_STRATEGIC_OPERATIONS") then {
     BATTLESPACE_STRATEGIC_OPERATIONS = createHashMap;
 };
+if (isNil "BATTLESPACE_LOGISTICS_MISSING_ENTRY_WARNED") then {
+    BATTLESPACE_LOGISTICS_MISSING_ENTRY_WARNED = createHashMap;
+};
 
 BATTLESPACE_RESOURCE_CLASS_POOLS = createHashMap;
 
@@ -702,13 +705,11 @@ BATTLESPACE_LOGISTICS_BUILD_REQUEST = {
     _request
 };
 
-BATTLESPACE_LOGISTICS_FIND_SECTOR_SOURCE = {
+BATTLESPACE_LOGISTICS_FIND_SECTOR_SOURCES = {
     params ["_targetSector", "_request"];
-    private _bestSource = "";
-    private _bestCargo = createHashMap;
-    private _bestAmount = 0;
+    private _candidates = [];
     private _targetNetwork = NETWORKED_SECTORS get _targetSector;
-    if (isNil "_targetNetwork") exitWith { [_bestSource, _bestCargo] };
+    if (isNil "_targetNetwork") exitWith { _candidates };
 
     {
         private _source = _x;
@@ -735,13 +736,13 @@ BATTLESPACE_LOGISTICS_FIND_SECTOR_SOURCE = {
             };
         } forEach _request;
 
-        if (_total > _bestAmount) then {
-            _bestAmount = _total;
-            _bestSource = _source;
-            _bestCargo = _cargo;
+        if (_total > 0) then {
+            _candidates pushBack [_total, _source, _cargo];
         };
     } forEach (_targetNetwork getOrDefault ["Links", []]);
-    [_bestSource, _bestCargo]
+
+    _candidates = [_candidates, [], {_x param [0, 0]}, "DESCEND"] call BIS_fnc_sortBy;
+    _candidates apply {[_x param [1, ""], _x param [2, createHashMap]]}
 };
 
 BATTLESPACE_LOGISTICS_FIND_OFFMAP_SOURCE = {
@@ -752,16 +753,7 @@ BATTLESPACE_LOGISTICS_FIND_OFFMAP_SOURCE = {
         "logistics_spawn",
         blufor_sectors + ["startbase_marker"]
     ] call NETWORKED_SECTORS_traverseGraphAndFindSectorsOfType;
-    if (_sources isEqualTo []) exitWith {
-        // Maps without explicit logistics markers still need a deterministic
-        // strategic entry point. Use the deepest reachable OPFOR graph node.
-        private _backline = [
-            _targetSector,
-            blufor_sectors + ["startbase_marker"],
-            4
-        ] call NETWORKED_SECTORS_GET_LINK_UP_TO_DEPTH;
-        if (_backline == "" || {_backline in blufor_sectors}) then {""} else {_backline}
-    };
+    if (_sources isEqualTo []) exitWith { "" };
 
     private _sorted = [_sources, [_targetSector], {
         (getMarkerPos _x) distance2D (getMarkerPos _input0)
@@ -941,35 +933,61 @@ BATTLESPACE_LOGISTICS_DISPATCH = {
         false
     };
 
-    private _sourceResult = [_targetSector, _request] call BATTLESPACE_LOGISTICS_FIND_SECTOR_SOURCE;
-    _sourceResult params ["_sourceSector", "_cargo"];
-    private _sourceMarker = _sourceSector;
+    private _sourceCandidates = [_targetSector, _request] call BATTLESPACE_LOGISTICS_FIND_SECTOR_SOURCES;
+    private _sourceSector = "";
+    private _sourceMarker = "";
+    private _cargo = createHashMap;
     private _debit = createHashMap;
     private _debited = false;
 
-    if (_sourceSector != "" && {count _cargo > 0}) then {
-        _debit = [_cargo] call BATTLESPACE_COPY_RESOURCE_MAP;
+    {
+        _x params ["_candidateSector", "_candidateCargo"];
+        private _candidateDebit = [_candidateCargo] call BATTLESPACE_COPY_RESOURCE_MAP;
         private _composition = _convoyDefinition get "composition";
-        _debit set ["manpower", (_debit getOrDefault ["manpower", 0]) + (_composition get "manpower")];
+        _candidateDebit set ["manpower", (_candidateDebit getOrDefault ["manpower", 0]) + (_composition get "manpower")];
         {
             private _resourceType = _x param [1, ""];
-            _debit set [_resourceType, (_debit getOrDefault [_resourceType, 0]) + 1];
+            _candidateDebit set [_resourceType, (_candidateDebit getOrDefault [_resourceType, 0]) + 1];
         } forEach (_convoyDefinition get "vehicleManifest");
 
         private _negativeDebit = createHashMap;
         {
             _negativeDebit set [_x, -_y];
-        } forEach _debit;
-        _debited = [_sourceSector, _negativeDebit] call BATTLESPACE_RESOURCE_APPLY_STRICT;
-    };
+        } forEach _candidateDebit;
+
+        if ([_candidateSector, _negativeDebit] call BATTLESPACE_RESOURCE_APPLY_STRICT) exitWith {
+            _sourceSector = _candidateSector;
+            _sourceMarker = _candidateSector;
+            _cargo = _candidateCargo;
+            _debit = _candidateDebit;
+            _debited = true;
+        };
+
+        [format [
+            "Linked convoy donor %1 skipped for %2 because it cannot fund the complete cargo, manpower, and vehicle debit %3",
+            _candidateSector,
+            _targetSector,
+            _candidateDebit
+        ], "WARNING"] call BATTLESPACE_STRATEGIC_LOG;
+    } forEach _sourceCandidates;
 
     if (!_debited) then {
-        _sourceSector = "";
         _sourceMarker = [_targetSector] call BATTLESPACE_LOGISTICS_FIND_OFFMAP_SOURCE;
         _cargo = [_request] call BATTLESPACE_COPY_RESOURCE_MAP;
         _debit = createHashMap;
     };
-    if (_sourceMarker == "" || {count _cargo == 0}) exitWith { false };
+    if (_sourceMarker == "") exitWith {
+        if !(BATTLESPACE_LOGISTICS_MISSING_ENTRY_WARNED getOrDefault [_targetSector, false]) then {
+            BATTLESPACE_LOGISTICS_MISSING_ENTRY_WARNED set [_targetSector, true];
+            [format [
+                "Convoy for %1 was not dispatched: no linked OPFOR sector can fund it and no reachable logistics_spawn marker exists",
+                _targetSector
+            ], "WARNING"] call BATTLESPACE_STRATEGIC_LOG;
+        };
+        false
+    };
+    BATTLESPACE_LOGISTICS_MISSING_ENTRY_WARNED deleteAt _targetSector;
+    if (count _cargo == 0) exitWith { false };
 
     private _origin = getMarkerPos _sourceMarker;
     private _roads = _origin nearRoads 200;
@@ -1174,6 +1192,14 @@ BATTLESPACE_LOGISTICS_INIT = {
     };
     private _loaded = [] call BATTLESPACE_LOGISTICS_LOAD;
     BATTLESPACE_LOGISTICS_READY = _loaded;
+    private _entryCount = {
+        _x find "logistics_spawn" == 0
+    } count allMapMarkers;
+    [format [
+        "Strategic logistics initialized with %1 explicit off-map convoy entr%2",
+        _entryCount,
+        ["y", "ies"] select (_entryCount != 1)
+    ], ["WARNING", "BATTLESPACE"] select (_entryCount > 0)] call BATTLESPACE_STRATEGIC_LOG;
     _loaded
 };
 

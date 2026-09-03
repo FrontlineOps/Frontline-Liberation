@@ -166,12 +166,13 @@ NETWORKED_SECTORS_traverseGraphAndFindSectorsOfType = {
 	params ["_startingSector", "_targetSectorType", "_bluforSectors"];
 	
 	private _networkedSectorData = NETWORKED_SECTORS get _startingSector;
-	private _openSet = +(_networkedSectorData get "Links");
+	private _openSet = (_networkedSectorData get "Links") select {!(_x in _bluforSectors)};
 	private _visitedSet = createHashMap;
 	private _foundSectors = [];
 
 	while { (count _openSet) > 0 } do {
 		private _currentNode = _openSet deleteAt ((count _openSet) - 1);
+		if(_currentNode in _bluforSectors) then { continue; };
 		_visitedSet set [_currentNode, true];
 
 		if(_currentNode find _targetSectorType >= 0) then {
