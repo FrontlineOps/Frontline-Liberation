@@ -48,8 +48,8 @@ BATTLESPACE_TASK_FORCE_AUTOINCREMENT = 1;
 */
 BATTLESPACE_TASK_FORCE_MODELS = createHashMap;
 BATTLESPACE_TASK_FORCE_PATHS = createHashMap;
-if (isNil "BATTLESPACE_TASK_FORCE_ROUTE_SNAPSHOT") then {
-	BATTLESPACE_TASK_FORCE_ROUTE_SNAPSHOT = createHashMap;
+if (isNil "BATTLESPACE_TASK_FORCE_RENDER_DATA") then {
+	BATTLESPACE_TASK_FORCE_RENDER_DATA = [[], []];
 };
 BATTLESPACE_TASK_FORCE_MINIMUM_SIZE = 4;
 // Enable some more verbose diag logs and stuff.
@@ -243,25 +243,85 @@ BATTLESPACE_TASK_FORCE_BUILD_ROUTE_SNAPSHOT = {
 	_snapshot
 };
 
-BATTLESPACE_TASK_FORCES_PING = {
-	if (!isServer || {!isRemoteExecuted}) exitWith {};
-	private _ownerId = remoteExecutedOwner;
-	private _caller = (allPlayers select {owner _x == _ownerId}) param [0, objNull];
-	if (isNull _caller || {isNull (getAssignedCuratorLogic _caller)}) exitWith {
-		diag_log format ["Battlespace rejected task-force render snapshot from owner %1", _ownerId];
-	};
+BATTLESPACE_TASK_FORCE_BUILD_RENDER_SNAPSHOT = {
+	if (!isServer) exitWith {[[], []]};
 
-	_ownerId publicVariableClient "BATTLESPACE_TASK_FORCES";
-	_ownerId publicVariableClient "BATTLESPACE_TASK_FORCES_BLUFOR_CLUSTERS";
-	BATTLESPACE_TASK_FORCE_ROUTE_SNAPSHOT = [] call BATTLESPACE_TASK_FORCE_BUILD_ROUTE_SNAPSHOT;
-	_ownerId publicVariableClient "BATTLESPACE_TASK_FORCE_ROUTE_SNAPSHOT";
+	private _routes = [] call BATTLESPACE_TASK_FORCE_BUILD_ROUTE_SNAPSHOT;
+	private _taskForces = [];
+	{
+		private _taskForceName = _x;
+		_y params [
+			["_type", ""],
+			["_simulatedLocation", []],
+			["_targetLocation", []],
+			["_composition", createHashMap],
+			["_activeGroups", []],
+			["_state", []],
+			["_taskForceSide", east],
+			["_despawnCounter", 0],
+			["_activeObjects", []]
+		];
+
+		private _groupPositions = [];
+		{
+			if (!isNull _x) then {
+				private _leader = leader _x;
+				if (!isNull _leader) then {_groupPositions pushBack (getPos _leader)};
+			};
+		} forEach _activeGroups;
+
+		_taskForces pushBack [
+			_taskForceName,
+			_type,
+			+_simulatedLocation,
+			+_targetLocation,
+			_composition getOrDefault ["manpower", 0],
+			count (_composition getOrDefault ["vehicles", []]),
+			toUpper str _taskForceSide,
+			_despawnCounter,
+			_activeObjects isNotEqualTo [],
+			_groupPositions,
+			_routes getOrDefault [_taskForceName, []]
+		];
+	} forEach BATTLESPACE_TASK_FORCES;
+
+	private _clusters = [];
+	{
+		private _position = +(_x getOrDefault ["Position", []]);
+		if (_position isEqualTo []) then {continue};
+		private _playerPositions = [];
+		{
+			if (!isNull _x) then {_playerPositions pushBack (getPos _x)};
+		} forEach (_x getOrDefault ["Players", []]);
+		_clusters pushBack [_position, _playerPositions];
+	} forEach BATTLESPACE_TASK_FORCES_BLUFOR_CLUSTERS;
+
+	[_taskForces, _clusters]
 };
 
-BATTLESPACE_TASK_FORCES_PONG = {
-	params ["_taskForces", "_bluforClusters"];
+BATTLESPACE_TASK_FORCE_RENDER_REQUEST = {
+	if (!isServer || {!isRemoteExecuted}) exitWith {};
+	private _ownerId = remoteExecutedOwner;
+	private _requester = (allPlayers select {owner _x == _ownerId}) param [0, objNull];
+	if (isNull _requester || {isNull (getAssignedCuratorLogic _requester)}) exitWith {};
 
-	BATTLESPACE_TASK_FORCES = _taskForces;
-	BATTLESPACE_TASK_FORCES_BLUFOR_CLUSTERS = _bluforClusters;
+	private _lastRequest = _requester getVariable ["KPLIB_battlespaceRenderRequestAt", -10];
+	if (CBA_missionTime - _lastRequest < 1) exitWith {};
+	_requester setVariable ["KPLIB_battlespaceRenderRequestAt", CBA_missionTime];
+
+	private _snapshot = [] call BATTLESPACE_TASK_FORCE_BUILD_RENDER_SNAPSHOT;
+	["KPLIB_battlespaceRenderSnapshot", [_snapshot], _requester] call CBA_fnc_targetEvent;
+};
+
+if (isServer) then {
+	["Compact Battlespace curator-render snapshot service initialized", "BATTLESPACE"] call KPLIB_fnc_log;
+};
+
+if (hasInterface) then {
+	["KPLIB_battlespaceRenderSnapshot", {
+		params [["_snapshot", [[], []], [[]]]];
+		BATTLESPACE_TASK_FORCE_RENDER_DATA = _snapshot;
+	}] call CBA_fnc_addEventHandler;
 };
 
 // Save task forces that are active
@@ -1078,66 +1138,54 @@ BATTLESPACE_TASK_FORCE_DRAW_ROUTE_3D = {
 };
 
 RENDER_BATTLESPACE_AI = false;
+RENDER_BATTLESPACE_AI_PFH_ID = -1;
 RENDER_BATTLESPACE_AI_PFH = {
-
-
 	(_this select 0) params [["_nextTick", 0]];
+	if(!RENDER_BATTLESPACE_AI) exitWith {
+		[_this select 1] call CBA_fnc_removePerFrameHandler;
+		RENDER_BATTLESPACE_AI_PFH_ID = -1;
+	};
 	if(isNull curatorCamera) exitWith {};
 	if(accTime <= 0 || isGamePaused) exitWith {};
 
 	if(CBA_missionTime > _nextTick) then {
-		[] remoteExec ["BATTLESPACE_TASK_FORCES_PING", 2];
+		[] remoteExecCall ["BATTLESPACE_TASK_FORCE_RENDER_REQUEST", 2];
 		(_this select 0) set [0, CBA_missionTime + 5];
 	};
 
-	if(!RENDER_BATTLESPACE_AI) exitWith { [_this select 1] call CBA_fnc_removePerFrameHandler; };
+	BATTLESPACE_TASK_FORCE_RENDER_DATA params [
+		["_renderTaskForces", []],
+		["_renderClusters", []]
+	];
+	private _mousePos = screenToWorld getMousePosition;
+	private _friendlySideName = toUpper str GRLIB_side_friendly;
+	private _enemySideName = toUpper str GRLIB_side_enemy;
+	private _civilianSideName = toUpper str GRLIB_side_civilian;
 
 	{
-		_y params [
+		_x params [
+			["_taskForceName", ""],
 			["_type", ""],
 			["_simulatedLocation", []],
 			["_targetLocation", []],
-			["_composition", createHashMap],
-			["_activeGroups", []],
-			["_state", []],
-			["_taskForceSide", east],
+			["_manpower", 0],
+			["_vehicleCount", 0],
+			["_taskForceSide", "EAST"],
 			["_despawnCounter", 0],
-			["_activeObjects", []], // 8
-			["_wasDespawning", false], // 9
-			["_homePoint", []] // 10
+			["_procced", false],
+			["_activeGroupPositions", []],
+			["_routeData", []]
 		];
 
 		private _color = [0.5, 0, 0, 1];
 		switch (_taskForceSide) do {
-			case GRLIB_side_friendly: { _color = [0.2, 0.2, 0.9, 1]; };
-			case GRLIB_side_enemy: { _color = [0.9, 0.2, 0.2, 1]; };
-			case GRLIB_side_civilian: { _color = [0.7, 0.2, 0.6, 1]; };
+			case _friendlySideName: { _color = [0.2, 0.2, 0.9, 1]; };
+			case _enemySideName: { _color = [0.9, 0.2, 0.2, 1]; };
+			case _civilianSideName: { _color = [0.7, 0.2, 0.6, 1]; };
 		};
 
-		private _ind = _forEachIndex;
 		private _targetMarker = "\A3\ui_f\data\map\markers\nato\o_inf.paa";
-
-		_state params [["_status", "IDLE"], ["_currentPathIndex", 0]];
-
-		private _manpower = _composition get "manpower";
-		private _vehicles = _composition getOrDefault ["vehicles", []];
-
-		private _hasMechanized = false;
-		private _hasMotorized = false;
-		private _hasArmor = false;
-		private _hasAA = false;
-
-
-		if((count _vehicles) > 0) then {
-			_hasMechanized = true;
-		};
-
-		switch(true) do {
-			case (_hasAA): { _targetMarker = "\A3\ui_f\data\map\markers\nato\o_antiair.paa"; };
-			case (_hasMotorized): { _targetMarker = "\A3\ui_f\data\map\markers\nato\o_motor_inf.paa"; };
-			case (_hasMechanized): { _targetMarker = "\A3\ui_f\data\map\markers\nato\o_mech_inf.paa"; };
-			case (_hasArmor): { _targetMarker = "\A3\ui_f\data\map\markers\nato\o_armor.paa"; };
-		};
+		if(_vehicleCount > 0) then {_targetMarker = "\A3\ui_f\data\map\markers\nato\o_mech_inf.paa"};
 
 		switch(_type) do {
 			case "Outpost": { _targetMarker = "\A3\ui_f\data\map\markers\nato\o_installation.paa"; };
@@ -1153,11 +1201,9 @@ RENDER_BATTLESPACE_AI_PFH = {
 			case "Anti-Air": { _targetMarker = "\A3\ui_f\data\map\markers\nato\o_antiair.paa"; };
 		};
 
-		private _pos = _simulatedLocation vectorAdd [0,0, 5 + _ind * 0];
-		private _routeData = BATTLESPACE_TASK_FORCE_ROUTE_SNAPSHOT getOrDefault [_x, []];
+		private _pos = _simulatedLocation vectorAdd [0,0,5];
 		[_simulatedLocation, _routeData, _color] call BATTLESPACE_TASK_FORCE_DRAW_ROUTE_3D;
 		private _text = "";
-		private _mousePos = screenToWorld getMousePosition;
 		private _scale = 0.5;
 
 		private _dist = _pos distance2D _mousePos;
@@ -1166,39 +1212,35 @@ RENDER_BATTLESPACE_AI_PFH = {
 			_scale = 1 min _scale;
 
 			private _textScale = 0.03 * _scale;
-			_text = format ["%1 %2 | MANPWR: %3 | VICS: %4 | %5", _type, _x, _manpower, count _vehicles, [_routeData] call BATTLESPACE_TASK_FORCE_ROUTE_LABEL];
+			_text = format ["%1 %2 | MANPWR: %3 | VICS: %4 | %5", _type, _taskForceName, _manpower, _vehicleCount, [_routeData] call BATTLESPACE_TASK_FORCE_ROUTE_LABEL];
 
-			if((count _activeObjects) > 0) then {
+			if(_procced) then {
 				{
-					private _gpos = getPos (leader _x);
-					drawLine3D [_pos, _gpos, [0,1,0.1,1]];
-				} forEach _activeGroups;
+					drawLine3D [_pos, _x, [0,1,0.1,1]];
+				} forEach _activeGroupPositions;
 
 				_text = _text + format [" | PROCCED (%1)", _despawnCounter];
 			};
 
 			if(!(_targetLocation isEqualTo [])) then {
 				if(_simulatedLocation distance2D _targetLocation > 25) then {
-					drawIcon3D ["\A3\ui_f\data\map\groupicons\selector_selectedEnemy_ca.paa", _color, _targetLocation, 1, 1, 0, format ["%1 DESTINATION", _x], 1, _textScale, "TahomaB"];
+					drawIcon3D ["\A3\ui_f\data\map\groupicons\selector_selectedEnemy_ca.paa", _color, _targetLocation, 1, 1, 0, format ["%1 DESTINATION", _taskForceName], 1, _textScale, "TahomaB"];
 				};
 			};
 		};
 		drawIcon3D [_targetMarker, _color, _pos, _scale, _scale, 0, _text, 1, 0.03, "TahomaB"];
-	} forEach BATTLESPACE_TASK_FORCES;
+	} forEach _renderTaskForces;
 
 	{
-		private _cluster = _x;
-
-		private _pos = +(_cluster get "Position");
+		_x params [["_clusterPosition", []], ["_playerPositions", []]];
+		private _pos = +_clusterPosition;
 
 		_pos set [2, 50];
 
 		private _color = [0,0.4,0.8,1];
 		
-		private _players = _cluster get "Players";
 		private _targetMarker = "\A3\ui_f\data\map\markers\nato\b_inf.paa";
 		private _text = "";
-		private _mousePos = screenToWorld getMousePosition;
 		private _scale = 0.5;
 
 		private _dist = _pos distance2D _mousePos;
@@ -1209,9 +1251,9 @@ RENDER_BATTLESPACE_AI_PFH = {
 			private _textScale = 0.03 * _scale;
 			
 			{
-				drawLine3D [_pos, getPos _x, [1,1,0,1]];
-			} forEach _players;
-			_text = format ["BLUFOR CLUSTER %1 | %2 PLAYERS", _forEachIndex + 1, count _players];
+				drawLine3D [_pos, _x, [1,1,0,1]];
+			} forEach _playerPositions;
+			_text = format ["BLUFOR CLUSTER %1 | %2 PLAYERS", _forEachIndex + 1, count _playerPositions];
 			drawLine3D [_pos, _pos vectorAdd [0, 0, -50], [1,0,0,1]];
 		};
 
@@ -1219,7 +1261,7 @@ RENDER_BATTLESPACE_AI_PFH = {
 		
 		
 		
-	} forEach BATTLESPACE_TASK_FORCES_BLUFOR_CLUSTERS;
+	} forEach _renderClusters;
 };
 
 if(hasInterface) then {

@@ -23,11 +23,49 @@ if (KP_liberation_enemies_zeus) then {_vehicleClassnames append KPLIB_o_allVeh_c
 private _vehicleClassIndex = createHashMap;
 {
     _vehicleClassIndex set [_x, true];
-} forEach _vehicleClassnames;
+} forEach (_vehicleClassnames arrayIntersect _vehicleClassnames);
 
-private _valids = [];
-private _toRemove = [];
-private _toAdd = [];
+private _reconcileInterval = missionNamespace getVariable ["KP_liberation_zeus_sync_interval", 15];
+private _batchSize = 1 max floor (missionNamespace getVariable ["KP_liberation_zeus_sync_batch_size", 32]);
+private _batchInterval = 0 max (missionNamespace getVariable ["KP_liberation_zeus_sync_batch_interval", 0.2]);
+private _syncBatches = {
+    params ["_curator", "_objects", "_add"];
+    private _remaining = +_objects;
+    if (count _remaining > _batchSize) then {
+        [
+            format [
+                "Pacing %1 Zeus editable-object %2 across %3 batches",
+                count _remaining,
+                ["removals", "additions"] select _add,
+                ceil (count _remaining / _batchSize)
+            ],
+            "ZEUS"
+        ] call KPLIB_fnc_log;
+    };
+    while {_remaining isNotEqualTo [] && {!isNull _curator}} do {
+        private _count = _batchSize min count _remaining;
+        private _batch = _remaining select [0, _count];
+        _remaining deleteRange [0, _count];
+        _batch = _batch select {
+            !isNull _x && {(!_add) || {alive _x && {isNull (attachedTo _x)}}}
+        };
+        if (_batch isNotEqualTo []) then {
+            if (_add) then {
+                _curator addCuratorEditableObjects [_batch, false];
+            } else {
+                _curator removeCuratorEditableObjects [_batch, false];
+            };
+        };
+        if (_remaining isNotEqualTo [] && {_batchInterval > 0}) then {
+            sleep _batchInterval;
+        };
+    };
+};
+
+[
+    format ["Zeus editable-object synchronization initialized (reconcile=%1s, batch=%2, batchInterval=%3s)", _reconcileInterval, _batchSize, _batchInterval],
+    "ZEUS"
+] call KPLIB_fnc_log;
 
 while {true} do {
     private _curators = allCurators;
@@ -37,7 +75,7 @@ while {true} do {
     };
 
     // Add units
-    _valids = allUnits select {
+    private _validUnits = allUnits select {
         (alive _x)                                                                              // Alive
         && {
             (KP_liberation_enemies_zeus && {!(side (group _x) isEqualTo GRLIB_side_civilian)})  // Not civilian side, if enemy adding is enabled
@@ -47,7 +85,7 @@ while {true} do {
     };
 
     // Add vehicles
-    _valids append (vehicles select {
+    private _validVehicles = vehicles select {
         (alive _x)                                                                              // Alive
         && {
             (_vehicleClassIndex getOrDefault [toLower (typeOf _x), false])                       // In valid classnames
@@ -55,28 +93,32 @@ while {true} do {
             || (_x getVariable ["KPLIB_seized", false])                                         // or seized
         }
         && {isNull (attachedTo _x)}                                                             // Not attached to something
-    });
+    };
+
+    // Add vehicle crews explicitly so recursive curator additions never expand a batch.
+    {
+        _validUnits append (crew _x);
+    } forEach _validVehicles;
 
     // Add playable units
-    _valids append switchableUnits;
-    _valids append playableUnits;
+    _validUnits append switchableUnits;
+    _validUnits append playableUnits;
+    _validUnits = _validUnits arrayIntersect _validUnits;
+    _validVehicles = _validVehicles arrayIntersect _validVehicles;
 
     {
-        private _editable = curatorEditableObjects _x;
+        private _curator = _x;
+        private _editable = curatorEditableObjects _curator;
 
         // Remove death or attached units
-        _toRemove = _editable select {!(alive _x) || !(isNull (attachedTo _x))};
+        private _toRemove = _editable select {!(alive _x) || !(isNull (attachedTo _x))};
 
-        // Filter already added units of this curator
-        _toAdd = _valids - _editable;
+        private _vehiclesToAdd = _validVehicles - _editable;
+        private _unitsToAdd = _validUnits - _editable;
 
-        // Add and remove units
-        if !(_toAdd isEqualTo []) then {
-            _x addCuratorEditableObjects [_toAdd, true];
-        };
-        if !(_toRemove isEqualTo []) then {
-            _x removeCuratorEditableObjects [_toRemove, true];
-        };
+        [_curator, _vehiclesToAdd, true] call _syncBatches;
+        [_curator, _unitsToAdd, true] call _syncBatches;
+        [_curator, _toRemove, false] call _syncBatches;
     } forEach _curators;
-    sleep (missionNamespace getVariable ["KP_liberation_zeus_sync_interval", 15]);
+    sleep _reconcileInterval;
 };
