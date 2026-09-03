@@ -3,6 +3,45 @@ KPLIB_INTEL_CLIENT_CLEAR_MARKERS = {
     KPLIB_INTEL_CLIENT_MARKERS = [];
 };
 
+KPLIB_INTEL_CLIENT_CLEAR_INFORMANT_MARKER = {
+    private _marker = missionNamespace getVariable ["KPLIB_INTEL_CLIENT_INFORMANT_MARKER", ""];
+    if (_marker != "") then {deleteMarkerLocal _marker};
+    KPLIB_INTEL_CLIENT_INFORMANT_MARKER = "";
+};
+
+KPLIB_INTEL_CLIENT_INFORMANT_EVENT = {
+    params ["_event", ["_position", [], [[]]], ["_label", "", [""]]];
+    if (!hasInterface) exitWith {};
+
+    switch (_event) do {
+        case "SPAWNED": {
+            call KPLIB_INTEL_CLIENT_CLEAR_INFORMANT_MARKER;
+            if (_position isEqualType [] && {count _position >= 2}) then {
+                private _marker = format ["KPLIB_INTEL_INFORMANT_%1", clientOwner];
+                createMarkerLocal [_marker, _position];
+                _marker setMarkerColorLocal "ColorCIV";
+                _marker setMarkerShapeLocal "ELLIPSE";
+                _marker setMarkerBrushLocal "FDiagonal";
+                _marker setMarkerSizeLocal [500, 500];
+                KPLIB_INTEL_CLIENT_INFORMANT_MARKER = _marker;
+            };
+            ["lib_civ_informant_start", [_label]] call BIS_fnc_showNotification;
+        };
+        case "DELIVERED": {
+            call KPLIB_INTEL_CLIENT_CLEAR_INFORMANT_MARKER;
+            ["lib_civ_informant_success"] call BIS_fnc_showNotification;
+        };
+        case "EXPIRED": {
+            call KPLIB_INTEL_CLIENT_CLEAR_INFORMANT_MARKER;
+            ["lib_civ_informant_fail"] call BIS_fnc_showNotification;
+        };
+        case "KILLED": {
+            call KPLIB_INTEL_CLIENT_CLEAR_INFORMANT_MARKER;
+            ["lib_civ_informant_death"] call BIS_fnc_showNotification;
+        };
+    };
+};
+
 KPLIB_INTEL_CLIENT_CREATE_MARKER = {
     params ["_position"];
     KPLIB_INTEL_CLIENT_MARKER_INDEX = KPLIB_INTEL_CLIENT_MARKER_INDEX + 1;
@@ -215,7 +254,7 @@ KPLIB_INTEL_CLIENT_OPEN_DIALOG = {
     if (isNull _parent) exitWith {};
     private _display = _parent createDisplay "RscDisplayEmpty";
     uiNamespace setVariable ["KPLIB_INTEL_CLIENT_DISPLAY", _display];
-    _display displayAddEventHandler ["Unload", {uiNamespace setVariable ["KPLIB_INTEL_CLIENT_DISPLAY", displayNull]}];
+    [_display, "Unload", {uiNamespace setVariable ["KPLIB_INTEL_CLIENT_DISPLAY", displayNull]}] call CBA_fnc_addBISEventHandler;
 
     private _background = _display ctrlCreate ["RscText", -1];
     _background ctrlSetPosition [0.14 * safezoneW + safezoneX, 0.14 * safezoneH + safezoneY, 0.72 * safezoneW, 0.72 * safezoneH];
@@ -237,7 +276,7 @@ KPLIB_INTEL_CLIENT_OPEN_DIALOG = {
     private _regionList = _display ctrlCreate ["RscListbox", 101];
     _regionList ctrlSetPosition [0.16 * safezoneW + safezoneX, 0.245 * safezoneH + safezoneY, 0.22 * safezoneW, 0.33 * safezoneH];
     _regionList ctrlSetBackgroundColor [0.08, 0.12, 0.08, 0.9];
-    _regionList ctrlAddEventHandler ["LBSelChanged", {[] call KPLIB_INTEL_CLIENT_DIALOG_REFRESH}];
+    [_regionList, "LBSelChanged", {[] call KPLIB_INTEL_CLIENT_DIALOG_REFRESH}] call CBA_fnc_addBISEventHandler;
     _regionList ctrlCommit 0;
 
     private _tierLabel = _display ctrlCreate ["RscText", -1];
@@ -248,7 +287,7 @@ KPLIB_INTEL_CLIENT_OPEN_DIALOG = {
     private _tierList = _display ctrlCreate ["RscListbox", 108];
     _tierList ctrlSetPosition [0.16 * safezoneW + safezoneX, 0.625 * safezoneH + safezoneY, 0.22 * safezoneW, 0.13 * safezoneH];
     _tierList ctrlSetBackgroundColor [0.08, 0.12, 0.08, 0.9];
-    _tierList ctrlAddEventHandler ["LBSelChanged", {[] call KPLIB_INTEL_CLIENT_DIALOG_REFRESH}];
+    [_tierList, "LBSelChanged", {[] call KPLIB_INTEL_CLIENT_DIALOG_REFRESH}] call CBA_fnc_addBISEventHandler;
     _tierList ctrlCommit 0;
 
     private _reserve = _display ctrlCreate ["RscText", 107];
@@ -264,13 +303,13 @@ KPLIB_INTEL_CLIENT_OPEN_DIALOG = {
     private _activate = _display ctrlCreate ["RscButton", 103];
     _activate ctrlSetPosition [0.50 * safezoneW + safezoneX, 0.79 * safezoneH + safezoneY, 0.14 * safezoneW, 0.045 * safezoneH];
     _activate ctrlSetText "ACTIVATE COVERAGE";
-    _activate ctrlAddEventHandler ["ButtonClick", {[] call KPLIB_INTEL_CLIENT_ACTIVATE_SELECTED}];
+    [_activate, "ButtonClick", {[] call KPLIB_INTEL_CLIENT_ACTIVATE_SELECTED}] call CBA_fnc_addBISEventHandler;
     _activate ctrlCommit 0;
 
     private _close = _display ctrlCreate ["RscButton", 104];
     _close ctrlSetPosition [0.65 * safezoneW + safezoneX, 0.79 * safezoneH + safezoneY, 0.10 * safezoneW, 0.045 * safezoneH];
     _close ctrlSetText "CLOSE";
-    _close ctrlAddEventHandler ["ButtonClick", {(ctrlParent (_this # 0)) closeDisplay 1}];
+    [_close, "ButtonClick", {(ctrlParent (_this # 0)) closeDisplay 1}] call CBA_fnc_addBISEventHandler;
     _close ctrlCommit 0;
 
     [_display] call KPLIB_INTEL_CLIENT_DIALOG_LOAD;
@@ -323,6 +362,7 @@ KPLIB_INTEL_CLIENT_INIT = {
     KPLIB_INTEL_CLIENT_REGIONS = [];
     KPLIB_INTEL_CLIENT_MARKERS = [];
     KPLIB_INTEL_CLIENT_MARKER_INDEX = 0;
+    KPLIB_INTEL_CLIENT_INFORMANT_MARKER = "";
     KPLIB_INTEL_CLIENT_HAS_SNAPSHOT = false;
     KPLIB_INTEL_CLIENT_HUD_KEY = "";
     uiNamespace setVariable ["KPLIB_INTEL_CLIENT_DISPLAY", displayNull];
@@ -337,7 +377,7 @@ KPLIB_INTEL_CLIENT_INIT = {
                 if (_target getVariable ["KPLIB_intelligencePrisoner", false]) then {
                     [_target] remoteExecCall ["KPLIB_INTEL_SERVER_REGISTER_PRISONER_ESCORT", 2];
                 } else {
-                    [_target] joinSilent group _player;
+                    [_target] remoteExecCall ["KPLIB_INTEL_SERVER_BEGIN_INFORMANT_ESCORT", 2];
                 };
             },
             {

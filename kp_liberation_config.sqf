@@ -137,7 +137,7 @@ BATTLESPACE_PATHFIND_INFANTRY_MAX_SLOPE = 1.0;
 // Rural routes may cross roads, but do not prefer following them.
 BATTLESPACE_PATHFIND_RURAL_ROAD_MULTIPLIER = 2.25;
 // Maximum real route nodes sent per task force to an authorized ZEN curator.
-BATTLESPACE_ZEN_ROUTE_SNAPSHOT_POINT_LIMIT = 1024;
+BATTLESPACE_ZEN_ROUTE_SNAPSHOT_POINT_LIMIT = 256;
 
 // Resource-backed OPFOR strategic logistics and operational battlegroups.
 BATTLESPACE_STRATEGIC_ENABLED = true;
@@ -151,6 +151,7 @@ BATTLESPACE_STRATEGIC_MAX_CONVOYS_PER_TICK = 2;
 BATTLESPACE_STRATEGIC_MAX_BATTLEGROUPS_PER_TICK = 1;
 BATTLESPACE_STRATEGIC_RESUPPLY_COOLDOWN = 1800;
 BATTLESPACE_STRATEGIC_BATTLEGROUP_COOLDOWN = 3600;
+BATTLESPACE_STRATEGIC_BATTLEGROUP_TARGET_COOLDOWN = [3600, 5400]; // Random cooldown before any origin may attack the same objective again (sec)
 BATTLESPACE_STRATEGIC_RETREAT_STRENGTH_RATIO = 0.35;
 BATTLESPACE_STRATEGIC_BATTLEGROUP_MANPOWER = 28;
 // [formation name, preferred target sector types, repeating dominant vehicle categories]
@@ -218,6 +219,8 @@ BATTLESPACE_ARTILLERY_MAXIMUM_CYCLES_TO_SWAP = 8; // Exclusive: produces 5-7 cyc
 BATTLESPACE_ARTILLERY_COOLDOWN_PER_SHELL = 30;
 BATTLESPACE_ARTILLERY_MIN_COOLDOWN = 60;
 BATTLESPACE_ARTILLERY_MAX_COOLDOWN = 120;
+BATTLESPACE_ARTILLERY_TARGET_MOVEMENT_ACCURACY_LOSS_BAND_DISTANCE = 90; // Target movement before 10% of accumulated observer accuracy is lost (m)
+BATTLESPACE_ARTILLERY_TARGET_MOVEMENT_ACCURACY_LOSS_DISTANCE = 175; // Target movement before 40% of accumulated observer accuracy is lost (m)
 BATTLESPACE_SAM_STRATEGIC_MISSILES_PER_LAUNCHER = 8;
 BATTLESPACE_SAM_TACTICAL_MISSILES_PER_LAUNCHER = 4;
 BATTLESPACE_SAM_RELOAD_BATCH = 4;
@@ -232,6 +235,8 @@ KP_liberation_resource_reconcile_interval = 15;
 KP_liberation_unit_cap_refresh_interval = 5;
 KP_liberation_state_sync_poll_interval = 1;
 KP_liberation_zeus_sync_interval = 15;
+KP_liberation_zeus_sync_batch_size = 32;       // Maximum new/removed curator entities processed together
+KP_liberation_zeus_sync_batch_interval = 0.2;  // Seconds between curator entity batches
 KP_liberation_client_state_refresh_interval = 2;
 KP_liberation_client_action_refresh_interval = 5;
 KP_liberation_client_marker_refresh_interval = 10;
@@ -274,6 +279,12 @@ KPLIB_intelligence_delivery_distance = 40;
 KPLIB_intelligence_document_yield = [8, 15];
 KPLIB_intelligence_prisoner_yield_militia = [3, 6];
 KPLIB_intelligence_prisoner_yield_opfor = [6, 12];
+KPLIB_intelligence_informant_interval = [5400, 10800];     // Minimum and maximum seconds between contact attempts
+KPLIB_intelligence_informant_chance = 75;                 // Spawn chance once a contact attempt is eligible
+KPLIB_intelligence_informant_yield = 15;
+KPLIB_intelligence_informant_lifetime = 1200;             // Unattended lifetime; pauses while players are nearby
+KPLIB_intelligence_informant_pause_distance = 150;
+KPLIB_intelligence_informant_min_reputation = 0;          // Neutral or better; current civilian reputation tops out at zero
 KPLIB_intelligence_operation_kinds = [
     "CONVOY",
     "BATTLEGROUP",
@@ -310,12 +321,6 @@ KP_liberation_cr_sector_gain = 5;           			// Civrep sector capture gain
 KP_liberation_cr_wounded_chance = 15;        			// Wounded civ chance
 KP_liberation_cr_wounded_gain = 3;           			// Wounded civ healed civrep gain
 
-KP_liberation_civinfo_min = 5400;            			// Civ informant min spawn time (sec)
-KP_liberation_civinfo_max = 10800;           			// Civ informant max spawn time (sec)
-KP_liberation_civinfo_chance = 75;           			// Civ informant spawn chance
-KP_liberation_civinfo_intel = 15;             			// Civ informant intel amount
-KP_liberation_civinfo_duration = 1200;       			// Civ informant despawn timer (sec)
-
 KP_liberation_convoy_ambush_chance = 0;      			// AI logistics (unused)
 KP_liberation_convoy_ambush_duration = 0; 				// AI logistics (unused)
 
@@ -348,6 +353,12 @@ KP_liberation_medical_vehicles = [
     "CUP_B_nM997_USA_DES"
 ];
 
+// Deployable field hospital
+KPLIB_fieldHospital_classname = "vtx_stretcher_3";
+KPLIB_fieldHospital_actionDuration = 15;
+KPLIB_fieldHospital_groundTolerance = 0.1;
+KPLIB_fieldHospital_repackDistance = 5;
+
 KP_liberation_medical_facilities = [
 	// Prairie Fire
 	//
@@ -355,9 +366,15 @@ KP_liberation_medical_facilities = [
 	"rhsusf_M1085A1P2_B_D_Medical_fmtv_usarmy", // CSBD Truck
 	"rhsusf_M1085A1P2_B_WD_Medical_fmtv_usarmy", // CSBD Truck
     "Land_MedicalTent_01_white_generic_outer_F", // Deployable CCP classname
-	"vtx_stretcher_3" // New CCP
+	KPLIB_fieldHospital_classname // New CCP
 	
 ];
+
+// Dropped-item cleanup
+KPLIB_trashCleanup_lifetime = 240;
+KPLIB_trashCleanup_interval = 5;
+KPLIB_trashCleanup_batchSize = 25;
+KPLIB_trashCleanup_classnames = ["GroundWeaponHolder"];
 
 KP_liberation_ace_crates = [];
 

@@ -4,6 +4,8 @@ KPLIB_INTEL_ELIGIBLE_REGIONS = [];
 KPLIB_INTEL_REGION_OWNERSHIP_KEY = "";
 KPLIB_INTEL_LAST_FINGERPRINT = "";
 KPLIB_INTEL_REVISION = 0;
+KPLIB_INTEL_INFORMANT_STATE = createHashMap;
+KPLIB_INTEL_INFORMANT_NEXT_AT = -1;
 
 KPLIB_INTEL_SERVER_GET_CALLER = {
     if (!isServer || {!isRemoteExecuted}) exitWith {objNull};
@@ -319,6 +321,7 @@ KPLIB_INTEL_SERVER_SEND_PAYLOAD = {
 KPLIB_INTEL_SERVER_RECONCILE = {
     params [["_force", false, [false]]];
     if (!isServer || {!(missionNamespace getVariable ["KPLIB_intelligence_enabled", true])}) exitWith {};
+    call KPLIB_INTEL_SERVER_UPDATE_INFORMANT;
     if (isNil "BATTLESPACE_STRATEGIC_OPERATIONS" || {isNil "BATTLESPACE_TASK_FORCES"}) exitWith {};
 
     private _changed = call KPLIB_INTEL_SERVER_REBUILD_REGIONS;
@@ -567,26 +570,289 @@ KPLIB_INTEL_SERVER_COLLECT_DOCUMENT = {
     [[missionNamespace getVariable ["KPLIB_intelligence_document_yield", [8, 15]]] call KPLIB_INTEL_SERVER_RANDOM_YIELD, "documents"] call KPLIB_INTEL_SERVER_ADD_RESERVE;
 };
 
-KPLIB_INTEL_SERVER_DELIVER_INFORMANT = {
+KPLIB_INTEL_SERVER_INFORMANT_TARGETS = {
+    allPlayers select {isPlayer _x && {side group _x == GRLIB_side_friendly}}
+};
+
+KPLIB_INTEL_SERVER_NOTIFY_INFORMANT = {
+    params ["_event", ["_position", [], [[]]], ["_label", "", [""]]];
+    private _targets = call KPLIB_INTEL_SERVER_INFORMANT_TARGETS;
+    if (_targets isNotEqualTo []) then {
+        [_event, _position, _label] remoteExecCall ["KPLIB_INTEL_CLIENT_INFORMANT_EVENT", _targets];
+    };
+};
+
+KPLIB_INTEL_SERVER_CLEAR_INFORMANT = {
+    params [["_deleteUnit", false, [false]]];
+    private _state = KPLIB_INTEL_INFORMANT_STATE;
+    if (count _state == 0) exitWith {};
+
+    private _unit = _state getOrDefault ["unit", objNull];
+    private _group = _state getOrDefault ["group", grpNull];
+    KPLIB_INTEL_INFORMANT_STATE = createHashMap;
+
+    if (_deleteUnit && {!isNull _unit}) then {
+        deleteVehicle _unit;
+    };
+    if (!isNull _group && {units _group isEqualTo []}) then {
+        deleteGroup _group;
+    };
+};
+
+KPLIB_INTEL_SERVER_SCHEDULE_INFORMANT = {
+    private _range = missionNamespace getVariable ["KPLIB_intelligence_informant_interval", [5400, 10800]];
+    private _minimum = 1 max floor (_range param [0, 5400]);
+    private _maximum = _minimum max floor (_range param [1, 10800]);
+    KPLIB_INTEL_INFORMANT_NEXT_AT = CBA_missionTime + _minimum + random (_maximum - _minimum);
+};
+
+KPLIB_INTEL_SERVER_SET_INFORMANT_WAITING = {
     params [["_unit", objNull, [objNull]]];
-    if !(missionNamespace getVariable ["KPLIB_intelligence_enabled", true]) exitWith {};
-    private _caller = call KPLIB_INTEL_SERVER_GET_CALLER;
-    if (isNull _caller || {!alive _caller} || {isNull _unit} || {!alive _unit} || {side group _caller != GRLIB_side_friendly}) exitWith {};
-    if !(_unit getVariable ["KPLIB_intelligenceInformant", false]) exitWith {};
-    if (_unit getVariable ["KPLIB_intelligenceDelivered", false]) exitWith {};
-    if ((_caller distance _unit) > (missionNamespace getVariable ["KPLIB_intelligence_delivery_distance", 40]) || {!([_caller] call KPLIB_INTEL_SERVER_IS_NEAR_TERMINAL)}) exitWith {};
+    if (isNull _unit || {!alive _unit}) exitWith {};
+
+    _unit setVariable ["KPLIB_intelligenceEscort", objNull];
+    _unit setCaptive true;
+    _unit setUnitPos "UP";
+    doStop _unit;
+    if (missionNamespace getVariable ["KP_liberation_ace", false]) then {
+        ["ace_captives_setSurrendered", [_unit, true], _unit] call CBA_fnc_targetEvent;
+    } else {
+        _unit disableAI "ANIM";
+        _unit disableAI "MOVE";
+        _unit playMoveNow "AmovPercMstpSnonWnonDnon_AmovPercMstpSsurWnonDnon";
+    };
+};
+
+KPLIB_INTEL_SERVER_COMMIT_INFORMANT = {
+    params [
+        ["_unit", objNull, [objNull]],
+        ["_caller", objNull, [objNull]],
+        ["_source", "unknown", [""]]
+    ];
+
+    private _state = KPLIB_INTEL_INFORMANT_STATE;
+    if (
+        !isServer
+        || {count _state == 0}
+        || {isNull _unit}
+        || {!alive _unit}
+        || {vehicle _unit isNotEqualTo _unit}
+        || {_unit isNotEqualTo (_state getOrDefault ["unit", objNull])}
+        || {!(_unit getVariable ["KPLIB_intelligenceInformant", false])}
+        || {_unit getVariable ["KPLIB_intelligenceDelivered", false]}
+        || {isNull _caller}
+        || {!alive _caller}
+        || {!isPlayer _caller}
+        || {side group _caller != GRLIB_side_friendly}
+    ) exitWith {false};
+
+    private _deliveryDistance = missionNamespace getVariable ["KPLIB_intelligence_delivery_distance", 40];
+    if ((_unit distance _caller) > _deliveryDistance || {!([_caller] call KPLIB_INTEL_SERVER_IS_NEAR_TERMINAL)}) exitWith {false};
+
     _unit setVariable ["KPLIB_intelligenceDelivered", true, true];
-    [2] spawn F_cr_changeCR;
-    [1] remoteExec ["civinfo_notifications"];
-    [missionNamespace getVariable ["KP_liberation_civinfo_intel", 15], "informant"] call KPLIB_INTEL_SERVER_ADD_RESERVE;
+    private _amount = 1 max floor (missionNamespace getVariable ["KPLIB_intelligence_informant_yield", 15]);
+    ["DELIVERED"] call KPLIB_INTEL_SERVER_NOTIFY_INFORMANT;
+    [format ["Civilian informant debrief completed (unit=%1, playerOwner=%2, source=%3, intel=%4)", netId _unit, owner _caller, _source, _amount], "INTELLIGENCE"] call KPLIB_fnc_log;
+    [true] call KPLIB_INTEL_SERVER_CLEAR_INFORMANT;
+    if (!isNil "F_cr_changeCR") then {[2] spawn F_cr_changeCR};
+    [_amount, "informant"] call KPLIB_INTEL_SERVER_ADD_RESERVE;
+    true
+};
+
+KPLIB_INTEL_SERVER_RELEASE_INFORMANT_ESCORT = {
+    params [["_unit", objNull, [objNull]], ["_reason", "escort unavailable", [""]]];
+    private _state = KPLIB_INTEL_INFORMANT_STATE;
+    if (count _state == 0 || {isNull _unit} || {_unit isNotEqualTo (_state getOrDefault ["unit", objNull])} || {!alive _unit}) exitWith {};
+
+    _state set ["escort", objNull];
+    _state set ["lastAt", CBA_missionTime];
+    [_unit] call KPLIB_INTEL_SERVER_SET_INFORMANT_WAITING;
+    [format ["Civilian informant escort released (unit=%1, reason=%2)", netId _unit, _reason], "INTELLIGENCE"] call KPLIB_fnc_log;
+};
+
+KPLIB_INTEL_SERVER_MONITOR_INFORMANT_ESCORT = {
+    params [["_unit", objNull, [objNull]], ["_caller", objNull, [objNull]]];
+    private _state = KPLIB_INTEL_INFORMANT_STATE;
+    if (count _state == 0 || {_unit isNotEqualTo (_state getOrDefault ["unit", objNull])}) exitWith {};
+    if (isNull _unit || {!alive _unit} || {_unit getVariable ["KPLIB_intelligenceDelivered", false]}) exitWith {};
+    if ((_state getOrDefault ["escort", objNull]) isNotEqualTo _caller) exitWith {};
+
+    private _breakDistance = missionNamespace getVariable ["KPLIB_surrender_escort_break_distance", 150];
+    if (
+        isNull _caller
+        || {!alive _caller}
+        || {!isPlayer _caller}
+        || {side group _caller != GRLIB_side_friendly}
+        || {vehicle _caller isNotEqualTo _caller}
+        || {_unit distance _caller > _breakDistance}
+    ) exitWith {
+        [_unit, "player unavailable or beyond escort range"] call KPLIB_INTEL_SERVER_RELEASE_INFORMANT_ESCORT;
+    };
+
+    if ([_unit, _caller, "informant escort"] call KPLIB_INTEL_SERVER_COMMIT_INFORMANT) exitWith {};
+    if (vehicle _unit isEqualTo _unit && {_unit distance _caller > 3}) then {
+        _unit doMove (getPosATL _caller);
+    };
+    [KPLIB_INTEL_SERVER_MONITOR_INFORMANT_ESCORT, [_unit, _caller], 3] call CBA_fnc_waitAndExecute;
+};
+
+KPLIB_INTEL_SERVER_BEGIN_INFORMANT_ESCORT = {
+    params [["_unit", objNull, [objNull]]];
+    private _caller = call KPLIB_INTEL_SERVER_GET_CALLER;
+    private _state = KPLIB_INTEL_INFORMANT_STATE;
+    private _interactionDistance = missionNamespace getVariable ["KPLIB_intelligence_interaction_distance", 4];
+    if (
+        count _state == 0
+        || {isNull _caller}
+        || {!alive _caller}
+        || {vehicle _caller isNotEqualTo _caller}
+        || {side group _caller != GRLIB_side_friendly}
+        || {isNull _unit}
+        || {!local _unit}
+        || {!alive _unit}
+        || {isPlayer _unit}
+        || {_unit isNotEqualTo (_state getOrDefault ["unit", objNull])}
+        || {!(_unit getVariable ["KPLIB_intelligenceInformant", false])}
+        || {_unit getVariable ["KPLIB_intelligenceDelivered", false]}
+        || {_unit distance _caller > _interactionDistance}
+    ) exitWith {};
+
+    private _escort = _state getOrDefault ["escort", objNull];
+    if (!isNull _escort) exitWith {};
+    if ([_unit, _caller, "informant escort action"] call KPLIB_INTEL_SERVER_COMMIT_INFORMANT) exitWith {};
+
+    _state set ["escort", _caller];
+    _state set ["lastAt", CBA_missionTime];
+    _unit setVariable ["KPLIB_intelligenceEscort", _caller];
+    if (missionNamespace getVariable ["KP_liberation_ace", false]) then {
+        ["ace_captives_setSurrendered", [_unit, false], _unit] call CBA_fnc_targetEvent;
+    } else {
+        _unit enableAI "ANIM";
+        _unit enableAI "MOVE";
+    };
+    _unit setCaptive true;
+    _unit setUnitPos "AUTO";
+    _unit doMove (getPosATL _caller);
+    [format ["Civilian informant escort started (unit=%1, playerOwner=%2)", netId _unit, owner _caller], "INTELLIGENCE"] call KPLIB_fnc_log;
+    [KPLIB_INTEL_SERVER_MONITOR_INFORMANT_ESCORT, [_unit, _caller], 3] call CBA_fnc_waitAndExecute;
+};
+
+KPLIB_INTEL_SERVER_UPDATE_INFORMANT = {
+    if (!isServer) exitWith {};
+    private _now = CBA_missionTime;
+    private _state = KPLIB_INTEL_INFORMANT_STATE;
+
+    if (count _state > 0) exitWith {
+        private _unit = _state getOrDefault ["unit", objNull];
+        if (isNull _unit) exitWith {
+            ["EXPIRED"] call KPLIB_INTEL_SERVER_NOTIFY_INFORMANT;
+            ["Civilian informant state cleared because its unit no longer exists", "INTELLIGENCE"] call KPLIB_fnc_log;
+            [false] call KPLIB_INTEL_SERVER_CLEAR_INFORMANT;
+        };
+        if (!alive _unit) exitWith {
+            ["KILLED"] call KPLIB_INTEL_SERVER_NOTIFY_INFORMANT;
+            [format ["Civilian informant killed before debrief (unit=%1)", netId _unit], "INTELLIGENCE"] call KPLIB_fnc_log;
+            [false] call KPLIB_INTEL_SERVER_CLEAR_INFORMANT;
+        };
+        if (!isNull (_state getOrDefault ["escort", objNull])) exitWith {};
+
+        private _elapsed = 0 max (_now - (_state getOrDefault ["lastAt", _now]));
+        _state set ["lastAt", _now];
+        private _pauseDistance = missionNamespace getVariable ["KPLIB_intelligence_informant_pause_distance", 150];
+        private _playerNearby = (allPlayers findIf {isPlayer _x && {alive _x} && {side group _x == GRLIB_side_friendly} && {_x distance2D _unit <= _pauseDistance}}) != -1;
+        if (!_playerNearby) then {
+            _state set ["remaining", (_state getOrDefault ["remaining", 0]) - _elapsed];
+        };
+        if ((_state getOrDefault ["remaining", 0]) <= 0) then {
+            ["EXPIRED"] call KPLIB_INTEL_SERVER_NOTIFY_INFORMANT;
+            [format ["Civilian informant contact expired (unit=%1, sector=%2)", netId _unit, _state getOrDefault ["sector", ""]], "INTELLIGENCE"] call KPLIB_fnc_log;
+            [true] call KPLIB_INTEL_SERVER_CLEAR_INFORMANT;
+        };
+    };
+
+    if (KPLIB_INTEL_INFORMANT_NEXT_AT < 0) then {call KPLIB_INTEL_SERVER_SCHEDULE_INFORMANT};
+    if (_now < KPLIB_INTEL_INFORMANT_NEXT_AT || {(missionNamespace getVariable ["GRLIB_endgame", 0]) != 0}) exitWith {};
+
+    private _eligibleSectors = (missionNamespace getVariable ["blufor_sectors", []]) select {_x in sectors_capture || {_x in sectors_bigtown}};
+    private _minimumReputation = missionNamespace getVariable ["KPLIB_intelligence_informant_min_reputation", 0];
+    if (_eligibleSectors isEqualTo [] || {(missionNamespace getVariable ["KP_liberation_civ_rep", -100]) < _minimumReputation}) exitWith {};
+
+    call KPLIB_INTEL_SERVER_SCHEDULE_INFORMANT;
+    private _chance = 0 max (100 min (missionNamespace getVariable ["KPLIB_intelligence_informant_chance", 75]));
+    if (random 100 > _chance) exitWith {};
+
+    private _spawnData = [];
+    private _remainingSectors = +_eligibleSectors;
+    while {_remainingSectors isNotEqualTo [] && {_spawnData isEqualTo []}} do {
+        private _sectorIndex = floor random count _remainingSectors;
+        private _sector = _remainingSectors deleteAt _sectorIndex;
+        private _positions = [];
+        {
+            _positions append ((_x buildingPos -1) select {!surfaceIsWater _x});
+        } forEach (nearestObjects [getMarkerPos _sector, ["House", "Building"], 200, true]);
+        if (_positions isNotEqualTo []) then {
+            _spawnData = [_sector, selectRandom _positions];
+        };
+    };
+
+    if (_spawnData isEqualTo []) exitWith {
+        [format ["Civilian informant spawn skipped: no building position in %1 eligible sectors", count _eligibleSectors], "INTELLIGENCE"] call KPLIB_fnc_log;
+    };
+    private _civilianClasses = missionNamespace getVariable ["civilians", []];
+    if (_civilianClasses isEqualTo []) exitWith {
+        ["Civilian informant spawn skipped: generated civilian class pool is empty", "INTELLIGENCE"] call KPLIB_fnc_log;
+    };
+
+    _spawnData params ["_sector", "_spawnPosition"];
+    private _group = createGroup [GRLIB_side_civilian, true];
+    if (isNull _group) exitWith {
+        [format ["Civilian informant spawn failed in sector %1: civilian group could not be created", _sector], "INTELLIGENCE"] call KPLIB_fnc_log;
+    };
+    private _unit = [selectRandom _civilianClasses, _spawnPosition, _group] call KPLIB_fnc_createManagedUnit;
+    if (isNull _unit) exitWith {
+        deleteGroup _group;
+        [format ["Civilian informant spawn failed in sector %1", _sector], "INTELLIGENCE"] call KPLIB_fnc_log;
+    };
+
+    _unit setPosATL _spawnPosition;
+    _unit setDir random 360;
+    _unit setVariable ["KPLIB_intelligenceInformant", true, true];
+    _unit setVariable ["KPLIB_intelligenceDelivered", false, true];
+    [_unit] call KPLIB_INTEL_SERVER_SET_INFORMANT_WAITING;
+
+    private _searchPosition = [
+        (_spawnPosition # 0) + 200 - random 400,
+        (_spawnPosition # 1) + 200 - random 400,
+        0
+    ];
+    private _label = markerText _sector;
+    if (_label == "") then {_label = _sector};
+    KPLIB_INTEL_INFORMANT_STATE = createHashMapFromArray [
+        ["unit", _unit],
+        ["group", _group],
+        ["sector", _sector],
+        ["label", _label],
+        ["searchPosition", _searchPosition],
+        ["remaining", missionNamespace getVariable ["KPLIB_intelligence_informant_lifetime", 1200]],
+        ["lastAt", _now],
+        ["escort", objNull]
+    ];
+    ["SPAWNED", _searchPosition, _label] call KPLIB_INTEL_SERVER_NOTIFY_INFORMANT;
+    [format ["Civilian informant contact spawned (unit=%1, sector=%2)", netId _unit, _sector], "INTELLIGENCE"] call KPLIB_fnc_log;
 };
 
 KPLIB_INTEL_SERVER_REQUEST_SYNC = {
     if !(missionNamespace getVariable ["KPLIB_intelligence_enabled", true]) exitWith {};
     private _caller = call KPLIB_INTEL_SERVER_GET_CALLER;
     if (isNull _caller || {side group _caller != GRLIB_side_friendly}) exitWith {};
+    private _activeInformant = KPLIB_INTEL_INFORMANT_STATE getOrDefault ["unit", objNull];
     [false] call KPLIB_INTEL_SERVER_RECONCILE;
     [_caller] call KPLIB_INTEL_SERVER_SEND_PAYLOAD;
+    private _informant = KPLIB_INTEL_INFORMANT_STATE;
+    private _unit = _informant getOrDefault ["unit", objNull];
+    if (!isNull _unit && {alive _unit} && {_unit isEqualTo _activeInformant}) then {
+        ["SPAWNED", _informant getOrDefault ["searchPosition", getPosATL _unit], _informant getOrDefault ["label", ""]] remoteExecCall ["KPLIB_INTEL_CLIENT_INFORMANT_EVENT", _caller];
+    };
 };
 
 KPLIB_INTEL_SERVER_INIT = {
@@ -596,6 +862,7 @@ KPLIB_INTEL_SERVER_INIT = {
     };
 
     KPLIB_INTEL_SERVER_INITIALIZED = true;
+    call KPLIB_INTEL_SERVER_SCHEDULE_INFORMANT;
     [true] call KPLIB_INTEL_SERVER_RECONCILE;
     KPLIB_INTEL_SERVER_PFH = [{[false] call KPLIB_INTEL_SERVER_RECONCILE}, missionNamespace getVariable ["KPLIB_intelligence_reconcile_interval", 15]] call CBA_fnc_addPerFrameHandler;
 };

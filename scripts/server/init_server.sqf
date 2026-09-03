@@ -15,6 +15,7 @@ wait_to_spawn_sector = compileFinal preprocessFileLineNumbers "scripts\server\se
 
 // Globals
 active_sectors = []; publicVariable "active_sectors";
+missionNamespace setVariable ["BYPASS_ENFORCED_ARSENAL", false, true];
 
 execVM "scripts\server\base\huron_manager.sqf";
 execVM "scripts\server\base\startvehicle_spawn.sqf";
@@ -56,9 +57,6 @@ KPLIB_fob_templates = [
 
 // Civil Reputation
 execVM "scripts\server\civrep\init_module.sqf";
-
-// Civil Informant
-execVM "scripts\server\civinformant\init_module.sqf";
 
 // Periodically mark groups for deletion when empty.
 execVM "scripts\server\ai\group_cleanup.sqf";
