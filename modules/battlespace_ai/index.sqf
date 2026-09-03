@@ -1,3 +1,13 @@
+if (hasInterface) then {
+	private _logisticsSpawnMarkers = allMapMarkers select {
+		_x find "logistics_spawn" == 0
+	};
+	{
+		_x setMarkerAlphaLocal 0;
+	} forEach _logisticsSpawnMarkers;
+	[format ["Hid %1 logistics entry markers locally", count _logisticsSpawnMarkers], "BATTLESPACE"] call KPLIB_fnc_log;
+};
+
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\config.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\networked_sectors\index.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\sams\index.sqf";

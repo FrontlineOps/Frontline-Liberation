@@ -36,6 +36,9 @@ if (isNil "BATTLESPACE_STRATEGIC_OPERATIONS") then {
 if (isNil "BATTLESPACE_LOGISTICS_MISSING_ENTRY_WARNED") then {
     BATTLESPACE_LOGISTICS_MISSING_ENTRY_WARNED = createHashMap;
 };
+if (isNil "BATTLESPACE_LOGISTICS_ENTRY_ANCHORS") then {
+    BATTLESPACE_LOGISTICS_ENTRY_ANCHORS = createHashMap;
+};
 
 BATTLESPACE_RESOURCE_CLASS_POOLS = createHashMap;
 
@@ -745,14 +748,48 @@ BATTLESPACE_LOGISTICS_FIND_SECTOR_SOURCES = {
     _candidates apply {[_x param [1, ""], _x param [2, createHashMap]]}
 };
 
+BATTLESPACE_LOGISTICS_BUILD_ENTRY_ANCHORS = {
+    BATTLESPACE_LOGISTICS_ENTRY_ANCHORS = createHashMap;
+    private _entries = allMapMarkers select {
+        _x find "logistics_spawn" == 0
+    };
+    private _anchors = sectors_allSectors select {
+        !isNil {NETWORKED_SECTORS get _x}
+    };
+
+    if (_anchors isNotEqualTo []) then {
+        // An entry stops at its first/nearest gameplay objective; it never becomes a graph node.
+        {
+            private _entry = _x;
+            private _anchor = [_anchors, getMarkerPos _entry] call BIS_fnc_nearestPosition;
+            BATTLESPACE_LOGISTICS_ENTRY_ANCHORS set [_entry, _anchor];
+        } forEach _entries;
+    };
+
+    [count _entries, count BATTLESPACE_LOGISTICS_ENTRY_ANCHORS]
+};
+
 BATTLESPACE_LOGISTICS_FIND_OFFMAP_SOURCE = {
     params ["_targetSector"];
     if (isNil {NETWORKED_SECTORS get _targetSector}) exitWith { "" };
-    private _sources = [
+    private _entryAnchors = BATTLESPACE_LOGISTICS_ENTRY_ANCHORS;
+    if (count _entryAnchors == 0) exitWith { "" };
+
+    private _anchorCandidates = [];
+    {
+        _anchorCandidates pushBackUnique _y;
+    } forEach _entryAnchors;
+    private _reachableAnchors = [
         _targetSector,
-        "logistics_spawn",
+        _anchorCandidates,
         blufor_sectors + ["startbase_marker"]
-    ] call NETWORKED_SECTORS_traverseGraphAndFindSectorsOfType;
+    ] call NETWORKED_SECTORS_traverseGraphAndFindNodes;
+    private _sources = [];
+    {
+        if (_y in _reachableAnchors) then {
+            _sources pushBack _x;
+        };
+    } forEach _entryAnchors;
     if (_sources isEqualTo []) exitWith { "" };
 
     private _sorted = [_sources, [_targetSector], {
@@ -1191,15 +1228,14 @@ BATTLESPACE_LOGISTICS_INIT = {
         false
     };
     private _loaded = [] call BATTLESPACE_LOGISTICS_LOAD;
+    private _entryAnchorCounts = [] call BATTLESPACE_LOGISTICS_BUILD_ENTRY_ANCHORS;
+    _entryAnchorCounts params ["_entryCount", "_mappedEntryCount"];
     BATTLESPACE_LOGISTICS_READY = _loaded;
-    private _entryCount = {
-        _x find "logistics_spawn" == 0
-    } count allMapMarkers;
     [format [
-        "Strategic logistics initialized with %1 explicit off-map convoy entr%2",
-        _entryCount,
-        ["y", "ies"] select (_entryCount != 1)
-    ], ["WARNING", "BATTLESPACE"] select (_entryCount > 0)] call BATTLESPACE_STRATEGIC_LOG;
+        "Strategic logistics initialized with %1/%2 off-map convoy entries mapped to their nearest objective anchors",
+        _mappedEntryCount,
+        _entryCount
+    ], ["WARNING", "BATTLESPACE"] select (_entryCount > 0 && {_mappedEntryCount == _entryCount})] call BATTLESPACE_STRATEGIC_LOG;
     _loaded
 };
 

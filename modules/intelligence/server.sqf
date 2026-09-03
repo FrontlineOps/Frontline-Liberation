@@ -75,7 +75,7 @@ KPLIB_INTEL_SERVER_REBUILD_REGIONS = {
         private _label = markerText _sector;
         if (_label == "") then {_label = _sector};
         _regions pushBack [_sector, _label, _depth];
-    } forEach (keys NETWORKED_SECTORS);
+    } forEach sectors_allSectors;
 
     KPLIB_INTEL_ELIGIBLE_REGIONS = [_regions, [], {_x # 2}, "ASCEND"] call BIS_fnc_sortBy;
     KPLIB_INTEL_REGION_OWNERSHIP_KEY = _ownershipKey;

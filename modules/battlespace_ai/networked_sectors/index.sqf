@@ -5,15 +5,14 @@
 
 NETWORKED_SECTORS_SAVE_KEY = format ["NETWORKED_SECTORS_%1", toUpper worldName];
 
-// List of prefixes that markers will start with that would constitute a sector to be linked
-NETWORKED_SECTORS_MARKER_PREFIXES = [
+// Only objective nodes participate in the sector graph.
+NETWORKED_SECTORS_OBJECTIVE_MARKER_PREFIXES = [
 	"capture",
 	"bigtown",
 	"military",
 	"tower",
 	"factory",
-	"startbase_marker",
-	"logistics_spawn"
+	"startbase_marker"
 ];
 
 // Key-Value
@@ -37,16 +36,6 @@ NETWORKED_SECTORS_GET_SECTORS_UP_TO_COST = {
 	params ["_bluforSectors", "_desiredCost"];
 
 	private _frontlineSectors = [];
-	private _markers = allMapMarkers select { 
-		private _marker = _x;
-		private _valid = false;
-
-		{
-			if((_marker find _x) == 0) exitWith { _valid = true };
-		} forEach NETWORKED_SECTORS_MARKER_PREFIXES;
-
-		_valid
-	};
 
 	{
 		private _cost = [_x, _bluforSectors] call NETWORKED_SECTORS_GET_DISTANCE_FROM_FRONTLINE;
@@ -54,7 +43,7 @@ NETWORKED_SECTORS_GET_SECTORS_UP_TO_COST = {
 		if(_cost <= _desiredCost && _cost >= 0) then {
 			_frontlineSectors pushBack [_cost, _x];
 		};
-	} forEach _markers;
+	} forEach sectors_allSectors;
 
 	private _sortedSectors = [
 		_frontlineSectors,
@@ -73,15 +62,6 @@ NETWORKED_SECTORS_GET_SECTORS_AT_COST = {
 	params ["_bluforSectors", "_desiredCost"];
 
 	private _frontlineSectors = [];
-	private _markers = allMapMarkers select { 
-		private _marker = _x;
-		private _valid = false;
-		{
-			if((_marker find _x) == 0) exitWith { _valid = true };
-		} forEach NETWORKED_SECTORS_MARKER_PREFIXES;
-
-		_valid
-	};
 
 	{
 		private _cost = [_x, _bluforSectors] call NETWORKED_SECTORS_GET_DISTANCE_FROM_FRONTLINE;
@@ -89,7 +69,7 @@ NETWORKED_SECTORS_GET_SECTORS_AT_COST = {
 		if(_cost == _desiredCost) then {
 			_frontlineSectors pushBack _x;
 		};
-	} forEach _markers;
+	} forEach sectors_allSectors;
 
 	_frontlineSectors
 };
@@ -162,60 +142,67 @@ NETWORKED_SECTORS_traverseGraphAndFindFirstBluforSector = {
 	_foundSector
 };
 
-NETWORKED_SECTORS_traverseGraphAndFindSectorsOfType = {
-	params ["_startingSector", "_targetSectorType", "_bluforSectors"];
-	
-	private _networkedSectorData = NETWORKED_SECTORS get _startingSector;
-	private _openSet = (_networkedSectorData get "Links") select {!(_x in _bluforSectors)};
-	private _visitedSet = createHashMap;
-	private _foundSectors = [];
+NETWORKED_SECTORS_traverseGraphAndFindNodes = {
+	params ["_startingSector", "_targetSectors", "_blockedSectors"];
+	if (
+		_startingSector in _blockedSectors
+		|| {isNil {NETWORKED_SECTORS get _startingSector}}
+	) exitWith {[]};
 
-	while { (count _openSet) > 0 } do {
+	private _targets = createHashMap;
+	{
+		if (!isNil {NETWORKED_SECTORS get _x}) then {
+			_targets set [_x, true];
+		};
+	} forEach _targetSectors;
+	if (count _targets == 0) exitWith {[]};
+
+	private _openSet = [_startingSector];
+	private _visitedSet = createHashMapFromArray [[_startingSector, true]];
+	private _foundNodes = [];
+
+	while {
+		_openSet isNotEqualTo []
+		&& {count _foundNodes < count _targets}
+	} do {
 		private _currentNode = _openSet deleteAt ((count _openSet) - 1);
-		if(_currentNode in _bluforSectors) then { continue; };
-		_visitedSet set [_currentNode, true];
-
-		if(_currentNode find _targetSectorType >= 0) then {
-			_foundSectors pushBack _currentNode;
+		if (_targets getOrDefault [_currentNode, false]) then {
+			_foundNodes pushBack _currentNode;
 		};
 
 		private _data = NETWORKED_SECTORS get _currentNode;
-		private _newLinks = _data get "Links";
-
 		{
-			if(_x in _bluforSectors) then { continue; };
-			if (!(isNil { _visitedSet get _x })) then { continue; };
-
+			if (_x in _blockedSectors) then {continue};
+			if (_visitedSet getOrDefault [_x, false]) then {continue};
+			if (isNil {NETWORKED_SECTORS get _x}) then {continue};
 			_visitedSet set [_x, true];
 			_openSet pushBack _x;
-		} forEach _newLinks;
+		} forEach (_data getOrDefault ["Links", []]);
 	};
 
-	_foundSectors
+	_foundNodes
 };
 
 NETWORKED_SECTORS_INIT = {
 	params ["_forceCacheMiss"];
 	private _startTime = diag_tickTime;
 	private _cache = profileNamespace getVariable NETWORKED_SECTORS_SAVE_KEY;
-	private _cacheValid = !isNil "_cache";
-	private _markers = allMapMarkers select { 
-		private _marker = _x;
-
-		private _valid = false;
-		{
-			if((_marker find _x) == 0) exitWith { _valid = true };
-		} forEach NETWORKED_SECTORS_MARKER_PREFIXES;
-
-		_valid
+	private _cacheValid = !isNil "_cache" && {typeName _cache == "HASHMAP"};
+	private _markersWithPrefixes = {
+		params ["_prefixes"];
+		allMapMarkers select {
+			private _marker = _x;
+			(_prefixes findIf {_marker find _x == 0}) != -1
+		}
 	};
+	private _objectiveMarkers = [NETWORKED_SECTORS_OBJECTIVE_MARKER_PREFIXES] call _markersWithPrefixes;
 
 	if(_forceCacheMiss) then {
 		_cacheValid = false;
 	};
 	if(_cacheValid) then {
-		private _sectors = _cache get "Sectors";
-		private _markerCountAtCache = _cache get "MarkerCount";
+		private _sectors = _cache getOrDefault ["Sectors", createHashMap];
+		private _markerCountAtCache = _cache getOrDefault ["MarkerCount", -1];
 		private _cachedAutoLinkDistance = _cache getOrDefault ["AutoLinkDistance", 0];
 		private _cachedMaxDistance = _cache getOrDefault ["MaxDistance", 0];
 		private _cachedGranular = _cache getOrDefault ["GranularlyLinked", false];
@@ -224,18 +211,28 @@ NETWORKED_SECTORS_INIT = {
 
 		// Determine if the cache is still valid by checking markers are still the same count
 		// Loop through all sectors and make sure all positions are the same
-		_cacheValid = ((count _markers) == _markerCountAtCache) && _cachedAutoLinkDistance == NETWORKED_SECTORS_AUTO_LINK_DISTANCE && _cachedMaxDistance == NETWORKED_SECTORS_MAX_DISTANCE && _cachedGranular == NETWORKED_SECTORS_GRANULAR_LINK && _cachedExclusion == NETWORKED_SECTORS_EXCLUSION_DISTANCE && _cachedSlop == NETWORKED_SECTORS_CLOSEST_ROAD_SLOP;
+		_cacheValid = typeName _sectors == "HASHMAP"
+			&& {(count _objectiveMarkers) == _markerCountAtCache}
+			&& {(count _sectors) == (count _objectiveMarkers)}
+			&& {_cachedAutoLinkDistance == NETWORKED_SECTORS_AUTO_LINK_DISTANCE}
+			&& {_cachedMaxDistance == NETWORKED_SECTORS_MAX_DISTANCE}
+			&& {_cachedGranular == NETWORKED_SECTORS_GRANULAR_LINK}
+			&& {_cachedExclusion == NETWORKED_SECTORS_EXCLUSION_DISTANCE}
+			&& {_cachedSlop == NETWORKED_SECTORS_CLOSEST_ROAD_SLOP};
 
 		if(_cacheValid) then {
 			{
 				private _sectorName = _x;
-				private _sectorData = _y;
-				private _pos = _y get "Position";
-
-				if (!((getMarkerPos _x) isEqualTo _pos)) exitWith {
+				private _sectorData = _sectors get _sectorName;
+				if (isNil "_sectorData") exitWith {
 					_cacheValid = false;
 				};
-			} forEach _sectors;
+				private _pos = _sectorData get "Position";
+
+				if (!((getMarkerPos _sectorName) isEqualTo _pos)) exitWith {
+					_cacheValid = false;
+				};
+			} forEach _objectiveMarkers;
 		};
 	};
 	diag_log format ["Networked Sector Cached %1", _cacheValid];
@@ -253,7 +250,7 @@ NETWORKED_SECTORS_INIT = {
 		// Loop through all sectors and construct a Graph.
 		{
 			private _links = [_x, _state] call NETWORKED_SECTORS_DETERMINE_LINKS;
-		} forEach _markers;
+		} forEach _objectiveMarkers;
 
 		// Resolve Graph outliers
 		// 1. Resolve 'islands'
@@ -263,7 +260,7 @@ NETWORKED_SECTORS_INIT = {
 		// We will also resolve Graph outlier 1.
 		{
 			private _sector = _x;
-			private _data = _y;
+			private _data = NETWORKED_SECTORS get _sector;
 			private _links = _data get "Links";
 
 			// Loop through nearby sectors
@@ -276,7 +273,7 @@ NETWORKED_SECTORS_INIT = {
 				private _valid = false;
 				{
 					if((_marker find _x) == 0) exitWith { _valid = true };
-				} forEach NETWORKED_SECTORS_MARKER_PREFIXES;
+				} forEach NETWORKED_SECTORS_OBJECTIVE_MARKER_PREFIXES;
 				_valid && ((getMarkerPos _x) distance2D (getMarkerPos _sector)) <= (NETWORKED_SECTORS_MAX_DISTANCE) && _marker != _sector
 			};
 			{	
@@ -298,12 +295,12 @@ NETWORKED_SECTORS_INIT = {
 			} forEach _nearbySectors;
 
 			_links = _links arrayIntersect _links;
-			_links = _links arrayIntersect _markers;
+			_links = _links arrayIntersect _objectiveMarkers;
 
 			_data set ["Links", _links];
-		} forEach NETWORKED_SECTORS;
+		} forEach _objectiveMarkers;
 
-		private _count = count _markers;
+		private _count = count _objectiveMarkers;
 		private _cacheData = createHashMap;
 
 		_cacheData set ["MarkerCount", _count];
@@ -319,19 +316,22 @@ NETWORKED_SECTORS_INIT = {
 		saveProfileNamespace;
 	} else {
 		NETWORKED_SECTORS = _cache get "Sectors";
-
 		{
-			private _sector = _x;
 			private _data = _y;
-			private _links = _data get "Links";
-
+			private _links = _data getOrDefault ["Links", []];
 			_links = _links arrayIntersect _links;
-			_links = _links arrayIntersect _markers;
+			_links = _links arrayIntersect _objectiveMarkers;
 			_data set ["Links", _links];
 		} forEach NETWORKED_SECTORS;
 	};
 
 	NETWORKED_SECTORS_LINKED = true;
+	[format [
+		"Sector network ready with %1 objective nodes and %2 gameplay objectives (cached=%3)",
+		count _objectiveMarkers,
+		count sectors_allSectors,
+		_cacheValid
+	], "BATTLESPACE"] call KPLIB_fnc_log;
 
 	private _timeElapsed = diag_tickTime - _startTime;
 

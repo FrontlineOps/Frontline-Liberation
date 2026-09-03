@@ -166,7 +166,7 @@ NETWORKED_SECTORS_DETERMINE_LINKS = {
 		private _valid = false;
 		{
 			if((_marker find _x) == 0) exitWith { _valid = true };
-		} forEach NETWORKED_SECTORS_MARKER_PREFIXES;
+		} forEach NETWORKED_SECTORS_OBJECTIVE_MARKER_PREFIXES;
 		_valid && ((getMarkerPos _x) distance2D (getMarkerPos _center)) <= NETWORKED_SECTORS_MAX_DISTANCE && _marker != _center
 	};
 
@@ -336,7 +336,7 @@ NETWORKED_SECTORS_DETERMINE_LINKS = {
 			private _valid = false;
 			{
 				if((_marker find _x) == 0) exitWith { _valid = true };
-			} forEach NETWORKED_SECTORS_MARKER_PREFIXES;
+			} forEach NETWORKED_SECTORS_OBJECTIVE_MARKER_PREFIXES;
 			_valid && ((getMarkerPos _x) distance2D (getMarkerPos _center)) <= (NETWORKED_SECTORS_MAX_DISTANCE) && _marker != _center
 		};
 		{
