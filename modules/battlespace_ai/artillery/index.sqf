@@ -2,6 +2,9 @@ BATTLESPACE_DISABLE_ARTILLERY = false;
 BATTLESPACE_ARTILLERY_DEBUG = false;
 BATTLESPACE_ARTILLERY_SECTIONS = [];
 BATTLESPACE_ARTILLERY_OBSERVER_TARGETS = createHashMap;
+if (isNil "BATTLESPACE_ARTILLERY_RENDER_DATA") then {
+	BATTLESPACE_ARTILLERY_RENDER_DATA = [[], [], [true, 0, 0]];
+};
 BATTLESPACE_ARTILLERY_PIECE_CLASSES = [];
 BATTLESPACE_ARTILLERY_PIECES_PER_BATTERY = 2;
 BATTLESPACE_ARTILLERY_SPAWN_COOLDOWN = 3600;
@@ -158,8 +161,6 @@ BATTLESPACE_ARTILLERY_REPORT_SHELL_FIRED = {
 
 
 	BATTLESPACE_ARTILLERY_FIRING_LOCATIONS pushBack [getPosATLVisual _vehicle, CBA_missionTime];
-
-	publicVariable "BATTLESPACE_ARTILLERY_FIRING_LOCATIONS";
 
 	if(!(BATTLESPACE_ARTILLERY_LAST_COUNTER_BATTERY_DATA isEqualTo [])) then {
 		BATTLESPACE_ARTILLERY_LAST_COUNTER_BATTERY_DATA params ["_loc", "_time"];
@@ -473,7 +474,7 @@ BATTLESPACE_SPAWN_BATTERY = {
 
 		_newVeh setVehicleAmmoDef 0;
 		_newVeh setVariable ["BSAFundingSector", _sectorToSpawnIn, true];
-		_newVeh addEventHandler ["Killed", {
+		[_newVeh, "Killed", {
 			params ["_vehicle"];
 			if (!isNil "BATTLESPACE_STRATEGIC_ADD_SECTOR_PRESSURE") then {
 				[_vehicle getVariable ["BSAFundingSector", ""], 4] call BATTLESPACE_STRATEGIC_ADD_SECTOR_PRESSURE;
@@ -481,7 +482,7 @@ BATTLESPACE_SPAWN_BATTERY = {
 			if (!isNil "KPLIB_fnc_queueDeadObjectCleanup") then {
 				[_vehicle] call KPLIB_fnc_queueDeadObjectCleanup;
 			};
-		}];
+		}] call CBA_fnc_addBISEventHandler;
 
 		private _crew = units (createVehicleCrew _newVeh);
 		_crew joinSilent _fcrGrp;
@@ -492,7 +493,7 @@ BATTLESPACE_SPAWN_BATTERY = {
 			_x disableAI "FSM";
 			_x disableAI "AUTOTARGET";
 			_x setVariable ["BSAFundingSector", _sectorToSpawnIn, true];
-			_x addEventHandler ["Killed", {
+			[_x, "Killed", {
 				params ["_unit"];
 				if (!isNil "BATTLESPACE_STRATEGIC_ADD_SECTOR_PRESSURE") then {
 					[_unit getVariable ["BSAFundingSector", ""], 1] call BATTLESPACE_STRATEGIC_ADD_SECTOR_PRESSURE;
@@ -500,7 +501,7 @@ BATTLESPACE_SPAWN_BATTERY = {
 				if (!isNil "KPLIB_fnc_queueDeadObjectCleanup") then {
 					[_unit] call KPLIB_fnc_queueDeadObjectCleanup;
 				};
-			}];
+			}] call CBA_fnc_addBISEventHandler;
 
 		} forEach _crew;
 
@@ -542,8 +543,6 @@ BATTLESPACE_SPAWN_BATTERY = {
 
 	BATTLESPACE_LAST_ARTILLERY_SPAWN = diag_tickTime;
 	[] call BATTLESPACE_LOGISTICS_SAVE;
-	publicVariable "BATTLESPACE_ARTILLERY_SECTIONS";
-	publicVariable "BATTLESPACE_LAST_ARTILLERY_SPAWN";
 };
 
 BATTLESPACE_ARTILLERY_GET_READY_BATTERIES = {
@@ -590,8 +589,6 @@ BATTLESPACE_ARTILLERY_GET_READY_BATTERIES = {
 		};
 	} forEach BATTLESPACE_ARTILLERY_SECTIONS;
 	BATTLESPACE_ARTILLERY_SECTIONS = BATTLESPACE_ARTILLERY_SECTIONS - _invalids;
-
-	publicVariable "BATTLESPACE_ARTILLERY_SECTIONS";
 	_readyBatteries;
 };
 BATTLESPACE_ARTILLERY_POLL_REQUESTS = {
@@ -606,8 +603,6 @@ BATTLESPACE_ARTILLERY_POLL_REQUESTS = {
 		(_this select 0) set [4, _networkEnabled];
 		BATTLESPACE_ARTILLERY_CYCLES_REQUIRED = _nextCycleSwap;
 		BATTLESPACE_ARTILLERY_NETWORK_ENABLED = _networkEnabled;
-		publicVariable "BATTLESPACE_ARTILLERY_CYCLES_REQUIRED";
-		publicVariable "BATTLESPACE_ARTILLERY_NETWORK_ENABLED";
 		[format ["Artillery observer network initialized (enabled=%1, window=%2 seconds)", _networkEnabled, _nextCycleSwap * BATTLESPACE_ARTILLERY_POLL_COOLDOWN], "BATTLESPACE"] call KPLIB_fnc_log;
 	};
 
@@ -615,8 +610,6 @@ BATTLESPACE_ARTILLERY_POLL_REQUESTS = {
 
 	private _newNetworkEnabled = _networkEnabled;
 	BATTLESPACE_ARTILLERY_CURRENT_CYCLE = _cycleCount + 1;
-
-	publicVariable "BATTLESPACE_ARTILLERY_CURRENT_CYCLE";
 
 	(_this select 0) set [2, BATTLESPACE_ARTILLERY_CURRENT_CYCLE];
 	if(BATTLESPACE_ARTILLERY_CURRENT_CYCLE >= _nextCycleSwap) then {
@@ -628,9 +621,6 @@ BATTLESPACE_ARTILLERY_POLL_REQUESTS = {
 		BATTLESPACE_ARTILLERY_CURRENT_CYCLE = 0;
 		BATTLESPACE_ARTILLERY_CYCLES_REQUIRED = _nextSwap;
 		BATTLESPACE_ARTILLERY_NETWORK_ENABLED = _newNetworkEnabled;
-		publicVariable "BATTLESPACE_ARTILLERY_CURRENT_CYCLE";
-		publicVariable "BATTLESPACE_ARTILLERY_CYCLES_REQUIRED";
-		publicVariable "BATTLESPACE_ARTILLERY_NETWORK_ENABLED";
 		if ((count BATTLESPACE_ARTILLERY_OBSERVER_TARGETS) > 0) then {
 			[format ["Artillery observer network toggled (enabled=%1, nextWindow=%2 seconds, activeTargets=%3)", _newNetworkEnabled, _nextSwap * BATTLESPACE_ARTILLERY_POLL_COOLDOWN, count BATTLESPACE_ARTILLERY_OBSERVER_TARGETS], "BATTLESPACE"] call KPLIB_fnc_log;
 		};
@@ -656,14 +646,12 @@ BATTLESPACE_ARTILLERY_POLL_REQUESTS = {
 	
 	
 	BATTLESPACE_ARTILLERY_NEXT_TICK_TIME = CBA_missionTime + _pollCooldown;
-	publicVariable "BATTLESPACE_ARTILLERY_NEXT_TICK_TIME";
 	(_this select 0) set [0, BATTLESPACE_ARTILLERY_NEXT_TICK_TIME];
 
 	(_this select 0) set [1, _counter + _pollCooldown * _counterBatteryMultiplier];
 	
 
 	BATTLESPACE_ARTILLERY_COUNTER_BATTERY_TIMER = _counter;
-	publicVariable "BATTLESPACE_ARTILLERY_COUNTER_BATTERY_TIMER";
 
 	private _counterBatteryCooldown = BATTLESPACE_ARTILLERY_COUNTER_BATTERY_BASE_COOLDOWN * ([1, 1.25] select _lowPop);
 	if(_counter >= _counterBatteryCooldown) then {
@@ -720,15 +708,12 @@ BATTLESPACE_ARTILLERY_POLL_REQUESTS = {
 			
 			
 				BATTLESPACE_ARTILLERY_LAST_COUNTER_BATTERY_DATA = [_location, CBA_missionTime];
-				publicVariable "BATTLESPACE_ARTILLERY_LAST_COUNTER_BATTERY_DATA";
 				
 				[_location, objNull, 250, true, CBA_missionTime] remoteExec ["BATTLESPACE_ARTILLERY_BROADCAST_TARGET", 2]; 
 				// Clear all entries up to and including _right
 
 				
 				BATTLESPACE_ARTILLERY_FIRING_LOCATIONS deleteRange [0, _right + 1];
-
-				publicVariable "BATTLESPACE_ARTILLERY_FIRING_LOCATIONS";
 			};
 
 			
@@ -919,7 +904,6 @@ BATTLESPACE_ARTILLERY_FULFILL_REQUEST = {
 		[_battery getVariable ["BSAFundingSector", ""], createHashMapFromArray [["rockets", _reservedRounds]]] call BATTLESPACE_RESOURCE_DEPOSIT_CLAMPED;
 		[format ["Artillery battery removed (group=%1, sector=%2, shell=%3, reason=no compatible fire-capable pieces after paid reload)", _battery, _battery getVariable ["BSAFundingSector", ""], _shellType], "BATTLESPACE"] call KPLIB_fnc_log;
 		BATTLESPACE_ARTILLERY_SECTIONS = BATTLESPACE_ARTILLERY_SECTIONS - [_battery];
-		publicVariable "BATTLESPACE_ARTILLERY_SECTIONS";
 	};
 	private _usableReservation = _reservedRounds min (_salvos * count _readyVehicles);
 	private _immediateRefund = _reservedRounds - _usableReservation;
@@ -1205,8 +1189,6 @@ BATTLESPACE_ARTILLERY_BROADCAST_TARGET = {
 	params ["_target", "_observer", "_timeInCombat", ["_systemTargeted", false], ["_targetedAt", CBA_missionTime], ["_wp", false]];
 
 	BATTLESPACE_ARTILLERY_OBSERVER_TARGETS set [str _observer, [_observer, _target, _timeInCombat, _systemTargeted, _targetedAt, _wp]];
-
-	publicVariable "BATTLESPACE_ARTILLERY_OBSERVER_TARGETS";
 };
 
 
@@ -1218,8 +1200,6 @@ BATTLESPACE_ARTILLERY_BROADCAST_CLEAR_TARGET = {
 	} else {
 		BATTLESPACE_ARTILLERY_OBSERVER_TARGETS deleteAt _observer;
 	};
-
-	publicVariable "BATTLESPACE_ARTILLERY_OBSERVER_TARGETS";
 };
 BATTLESPACE_ARTILLERY_OBSERVER_COROUTINE = {
 
@@ -1292,14 +1272,14 @@ BATTLESPACE_ARTILLERY_OBSERVER_COROUTINE = {
 			
 
 			if(!(_prevLoc isEqualTo [])) then {
-				if((_prevLoc distance2D _tLoc) <= 5) then {
+				private _targetMovement = _prevLoc distance2D _tLoc;
+				if(_targetMovement <= 5) then {
 					_multiplier = 4;
 				} else {
-
-					if((_prevLoc distance2D _tLoc) >= 100) then {
-						_retainMultiplier = 0.4;
+					if(_targetMovement >= BATTLESPACE_ARTILLERY_TARGET_MOVEMENT_ACCURACY_LOSS_DISTANCE) then {
+						_retainMultiplier = 0.6;
 					} else {
-						if((_prevLoc distance2D _tLoc) >= 12.5) then {
+						if(_targetMovement >= BATTLESPACE_ARTILLERY_TARGET_MOVEMENT_ACCURACY_LOSS_BAND_DISTANCE) then {
 							_retainMultiplier = 0.9;
 						};
 					};
@@ -1331,179 +1311,209 @@ BATTLESPACE_ARTILLERY_OBSERVER_COROUTINE = {
 	(_this select 0) set [1, _state];
 	
 };
+BATTLESPACE_ARTILLERY_BUILD_RENDER_SNAPSHOT = {
+	if (!isServer) exitWith {[[], [], [true, 0, 0]]};
+
+	private _observers = [];
+	{
+		_y params ["_observer", "_target", "_timeInCombat", "_systemTargeted", "_targetedAtUnused", "_wp"];
+		private _targetPosition = if (_target isEqualType objNull) then {
+			if (isNull _target) then {[]} else {getPos _target}
+		} else {
+			if (_target isEqualType []) then {+_target} else {[]}
+		};
+		if (_targetPosition isEqualTo []) then {continue};
+
+		private _observerPosition = [];
+		if (_observer isEqualType objNull && {!isNull _observer}) then {
+			_observerPosition = getPos _observer;
+		};
+		_observers pushBack [_observerPosition, _targetPosition, _timeInCombat, _systemTargeted, _wp];
+	} forEach BATTLESPACE_ARTILLERY_OBSERVER_TARGETS;
+
+	private _batteries = [];
+	{
+		private _leader = leader _x;
+		if (isNull _leader) then {continue};
+		private _state = _x getVariable ["BSAState", []];
+		_state params [
+			["_status", "NOT READY"], ["_initialSetupTimeUnused", 0], ["_locationUnused", []],
+			["_targetUnused", objNull], ["_accuracy", 0], ["_observerUnused", objNull],
+			["_targetLocations", []], ["_targetLocation", []], ["_systemTargeted", false],
+			["_cooldownExpiresAt", 0], ["_suppressedUntil", 0], ["_wp", false]
+		];
+		_batteries pushBack [
+			str _x,
+			getPos _leader,
+			_status,
+			_accuracy,
+			+_targetLocations,
+			+_targetLocation,
+			_systemTargeted,
+			_cooldownExpiresAt,
+			_suppressedUntil,
+			_wp
+		];
+	} forEach BATTLESPACE_ARTILLERY_SECTIONS;
+
+	[
+		_observers,
+		_batteries,
+		[
+			missionNamespace getVariable ["BATTLESPACE_ARTILLERY_NETWORK_ENABLED", true],
+			missionNamespace getVariable ["BATTLESPACE_ARTILLERY_CURRENT_CYCLE", 0],
+			missionNamespace getVariable ["BATTLESPACE_ARTILLERY_CYCLES_REQUIRED", 0]
+		]
+	]
+};
+
+BATTLESPACE_ARTILLERY_RENDER_REQUEST = {
+	if (!isServer || {!isRemoteExecuted}) exitWith {};
+	private _ownerId = remoteExecutedOwner;
+	private _requester = (allPlayers select {owner _x == _ownerId}) param [0, objNull];
+	if (isNull _requester || {isNull (getAssignedCuratorLogic _requester)}) exitWith {};
+
+	private _lastRequest = _requester getVariable ["KPLIB_battlespaceArtilleryRenderRequestAt", -10];
+	if (CBA_missionTime - _lastRequest < 1) exitWith {};
+	_requester setVariable ["KPLIB_battlespaceArtilleryRenderRequestAt", CBA_missionTime];
+
+	private _snapshot = [] call BATTLESPACE_ARTILLERY_BUILD_RENDER_SNAPSHOT;
+	["KPLIB_battlespaceArtilleryRenderSnapshot", [_snapshot], _requester] call CBA_fnc_targetEvent;
+};
+
+if (isServer) then {
+	["Compact Battlespace artillery curator-render snapshot service initialized", "BATTLESPACE"] call KPLIB_fnc_log;
+	[format ["Artillery observer movement accuracy bands configured (mild=%1m, severe=%2m)", BATTLESPACE_ARTILLERY_TARGET_MOVEMENT_ACCURACY_LOSS_BAND_DISTANCE, BATTLESPACE_ARTILLERY_TARGET_MOVEMENT_ACCURACY_LOSS_DISTANCE], "BATTLESPACE"] call KPLIB_fnc_log;
+};
+
+if (hasInterface) then {
+	["KPLIB_battlespaceArtilleryRenderSnapshot", {
+		params [["_snapshot", [[], [], [true, 0, 0]], [[]]]];
+		BATTLESPACE_ARTILLERY_RENDER_DATA = _snapshot;
+	}] call CBA_fnc_addEventHandler;
+};
+
 RENDER_BATTLESPACE_ARTILLERY = true;
 RENDER_BATTLESPACE_ARTILLERY_PFH = {
-
+	(_this select 0) params [["_nextTick", 0]];
+	if(!RENDER_BATTLESPACE_ARTILLERY) exitWith {[_this select 1] call CBA_fnc_removePerFrameHandler};
 	if(isNull curatorCamera) exitWith {};
 	if(accTime <= 0 || isGamePaused) exitWith {};
 
-	if(!RENDER_BATTLESPACE_ARTILLERY) exitWith { [_this select 1] call CBA_fnc_removePerFrameHandler; };
-	
+	if(CBA_missionTime > _nextTick) then {
+		[] remoteExecCall ["BATTLESPACE_ARTILLERY_RENDER_REQUEST", 2];
+		(_this select 0) set [0, CBA_missionTime + 5];
+	};
+
+	BATTLESPACE_ARTILLERY_RENDER_DATA params [
+		["_renderObservers", []],
+		["_renderBatteries", []],
+		["_renderNetwork", [true, 0, 0]]
+	];
+	_renderNetwork params ["_networkEnabled", "_currentCycle", "_cyclesRequired"];
+	private _networkStr = [
+		format ["NETWORK OFF (%1/%2)", _currentCycle, _cyclesRequired],
+		format ["NETWORK ON (%1/%2)", _currentCycle, _cyclesRequired]
+	] select _networkEnabled;
+
 	{
-		_y params ["_observer", "_target", "_timeInCombat", "_systemTargeted", "_targetedAt", "_wp"];
-		private _targetPos = (_target getPos [0,0]) vectorAdd [0,0,25];
+		_x params ["_observerPosition", "_targetPosition", "_timeInCombat", "_systemTargeted", "_wp"];
+		private _targetPos = _targetPosition vectorAdd [0,0,25];
 		private _cffType = "FIRE-FOR-EFFECT";
-
 		private _targetMarker = "\A3\ui_f\data\map\markers\nato\b_inf.paa";
-		if(_timeInCombat < 300) then {
-			_cffType = "ADJUST FIRE";
-		};
-
-		if(_wp) then {
-			_cffType = "IMMEDIATE SMOKE";
-		};
+		if(_timeInCombat < 300) then {_cffType = "ADJUST FIRE"};
+		if(_wp) then {_cffType = "IMMEDIATE SMOKE"};
 		private _targetType = "TARGET";
 
-	
 		if(_systemTargeted) then {
-			if(_timeInCombat >= 200) then {
-				_cffType = "NEUTRALIZATION";
-			} else {
-				_cffType = "SUPPRESSION";
-			};
+			_cffType = ["SUPPRESSION", "NEUTRALIZATION"] select (_timeInCombat >= 200);
 			_targetType = "COUNTER-BATTERY TARGET";
 			_targetMarker = "\A3\ui_f\data\map\markers\nato\b_art.paa";
 		};
-		if(!isNull (_observer) && (typeName _observer) != "STRING") then {
 
-			private _observerPos = (getPos _observer) vectorAdd [0,0,25];
-			
+		if(_observerPosition isNotEqualTo []) then {
+			private _observerPos = _observerPosition vectorAdd [0,0,25];
 			private _dir = _observerPos vectorFromTo _targetPos;
-
-			private _networkStr = [format ["NETWORK OFF (%1/%2)", BATTLESPACE_ARTILLERY_CURRENT_CYCLE, BATTLESPACE_ARTILLERY_CYCLES_REQUIRED] , format ["NETWORK ON (%1/%2)", BATTLESPACE_ARTILLERY_CURRENT_CYCLE, BATTLESPACE_ARTILLERY_CYCLES_REQUIRED]] select BATTLESPACE_ARTILLERY_NETWORK_ENABLED;
-
 			drawIcon3D ["\A3\ui_f\data\map\markers\nato\n_hq.paa", [1,0.4,0.4,1], _observerPos, 1, 1, 0, format ["Accuracy: %1 | %2 | %3", _timeInCombat, _cffType, _networkStr], 1, 0.03, "TahomaB"];
 			private _distance = _observerPos distance _targetPos;
-
 			private _multi = _distance / 40;
 			for "_i" from 1 to 39 do {
-
 				private _dist = _multi * _i;
 				drawIcon3D ["\a3\UI_F_Enoch\Data\CfgMarkers\dot1_ca.paa", [1,1,1,1], _observerPos vectorAdd (_dir vectorMultiply _dist), 0.5, 0.5, 0, "", 1, 0.02, "TahomaB"];
 			};
 			drawLine3D [_observerPos, _targetPos, [0,1,0,1]];
 		};
-		
-		
 		drawIcon3D [_targetMarker, [0.4,0.4,1,1], _targetPos, 1, 1, 0, _targetType, 1, 0.03, "TahomaB"];
+	} forEach _renderObservers;
 
-		
-
-		
-
-
-	} forEach BATTLESPACE_ARTILLERY_OBSERVER_TARGETS;
-	
 	{
-
-		private _leader = leader _x;
-
-		private _state = _x getVariable ["BSAState", []];
-		
-
-		
-		
-		_state params [["_status", "NOT READY"], ["_initialSetupTime", 0], ["_loc", []], ["_target", objNull], ["_accuracy", 0], ["_observer", objNull], ["_tLocs", []], ["_tLoc", []], ["_systemTargeted", false], ["_cooldownExpiresAt", 0], ["_suppressedUntil", 0], ["_wp", false]];
-		
+		_x params [
+			"_batteryName", "_batteryPosition", "_status", "_accuracy", "_targetLocations",
+			"_targetLocation", "_systemTargeted", "_cooldownExpiresAt", "_suppressedUntil", "_wp"
+		];
 		private _cffType = "FIRE-FOR-EFFECT";
-		
-		private _networkStr = [format ["NETWORK OFF (%1/%2)", BATTLESPACE_ARTILLERY_CURRENT_CYCLE, BATTLESPACE_ARTILLERY_CYCLES_REQUIRED] , format ["NETWORK ON (%1/%2)", BATTLESPACE_ARTILLERY_CURRENT_CYCLE, BATTLESPACE_ARTILLERY_CYCLES_REQUIRED]] select BATTLESPACE_ARTILLERY_NETWORK_ENABLED;
-
-		if(_accuracy < 300) then {
-			_cffType = "ADJUST FIRE";
-		};
-		if(_wp) then {
-			_cffType = "IMMEDIATE SMOKE";
-		};
+		if(_accuracy < 300) then {_cffType = "ADJUST FIRE"};
+		if(_wp) then {_cffType = "IMMEDIATE SMOKE"};
 		if(_systemTargeted) then {
-
-			if(_accuracy >= 200) then {
-				_cffType = "NEUTRALIZATION";
-			} else {
-				_cffType = "SUPPRESSION";
-			};
+			_cffType = ["SUPPRESSION", "NEUTRALIZATION"] select (_accuracy >= 200);
 		};
 
 		private _statusStr = _status;
-
 		if(_status == "SUPPRESSED") then {
-
 			private _timeRemaining = 0 max ceil (_suppressedUntil - CBA_missionTime);
-
 			if(_timeRemaining == 0) then {
-
 				if(_cooldownExpiresAt > CBA_missionTime) then {
 					private _cooldownRemaining = 0 max ceil (_cooldownExpiresAt - CBA_missionTime);
 					private _mins = floor (_cooldownRemaining / 60);
-					private _rem =_cooldownRemaining - (_mins * 60);
-
-					if(_rem < 10) then {
-						_rem = format ["0%1", _rem];
-					};
+					private _rem = _cooldownRemaining - (_mins * 60);
+					if(_rem < 10) then {_rem = format ["0%1", _rem]};
 					_statusStr = format ["COOLING DOWN (%1:%2)", _mins, _rem];
 				} else {
-					_statusStr = format ["AWAITING NETWORK CYCLE"];
+					_statusStr = "AWAITING NETWORK CYCLE";
 				};
-				
 			} else {
-
 				private _mins = floor (_timeRemaining / 60);
-				private _rem =_timeRemaining - (_mins * 60);
-				if(_rem < 10) then {
-						_rem = format ["0%1", _rem];
-					};
+				private _rem = _timeRemaining - (_mins * 60);
+				if(_rem < 10) then {_rem = format ["0%1", _rem]};
 				_statusStr = format ["SUPPRESSED (%1:%2)", _mins, _rem];
 			};
-			
 		};
 		if(_status == "COOLING DOWN") then {
 			private _cooldownRemaining = 0 max ceil (_cooldownExpiresAt - CBA_missionTime);
 			private _mins = floor (_cooldownRemaining / 60);
-			private _rem =_cooldownRemaining - (_mins * 60);
-			if(_rem < 10) then {
-				_rem = format ["0%1", _rem];
-			};
+			private _rem = _cooldownRemaining - (_mins * 60);
+			if(_rem < 10) then {_rem = format ["0%1", _rem]};
 			_statusStr = format ["COOLING DOWN (%1:%2)", _mins, _rem];
 		};
-		private _pos = (getPos _leader) vectorAdd [0,0,40];
 
-		drawIcon3D ["\A3\ui_f\data\map\markers\nato\o_art.paa", [1,0.4,0.4,1], _pos, 1, 1, 0, format ["BATTERY %1 | STATUS: %2 | %3", str _x, _statusStr, _networkStr], 1, 0.03, "TahomaB"];
+		private _pos = _batteryPosition vectorAdd [0,0,40];
+		drawIcon3D ["\A3\ui_f\data\map\markers\nato\o_art.paa", [1,0.4,0.4,1], _pos, 1, 1, 0, format ["BATTERY %1 | STATUS: %2 | %3", _batteryName, _statusStr, _networkStr], 1, 0.03, "TahomaB"];
 
-		if(!(_tLoc isEqualTo [])) then {
-			private _targetPos = _tLoc vectorAdd [0,0,40];
-			drawIcon3D ["\A3\ui_f\data\map\groupicons\selector_selectedEnemy_ca.paa", [1,0.4,0.4,1], _targetPos, 1, 1, 0, format ["BATTERY %1 %2 (%3)", str _x, _cffType, _accuracy], 1, 0.03, "TahomaB"];
-
-			
+		if(_targetLocation isNotEqualTo []) then {
+			private _targetPos = _targetLocation vectorAdd [0,0,40];
+			drawIcon3D ["\A3\ui_f\data\map\groupicons\selector_selectedEnemy_ca.paa", [1,0.4,0.4,1], _targetPos, 1, 1, 0, format ["BATTERY %1 %2 (%3)", _batteryName, _cffType, _accuracy], 1, 0.03, "TahomaB"];
 			private _minDispersion = [_accuracy, _wp] call BATTLESPACE_GET_MIN_DISPERSION;
 			private _maxDispersion = [_accuracy, _wp] call BATTLESPACE_GET_MAX_DISPERSION;
-
 			for "_i" from 0 to 35 do {
-
 				private _angle = _i * 10;
-
-				private _pos = _targetPos getPos [_minDispersion, _angle];
-				private _maxPos = _targetPos getPos [_maxDispersion, _angle];
-				drawIcon3D ["\a3\UI_F_Enoch\Data\CfgMarkers\dot1_ca.paa", [1,0,0,1], _pos, 0.5, 0.5, 0, "", 1, 0.02, "TahomaB"];
-				drawIcon3D ["\a3\UI_F_Enoch\Data\CfgMarkers\dot1_ca.paa", [0,1,0,1], _maxPos, 0.5, 0.5, 0, "", 1, 0.02, "TahomaB"];
+				private _innerPos = _targetPos getPos [_minDispersion, _angle];
+				private _outerPos = _targetPos getPos [_maxDispersion, _angle];
+				drawIcon3D ["\a3\UI_F_Enoch\Data\CfgMarkers\dot1_ca.paa", [1,0,0,1], _innerPos, 0.5, 0.5, 0, "", 1, 0.02, "TahomaB"];
+				drawIcon3D ["\a3\UI_F_Enoch\Data\CfgMarkers\dot1_ca.paa", [0,1,0,1], _outerPos, 0.5, 0.5, 0, "", 1, 0.02, "TahomaB"];
 			};
 		};
 
-		if((count _tLocs) > 0) then {
-
-			{
-				drawIcon3D ["\A3\ui_f\data\map\groupicons\waypoint.paa", [1,0,0,1], _x, 0.5, 0.5, 0, format ["TLOC%1", _forEachIndex+1], 1, 0.03, "TahomaB"];
-			} forEach _tLocs;
-		};
-
-
-	} forEach BATTLESPACE_ARTILLERY_SECTIONS;
+		{
+			drawIcon3D ["\A3\ui_f\data\map\groupicons\waypoint.paa", [1,0,0,1], _x, 0.5, 0.5, 0, format ["TLOC%1", _forEachIndex + 1], 1, 0.03, "TahomaB"];
+		} forEach _targetLocations;
+	} forEach _renderBatteries;
 };
 
 if(hasInterface) then {
 	[
 		{ _this call RENDER_BATTLESPACE_ARTILLERY_PFH },
 		0,
-		[]
+		[0]
 	] call CBA_fnc_addPerFrameHandler;
 };
 if (isServer) then {
