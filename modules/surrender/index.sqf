@@ -1,6 +1,6 @@
 /*
     Server-authoritative combat surrender and prisoner escort lifecycle.
-    One mission casualty event plus three resolved-battle events feed this module.
+    One CBA class casualty event plus three resolved-battle events feed this module.
 */
 
 if (!isServer) exitWith {};
@@ -317,12 +317,11 @@ KPLIB_SURRENDER_SERVER_BEGIN_ESCORT = {
     true
 };
 
-KPLIB_SURRENDER_ENTITY_KILLED_EH = addMissionEventHandler ["EntityKilled", {
+KPLIB_SURRENDER_KILLED_XEH = ["CAManBase", "Killed", {
     params ["_killed"];
     if (
         isNull _killed
         || {isPlayer _killed}
-        || {!(_killed isKindOf "CAManBase")}
     ) exitWith {};
 
     private _group = group _killed;
@@ -342,7 +341,7 @@ KPLIB_SURRENDER_ENTITY_KILLED_EH = addMissionEventHandler ["EntityKilled", {
         _group setVariable ["KPLIB_surrenderCasualtyCheckPending", nil];
         [_group] call KPLIB_SURRENDER_SERVER_TRIGGER_GROUP;
     }, [_group], 2] call CBA_fnc_waitAndExecute;
-}];
+}, true] call CBA_fnc_addClassEventHandler;
 
 [
     format [

@@ -22,8 +22,8 @@ if (isServer) then {
     // delete old Liberation mission placed Zeus module
     deleteVehicle zm1;
 
-    // add curator assign EventHandler
-    [true, "KPLIB_createZeus", {
+    // Add curator assignment event.
+    ["KPLIB_createZeus", {
         params [
             ["_player", objNull, [objNull]],
             ["_limited", false, [true]]
@@ -36,7 +36,7 @@ if (isServer) then {
         private _oldManagedZeus = missionNamespace getVariable [ZEUSVAR(_uid), objNull];
         if (!isNull _oldManagedZeus && {_limited isEqualTo (_oldManagedZeus getVariable ["KPLIB_limited", -1])}) exitWith {
             _player assignCurator _oldManagedZeus;
-            [true, "KPLIB_zeusAssigned", [_oldManagedZeus]] remoteExecCall ["BIS_fnc_callScriptedEventHandler", _player];
+            ["KPLIB_zeusAssigned", [_oldManagedZeus], _player] call CBA_fnc_targetEvent;
         };
 
         // remove currently assigned curator
@@ -70,31 +70,33 @@ if (isServer) then {
 
         _player assignCurator _zeus;
 
-        [true, "KPLIB_zeusAssigned", [_zeus, _limited]] remoteExecCall ["BIS_fnc_callScriptedEventHandler", _player];
-    }] call BIS_fnc_addScriptedEventHandler;
+        ["KPLIB_zeusAssigned", [_zeus, _limited], _player] call CBA_fnc_targetEvent;
+    }] call CBA_fnc_addEventHandler;
 
-    [true, "KPLIB_activateZeusAddons", {
+    ["KPLIB_activateZeusAddons", {
         params [
             ["_zeus", objNull, [objNull]],
             ["_addons", [], [[]]]
         ];
 
         _zeus addCuratorAddons _addons;
-    }] call BIS_fnc_addScriptedEventHandler;
+    }] call CBA_fnc_addEventHandler;
 
-    // remove the assigned curator on player disconnect
-    addMissionEventHandler ["HandleDisconnect", {
+    // Remove the assigned curator through the mission's CBA disconnect event.
+    ["KPLIB_playerDisconnected", {
         params ["", "", "_uid"];
         private _zeus = missionNamespace getVariable ZEUSVAR(_uid);
         if (!isNil "_zeus") then {
             deleteVehicle _zeus;
             missionNamespace setVariable [ZEUSVAR(_uid), nil];
         };
-    }];
+    }] call CBA_fnc_addEventHandler;
+
+    ["Curator CBA event handlers initialized", "EVENTS"] call KPLIB_fnc_log;
 };
 
 if (hasInterface) then {
-    [true, "KPLIB_zeusAssigned", {
+    ["KPLIB_zeusAssigned", {
         params [
             ["_zeus", objNull, [objNull]],
             ["_limited", false, [true]]
@@ -107,9 +109,9 @@ if (hasInterface) then {
 
         if (!_limited) then {
             private _allAddons = ("true" configClasses (configFile >> "CfgPatches")) apply {configName _x};
-            [true, "KPLIB_activateZeusAddons", [_zeus, _allAddons]] remoteExecCall ["BIS_fnc_callScriptedEventHandler", 2];
+            ["KPLIB_activateZeusAddons", [_zeus, _allAddons]] call CBA_fnc_serverEvent;
         };
-    }] call BIS_fnc_addScriptedEventHandler;
+    }] call CBA_fnc_addEventHandler;
 };
 
 true

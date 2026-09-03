@@ -7,7 +7,7 @@
 
 		private _display = findDisplay 46;
 
-		_display displayAddEventHandler ["KeyDown", {
+		[_display, "KeyDown", {
 			params ["", "_key"];	
 
 			private _escapeKeys = actionKeys "ingamePause";
@@ -24,7 +24,7 @@
 				_abortButton =	(findDisplay 49) displayCtrl 104;
 				_abortButton ctrlEnable _stateTo;
 			};
-		}];
+		}] call CBA_fnc_addBISEventHandler;
 	},	
 	[]
 ] call CBA_fnc_waitUntilAndExecute;

@@ -41,7 +41,7 @@ setVariables = {
 if ( isNil { _vehicle getVariable "KP_liberation_preplaced" } ) then { _vehicle setVariable [ "KP_liberation_preplaced", true, true ] };
 
 _vehicle removeAllEventHandlers "Killed";
-_vehicle addEventHandler [ 
+[_vehicle,
 	"Killed", 
 	{
 		_this params [ "_vehicle", "_killer" ];
@@ -122,4 +122,4 @@ _vehicle addEventHandler [
 			_vehicle getVariable [ "respawnTime", 0 ]
 		]  call CBA_fnc_waitAndExecute;
 	} 
-]
+] call CBA_fnc_addBISEventHandler;

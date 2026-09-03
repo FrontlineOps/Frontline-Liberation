@@ -295,7 +295,7 @@ BATTLESPACE_SAM_SITE_CREATE = {
 			_unit setVehicleAmmoDef 0;
 			_unit setVariable ["BSASiteId", _siteId, true];
 			_unit setVariable ["BSAMissileResource", _missileResource, true];
-			_unit addEventHandler ["Fired", {_this call BATTLESPACE_SAM_ON_FIRED}];
+			[_unit, "Fired", {_this call BATTLESPACE_SAM_ON_FIRED}] call CBA_fnc_addBISEventHandler;
 		};
 		private _crew = units (createVehicleCrew _unit);
 		_crew joinSilent _grp;
@@ -303,7 +303,7 @@ BATTLESPACE_SAM_SITE_CREATE = {
 		{ 
 			_x setVariable ["Vcm_Disable", true, true];
 			_x setVariable ["BSAFundingSector", _sectorToSpawnIn, true];
-			_x addEventHandler ["Killed", {
+			[_x, "Killed", {
 				params ["_unit"];
 				if (!isNil "BATTLESPACE_STRATEGIC_ADD_SECTOR_PRESSURE") then {
 					[_unit getVariable ["BSAFundingSector", ""], 1] call BATTLESPACE_STRATEGIC_ADD_SECTOR_PRESSURE;
@@ -311,7 +311,7 @@ BATTLESPACE_SAM_SITE_CREATE = {
 				if (!isNil "KPLIB_fnc_queueDeadObjectCleanup") then {
 					[_unit] call KPLIB_fnc_queueDeadObjectCleanup;
 				};
-			}];
+			}] call CBA_fnc_addBISEventHandler;
 
 			if(!(_className in BATTLESPACE_SAM_SITE_TELS) && !(_className in BATTLESPACE_SAM_SITE_FCRS)) then {
 				_x disableAI "MOVE";
@@ -325,7 +325,7 @@ BATTLESPACE_SAM_SITE_CREATE = {
 		_spawnedClasses pushBack _className;
 
 		// Not MP because this is a server only matter
-		_unit addEventHandler ["Killed", { ["SAM", _this] call BATTLESPACE_SAM_KILLED }];
+		[_unit, "Killed", { ["SAM", _this] call BATTLESPACE_SAM_KILLED }] call CBA_fnc_addBISEventHandler;
 
 	} forEach _unitsToSpawn;
 

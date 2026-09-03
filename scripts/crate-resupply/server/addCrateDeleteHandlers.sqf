@@ -1,7 +1,7 @@
 addCrateDeleteHandlers = {
 	params ["_crate"];
 
-	_crate addEventHandler ["deleted", {
+	[_crate, "Deleted", {
 		private _crate = _this select 0;
 
 		format ["Handle deleted event %1", _crate] call resupplyLog;
@@ -39,5 +39,5 @@ addCrateDeleteHandlers = {
 
 		format ["Deleted, set %1 to have %2", _squadOwner, _currentCrates] call resupplyLog;
 
-	}];
+	}] call CBA_fnc_addBISEventHandler;
 };

@@ -74,7 +74,7 @@ requestResupplyCrate = {
 
 	
 	[_crate, 300] remoteExec ["setMass", 0];
-	_crate addEventHandler ["HandleDamage", { false }];
+	[_crate, "HandleDamage", {false}] call CBA_fnc_addBISEventHandler;
 	_crate setVariable ["resupplyCrateName", _crateName, true];
 	_crate setVariable ["resupplySquadOwner", _squadName, true];
 	_crate setVariable ["resupplySquadOwnerDisplay", groupId (group _requester), true];

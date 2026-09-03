@@ -1,2 +1,0 @@
-karma_trashCleanup_shared_trashRemovalThresholdInSeconds = 240;
-karma_trashCleanup_shared_trashContainerClassnames = ["GroundWeaponHolder"];

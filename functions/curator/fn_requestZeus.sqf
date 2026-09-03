@@ -19,6 +19,6 @@ params [
     ["_player", player, [objNull]]
 ];
 
-[true, "KPLIB_createZeus", [_player, KP_liberation_limited_zeus]] remoteExecCall ["BIS_fnc_callScriptedEventHandler", 2];
+["KPLIB_createZeus", [_player, KP_liberation_limited_zeus]] call CBA_fnc_serverEvent;
 
 true

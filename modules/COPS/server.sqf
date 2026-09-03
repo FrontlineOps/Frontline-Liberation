@@ -110,21 +110,21 @@ KPLIB_COPS_SERVER_ATTACH_LIFECYCLE = {
     params ["_primary", "_id"];
     _primary setVariable ["KPLIB_COPS_ID", _id, true];
 
-    _primary addEventHandler ["Killed", {
+    [_primary, "Killed", {
         params ["_object"];
         private _id = _object getVariable ["KPLIB_COPS_ID", -1];
         if (isServer && {_id >= 0} && {!isNil "KPLIB_COPS_SERVER_REMOVE"}) then {
             [_id, true, "DESTROYED"] call KPLIB_COPS_SERVER_REMOVE;
         };
-    }];
+    }] call CBA_fnc_addBISEventHandler;
 
-    _primary addEventHandler ["Deleted", {
+    [_primary, "Deleted", {
         params ["_object"];
         private _id = _object getVariable ["KPLIB_COPS_ID", -1];
         if (isServer && {_id >= 0} && {!isNil "KPLIB_COPS_SERVER_REMOVE"}) then {
             [_id, false, "DELETED"] call KPLIB_COPS_SERVER_REMOVE;
         };
-    }];
+    }] call CBA_fnc_addBISEventHandler;
 };
 
 KPLIB_COPS_SERVER_REMOVE = {

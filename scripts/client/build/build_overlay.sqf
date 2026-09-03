@@ -3,12 +3,13 @@ GRLIB_buildoverlay_icon = "\A3\ui_f\data\map\markers\handdrawn\objective_CA.paa"
 GRLIB_buildoverlay_color = [ 1, 0, 0, 1 ];
 GRLIB_buildoverlay_cfg = configFile >> "cfgVehicles";
 KPLIB_buildOverlayActive = false;
+KPLIB_buildOverlayPFH = -1;
 
 KPLIB_fnc_startBuildOverlay = {
     if (missionNamespace getVariable ["KPLIB_buildOverlayActive", false]) exitWith {};
 
     KPLIB_buildOverlayActive = true;
-    ["KPLIB_buildOverlay", "onEachFrame", {
+    KPLIB_buildOverlayPFH = [{
         if (build_confirmed isEqualTo 1) then {
             {
                 if (alive _x) then {
@@ -28,12 +29,13 @@ KPLIB_fnc_startBuildOverlay = {
                 };
             } forEach GRLIB_conflicting_objects;
         };
-    }] call BIS_fnc_addStackedEventHandler;
+    }, 0] call CBA_fnc_addPerFrameHandler;
 };
 
 KPLIB_fnc_stopBuildOverlay = {
     if (missionNamespace getVariable ["KPLIB_buildOverlayActive", false]) then {
-        ["KPLIB_buildOverlay", "onEachFrame"] call BIS_fnc_removeStackedEventHandler;
+        [KPLIB_buildOverlayPFH] call CBA_fnc_removePerFrameHandler;
+        KPLIB_buildOverlayPFH = -1;
         KPLIB_buildOverlayActive = false;
     };
 

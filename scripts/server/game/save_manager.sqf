@@ -16,20 +16,20 @@ if (GRLIB_param_wipe_savegame_1 == 1 && GRLIB_param_wipe_savegame_2 == 1) then {
 if (hasInterface) then {
     [] spawn {
         waitUntil {!isNull findDisplay 46};
-        (findDisplay 46) displayAddEventHandler ["Unload", {
+        [findDisplay 46, "Unload", {
             if (!isServer) exitWith {};
             ["Player server exit. Saving mission data.", "SAVE"] call KPLIB_fnc_log;
             [] spawn KPLIB_fnc_doSave;
-        }];
+        }] call CBA_fnc_addBISEventHandler;
     };
 } else {
-    addMissionEventHandler ["HandleDisconnect", {
-        if !(allPlayers isEqualTo []) exitWith {false};
+    ["KPLIB_playerDisconnected", {
+        if !(allPlayers isEqualTo []) exitWith {};
         params ["_unit"];
         deleteVehicle _unit;
         ["Last player disconnected. Saving mission data.", "SAVE"] call KPLIB_fnc_log;
         [] spawn KPLIB_fnc_doSave;
-    }];
+    }] call CBA_fnc_addEventHandler;
 };
 
 // All classnames of objects which should be saved

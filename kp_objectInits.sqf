@@ -28,7 +28,7 @@ KPLIB_objectInits = [
     [
         [FOB_typename],
         {
-            _this addEventHandler ["HandleDamage", {0}];
+            [_this, "HandleDamage", {0}] call CBA_fnc_addBISEventHandler;
             [_this] spawn {
                 params ["_fob"];
                 waitUntil {sleep 0.1; time > 0};
@@ -1352,12 +1352,12 @@ KPLIB_objectInits = [
             };
             [_amount] remoteExecCall ["F_cr_changeCR"];
             hintC format ["%1 thanks you for the ration you gave them.", name _target];
-            hintC_EH = findDisplay 57 displayAddEventHandler ["Unload", {
+            hintC_EH = [findDisplay 57, "Unload", {
                 _this spawn {
                     _this select 0 displayRemoveEventHandler ["Unload", hintC_EH];
                     hintSilent "";
                 };
-            }];
+            }] call CBA_fnc_addBISEventHandler;
             } else {hint "You don't have any rations."};
         },
         nil, 1.5, true, true, "", _conditions, 3

@@ -14,7 +14,7 @@ Method:
 execVM
 
 Example for initPlayerLocal.sqf:
-player addEventHandler ["GetInMan", {[ _this select 2] execVM "scripts\kp_fuel_consumption.sqf";}];
+["TAG_PLAYER_GET_IN", "GetInMan", {[_this select 2] spawn kp_fuel_consumption;}] call CBA_fnc_addBISPlayerEventHandler;
 */
 
 //CONFIG

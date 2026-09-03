@@ -61,21 +61,24 @@ execVM "scripts\client\markers\update_production_sites.sqf";
 execVM "scripts\client\misc\restrict_gamma.sqf";
 
 player addMPEventHandler ["MPKilled", {_this spawn kill_manager;}];
-player addEventHandler ["GetInMan", {[_this select 2] spawn kp_fuel_consumption;}];
-player addEventHandler ["GetInMan", {[_this select 2] call KPLIB_fnc_setVehicleSeized;}];
-player addEventHandler ["GetInMan", {[_this select 2] call KPLIB_fnc_setVehicleCaptured;}];
-player addEventHandler ["HandleRating", {if ((_this select 1) < 0) then {0};}];
+["KPLIB_PLAYER_GET_IN", "GetInMan", {
+    private _vehicle = _this select 2;
+    [_vehicle] spawn kp_fuel_consumption;
+    [_vehicle] call KPLIB_fnc_setVehicleSeized;
+    [_vehicle] call KPLIB_fnc_setVehicleCaptured;
+}] call CBA_fnc_addBISPlayerEventHandler;
+["KPLIB_PLAYER_RATING", "HandleRating", {if ((_this select 1) < 0) then {0};}] call CBA_fnc_addBISPlayerEventHandler;
 
 // Disable stamina, if selected in parameter
 if (!GRLIB_fatigue) then {
     player enableStamina false;
-    player addEventHandler ["Respawn", {player enableStamina false;}];
+    ["KPLIB_PLAYER_STAMINA", "Respawn", {player enableStamina false;}] call CBA_fnc_addBISPlayerEventHandler;
 };
 
 // Reduce aim precision coefficient, if selected in parameter
 if (!KPLIB_sway) then {
     player setCustomAimCoef 0.1;
-    player addEventHandler ["Respawn", {player setCustomAimCoef 0.1;}];
+    ["KPLIB_PLAYER_SWAY", "Respawn", {player setCustomAimCoef 0.1;}] call CBA_fnc_addBISPlayerEventHandler;
 };
 
 execVM "scripts\client\ui\intro.sqf";

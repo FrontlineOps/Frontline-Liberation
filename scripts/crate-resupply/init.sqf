@@ -22,22 +22,6 @@ if (!isServer || (isServer && !isDedicated)) then {
 [] call compileFinal preprocessFileLineNumbers "scripts\crate-resupply\shared\onSupplyCrateSpawned.sqf";
 
 
-// Server handles deletion and broadcasting
-if(isServer) then {
-	
-	{
-		private _ammoCrateClass = _x;
-
-		[_ammoCrateClass, "init", {
-			private _ammoContainer = _this select 0;
-			
-			_ammoContainer addEventHandler ["HandleDamage", { false }];
-		}];
-	} forEach ResupplyCrateSourceClasses;
-
-	
-};
-
 if( (isServer && !isDedicated) || !isServer ) then {
 	// Clients instead, will add ACE actions on init to ammo container sources
 	{

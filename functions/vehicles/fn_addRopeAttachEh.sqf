@@ -24,12 +24,12 @@ params [
 if (isNull _obj) exitWith {["Null object given"] call BIS_fnc_error; false};
 
 if (getNumber (configfile >> "CfgVehicles" >> (typeOf _obj) >> "slingLoadMaxCargoMass") > 0) then {
-    _obj addEventHandler ["RopeAttach", {
+    [_obj, "RopeAttach", {
         params ["_heli", "_rope", "_cargo"];
         if !((owner _heli) isEqualTo (owner _cargo)) then {
             _cargo setOwner (owner _heli);
         };
-    }];
+    }] call CBA_fnc_addBISEventHandler;
 };
 
 true

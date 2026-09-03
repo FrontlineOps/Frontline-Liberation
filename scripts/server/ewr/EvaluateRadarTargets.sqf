@@ -26,7 +26,7 @@ EvaluateRadarTargets = {
 		
 		diag_log format ["INITIALIZING NEW EWR %1", _radarVeh];
 		_radarVeh setVariable ["KILLED_EH_SET", true, true]; 
-		_radarVeh addEventHandler ["Killed", { 
+		[_radarVeh, "Killed", {
 			params ["_unit", "_killer", "_instigator", "_useEffects"]; 
 			
 			private _soundSource = _unit getVariable ["WEEWOOSOURCE", objNull]; 
@@ -34,9 +34,9 @@ EvaluateRadarTargets = {
 			if (!(isNull _soundSource)) then { 
 				deleteVehicle _soundSource; 
 			}; 
-		}]; 
+		}] call CBA_fnc_addBISEventHandler;
 
-		_radarVeh addEventHandler ["Deleted", { 
+		[_radarVeh, "Deleted", {
 			params ["_entity"];
 			
 			private _soundSource = _entity getVariable ["WEEWOOSOURCE", objNull]; 
@@ -44,7 +44,7 @@ EvaluateRadarTargets = {
 			if (!(isNull _soundSource)) then { 
 				deleteVehicle _soundSource; 
 			}; 
-		}]; 
+		}] call CBA_fnc_addBISEventHandler;
 		// [RotateEWR, [_radarVeh, 0], 2] call CBA_fnc_waitAndExecute; 
 		// diag_log format ["EWR INITIALIZED, CALL ROTATE EWR"];
 

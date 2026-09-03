@@ -69,11 +69,11 @@ while {true} do {
 
     waitUntil {dialog};
 
-    (DEPLOY_DISPLAY displayCtrl DEPLOY_LIST_IDC) ctrlAddEventHandler ["mouseButtonDblClick", {
+    [DEPLOY_DISPLAY displayCtrl DEPLOY_LIST_IDC, "mouseButtonDblClick", {
         if (ctrlEnabled (DEPLOY_DISPLAY displayCtrl DEPLOY_BUTTON_IDC)) then {
             deploy = 1;
         };
-    }];
+    }] call CBA_fnc_addBISEventHandler;
 
     _standard_map_pos = ctrlPosition (DEPLOY_DISPLAY displayCtrl 251);
     _frame_pos = ctrlPosition (DEPLOY_DISPLAY displayCtrl 198);

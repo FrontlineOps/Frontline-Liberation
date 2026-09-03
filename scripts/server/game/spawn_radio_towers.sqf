@@ -22,5 +22,5 @@ private _savedTowerClasses = createHashMap;
     private _tower = _classname createVehicle _sectorPos;
     _tower setPos _sectorPos;
     _tower setVectorUp [0, 0, 1];
-    _tower addEventHandler ["HandleDamage", {0}];
+    [_tower, "HandleDamage", {0}] call CBA_fnc_addBISEventHandler;
 } forEach sectors_tower;

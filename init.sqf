@@ -41,6 +41,8 @@ OPFOR_ARSENAL_CRATES = [];
 [] call compileFinal preprocessFileLineNumbers "modules\surrender\index.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\intelligence\index.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\COPS\index.sqf";
+[] call compileFinal preprocessFileLineNumbers "modules\field_hospital\index.sqf";
+[] call compileFinal preprocessFileLineNumbers "modules\trash_cleanup\index.sqf";
 
 if (isDedicated) then 
 {
@@ -71,16 +73,18 @@ Op_StartingItems = +(missionNamespace getVariable ["KPLIB_autoFactionOpforStarti
 [] call compileFinal preprocessFileLineNumbers "scripts\fireteams\init.sqf";
 
 [] call compileFinal preprocessFileLineNumbers "scripts\shared\init_shared.sqf";
-[] call compileFinal preprocessFileLineNumbers "karmakut\init_shared.sqf";
 [] call compileFinal preprocessFileLineNumbers "scripts\libZeusActions\index.sqf";
 
 [] call compileFinal preprocessFileLineNumbers "modules\missileGuidance\index.sqf";
 if (isServer) then {
+    KPLIB_DISCONNECT_EH = [missionNamespace, "HandleDisconnect", {
+        ["KPLIB_playerDisconnected", _this] call CBA_fnc_localEvent;
+        false
+    }] call CBA_fnc_addBISEventHandler;
+    ["CBA disconnect event bridge initialized", "EVENTS"] call KPLIB_fnc_log;
+
     [] call compileFinal preprocessFileLineNumbers "scripts\server\ewr\init.sqf";
     [] call compileFinal preprocessFileLineNumbers "scripts\server\init_server.sqf";
-    [] call compileFinal preprocessFileLineNumbers "karmakut\init_server.sqf";
-	
-	[{removeAllMissionEventHandlers "handledisconnect";}, [], 120] call CBA_fnc_waitAndExecute;
 	[] call cleanUpBodies;
 
 
@@ -91,21 +95,12 @@ if (!isDedicated && hasInterface) then {
     [] call compileFinal preprocessFileLineNumbers "scripts\ragequitblocker\index.sqf";
     // Add EH for curator to add kill manager and object init recognition for zeus spawned units/vehicles
     {
-        _x addEventHandler ["CuratorObjectPlaced", {[_this select 1] call KPLIB_fnc_handlePlacedZeusObject;}];
+        [_x, "CuratorObjectPlaced", {[_this select 1] call KPLIB_fnc_handlePlacedZeusObject;}] call CBA_fnc_addBISEventHandler;
     } forEach allCurators;
 
     waitUntil {alive player};
     if (debug_source != name player) then {debug_source = name player};
     [] call compileFinal preprocessFileLineNumbers "scripts\client\init_client.sqf";
-    [] call compileFinal preprocessFileLineNumbers "karmakut\init_client.sqf";
-
-	addMissionEventHandler 
-		["HandleDisconnect", 
-			{
-				params ["_unit", "_id", "_uid", "_name"];
-				_unit setDamage 1;
-			}
-		];
 
 } else {
     setViewDistance 3000;
