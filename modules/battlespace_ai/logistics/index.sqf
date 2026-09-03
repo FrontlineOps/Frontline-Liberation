@@ -105,6 +105,7 @@ BATTLESPACE_SECTOR_CREATE_STATE = {
         ["lastOwnerChange", CBA_missionTime],
         ["nextResupplyAt", 0],
         ["nextBattlegroupAt", 0],
+        ["nextBattlegroupTargetAt", 0],
         ["nextEmergencyAt", 0],
         ["nextReinforcementAt", 0],
         ["nextDeepReconAt", 0],
@@ -293,6 +294,7 @@ BATTLESPACE_LOGISTICS_SAVE = {
             ["ownerAge", (CBA_missionTime - (_state getOrDefault ["lastOwnerChange", CBA_missionTime])) max 0],
             ["resupplyCooldown", ((_state getOrDefault ["nextResupplyAt", 0]) - CBA_missionTime) max 0],
             ["battlegroupCooldown", ((_state getOrDefault ["nextBattlegroupAt", 0]) - CBA_missionTime) max 0],
+            ["battlegroupTargetCooldown", ((_state getOrDefault ["nextBattlegroupTargetAt", 0]) - CBA_missionTime) max 0],
             ["emergencyCooldown", ((_state getOrDefault ["nextEmergencyAt", 0]) - CBA_missionTime) max 0],
             ["reinforcementCooldown", ((_state getOrDefault ["nextReinforcementAt", 0]) - CBA_missionTime) max 0],
             ["deepReconCooldown", ((_state getOrDefault ["nextDeepReconAt", 0]) - CBA_missionTime) max 0],
@@ -370,6 +372,7 @@ BATTLESPACE_LOGISTICS_LOAD = {
                 _state set ["lastOwnerChange", CBA_missionTime - (_savedState getOrDefault ["ownerAge", 0])];
                 _state set ["nextResupplyAt", CBA_missionTime + (_savedState getOrDefault ["resupplyCooldown", 0])];
                 _state set ["nextBattlegroupAt", CBA_missionTime + (_savedState getOrDefault ["battlegroupCooldown", 0])];
+                _state set ["nextBattlegroupTargetAt", CBA_missionTime + (_savedState getOrDefault ["battlegroupTargetCooldown", 0])];
                 _state set ["nextEmergencyAt", CBA_missionTime + (_savedState getOrDefault ["emergencyCooldown", 0])];
                 _state set ["nextReinforcementAt", CBA_missionTime + (_savedState getOrDefault ["reinforcementCooldown", 0])];
                 _state set ["nextDeepReconAt", CBA_missionTime + (_savedState getOrDefault ["deepReconCooldown", 0])];

@@ -360,16 +360,29 @@ BATTLESPACE_BATTLEGROUP_DISPATCH = {
         CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_BATTLEGROUP_COOLDOWN", 3600])
     ];
     BATTLESPACE_SECTOR_STATES set [_originSector, _originState];
+
+    private _targetCooldownRange = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_BATTLEGROUP_TARGET_COOLDOWN", [3600, 5400]];
+    _targetCooldownRange params [["_targetCooldownMin", 3600], ["_targetCooldownMax", 5400]];
+    _targetCooldownMin = (round _targetCooldownMin) max 0;
+    _targetCooldownMax = (round _targetCooldownMax) max _targetCooldownMin;
+    private _targetCooldown = _targetCooldownMin + round (random (_targetCooldownMax - _targetCooldownMin));
+    private _targetState = BATTLESPACE_SECTOR_STATES get _targetSector;
+    if (!isNil "_targetState") then {
+        _targetState set ["nextBattlegroupTargetAt", CBA_missionTime + _targetCooldown];
+        BATTLESPACE_SECTOR_STATES set [_targetSector, _targetState];
+    };
+
     stats_hostile_battlegroups = (missionNamespace getVariable ["stats_hostile_battlegroups", 0]) + 1;
     [] call BATTLESPACE_LOGISTICS_SAVE;
     [format [
-        "Dispatched %1 battlegroup %2 from %3 toward %4 with %5 for %6",
+        "Dispatched %1 battlegroup %2 from %3 toward %4 with %5 for %6; target cooldown %7 minutes",
         toLower (_definition get "formation"),
         _taskForceId,
         _originSector,
         _targetSector,
         (_definition get "vehicleManifest") apply {_x select 0},
-        _cost
+        _cost,
+        ceil (_targetCooldown / 60)
     ]] call BATTLESPACE_STRATEGIC_LOG;
     true
 };
@@ -391,25 +404,39 @@ BATTLESPACE_BATTLEGROUP_DECISION_TICK = {
         if (isNil "_state" || {(_state getOrDefault ["owner", ""]) != "OPFOR"}) then { continue };
         if (CBA_missionTime < (_state getOrDefault ["nextBattlegroupAt", 0])) then { continue };
 
+        private _availableTargets = _capturableBlufor select {
+            private _targetState = BATTLESPACE_SECTOR_STATES get _x;
+            !isNil "_targetState"
+            && {CBA_missionTime >= (_targetState getOrDefault ["nextBattlegroupTargetAt", 0])}
+            && {!(["BATTLEGROUP", _x] call BATTLESPACE_STRATEGIC_HAS_OPERATION_FOR_TARGET)}
+        };
+        if (_availableTargets isEqualTo []) then { continue };
+
         private _network = NETWORKED_SECTORS get _originSector;
         if (isNil "_network") then { continue };
         private _targets = (_network getOrDefault ["Links", []]) select {
-            _x in _capturableBlufor
-            && {!(["BATTLEGROUP", _x] call BATTLESPACE_STRATEGIC_HAS_OPERATION_FOR_TARGET)}
+            _x in _availableTargets
         };
         if (_targets isEqualTo []) then {
-            private _reachableTarget = [_originSector, _capturableBlufor] call NETWORKED_SECTORS_traverseGraphAndFindFirstBluforSector;
+            private _reachableTarget = [_originSector, _availableTargets] call NETWORKED_SECTORS_traverseGraphAndFindFirstBluforSector;
             if (
                 !isNil "_reachableTarget"
-                && {_reachableTarget in _capturableBlufor}
-                && {!(["BATTLEGROUP", _reachableTarget] call BATTLESPACE_STRATEGIC_HAS_OPERATION_FOR_TARGET)}
+                && {_reachableTarget in _availableTargets}
             ) then {
                 _targets pushBack _reachableTarget;
             };
         };
         if (_targets isEqualTo []) then { continue };
 
-        private _targetSector = selectRandom _targets;
+        _targets = [_targets, [], {
+            private _targetState = BATTLESPACE_SECTOR_STATES get _x;
+            _targetState getOrDefault ["nextBattlegroupTargetAt", 0]
+        }, "ASCEND"] call BIS_fnc_sortBy;
+        private _oldestTargetAt = (BATTLESPACE_SECTOR_STATES get (_targets select 0)) getOrDefault ["nextBattlegroupTargetAt", 0];
+        private _oldestTargets = _targets select {
+            ((BATTLESPACE_SECTOR_STATES get _x) getOrDefault ["nextBattlegroupTargetAt", 0]) == _oldestTargetAt
+        };
+        private _targetSector = selectRandom _oldestTargets;
         if ([_originSector, _targetSector] call BATTLESPACE_BATTLEGROUP_DISPATCH) then {
             _remaining = _remaining - 1;
         };

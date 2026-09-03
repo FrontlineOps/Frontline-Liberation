@@ -393,7 +393,6 @@ BATTLESPACE_TASK_FORCE_DEFAULT_TRY_SPAWN = {
 		// Add killed manager to remove the vehicle from the vehicle list
 		_veh setVariable ["TASKFORCEID", _taskForceName];
 		_veh addMPEventHandler ["MPKilled", { ["VEHICLE", _this] call BATTLESPACE_TASK_FORCE_OBJECT_KILLED }];
-		// _veh addEventHandler ["Killed", { ["VEHICLE", _this] call BATTLESPACE_TASK_FORCE_OBJECT_KILLED }];
 		private _vehGrp = group _veh;
 		private _infGrp = createGroup [_side, true];
 		_vehGrp setVariable ["TASKFORCEID", _taskForceName];
