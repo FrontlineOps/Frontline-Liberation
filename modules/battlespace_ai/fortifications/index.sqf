@@ -41,14 +41,14 @@ BATTLESPACE_FORTIFICATION_GET_RESERVED_POSITIONS = {
     params ["_sector"];
     private _positions = [getMarkerPos _sector];
     {
-        if !((_y getOrDefault ["kind", ""]) in ["DEFENDER", "FORTIFICATION"]) then {continue};
+        if !((_y getOrDefault ["kind", ""]) in ["DEFENDER", "FORTIFICATION", "MINEFIELD"]) then {continue};
         if (
             (_y getOrDefault ["fundingSector", ""]) != _sector
             && {(_y getOrDefault ["targetSector", ""]) != _sector}
         ) then {continue};
         private _taskForce = BATTLESPACE_TASK_FORCES get _x;
         if (isNil "_taskForce") then {continue};
-        if !((_taskForce param [0, ""]) in ["Fortifications", "Outpost", "Garrison"]) then {continue};
+        if !((_taskForce param [0, ""]) in ["Fortifications", "Outpost", "Garrison", "Minefield"]) then {continue};
         private _position = _taskForce param [1, []];
         if (_position isEqualType [] && {count _position >= 2}) then {_positions pushBackUnique _position};
     } forEach BATTLESPACE_STRATEGIC_OPERATIONS;

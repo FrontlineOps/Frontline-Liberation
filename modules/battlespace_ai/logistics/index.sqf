@@ -117,6 +117,7 @@ BATTLESPACE_SECTOR_CREATE_STATE = {
         ["nextDeepReconAt", 0],
         ["nextAirResponseAt", 0],
         ["nextFortificationAt", 0],
+        ["nextMinefieldAt", 0],
         ["casualtyPressure", 0],
         ["lastCasualtyAt", -1]
     ]
@@ -156,6 +157,7 @@ BATTLESPACE_SECTOR_SET_OWNER = {
     _state set ["nextDeepReconAt", CBA_missionTime];
     _state set ["nextAirResponseAt", CBA_missionTime];
     _state set ["nextFortificationAt", CBA_missionTime];
+    _state set ["nextMinefieldAt", CBA_missionTime];
     _state set ["casualtyPressure", 0];
     _state set ["lastCasualtyAt", -1];
     BATTLESPACE_SECTOR_STATES set [_sector, _state];
@@ -306,6 +308,7 @@ BATTLESPACE_LOGISTICS_SAVE = {
             ["deepReconCooldown", ((_state getOrDefault ["nextDeepReconAt", 0]) - CBA_missionTime) max 0],
             ["airResponseCooldown", ((_state getOrDefault ["nextAirResponseAt", 0]) - CBA_missionTime) max 0],
             ["fortificationCooldown", ((_state getOrDefault ["nextFortificationAt", 0]) - CBA_missionTime) max 0],
+            ["minefieldCooldown", ((_state getOrDefault ["nextMinefieldAt", 0]) - CBA_missionTime) max 0],
             ["casualtyPressure", (_state getOrDefault ["casualtyPressure", 0]) max 0],
             ["lastCasualtyAge", if ((_state getOrDefault ["lastCasualtyAt", -1]) < 0) then {-1} else {(CBA_missionTime - (_state get "lastCasualtyAt")) max 0}]
         ]];
@@ -384,6 +387,7 @@ BATTLESPACE_LOGISTICS_LOAD = {
                 _state set ["nextDeepReconAt", CBA_missionTime + (_savedState getOrDefault ["deepReconCooldown", 0])];
                 _state set ["nextAirResponseAt", CBA_missionTime + (_savedState getOrDefault ["airResponseCooldown", 0])];
                 _state set ["nextFortificationAt", CBA_missionTime + (_savedState getOrDefault ["fortificationCooldown", 0])];
+                _state set ["nextMinefieldAt", CBA_missionTime + (_savedState getOrDefault ["minefieldCooldown", 0])];
                 _state set ["casualtyPressure", (_savedState getOrDefault ["casualtyPressure", 0]) max 0];
                 private _lastCasualtyAge = _savedState getOrDefault ["lastCasualtyAge", -1];
                 _state set ["lastCasualtyAt", if (_lastCasualtyAge < 0) then {-1} else {CBA_missionTime - _lastCasualtyAge}];
@@ -1253,6 +1257,9 @@ if (isServer) then {
         waitUntil {sleep 1; !isNil "KPLIB_autoFactionCatalogs"};
         if !(missionNamespace getVariable ["BATTLESPACE_STRATEGIC_ENABLED", true]) exitWith {};
         if !([] call BATTLESPACE_LOGISTICS_INIT) exitWith {};
+        if (!isNil "BATTLESPACE_MINEFIELDS_RETIRE_LEGACY") then {
+            [] call BATTLESPACE_MINEFIELDS_RETIRE_LEGACY;
+        };
 
         private _nextDecision = CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_INITIAL_DELAY", 300]);
         private _nextAirResponse = CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_AIR_RESPONSE_INITIAL_DELAY", 600]);
@@ -1274,6 +1281,9 @@ if (isServer) then {
                 };
                 if (!isNil "BATTLESPACE_FORTIFICATION_DECISION_TICK") then {
                     [] call BATTLESPACE_FORTIFICATION_DECISION_TICK;
+                };
+                if (!isNil "BATTLESPACE_MINEFIELDS_DECISION_TICK") then {
+                    [] call BATTLESPACE_MINEFIELDS_DECISION_TICK;
                 };
                 _nextDecision = CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DECISION_INTERVAL", 1800]);
             };

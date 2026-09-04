@@ -20,18 +20,10 @@ if (hasInterface) then {
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\airborne_reinforcement\index.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\air_response\index.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\fortifications\index.sqf";
+[] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\minefields\index.sqf";
 
 if (!isNil { BATTLESPACE_LOCAL_TESTING }) then {
 	KPLIB_fnc_addObjectInit = {};
-	// Depth and Length in actuality adds up to 2x the listed value
-	// Length / Depth should be a multiple of the Gap
-	BATTLESPACE_AT_MINE_LENGTH = 50;
-	BATTLESPACE_AT_MINE_DEPTH = 20;
-	BATTLESPACE_AT_MINE_GAP = 10;
-
-	BATTLESPACE_AP_MINE_LENGTH = 96;
-	BATTLESPACE_AP_MINE_DEPTH = 40;
-	BATTLESPACE_AP_MINE_GAP = 8;
 	air_weight = 0;
 	infantry_weight = 0;
 	armor_weight = 0;
@@ -92,6 +84,7 @@ if (!isNil { BATTLESPACE_LOCAL_TESTING }) then {
 // - Threshold-driven transfers use interceptable Convoy task forces.
 // - Resource-backed military-sector attacks use Battlegroup task forces.
 // - OPFOR objectives spend construction stock on persistent defensive sites.
+// - Quiet frontline objectives may spend construction stock on persistent minefields.
 // - The strategic decision interval is configured in kp_liberation_config.sqf.
 //
 // Tactical defenders, airborne/air responses, artillery/SAM expenditure, and

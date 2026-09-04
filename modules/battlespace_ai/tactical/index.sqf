@@ -443,6 +443,9 @@ BATTLESPACE_TACTICAL_ABANDON_CAPTURED_DEFENDERS = {
 
 BATTLESPACE_TACTICAL_MAINTENANCE_TICK = {
     if !([] call BATTLESPACE_STRATEGIC_SERVER_CALL_ALLOWED) exitWith {};
+    if (!isNil "BATTLESPACE_MINEFIELDS_REFRESH_ACTIVE_COOLDOWNS") then {
+        [] call BATTLESPACE_MINEFIELDS_REFRESH_ACTIVE_COOLDOWNS;
+    };
     [] call BATTLESPACE_TACTICAL_ABANDON_CAPTURED_DEFENDERS;
     private _threshold = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_CASUALTY_RESPONSE_THRESHOLD", 8];
     {
@@ -531,7 +534,8 @@ BATTLESPACE_STRATEGIC_BUILD_SECTOR_SNAPSHOT = {
             ((_state getOrDefault ["nextDeepReconAt", 0]) - CBA_missionTime) max 0,
             ((_state getOrDefault ["nextBattlegroupAt", 0]) - CBA_missionTime) max 0,
             ((_state getOrDefault ["nextAirResponseAt", 0]) - CBA_missionTime) max 0,
-            ((_state getOrDefault ["nextFortificationAt", 0]) - CBA_missionTime) max 0
+            ((_state getOrDefault ["nextFortificationAt", 0]) - CBA_missionTime) max 0,
+            ((_state getOrDefault ["nextMinefieldAt", 0]) - CBA_missionTime) max 0
         ],
         _operations
     ]
@@ -541,6 +545,7 @@ BATTLESPACE_STRATEGIC_BUILD_INTEGRITY_AUDIT = {
     private _errors = [];
     private _warnings = [];
     private _fortificationsBySector = createHashMap;
+    private _minefieldsBySector = createHashMap;
     {
         private _sector = _x;
         private _state = _y;
@@ -656,6 +661,61 @@ BATTLESPACE_STRATEGIC_BUILD_INTEGRITY_AUDIT = {
             };
             _fortificationsBySector set [_sector, (_fortificationsBySector getOrDefault [_sector, 0]) + 1];
         };
+        if ((_y getOrDefault ["kind", ""]) == "MINEFIELD") then {
+            private _sector = _y getOrDefault ["targetSector", ""];
+            private _position = _y getOrDefault ["sitePosition", []];
+            private _initialMineCount = _y getOrDefault ["mineCount", -1];
+            private _antiTankMines = _y getOrDefault ["antiTankMines", -1];
+            private _constructionCost = _y getOrDefault ["constructionCost", -1];
+            private _cost = _y getOrDefault ["cost", createHashMap];
+            if (
+                !(_sector in sectors_allSectors)
+                || {!(_position isEqualType [])}
+                || {!((count _position) in [2, 3])}
+                || {!(_initialMineCount isEqualType 0)}
+                || {_initialMineCount <= 0}
+                || {!(_antiTankMines isEqualType 0)}
+                || {_antiTankMines < 0}
+                || {_antiTankMines > _initialMineCount}
+                || {!(_constructionCost isEqualType 0)}
+                || {_constructionCost <= 0}
+            ) then {
+                _errors pushBack format ["Minefield operation %1 has malformed site metadata", _x];
+            };
+            if (
+                typeName _cost != "HASHMAP"
+                || {count _cost != 1}
+                || {(_cost getOrDefault ["construction_supplies", -1]) != _constructionCost}
+            ) then {
+                _errors pushBack format ["Minefield operation %1 does not own the configured construction cost", _x];
+            };
+            if (!isNil "_taskForce") then {
+                if ((_taskForce param [0, ""]) != "Minefield") then {
+                    _errors pushBack format ["Minefield operation %1 uses the wrong task-force model", _x];
+                };
+                private _composition = _taskForce param [3, createHashMap];
+                if (typeName _composition != "HASHMAP") then {
+                    _errors pushBack format ["Minefield operation %1 has a malformed composition", _x];
+                } else {
+                    private _structures = _composition getOrDefault ["structures", []];
+                    if !(_structures isEqualType []) then {
+                        _errors pushBack format ["Minefield operation %1 has a non-array mine composition", _x];
+                    } else {
+                        if (_initialMineCount isEqualType 0 && {count _structures > _initialMineCount}) then {
+                            _errors pushBack format ["Minefield operation %1 owns more mines than its initial count", _x];
+                        };
+                        if (_structures findIf {
+                            typeName _x != "HASHMAP"
+                            || {!((_x getOrDefault ["className", ""]) in ["APERSMine", "ATMine"])}
+                            || {!((_x getOrDefault ["position", []]) isEqualType [])}
+                        } >= 0) then {
+                            _errors pushBack format ["Minefield operation %1 contains an invalid mine entry", _x];
+                        };
+                    };
+                };
+            };
+            _minefieldsBySector set [_sector, (_minefieldsBySector getOrDefault [_sector, 0]) + 1];
+        };
     } forEach BATTLESPACE_STRATEGIC_OPERATIONS;
     private _perSectorCap = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_FORTIFICATIONS_PER_SECTOR", 3];
     {
@@ -664,6 +724,14 @@ BATTLESPACE_STRATEGIC_BUILD_INTEGRITY_AUDIT = {
     private _globalFortificationCap = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_ACTIVE_FORTIFICATIONS", 48];
     if (["FORTIFICATION"] call BATTLESPACE_STRATEGIC_COUNT_OPERATIONS > _globalFortificationCap) then {
         _errors pushBack format ["Global fortification operation count exceeds %1", _globalFortificationCap];
+    };
+    private _minefieldPerSectorCap = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_MINEFIELDS_PER_SECTOR", 1];
+    {
+        if (_y > _minefieldPerSectorCap) then {_errors pushBack format ["%1 owns %2 minefield operations above cap %3", _x, _y, _minefieldPerSectorCap]};
+    } forEach _minefieldsBySector;
+    private _globalMinefieldCap = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_ACTIVE_MINEFIELDS", 36];
+    if (["MINEFIELD"] call BATTLESPACE_STRATEGIC_COUNT_OPERATIONS > _globalMinefieldCap) then {
+        _errors pushBack format ["Global minefield operation count exceeds %1", _globalMinefieldCap];
     };
     private _globalAirResponseCap = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_ACTIVE_AIR_RESPONSES", 2];
     if (["AIR_RESPONSE"] call BATTLESPACE_STRATEGIC_COUNT_OPERATIONS > _globalAirResponseCap) then {
@@ -675,7 +743,7 @@ BATTLESPACE_STRATEGIC_BUILD_INTEGRITY_AUDIT = {
     };
     {
         private _type = _y param [0, ""];
-        if (_type in ["Battlegroup", "Deep Reconnaissance Patrol", "Convoy", "Air Response", "Airborne Transport", "Airborne Infantry"] && {isNil {BATTLESPACE_STRATEGIC_OPERATIONS get _x}}) then {
+        if (_type in ["Battlegroup", "Deep Reconnaissance Patrol", "Convoy", "Air Response", "Airborne Transport", "Airborne Infantry", "Minefield"] && {isNil {BATTLESPACE_STRATEGIC_OPERATIONS get _x}}) then {
             _warnings pushBack format ["Task force %1 (%2) has no operation", _x, _type];
         };
     } forEach BATTLESPACE_TASK_FORCES;
@@ -724,6 +792,7 @@ BATTLESPACE_STRATEGIC_BUILD_BALANCE_REPORT = {
         ["DEEP RECONNAISSANCE PATROL", missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_ACTIVE_DEEP_RECON", 8]],
         ["AIR_RESPONSE", missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_ACTIVE_AIR_RESPONSES", 2]],
         ["FORTIFICATION", missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_ACTIVE_FORTIFICATIONS", 48]],
+        ["MINEFIELD", missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_ACTIVE_MINEFIELDS", 36]],
         ["DEFENDER", -1]
     ];
     [_resourceRows, _operationRows, [
@@ -734,7 +803,8 @@ BATTLESPACE_STRATEGIC_BUILD_BALANCE_REPORT = {
         missionNamespace getVariable ["BATTLESPACE_STRATEGIC_REINFORCEMENT_COOLDOWN", 1200],
         missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DEEP_RECON_COOLDOWN", 2400],
         missionNamespace getVariable ["BATTLESPACE_STRATEGIC_AIR_RESPONSE_COOLDOWN", 1800],
-        missionNamespace getVariable ["BATTLESPACE_STRATEGIC_FORTIFICATION_COOLDOWN", 1800]
+        missionNamespace getVariable ["BATTLESPACE_STRATEGIC_FORTIFICATION_COOLDOWN", 1800],
+        missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MINEFIELD_COOLDOWN", 3600]
     ]]
 };
 
@@ -871,6 +941,7 @@ BATTLESPACE_ZEN_EXECUTE_VALIDATED_ACTION = {
             [] call BATTLESPACE_DEEP_RECON_DECISION_TICK;
             [] call BATTLESPACE_AIR_RESPONSE_DECISION_TICK;
             [] call BATTLESPACE_FORTIFICATION_DECISION_TICK;
+            [] call BATTLESPACE_MINEFIELDS_DECISION_TICK;
         };
         case "SAVE": {[] call BATTLESPACE_LOGISTICS_SAVE};
         case "SELF_TEST": {
@@ -916,11 +987,26 @@ BATTLESPACE_ZEN_EXECUTE_VALIDATED_ACTION = {
                 };
             };
         };
+        case "MINE": {
+            private _state = BATTLESPACE_SECTOR_STATES get _nearest;
+            if (!isNil "_state" && {(_state getOrDefault ["owner", ""]) == "OPFOR"}) then {
+                private _previousCooldown = _state getOrDefault ["nextMinefieldAt", 0];
+                _state set ["nextMinefieldAt", 0];
+                BATTLESPACE_SECTOR_STATES set [_nearest, _state];
+                if !([_nearest] call BATTLESPACE_MINEFIELDS_BUILD) then {
+                    _state = BATTLESPACE_SECTOR_STATES get _nearest;
+                    if (!isNil "_state") then {
+                        _state set ["nextMinefieldAt", _previousCooldown];
+                        BATTLESPACE_SECTOR_STATES set [_nearest, _state];
+                    };
+                };
+            };
+        };
     };
     if (_action == "SELF_TEST") exitWith {};
     private _payload = if (_action in ["RUN_DECISION", "SAVE"]) then {
         private _counts = [];
-        {_counts pushBack [_x, [_x] call BATTLESPACE_STRATEGIC_COUNT_OPERATIONS]} forEach ["CONVOY", "BATTLEGROUP", "DEFENDER", "REINFORCEMENT", "AIRBORNE_TRANSPORT", "AIRBORNE_REINFORCEMENT", "DEEP RECONNAISSANCE PATROL", "AIR_RESPONSE", "FORTIFICATION"];
+        {_counts pushBack [_x, [_x] call BATTLESPACE_STRATEGIC_COUNT_OPERATIONS]} forEach ["CONVOY", "BATTLEGROUP", "DEFENDER", "REINFORCEMENT", "AIRBORNE_TRANSPORT", "AIRBORNE_REINFORCEMENT", "DEEP RECONNAISSANCE PATROL", "AIR_RESPONSE", "FORTIFICATION", "MINEFIELD"];
         [count BATTLESPACE_SECTOR_STATES, count BATTLESPACE_TASK_FORCES, _counts]
     } else {
         [_nearest] call BATTLESPACE_STRATEGIC_BUILD_SECTOR_SNAPSHOT
@@ -936,13 +1022,13 @@ BATTLESPACE_ZEN_SERVER_REQUEST = {
     if (isNull _caller || {isNull (getAssignedCuratorLogic _caller)}) exitWith {
         [format ["Rejected Battlespace ZEN request %1 from owner %2", _action, _ownerId], "WARNING"] call BATTLESPACE_STRATEGIC_LOG;
     };
-    if !(_action in ["OVERVIEW", "INSPECT", "OVERLAY", "AUDIT", "BALANCE", "RUN_DECISION", "SAVE", "SELF_TEST", "EMERGENCY", "REFILL", "DRAIN", "FORTIFY"]) exitWith {};
+    if !(_action in ["OVERVIEW", "INSPECT", "OVERLAY", "AUDIT", "BALANCE", "RUN_DECISION", "SAVE", "SELF_TEST", "EMERGENCY", "REFILL", "DRAIN", "FORTIFY", "MINE"]) exitWith {};
     private _nearest = "";
     if (_position isEqualType [] && {(count _position) in [2, 3]} && {_position findIf {!(_x isEqualType 0)} < 0}) then {
         _nearest = [sectors_allSectors, _position] call BIS_fnc_nearestPosition;
     };
 
-    if (_action in ["RUN_DECISION", "SAVE", "SELF_TEST", "EMERGENCY", "REFILL", "DRAIN", "FORTIFY"]) exitWith {
+    if (_action in ["RUN_DECISION", "SAVE", "SELF_TEST", "EMERGENCY", "REFILL", "DRAIN", "FORTIFY", "MINE"]) exitWith {
         [{_this call BATTLESPACE_ZEN_EXECUTE_VALIDATED_ACTION}, [_action, _nearest, _ownerId], 0] call CBA_fnc_waitAndExecute;
     };
 
@@ -955,7 +1041,7 @@ BATTLESPACE_ZEN_SERVER_REQUEST = {
     } else {
         if (_action == "OVERVIEW") then {
             private _counts = [];
-            {_counts pushBack [_x, [_x] call BATTLESPACE_STRATEGIC_COUNT_OPERATIONS]} forEach ["CONVOY", "BATTLEGROUP", "DEFENDER", "REINFORCEMENT", "AIRBORNE_TRANSPORT", "AIRBORNE_REINFORCEMENT", "DEEP RECONNAISSANCE PATROL", "AIR_RESPONSE", "FORTIFICATION"];
+            {_counts pushBack [_x, [_x] call BATTLESPACE_STRATEGIC_COUNT_OPERATIONS]} forEach ["CONVOY", "BATTLEGROUP", "DEFENDER", "REINFORCEMENT", "AIRBORNE_TRANSPORT", "AIRBORNE_REINFORCEMENT", "DEEP RECONNAISSANCE PATROL", "AIR_RESPONSE", "FORTIFICATION", "MINEFIELD"];
             _payload = [count BATTLESPACE_SECTOR_STATES, count BATTLESPACE_TASK_FORCES, _counts];
         } else {
             if (_action == "OVERLAY") then {

@@ -19,15 +19,16 @@ BATTLESPACE_ZEN_SHOW_SECTOR_SNAPSHOT = {
 		private _ratio = if (_capacity > 0) then {round (100 * _amount / _capacity)} else {0};
 		_lines pushBack format ["%1%2: %3 / %4 (%5%%)<br/>", if (_shortage) then {"<t color='#ff9c75'>SHORT </t>"} else {""}, _resource, _amount, _capacity, _ratio];
 	} forEach _stock;
-	_cooldowns params ["_resupply", "_emergency", "_reinforcement", "_deepRecon", "_battlegroup", ["_airResponse", 0], ["_fortification", 0]];
-	_lines pushBack format ["<br/>Cooldowns — supply %1, emergency %2, reinforcement %3, deep recon %4, battlegroup %5, air %6, construction %7<br/>",
+	_cooldowns params ["_resupply", "_emergency", "_reinforcement", "_deepRecon", "_battlegroup", ["_airResponse", 0], ["_fortification", 0], ["_minefield", 0]];
+	_lines pushBack format ["<br/>Cooldowns — supply %1, emergency %2, reinforcement %3, deep recon %4, battlegroup %5, air %6, construction %7, mines %8<br/>",
 		[_resupply] call BATTLESPACE_ZEN_FORMAT_DURATION,
 		[_emergency] call BATTLESPACE_ZEN_FORMAT_DURATION,
 		[_reinforcement] call BATTLESPACE_ZEN_FORMAT_DURATION,
 		[_deepRecon] call BATTLESPACE_ZEN_FORMAT_DURATION,
 		[_battlegroup] call BATTLESPACE_ZEN_FORMAT_DURATION,
 		[_airResponse] call BATTLESPACE_ZEN_FORMAT_DURATION,
-		[_fortification] call BATTLESPACE_ZEN_FORMAT_DURATION
+		[_fortification] call BATTLESPACE_ZEN_FORMAT_DURATION,
+		[_minefield] call BATTLESPACE_ZEN_FORMAT_DURATION
 	];
 	if (_operations isEqualTo []) then {
 		_lines pushBack "Operations: none";
@@ -63,8 +64,8 @@ BATTLESPACE_ZEN_RECEIVE_SNAPSHOT = {
 			} forEach _resourceRows;
 			_lines pushBack "<br/>Operation pressure:<br/>";
 			{_lines pushBack format ["%1: %2%3<br/>", _x#0, _x#1, if ((_x#2) < 0) then {""} else {" / " + str (_x#2)}]} forEach _operationRows;
-			_settings params [["_decision", 0], ["_airDecision", 0], ["_pressure", 0], ["_emergency", 0], ["_reinforcement", 0], ["_deepRecon", 0], ["_airResponse", 0], ["_fortification", 0]];
-			_lines pushBack format ["<br/>Strategic decision %1; air decision %2; casualty trigger %3; cooldowns E/R/D/A/F %4/%5/%6/%7/%8",
+			_settings params [["_decision", 0], ["_airDecision", 0], ["_pressure", 0], ["_emergency", 0], ["_reinforcement", 0], ["_deepRecon", 0], ["_airResponse", 0], ["_fortification", 0], ["_minefield", 0]];
+			_lines pushBack format ["<br/>Strategic decision %1; air decision %2; casualty trigger %3; cooldowns E/R/D/A/F/M %4/%5/%6/%7/%8/%9",
 				[_decision] call BATTLESPACE_ZEN_FORMAT_DURATION,
 				[_airDecision] call BATTLESPACE_ZEN_FORMAT_DURATION,
 				_pressure,
@@ -72,7 +73,8 @@ BATTLESPACE_ZEN_RECEIVE_SNAPSHOT = {
 				[_reinforcement] call BATTLESPACE_ZEN_FORMAT_DURATION,
 				[_deepRecon] call BATTLESPACE_ZEN_FORMAT_DURATION,
 				[_airResponse] call BATTLESPACE_ZEN_FORMAT_DURATION,
-				[_fortification] call BATTLESPACE_ZEN_FORMAT_DURATION
+				[_fortification] call BATTLESPACE_ZEN_FORMAT_DURATION,
+				[_minefield] call BATTLESPACE_ZEN_FORMAT_DURATION
 			];
 			hintSilent parseText (_lines joinString "");
 		};
@@ -102,11 +104,12 @@ BATTLESPACE_ZEN_STRATEGIC_OVERLAY_RENDER = {
 	{
 		_x params ["_id", "_kind", "_phase", "_current", "_destination", ["_routeData", []]];
 		if (_current isEqualTo []) then {continue};
-		if (_kind == "FORTIFICATION") then {
+		if (_kind in ["FORTIFICATION", "MINEFIELD"]) then {
 			private _sitePosition = +_current;
 			if (count _sitePosition == 2) then {_sitePosition pushBack 0};
 			_sitePosition set [2, 35];
-			drawIcon3D ["\A3\ui_f\data\map\markers\nato\o_installation.paa", [1, 0.35, 0.15, 0.95], _sitePosition, 0.8, 0.8, 0,
+			private _icon = ["\A3\ui_f\data\map\markers\nato\o_installation.paa", "\a3\Ui_F_Curator\Data\CfgMarkers\minefield_ca.paa"] select (_kind == "MINEFIELD");
+			drawIcon3D [_icon, [1, 0.35, 0.15, 0.95], _sitePosition, 0.8, 0.8, 0,
 				format ["%1 %2 / %3", _kind, _id, _phase], 1, 0.025, "TahomaB"];
 			continue;
 		};
@@ -195,5 +198,6 @@ private _overlay = ["battlespaceStrategicOverlay", "Toggle Strategic Overlay + L
 	["battlespaceEmergency", "Request Emergency Response (Test)", "EMERGENCY"],
 	["battlespaceRefill", "Refill Nearest OPFOR Sector (Test)", "REFILL"],
 	["battlespaceDrain", "Drain Nearest OPFOR Sector (Test)", "DRAIN"],
-	["battlespaceFortify", "Construct Nearest OPFOR Site (Test)", "FORTIFY"]
+	["battlespaceFortify", "Construct Nearest OPFOR Site (Test)", "FORTIFY"],
+	["battlespaceMinefield", "Construct Nearest OPFOR Minefield (Test)", "MINE"]
 ];

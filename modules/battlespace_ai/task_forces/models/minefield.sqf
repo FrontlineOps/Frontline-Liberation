@@ -117,9 +117,6 @@
 
 					_taskForce set [12, _hpSector];
 				};
-				// Only dies when the sector it belongs to is blufor controlled
-				private _closestSector = _hpSector;
-
 				private _structures = _composition getOrDefault ["structures", []];
 
 				
