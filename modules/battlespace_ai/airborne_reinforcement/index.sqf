@@ -51,6 +51,7 @@ BATTLESPACE_AIRBORNE_SELECT_TRANSPORT = {
 BATTLESPACE_AIRBORNE_TARGET_IS_COVERED = {
     params ["_targetSector"];
     (["REINFORCEMENT", _targetSector] call BATTLESPACE_STRATEGIC_HAS_OPERATION_FOR_TARGET)
+    || {["RESERVE", _targetSector] call BATTLESPACE_STRATEGIC_HAS_OPERATION_FOR_TARGET}
     || {["AIRBORNE_TRANSPORT", _targetSector] call BATTLESPACE_STRATEGIC_HAS_OPERATION_FOR_TARGET}
     || {["AIRBORNE_REINFORCEMENT", _targetSector] call BATTLESPACE_STRATEGIC_HAS_OPERATION_FOR_TARGET}
     || {["BATTLEGROUP", _targetSector] call BATTLESPACE_STRATEGIC_HAS_OPERATION_FOR_TARGET}
@@ -60,7 +61,7 @@ BATTLESPACE_AIRBORNE_BUILD_SOURCE_CANDIDATES = {
     params ["_targetSector", "_transportSeats"];
     private _targetPosition = getMarkerPos _targetSector;
     private _maximumRange = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_AIRBORNE_MAX_RANGE", 20000];
-    private _desiredManpower = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_REINFORCEMENT_MANPOWER", 14];
+    private _desiredManpower = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_AIRBORNE_MANPOWER", 14];
     private _minimumManpower = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_AIRBORNE_MIN_MANPOWER", 4];
     private _candidates = [];
 
@@ -77,7 +78,7 @@ BATTLESPACE_AIRBORNE_BUILD_SOURCE_CANDIDATES = {
         private _thresholds = [_sectorType, "SendReinforcements"] call BATTLESPACE_SECTOR_GET_THRESHOLD_MAP;
         private _manpowerThreshold = _thresholds getOrDefault ["manpower", -1];
         if (_manpowerThreshold < 0) then {continue};
-        private _reserve = ceil (([_sectorType, "manpower"] call BATTLESPACE_SECTOR_GET_CAPACITY) * _manpowerThreshold);
+        private _reserve = ceil (([_sourceSector, "manpower", _sectorType] call BATTLESPACE_SECTOR_GET_EFFECTIVE_CAPACITY) * _manpowerThreshold);
         private _excess = ((_resources getOrDefault ["manpower", 0]) - _reserve) max 0;
         private _assigned = floor (_desiredManpower min _transportSeats min _excess);
         if (_assigned < _minimumManpower) then {continue};

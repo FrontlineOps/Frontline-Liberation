@@ -168,7 +168,7 @@ BATTLESPACE_TASK_FORCE_DEFAULT_FINISH_SPAWN = {
 				private _destination = _registeredTaskForce param [2, []];
 				private _type = _registeredTaskForce param [0, ""];
 				if (
-					_type in ["Battlegroup", "Deep Reconnaissance Patrol", "Convoy", "Defensive Patrol", "Reconnaissance Patrol", "Air Response", "Airborne Transport", "Civilians"]
+					_type in ["Battlegroup", "Deep Reconnaissance Patrol", "Convoy", "Defensive Patrol", "Reconnaissance Patrol", "Garrison", "Ambush Patrol", "Mobile Reserve", "Air Response", "Airborne Transport", "Civilians"]
 					&& {_currentLocation isNotEqualTo []}
 					&& {_destination isNotEqualTo []}
 				) then {
@@ -598,11 +598,17 @@ BATTLESPACE_TASK_FORCE_DEFENDER_RETREAT_TICK = {
 
 	private _operation = BATTLESPACE_STRATEGIC_OPERATIONS get _taskForceName;
 	if (isNil "_operation" || {(_operation getOrDefault ["kind", ""]) != "DEFENDER"}) exitWith {[false, false]};
+	private _purpose = _operation getOrDefault ["defenseRole", ""];
+	private _phase = _operation getOrDefault ["phase", "ACTIVE"];
+	// Purpose-assigned fixed garrisons hold until their site is lost or the
+	// force is destroyed. Legacy defenders keep their prior retreat behavior.
+	if (_phase != "RETURNING" && {_purpose != ""} && {!(_purpose in ["DEFENSIVE_PATROL", "RECON_SCREEN", "AMBUSH"])}) exitWith {[false, false]};
 
 	private _composition = _taskForce param [3, createHashMap];
 	private _manpower = _composition getOrDefault ["manpower", 0];
 	private _retreatThreshold = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DEFENDER_RETREAT_MANPOWER", 3];
-	private _phase = _operation getOrDefault ["phase", "ACTIVE"];
+	private _shouldBeginReturn = _phase != "RETURNING" && {_manpower > 0} && {_manpower < _retreatThreshold};
+	if (_phase != "RETURNING" && {!_shouldBeginReturn}) exitWith {[false, false]};
 	private _activeGroups = (_taskForce param [4, []]) select {
 		!isNull _x && {(units _x) findIf {alive _x} >= 0}
 	};
@@ -614,9 +620,13 @@ BATTLESPACE_TASK_FORCE_DEFENDER_RETREAT_TICK = {
 		_taskForce set [1, _currentLocation];
 	};
 
-	if (_phase != "RETURNING" && {_manpower > 0} && {_manpower < _retreatThreshold}) then {
+	if (_shouldBeginReturn) then {
 		private _returnSector = _operation getOrDefault ["originSector", _operation getOrDefault ["fundingSector", ""]];
 		private _returnState = BATTLESPACE_SECTOR_STATES get _returnSector;
+		if (_returnSector == "" || {isNil "_returnState"} || {(_returnState getOrDefault ["owner", ""]) != "OPFOR"}) then {
+			_returnSector = [_currentLocation] call BATTLESPACE_STRATEGIC_FIND_NEAREST_OPFOR_SECTOR;
+			_returnState = BATTLESPACE_SECTOR_STATES get _returnSector;
+		};
 		if (_returnSector != "" && {!isNil "_returnState"} && {(_returnState getOrDefault ["owner", ""]) == "OPFOR"}) then {
 			private _returnPosition = getMarkerPos _returnSector;
 			_phase = "RETURNING";
@@ -639,7 +649,17 @@ BATTLESPACE_TASK_FORCE_DEFENDER_RETREAT_TICK = {
 
 	private _returnSector = _operation getOrDefault ["returnSector", _operation getOrDefault ["originSector", ""]];
 	private _returnState = BATTLESPACE_SECTOR_STATES get _returnSector;
-	if (_returnSector == "" || {isNil "_returnState"} || {(_returnState getOrDefault ["owner", ""]) != "OPFOR"}) exitWith {[false, false]};
+	if (_returnSector == "" || {isNil "_returnState"} || {(_returnState getOrDefault ["owner", ""]) != "OPFOR"}) then {
+		_returnSector = [_currentLocation] call BATTLESPACE_STRATEGIC_FIND_NEAREST_OPFOR_SECTOR;
+		_returnState = BATTLESPACE_SECTOR_STATES get _returnSector;
+		if (_returnSector != "" && {!isNil "_returnState"} && {(_returnState getOrDefault ["owner", ""]) == "OPFOR"}) then {
+			_operation set ["returnSector", _returnSector];
+			_taskForce set [2, getMarkerPos _returnSector];
+			BATTLESPACE_TASK_FORCE_PATHS deleteAt _taskForceName;
+			BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceName, _operation];
+		};
+	};
+	if (_returnSector == "" || {isNil "_returnState"} || {(_returnState getOrDefault ["owner", ""]) != "OPFOR"}) exitWith {[true, true]};
 
 	private _returnPosition = getMarkerPos _returnSector;
 	private _returnRadius = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DEFENDER_RETURN_RADIUS", 100];
@@ -689,6 +709,71 @@ BATTLESPACE_TASK_FORCE_DEFENDER_RETREAT_TICK = {
 	[true, false]
 };
 
+BATTLESPACE_TASK_FORCE_DEFENSE_MODEL_CAN_PROC = {
+	params ["_taskForceName", "_taskForce"];
+	private _currentLocation = _taskForce param [1, []];
+	private _requiredPlayers = [] call BATTLESPACE_TASK_FORCE_GET_NEEDED_PLAYERCOUNT_FOR_PROC;
+	private _procRange = [_taskForce param [0, ""]] call BATTLESPACE_TASK_FORCE_GET_PROC_RANGE;
+	private _canProc = false;
+	{
+		if (count (_x getOrDefault ["Players", []]) < _requiredPlayers) then {continue};
+		if ((_x getOrDefault ["Position", []]) distance2D _currentLocation <= _procRange) exitWith {_canProc = true};
+	} forEach BATTLESPACE_TASK_FORCES_BLUFOR_CLUSTERS;
+	_canProc
+};
+
+BATTLESPACE_TASK_FORCE_DEFENSE_MODEL_IS_ALIVE = {
+	params ["_taskForceName", "_taskForce"];
+	private _activeGroups = (_taskForce param [4, []]) select {
+		!isNull _x && {(units _x) findIf {alive _x} >= 0}
+	};
+	private _activeObjects = (_taskForce param [8, []]) select {!isNull _x && {alive _x}};
+	_taskForce set [4, _activeGroups];
+	_taskForce set [8, _activeObjects];
+	((_taskForce param [3, createHashMap]) getOrDefault ["manpower", 0]) > 0
+};
+
+BATTLESPACE_TASK_FORCE_DEFENSE_UPDATE_LOCATION = {
+	params ["_taskForce"];
+	private _activeGroups = (_taskForce param [4, []]) select {
+		!isNull _x && {(units _x) findIf {alive _x} >= 0}
+	};
+	_taskForce set [4, _activeGroups];
+	private _currentLocation = _taskForce param [1, []];
+	if (_activeGroups isNotEqualTo []) then {
+		private _leader = leader (_activeGroups select 0);
+		if (!isNull _leader) then {
+			_currentLocation = getPos _leader;
+			_taskForce set [1, _currentLocation];
+		};
+	};
+	[_activeGroups, _currentLocation]
+};
+
+BATTLESPACE_TASK_FORCE_DEFENSE_BEGIN_RETURN = {
+	params ["_taskForceName", "_taskForce", "_operation", ["_reason", "assignment ended"]];
+	private _returnSector = _operation getOrDefault ["originSector", _operation getOrDefault ["fundingSector", ""]];
+	private _returnState = BATTLESPACE_SECTOR_STATES get _returnSector;
+	if (_returnSector == "" || {isNil "_returnState"} || {(_returnState getOrDefault ["owner", ""]) != "OPFOR"}) then {
+		_returnSector = [_taskForce param [1, [0, 0, 0]]] call BATTLESPACE_STRATEGIC_FIND_NEAREST_OPFOR_SECTOR;
+	};
+	if (_returnSector == "") exitWith {
+		_operation set ["phase", "LOST"];
+		_operation set ["outcome", "LOST"];
+		BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceName, _operation];
+		false
+	};
+	private _destination = getMarkerPos _returnSector;
+	_operation set ["phase", "RETURNING"];
+	_operation set ["returnSector", _returnSector];
+	_taskForce set [2, _destination];
+	BATTLESPACE_TASK_FORCE_PATHS deleteAt _taskForceName;
+	BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceName, _operation];
+	[_taskForceName, _taskForce param [1, []], _destination] call QUEUE_PATHFIND_REQUEST;
+	[format ["Defender %1 (%2) returning to %3 because %4", _taskForceName, _operation getOrDefault ["defenseRole", _taskForce param [0, ""]], _returnSector, _reason]] call BATTLESPACE_STRATEGIC_LOG;
+	true
+};
+
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\models\outpost.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\models\convoy.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\models\defensivePatrol.sqf";
@@ -696,6 +781,7 @@ BATTLESPACE_TASK_FORCE_DEFENDER_RETREAT_TICK = {
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\models\deepReconnaissancePatrol.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\models\ambushPatrol.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\models\battlegroup.sqf";
+[] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\models\mobileReserve.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\models\garrison.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\models\fortifications.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\models\civilians.sqf";

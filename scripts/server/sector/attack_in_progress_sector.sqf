@@ -59,10 +59,10 @@ if (GRLIB_endgame == 0 && {_sector in blufor_sectors}) then {
         sector_to_blufor = createHashMap;
         {sector_to_blufor set [_x, true]} forEach blufor_sectors;
 
-        if (isNil "BATTLESPACE_DEFENDERS_SECTORS_SPAWNED") then {
-            BATTLESPACE_DEFENDERS_SECTORS_SPAWNED = createHashMap;
+        if (isNil "BATTLESPACE_CIVILIANS_SECTORS_POPULATED") then {
+            BATTLESPACE_CIVILIANS_SECTORS_POPULATED = createHashMap;
         };
-        BATTLESPACE_DEFENDERS_SECTORS_SPAWNED set [_sector, false];
+        BATTLESPACE_CIVILIANS_SECTORS_POPULATED set [_sector, false];
 
         if (isNil "blufor_sectors_cap_times") then {
             blufor_sectors_cap_times = createHashMap;

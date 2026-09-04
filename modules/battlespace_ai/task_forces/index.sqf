@@ -1191,6 +1191,7 @@ RENDER_BATTLESPACE_AI_PFH = {
 			case "Outpost": { _targetMarker = "\A3\ui_f\data\map\markers\nato\o_installation.paa"; };
 			case "Convoy": { _targetMarker = "\A3\ui_f\data\map\markers\nato\o_support.paa"; };
 			case "Battlegroup": { _targetMarker = "\A3\ui_f\data\map\markers\nato\o_armor.paa"; };
+			case "Mobile Reserve": { _targetMarker = "\A3\ui_f\data\map\markers\nato\o_mech_inf.paa"; };
 			case "Fortifications": { _targetMarker = "\A3\ui_f\data\map\markers\nato\o_hq.paa"; };
 			case "Ambush Patrol": { _targetMarker = "\A3\ui_f\data\map\markers\military\ambush_CA.paa"; };
 			case "Minefield": { _targetMarker = "\a3\Ui_F_Curator\Data\CfgMarkers\minefield_ca.paa"; };

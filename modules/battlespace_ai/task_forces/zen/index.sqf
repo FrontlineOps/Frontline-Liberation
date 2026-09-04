@@ -5,5 +5,4 @@ private _rootAction = ["battlespaceAI", "Battlespace AI", ["", [1,1,1,1]], {}, {
 
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\zen\placePatrol.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\zen\renderToggle.sqf";
-[] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\zen\convertToOutpost.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\zen\strategic.sqf";

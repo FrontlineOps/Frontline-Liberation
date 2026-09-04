@@ -16,7 +16,7 @@ BATTLESPACE_BATTLEGROUP_BUILD_DEFINITION = {
     private _resources = _state get "resources";
     private _thresholds = [_sectorType, "Battlegroup"] call BATTLESPACE_SECTOR_GET_THRESHOLD_MAP;
     private _manpowerCost = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_BATTLEGROUP_MANPOWER", 28];
-    private _manpowerCapacity = [_sectorType, "manpower"] call BATTLESPACE_SECTOR_GET_CAPACITY;
+    private _manpowerCapacity = [_originSector, "manpower", _sectorType] call BATTLESPACE_SECTOR_GET_EFFECTIVE_CAPACITY;
     private _manpowerThreshold = _thresholds getOrDefault ["manpower", 1];
     private _availableManpower = _resources getOrDefault ["manpower", 0];
     if (
@@ -32,7 +32,7 @@ BATTLESPACE_BATTLEGROUP_BUILD_DEFINITION = {
     private _canAllocate = {
         params ["_resourceType"];
         private _threshold = _thresholds getOrDefault [_resourceType, -1];
-        private _capacity = [_sectorType, _resourceType] call BATTLESPACE_SECTOR_GET_CAPACITY;
+        private _capacity = [_originSector, _resourceType, _sectorType] call BATTLESPACE_SECTOR_GET_EFFECTIVE_CAPACITY;
         private _available = _resources getOrDefault [_resourceType, 0];
         private _alreadyUsed = _cost getOrDefault [_resourceType, 0];
         _threshold >= 0

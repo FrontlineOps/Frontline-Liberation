@@ -39,6 +39,9 @@ if (isNil "BATTLESPACE_LOGISTICS_MISSING_ENTRY_WARNED") then {
 if (isNil "BATTLESPACE_LOGISTICS_ENTRY_ANCHORS") then {
     BATTLESPACE_LOGISTICS_ENTRY_ANCHORS = createHashMap;
 };
+if (isNil "BATTLESPACE_LOGISTICS_EVACUATION_BLOCKED_WARNED") then {
+    BATTLESPACE_LOGISTICS_EVACUATION_BLOCKED_WARNED = createHashMap;
+};
 
 BATTLESPACE_RESOURCE_CLASS_POOLS = createHashMap;
 
@@ -86,6 +89,37 @@ BATTLESPACE_SECTOR_GET_CAPACITY = {
     _capacities getOrDefault [_resourceType, 0]
 };
 
+BATTLESPACE_SECTOR_GET_EFFECTIVE_CAPACITY = {
+    params ["_sector", "_resourceType", ["_sectorType", ""]];
+    if (_sectorType == "") then {_sectorType = [_sector] call BATTLESPACE_SECTOR_GET_TYPE};
+    private _baseCapacity = [_sectorType, _resourceType] call BATTLESPACE_SECTOR_GET_CAPACITY;
+    if (_baseCapacity <= 0 || {_sector in blufor_sectors}) exitWith {_baseCapacity};
+    private _multipliers = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_FRONT_STOCK_CAPACITY_MULTIPLIERS", [0.25, 0.5, 0.75, 1]];
+    if (_multipliers isEqualTo []) exitWith {_baseCapacity};
+    private _depth = [_sector, blufor_sectors + ["startbase_marker"]] call NETWORKED_SECTORS_GET_DISTANCE_FROM_FRONTLINE;
+    if (_depth < 0) exitWith {_baseCapacity};
+    private _index = _depth min (count _multipliers - 1);
+    floor (_baseCapacity * ((_multipliers param [_index, 1]) max 0 min 1))
+};
+
+BATTLESPACE_LOGISTICS_BUILD_FRONT_EXCESS = {
+    params ["_sector"];
+    private _excess = createHashMap;
+    private _state = BATTLESPACE_SECTOR_STATES get _sector;
+    if (isNil "_state" || {(_state getOrDefault ["owner", ""]) != "OPFOR"}) exitWith {_excess};
+
+    private _sectorType = _state getOrDefault ["type", ""];
+    private _resources = _state getOrDefault ["resources", createHashMap];
+    {
+        private _capacity = [_sector, _x, _sectorType] call BATTLESPACE_SECTOR_GET_EFFECTIVE_CAPACITY;
+        private _amount = ((_resources getOrDefault [_x, 0]) - _capacity) max 0;
+        if (_amount > 0) then {
+            _excess set [_x, _amount];
+        };
+    } forEach BATTLESPACE_RESOURCE_TYPES;
+    _excess
+};
+
 BATTLESPACE_SECTOR_CREATE_STATE = {
     params ["_sector", ["_fillRatio", 0]];
 
@@ -95,7 +129,7 @@ BATTLESPACE_SECTOR_CREATE_STATE = {
     private _owner = ["OPFOR", "BLUFOR"] select (_sector in blufor_sectors);
     private _resources = createHashMap;
     {
-        private _capacity = [_sectorType, _x] call BATTLESPACE_SECTOR_GET_CAPACITY;
+        private _capacity = [_sector, _x, _sectorType] call BATTLESPACE_SECTOR_GET_EFFECTIVE_CAPACITY;
         private _amount = 0;
         if (_owner == "OPFOR") then {
             _amount = floor (_capacity * (_fillRatio max 0 min 1));
@@ -161,6 +195,7 @@ BATTLESPACE_SECTOR_SET_OWNER = {
     _state set ["casualtyPressure", 0];
     _state set ["lastCasualtyAt", -1];
     BATTLESPACE_SECTOR_STATES set [_sector, _state];
+    BATTLESPACE_LOGISTICS_EVACUATION_BLOCKED_WARNED deleteAt _sector;
     true
 };
 
@@ -203,9 +238,9 @@ BATTLESPACE_RESOURCE_APPLY_STRICT = {
         };
 
         private _current = _resources getOrDefault [_x, 0];
-        private _capacity = [_sectorType, _x] call BATTLESPACE_SECTOR_GET_CAPACITY;
+        private _capacity = [_sector, _x, _sectorType] call BATTLESPACE_SECTOR_GET_EFFECTIVE_CAPACITY;
         private _next = _current + _y;
-        if (_next < 0 || {_next > _capacity}) then {
+        if (_next < 0 || {_y > 0 && {_next > _capacity}}) then {
             _valid = false;
         } else {
             _proposed set [_x, _next];
@@ -236,7 +271,7 @@ BATTLESPACE_RESOURCE_DEPOSIT_CLAMPED = {
         if !(_y isEqualType 0) then { continue };
 
         private _requested = (round _y) max 0;
-        private _capacity = [_sectorType, _x] call BATTLESPACE_SECTOR_GET_CAPACITY;
+        private _capacity = [_sector, _x, _sectorType] call BATTLESPACE_SECTOR_GET_EFFECTIVE_CAPACITY;
         private _current = _resources getOrDefault [_x, 0];
         private _received = _requested min ((_capacity - _current) max 0);
         if (_received > 0) then {
@@ -250,9 +285,36 @@ BATTLESPACE_RESOURCE_DEPOSIT_CLAMPED = {
     _accepted
 };
 
+// Used only to roll back or return a previously committed transfer. Unlike
+// ordinary ingress, restoration may remain over the current front-depth cap;
+// that excess is then eligible for a later evacuation convoy.
+BATTLESPACE_RESOURCE_RESTORE_TRANSFER = {
+    params ["_sector", "_amounts"];
+    private _restored = createHashMap;
+    if (!([] call BATTLESPACE_STRATEGIC_SERVER_CALL_ALLOWED) || {typeName _amounts != "HASHMAP"}) exitWith {_restored};
+
+    private _state = BATTLESPACE_SECTOR_STATES get _sector;
+    if (isNil "_state" || {(_state getOrDefault ["owner", ""]) != "OPFOR"}) exitWith {_restored};
+
+    private _resources = _state getOrDefault ["resources", createHashMap];
+    {
+        if !(_x in BATTLESPACE_RESOURCE_TYPES) then {continue};
+        if !(_y isEqualType 0) then {continue};
+        private _amount = (round _y) max 0;
+        if (_amount <= 0) then {continue};
+        _resources set [_x, (_resources getOrDefault [_x, 0]) + _amount];
+        _restored set [_x, _amount];
+    } forEach _amounts;
+
+    _state set ["resources", _resources];
+    BATTLESPACE_SECTOR_STATES set [_sector, _state];
+    _restored
+};
+
 BATTLESPACE_STRATEGIC_SERIALIZE_OPERATION = {
     params ["_operation"];
     private _saved = [_operation] call BATTLESPACE_COPY_RESOURCE_MAP;
+    _saved deleteAt "arrivalReservation";
     if ("captureStartedAt" in _saved) then {
         _saved set ["captureAge", (CBA_missionTime - (_saved getOrDefault ["captureStartedAt", CBA_missionTime])) max 0];
         _saved deleteAt "captureStartedAt";
@@ -262,13 +324,14 @@ BATTLESPACE_STRATEGIC_SERIALIZE_OPERATION = {
             _saved set [_x + "Remaining", ((_saved getOrDefault [_x, CBA_missionTime]) - CBA_missionTime) max 0];
             _saved deleteAt _x;
         };
-    } forEach ["expiresAt", "loiterUntil", "contactGraceUntil"];
+    } forEach ["expiresAt", "loiterUntil", "contactGraceUntil", "holdUntil"];
     _saved
 };
 
 BATTLESPACE_STRATEGIC_DESERIALIZE_OPERATION = {
     params ["_savedOperation"];
     private _operation = [_savedOperation] call BATTLESPACE_COPY_RESOURCE_MAP;
+    _operation deleteAt "arrivalReservation";
     if ("captureAge" in _operation) then {
         _operation set ["captureStartedAt", CBA_missionTime - (_operation getOrDefault ["captureAge", 0])];
         _operation deleteAt "captureAge";
@@ -279,7 +342,7 @@ BATTLESPACE_STRATEGIC_DESERIALIZE_OPERATION = {
             _operation set [_x, CBA_missionTime + (_operation getOrDefault [_remainingKey, 0])];
             _operation deleteAt _remainingKey;
         };
-    } forEach ["expiresAt", "loiterUntil", "contactGraceUntil"];
+    } forEach ["expiresAt", "loiterUntil", "contactGraceUntil", "holdUntil"];
     _operation
 };
 
@@ -365,13 +428,14 @@ BATTLESPACE_LOGISTICS_LOAD = {
             if (_savedOwner == _currentOwner && {_currentOwner == "OPFOR"}) then {
                 private _savedResources = _savedState getOrDefault ["resources", createHashMap];
                 private _resources = _state get "resources";
-                private _sectorType = _state get "type";
                 if (typeName _savedResources == "HASHMAP") then {
                     {
-                        private _capacity = [_sectorType, _x] call BATTLESPACE_SECTOR_GET_CAPACITY;
                         private _value = _savedResources getOrDefault [_x, 0];
                         if !(_value isEqualType 0) then { _value = 0 };
-                        _resources set [_x, (round _value) max 0 min _capacity];
+                        // Current-format saves may legitimately contain stock stranded
+                        // above a newly reduced front-depth allowance. Preserve it as
+                        // pending evacuation instead of deleting it during load.
+                        _resources set [_x, (round _value) max 0];
                     } forEach BATTLESPACE_RESOURCE_TYPES;
                 };
                 _state set ["resources", _resources];
@@ -403,10 +467,6 @@ BATTLESPACE_LOGISTICS_LOAD = {
             if (!isNil {BATTLESPACE_TASK_FORCES get _x} && {typeName _y == "HASHMAP"}) then {
                 private _operation = [_y] call BATTLESPACE_STRATEGIC_DESERIALIZE_OPERATION;
                 BATTLESPACE_STRATEGIC_OPERATIONS set [_x, _operation];
-                if ((_operation getOrDefault ["kind", ""]) == "DEFENDER") then {
-                    if (isNil "BATTLESPACE_DEFENDERS_SECTORS_SPAWNED") then {BATTLESPACE_DEFENDERS_SECTORS_SPAWNED = createHashMap};
-                    BATTLESPACE_DEFENDERS_SECTORS_SPAWNED set [_operation getOrDefault ["fundingSector", ""], true];
-                };
             };
         } forEach _savedOperations;
     };
@@ -634,10 +694,10 @@ BATTLESPACE_CAPTURE_SECTOR_FOR_OPFOR = {
         sector_to_blufor set [_x, true];
     } forEach blufor_sectors;
 
-    if (isNil "BATTLESPACE_DEFENDERS_SECTORS_SPAWNED") then {
-        BATTLESPACE_DEFENDERS_SECTORS_SPAWNED = createHashMap;
+    if (isNil "BATTLESPACE_CIVILIANS_SECTORS_POPULATED") then {
+        BATTLESPACE_CIVILIANS_SECTORS_POPULATED = createHashMap;
     };
-    BATTLESPACE_DEFENDERS_SECTORS_SPAWNED set [_sector, false];
+    BATTLESPACE_CIVILIANS_SECTORS_POPULATED set [_sector, false];
 
     if (isNil "blufor_sectors_cap_times") then {
         blufor_sectors_cap_times = createHashMap;
@@ -699,7 +759,7 @@ BATTLESPACE_LOGISTICS_BUILD_REQUEST = {
     private _thresholds = [_sectorType, _thresholdType] call BATTLESPACE_SECTOR_GET_THRESHOLD_MAP;
     {
         private _threshold = _thresholds getOrDefault [_x, -1];
-        private _capacity = [_sectorType, _x] call BATTLESPACE_SECTOR_GET_CAPACITY;
+        private _capacity = [_sector, _x, _sectorType] call BATTLESPACE_SECTOR_GET_EFFECTIVE_CAPACITY;
         if (_threshold < 0 || {_capacity <= 0}) then { continue };
 
         private _current = _resources getOrDefault [_x, 0];
@@ -722,7 +782,6 @@ BATTLESPACE_LOGISTICS_FIND_SECTOR_SOURCES = {
         private _source = _x;
         private _state = BATTLESPACE_SECTOR_STATES get _source;
         if (isNil "_state" || {(_state getOrDefault ["owner", ""]) != "OPFOR"}) then { continue };
-
         private _sectorType = _state get "type";
         private _resources = _state get "resources";
         private _sendThresholds = [_sectorType, "ResupplySend"] call BATTLESPACE_SECTOR_GET_THRESHOLD_MAP;
@@ -733,9 +792,12 @@ BATTLESPACE_LOGISTICS_FIND_SECTOR_SOURCES = {
             private _threshold = _sendThresholds getOrDefault [_resourceType, -1];
             if (_threshold < 0) then { continue };
 
-            private _capacity = [_sectorType, _resourceType] call BATTLESPACE_SECTOR_GET_CAPACITY;
+            private _capacity = [_source, _resourceType, _sectorType] call BATTLESPACE_SECTOR_GET_EFFECTIVE_CAPACITY;
             private _reserve = ceil (_capacity * _threshold);
-            private _available = ((_resources getOrDefault [_resourceType, 0]) - _reserve) max 0;
+            // Excess above the local depth cap remains evacuation-only. Other
+            // resources at the same objective can still support normal traffic.
+            private _normalStock = (_resources getOrDefault [_resourceType, 0]) min _capacity;
+            private _available = (_normalStock - _reserve) max 0;
             private _amount = _available min _y;
             if (_amount > 0) then {
                 _cargo set [_resourceType, _amount];
@@ -927,6 +989,7 @@ BATTLESPACE_LOGISTICS_ATTACH_CONVOY_CRATES = {
 };
 
 BATTLESPACE_LOGISTICS_BUILD_CONVOY = {
+    params [["_allowOptionalApc", true, [true]]];
     private _vehicles = [];
     private _manifest = [];
     private _truckCount = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_CONVOY_TRUCKS", 2];
@@ -944,7 +1007,7 @@ BATTLESPACE_LOGISTICS_BUILD_CONVOY = {
     _manifest pushBack [_car, "car"];
 
     private _apcChance = ((missionNamespace getVariable ["BATTLESPACE_STRATEGIC_CONVOY_APC_CHANCE", 25]) max 0) min 100;
-    if (random 100 < _apcChance) then {
+    if (_allowOptionalApc && {random 100 < _apcChance}) then {
         private _apc = ["apc"] call BATTLESPACE_STRATEGIC_GET_CLASS_FOR_RESOURCE;
         if (_apc != "") then {
             _vehicles pushBack _apc;
@@ -964,60 +1027,412 @@ BATTLESPACE_LOGISTICS_BUILD_CONVOY = {
     ]
 };
 
+BATTLESPACE_LOGISTICS_BUILD_CONVOY_FORCE_COST = {
+    params ["_convoyDefinition"];
+    private _composition = _convoyDefinition getOrDefault ["composition", createHashMap];
+    private _cost = createHashMapFromArray [
+        ["manpower", _composition getOrDefault ["manpower", 0]]
+    ];
+    {
+        private _resourceType = _x param [1, ""];
+        if (_resourceType != "") then {
+            _cost set [_resourceType, (_cost getOrDefault [_resourceType, 0]) + 1];
+        };
+    } forEach (_convoyDefinition getOrDefault ["vehicleManifest", []]);
+    _cost
+};
+
+BATTLESPACE_LOGISTICS_BUILD_CONVOY_DEBIT = {
+    params ["_cargo", "_convoyDefinition"];
+    private _debit = [_cargo] call BATTLESPACE_COPY_RESOURCE_MAP;
+    private _forceCost = [_convoyDefinition] call BATTLESPACE_LOGISTICS_BUILD_CONVOY_FORCE_COST;
+    {
+        _debit set [_x, (_debit getOrDefault [_x, 0]) + _y];
+    } forEach _forceCost;
+    _debit
+};
+
+BATTLESPACE_LOGISTICS_BUILD_CONVOY_OPTIONS = {
+    private _preferred = [true] call BATTLESPACE_LOGISTICS_BUILD_CONVOY;
+    if (count _preferred == 0) exitWith {[]};
+    private _options = [_preferred];
+    if ((_preferred getOrDefault ["vehicleManifest", []]) findIf {(_x param [1, ""]) == "apc"} >= 0) then {
+        private _base = [false] call BATTLESPACE_LOGISTICS_BUILD_CONVOY;
+        if (count _base > 0) then {_options pushBack _base};
+    };
+    _options
+};
+
+BATTLESPACE_LOGISTICS_GET_TARGET_HEADROOM = {
+    params ["_targetSector"];
+    private _headroom = createHashMap;
+    private _state = BATTLESPACE_SECTOR_STATES get _targetSector;
+    if (isNil "_state" || {(_state getOrDefault ["owner", ""]) != "OPFOR"}) exitWith {_headroom};
+
+    private _sectorType = _state getOrDefault ["type", ""];
+    private _resources = _state getOrDefault ["resources", createHashMap];
+    {
+        private _capacity = [_targetSector, _x, _sectorType] call BATTLESPACE_SECTOR_GET_EFFECTIVE_CAPACITY;
+        private _available = _capacity - (_resources getOrDefault [_x, 0]);
+        _headroom set [_x, _available max 0];
+    } forEach BATTLESPACE_RESOURCE_TYPES;
+    _headroom
+};
+
+BATTLESPACE_LOGISTICS_BUILD_CONVOY_CURRENT_LOAD = {
+    params ["_taskForce", "_operation"];
+    private _crateCount = (_operation getOrDefault ["cargoCrateCount", 0]) max 0;
+    private _cratesLost = (_operation getOrDefault ["cargoCratesLost", 0]) max 0 min _crateCount;
+    private _ratio = if (_crateCount > 0) then {
+        (_crateCount - _cratesLost) / _crateCount
+    } else {
+        [_taskForce, _operation] call BATTLESPACE_STRATEGIC_GET_SURVIVAL_RATIO
+    };
+    private _load = [
+        _operation getOrDefault ["cargo", createHashMap],
+        _ratio
+    ] call BATTLESPACE_STRATEGIC_SCALE_RESOURCES;
+    private _survivingForce = [_taskForce, _operation] call BATTLESPACE_STRATEGIC_GET_SURVIVING_FORCE_RESOURCES;
+    {
+        _load set [_x, (_load getOrDefault [_x, 0]) + _y];
+    } forEach _survivingForce;
+    _load
+};
+
+BATTLESPACE_LOGISTICS_HAS_ACTIVE_CONVOY_FOR_TARGET = {
+    params ["_targetSector", ["_ignoredOperationId", ""]];
+    private _found = false;
+    {
+        if (
+            _x != _ignoredOperationId
+            && {(_y getOrDefault ["kind", ""]) == "CONVOY"}
+            && {(_y getOrDefault ["targetSector", ""]) == _targetSector}
+            && {(_y getOrDefault ["phase", ""]) != "RETURNING"}
+            && {(_y getOrDefault ["outcome", ""]) == ""}
+        ) exitWith {
+            _found = true;
+        };
+    } forEach BATTLESPACE_STRATEGIC_OPERATIONS;
+    _found
+};
+
+BATTLESPACE_LOGISTICS_HAS_ACTIVE_EVACUATION_FROM_SOURCE = {
+    params ["_sourceSector"];
+    private _found = false;
+    {
+        if (
+            (_y getOrDefault ["kind", ""]) == "CONVOY"
+            && {(_y getOrDefault ["convoyPurpose", ""]) == "EVACUATION"}
+            && {(_y getOrDefault ["sourceSector", ""]) == _sourceSector}
+            && {(_y getOrDefault ["outcome", ""]) == ""}
+        ) exitWith {
+            _found = true;
+        };
+    } forEach BATTLESPACE_STRATEGIC_OPERATIONS;
+    _found
+};
+
+BATTLESPACE_LOGISTICS_GET_REACHABLE_DEEPER_TARGETS = {
+    params ["_sourceSector", "_sourceDepth"];
+    private _candidateRows = [];
+    private _sourcePosition = getMarkerPos _sourceSector;
+    {
+        if (_x == _sourceSector || {(_y getOrDefault ["owner", ""]) != "OPFOR"}) then {continue};
+        private _depth = [_x, blufor_sectors + ["startbase_marker"]] call NETWORKED_SECTORS_GET_DISTANCE_FROM_FRONTLINE;
+        if (_depth <= _sourceDepth) then {continue};
+        private _score = (_depth * 1000000) + (_sourcePosition distance2D (getMarkerPos _x));
+        _candidateRows pushBack [_score, _x];
+    } forEach BATTLESPACE_SECTOR_STATES;
+    if (_candidateRows isEqualTo []) exitWith {[]};
+
+    private _candidateNames = _candidateRows apply {_x param [1, ""]};
+    private _reachable = [
+        _sourceSector,
+        _candidateNames,
+        blufor_sectors + ["startbase_marker"]
+    ] call NETWORKED_SECTORS_traverseGraphAndFindNodes;
+    private _reachableRows = _candidateRows select {(_x param [1, ""]) in _reachable};
+    _reachableRows = [_reachableRows, [], {_x param [0, 0]}, "ASCEND"] call BIS_fnc_sortBy;
+    _reachableRows apply {_x param [1, ""]}
+};
+
+BATTLESPACE_LOGISTICS_TARGET_CAN_ACCEPT_LOAD = {
+    params ["_targetSector", "_load"];
+    if (typeName _load != "HASHMAP" || {count _load == 0}) exitWith {false};
+    private _headroom = [_targetSector] call BATTLESPACE_LOGISTICS_GET_TARGET_HEADROOM;
+    if (count _headroom == 0) exitWith {false};
+    private _accepted = true;
+    {
+        if (
+            !(_x in BATTLESPACE_RESOURCE_TYPES)
+            || {!(_y isEqualType 0)}
+            || {_y < 0}
+            || {_y > (_headroom getOrDefault [_x, 0])}
+        ) exitWith {
+            _accepted = false;
+        };
+    } forEach _load;
+    _accepted
+};
+
+BATTLESPACE_LOGISTICS_FIND_EVACUATION_TARGET = {
+    params ["_sourceSector", "_sourceDepth", "_excess", "_convoyDefinition"];
+    private _result = [];
+    private _bestCargoTotal = 0;
+    if (typeName _excess != "HASHMAP" || {count _excess == 0}) exitWith {_result};
+    private _forceCost = [_convoyDefinition] call BATTLESPACE_LOGISTICS_BUILD_CONVOY_FORCE_COST;
+    {
+        private _targetSector = _x;
+        if ([_targetSector] call BATTLESPACE_LOGISTICS_HAS_ACTIVE_CONVOY_FOR_TARGET) then {continue};
+        if ([_targetSector] call BATTLESPACE_LOGISTICS_HAS_ACTIVE_EVACUATION_FROM_SOURCE) then {continue};
+        private _headroom = [_targetSector] call BATTLESPACE_LOGISTICS_GET_TARGET_HEADROOM;
+        private _forceFits = true;
+        {
+            if (_y > (_headroom getOrDefault [_x, 0])) exitWith {_forceFits = false};
+        } forEach _forceCost;
+        if (!_forceFits) then {continue};
+
+        private _cargo = createHashMap;
+        private _cargoTotal = 0;
+        {
+            private _available = ((_headroom getOrDefault [_x, 0]) - (_forceCost getOrDefault [_x, 0])) max 0;
+            private _amount = _y min _available;
+            if (_amount > 0) then {
+                _cargo set [_x, _amount];
+                _cargoTotal = _cargoTotal + _amount;
+            };
+        } forEach _excess;
+        if (_cargoTotal <= 0) then {continue};
+
+        // Use the largest safe load; equal loads retain the existing nearest
+        // deeper-depth ordering from GET_REACHABLE_DEEPER_TARGETS.
+        if (_cargoTotal > _bestCargoTotal) then {
+            _bestCargoTotal = _cargoTotal;
+            _result = [_targetSector, _cargo, [_cargo, _convoyDefinition] call BATTLESPACE_LOGISTICS_BUILD_CONVOY_DEBIT];
+        };
+    } forEach ([_sourceSector, _sourceDepth] call BATTLESPACE_LOGISTICS_GET_REACHABLE_DEEPER_TARGETS);
+    _result
+};
+
+BATTLESPACE_LOGISTICS_WARN_EVACUATION_BLOCKED_ONCE = {
+    params ["_sourceSector", "_reason", "_message"];
+    if ((BATTLESPACE_LOGISTICS_EVACUATION_BLOCKED_WARNED getOrDefault [_sourceSector, ""]) != _reason) then {
+        BATTLESPACE_LOGISTICS_EVACUATION_BLOCKED_WARNED set [_sourceSector, _reason];
+        [_message, "WARNING"] call BATTLESPACE_STRATEGIC_LOG;
+    };
+};
+
+BATTLESPACE_LOGISTICS_CREATE_CONVOY = {
+    params [
+        "_purpose",
+        "_sourceSector",
+        "_sourceMarker",
+        "_targetSector",
+        "_cargo",
+        "_debit",
+        "_convoyDefinition",
+        ["_metadata", createHashMap]
+    ];
+    if !([] call BATTLESPACE_STRATEGIC_SERVER_CALL_ALLOWED) exitWith {""};
+    private _restoreDebit = {
+        if (_sourceSector != "" && {typeName _debit == "HASHMAP"} && {count _debit > 0}) then {
+            [_sourceSector, _debit] call BATTLESPACE_RESOURCE_RESTORE_TRANSFER;
+        };
+    };
+    if (
+        _sourceMarker == ""
+        || {_targetSector == ""}
+        || {typeName _cargo != "HASHMAP"}
+        || {count _cargo == 0}
+        || {typeName _convoyDefinition != "HASHMAP"}
+        || {count _convoyDefinition == 0}
+    ) exitWith {
+        [] call _restoreDebit;
+        ""
+    };
+    private _targetState = BATTLESPACE_SECTOR_STATES get _targetSector;
+    if (isNil "_targetState" || {(_targetState getOrDefault ["owner", ""]) != "OPFOR"}) exitWith {
+        [] call _restoreDebit;
+        ""
+    };
+
+    private _origin = getMarkerPos _sourceMarker;
+    private _roads = _origin nearRoads 200;
+    if (_roads isNotEqualTo []) then {_origin = getPos (selectRandom _roads)};
+    private _taskForceId = [
+        "Convoy",
+        _convoyDefinition get "composition",
+        _origin,
+        getMarkerPos _targetSector,
+        getMarkerPos _sourceMarker
+    ] call BATTLESPACE_TASK_FORCES_INIT;
+    if (_taskForceId == "") exitWith {
+        [] call _restoreDebit;
+        [format ["Convoy creation for %1 failed; committed sector debit was restored", _targetSector], "WARNING"] call BATTLESPACE_STRATEGIC_LOG;
+        ""
+    };
+
+    private _operation = createHashMapFromArray [
+        ["kind", "CONVOY"],
+        ["convoyPurpose", _purpose],
+        ["phase", "ENROUTE"],
+        ["sourceSector", _sourceSector],
+        ["sourceMarker", _sourceMarker],
+        ["targetSector", _targetSector],
+        ["cargo", [_cargo] call BATTLESPACE_COPY_RESOURCE_MAP],
+        ["debit", [_debit] call BATTLESPACE_COPY_RESOURCE_MAP],
+        ["vehicleManifest", +(_convoyDefinition get "vehicleManifest")],
+        ["cargoCrateCount", {(_x param [1, ""]) == "truck"} count (_convoyDefinition get "vehicleManifest")],
+        ["cargoCratesLost", 0],
+        ["initialStrength", _convoyDefinition get "initialStrength"],
+        ["outcome", ""]
+    ];
+    if (typeName _metadata == "HASHMAP") then {
+        {_operation set [_x, _y]} forEach _metadata;
+    };
+    BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceId, _operation];
+
+    _targetState set [
+        "nextResupplyAt",
+        CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_RESUPPLY_COOLDOWN", 1800])
+    ];
+    BATTLESPACE_SECTOR_STATES set [_targetSector, _targetState];
+    [] call BATTLESPACE_LOGISTICS_SAVE;
+    [format [
+        "Dispatched %1 convoy %2 from %3 to %4 with vehicles %5 and cargo %6",
+        toLower _purpose,
+        _taskForceId,
+        _sourceMarker,
+        _targetSector,
+        _convoyDefinition get "vehicleManifest",
+        _cargo
+    ]] call BATTLESPACE_STRATEGIC_LOG;
+    _taskForceId
+};
+
+BATTLESPACE_LOGISTICS_DISPATCH_EVACUATION = {
+    params ["_sourceSector"];
+    if !([] call BATTLESPACE_STRATEGIC_SERVER_CALL_ALLOWED) exitWith {false};
+    if (
+        ["CONVOY"] call BATTLESPACE_STRATEGIC_COUNT_OPERATIONS
+        >= (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_ACTIVE_CONVOYS", 3])
+    ) exitWith {false};
+    if ([_sourceSector] call BATTLESPACE_LOGISTICS_HAS_ACTIVE_EVACUATION_FROM_SOURCE) exitWith {false};
+    if ([_sourceSector] call BATTLESPACE_LOGISTICS_HAS_ACTIVE_CONVOY_FOR_TARGET) exitWith {false};
+
+    private _excess = [_sourceSector] call BATTLESPACE_LOGISTICS_BUILD_FRONT_EXCESS;
+    if (count _excess == 0) exitWith {
+        BATTLESPACE_LOGISTICS_EVACUATION_BLOCKED_WARNED deleteAt _sourceSector;
+        false
+    };
+    private _sourceDepth = [_sourceSector, blufor_sectors + ["startbase_marker"]] call NETWORKED_SECTORS_GET_DISTANCE_FROM_FRONTLINE;
+    if (_sourceDepth < 0) exitWith {false};
+
+    private _convoyOptions = [] call BATTLESPACE_LOGISTICS_BUILD_CONVOY_OPTIONS;
+    if (_convoyOptions isEqualTo []) exitWith {
+        [
+            _sourceSector,
+            "NO_CONVOY_CLASSES",
+            format ["Front-stock evacuation from %1 is blocked: generated OPFOR logistics vehicles are unavailable", _sourceSector]
+        ] call BATTLESPACE_LOGISTICS_WARN_EVACUATION_BLOCKED_ONCE;
+        false
+    };
+
+    private _selection = [];
+    private _targetFound = false;
+    {
+        private _convoyDefinition = _x;
+        private _targetData = [_sourceSector, _sourceDepth, _excess, _convoyDefinition] call BATTLESPACE_LOGISTICS_FIND_EVACUATION_TARGET;
+        if (_targetData isNotEqualTo []) then {
+            _targetFound = true;
+            _targetData params ["_targetSector", "_cargo", "_debit"];
+            private _negativeDebit = createHashMap;
+            {_negativeDebit set [_x, -_y]} forEach _debit;
+            if ([_sourceSector, _negativeDebit] call BATTLESPACE_RESOURCE_APPLY_STRICT) then {
+                _selection = [_convoyDefinition, _targetSector, _cargo, _debit];
+            };
+        };
+        if (_selection isNotEqualTo []) exitWith {};
+    } forEach _convoyOptions;
+
+    if (_selection isEqualTo []) exitWith {
+        private _reason = ["NO_DEEP_CAPACITY", "CANNOT_FUND"] select _targetFound;
+        private _message = if (_targetFound) then {
+            format ["Front-stock evacuation from %1 is waiting: local stock cannot fund a viable cargo and convoy", _sourceSector]
+        } else {
+            format ["Front-stock evacuation from %1 is waiting: no reachable deeper OPFOR objective has room for the convoy's actual load", _sourceSector]
+        };
+        [
+            _sourceSector,
+            _reason,
+            _message
+        ] call BATTLESPACE_LOGISTICS_WARN_EVACUATION_BLOCKED_ONCE;
+        false
+    };
+    _selection params ["_convoyDefinition", "_targetSector", "_cargo", "_debit"];
+    private _taskForceId = [
+        "EVACUATION",
+        _sourceSector,
+        _sourceSector,
+        _targetSector,
+        _cargo,
+        _debit,
+        _convoyDefinition,
+        createHashMapFromArray [["evacuationSourceDepth", _sourceDepth]]
+    ] call BATTLESPACE_LOGISTICS_CREATE_CONVOY;
+    if (_taskForceId == "") exitWith {
+        [
+            _sourceSector,
+            "TASK_FORCE_INIT",
+            format ["Front-stock evacuation from %1 failed to create its convoy; the complete debit was restored", _sourceSector]
+        ] call BATTLESPACE_LOGISTICS_WARN_EVACUATION_BLOCKED_ONCE;
+        false
+    };
+    BATTLESPACE_LOGISTICS_EVACUATION_BLOCKED_WARNED deleteAt _sourceSector;
+    true
+};
+
 BATTLESPACE_LOGISTICS_DISPATCH = {
     params ["_targetSector", "_request"];
     if (!([] call BATTLESPACE_STRATEGIC_SERVER_CALL_ALLOWED) || {count _request == 0}) exitWith { false };
+    if ([_targetSector] call BATTLESPACE_LOGISTICS_HAS_ACTIVE_CONVOY_FOR_TARGET) exitWith { false };
+    if ([_targetSector] call BATTLESPACE_LOGISTICS_HAS_ACTIVE_EVACUATION_FROM_SOURCE) exitWith { false };
 
-    private _convoyDefinition = [] call BATTLESPACE_LOGISTICS_BUILD_CONVOY;
-    if (count _convoyDefinition == 0) exitWith {
+    private _convoyOptions = [] call BATTLESPACE_LOGISTICS_BUILD_CONVOY_OPTIONS;
+    if (_convoyOptions isEqualTo []) exitWith {
         [format ["No generated OPFOR logistics trucks/car escort can service %1", _targetSector], "WARNING"] call BATTLESPACE_STRATEGIC_LOG;
         false
     };
 
     private _sourceCandidates = [_targetSector, _request] call BATTLESPACE_LOGISTICS_FIND_SECTOR_SOURCES;
-    private _sourceSector = "";
-    private _sourceMarker = "";
-    private _cargo = createHashMap;
-    private _debit = createHashMap;
-    private _debited = false;
-
+    private _selection = [];
     {
-        _x params ["_candidateSector", "_candidateCargo"];
-        private _candidateDebit = [_candidateCargo] call BATTLESPACE_COPY_RESOURCE_MAP;
-        private _composition = _convoyDefinition get "composition";
-        _candidateDebit set ["manpower", (_candidateDebit getOrDefault ["manpower", 0]) + (_composition get "manpower")];
+        private _convoyDefinition = _x;
         {
-            private _resourceType = _x param [1, ""];
-            _candidateDebit set [_resourceType, (_candidateDebit getOrDefault [_resourceType, 0]) + 1];
-        } forEach (_convoyDefinition get "vehicleManifest");
+            _x params ["_candidateSector", "_candidateCargo"];
+            private _candidateDebit = [_candidateCargo, _convoyDefinition] call BATTLESPACE_LOGISTICS_BUILD_CONVOY_DEBIT;
+            private _negativeDebit = createHashMap;
+            {_negativeDebit set [_x, -_y]} forEach _candidateDebit;
+            if ([_candidateSector, _negativeDebit] call BATTLESPACE_RESOURCE_APPLY_STRICT) exitWith {
+                _selection = [_convoyDefinition, _candidateSector, _candidateSector, _candidateCargo, _candidateDebit];
+            };
+        } forEach _sourceCandidates;
+        if (_selection isNotEqualTo []) exitWith {};
+    } forEach _convoyOptions;
 
-        private _negativeDebit = createHashMap;
-        {
-            _negativeDebit set [_x, -_y];
-        } forEach _candidateDebit;
-
-        if ([_candidateSector, _negativeDebit] call BATTLESPACE_RESOURCE_APPLY_STRICT) exitWith {
-            _sourceSector = _candidateSector;
-            _sourceMarker = _candidateSector;
-            _cargo = _candidateCargo;
-            _debit = _candidateDebit;
-            _debited = true;
+    if (_selection isEqualTo []) then {
+        private _sourceMarker = [_targetSector] call BATTLESPACE_LOGISTICS_FIND_OFFMAP_SOURCE;
+        if (_sourceMarker != "") then {
+            _selection = [
+                _convoyOptions select (count _convoyOptions - 1),
+                "",
+                _sourceMarker,
+                [_request] call BATTLESPACE_COPY_RESOURCE_MAP,
+                createHashMap
+            ];
         };
-
-        [format [
-            "Linked convoy donor %1 skipped for %2 because it cannot fund the complete cargo, manpower, and vehicle debit %3",
-            _candidateSector,
-            _targetSector,
-            _candidateDebit
-        ], "WARNING"] call BATTLESPACE_STRATEGIC_LOG;
-    } forEach _sourceCandidates;
-
-    if (!_debited) then {
-        _sourceMarker = [_targetSector] call BATTLESPACE_LOGISTICS_FIND_OFFMAP_SOURCE;
-        _cargo = [_request] call BATTLESPACE_COPY_RESOURCE_MAP;
-        _debit = createHashMap;
     };
-    if (_sourceMarker == "") exitWith {
+    if (_selection isEqualTo []) exitWith {
         if !(BATTLESPACE_LOGISTICS_MISSING_ENTRY_WARNED getOrDefault [_targetSector, false]) then {
             BATTLESPACE_LOGISTICS_MISSING_ENTRY_WARNED set [_targetSector, true];
             [format [
@@ -1027,79 +1442,78 @@ BATTLESPACE_LOGISTICS_DISPATCH = {
         };
         false
     };
-    BATTLESPACE_LOGISTICS_MISSING_ENTRY_WARNED deleteAt _targetSector;
-    if (count _cargo == 0) exitWith { false };
-
-    private _origin = getMarkerPos _sourceMarker;
-    private _roads = _origin nearRoads 200;
-    if (_roads isNotEqualTo []) then {
-        _origin = getPos (selectRandom _roads);
-    };
-    private _target = getMarkerPos _targetSector;
+    _selection params ["_convoyDefinition", "_sourceSector", "_sourceMarker", "_cargo", "_debit"];
     private _taskForceId = [
-        "Convoy",
-        _convoyDefinition get "composition",
-        _origin,
-        _target,
-        getMarkerPos _sourceMarker
-    ] call BATTLESPACE_TASK_FORCES_INIT;
-
-    if (_taskForceId == "") exitWith {
-        if (_debited) then {
-            [_sourceSector, _debit] call BATTLESPACE_RESOURCE_DEPOSIT_CLAMPED;
-        };
-        [format ["Convoy creation for %1 failed; sector debit refunded", _targetSector], "WARNING"] call BATTLESPACE_STRATEGIC_LOG;
-        false
-    };
-
-    BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceId, createHashMapFromArray [
-        ["kind", "CONVOY"],
-        ["phase", "ENROUTE"],
-        ["sourceSector", _sourceSector],
-        ["sourceMarker", _sourceMarker],
-        ["targetSector", _targetSector],
-        ["cargo", _cargo],
-        ["debit", _debit],
-        ["vehicleManifest", _convoyDefinition get "vehicleManifest"],
-        ["cargoCrateCount", {
-            (_x param [1, ""]) == "truck"
-        } count (_convoyDefinition get "vehicleManifest")],
-        ["cargoCratesLost", 0],
-        ["initialStrength", _convoyDefinition get "initialStrength"],
-        ["outcome", ""]
-    ]];
-
-    private _targetState = BATTLESPACE_SECTOR_STATES get _targetSector;
-    _targetState set [
-        "nextResupplyAt",
-        CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_RESUPPLY_COOLDOWN", 1800])
-    ];
-    BATTLESPACE_SECTOR_STATES set [_targetSector, _targetState];
-    [] call BATTLESPACE_LOGISTICS_SAVE;
-    [format [
-        "Dispatched convoy %1 from %2 to %3 with vehicles %4 and cargo %5",
-        _taskForceId,
+        "RESUPPLY",
+        _sourceSector,
         _sourceMarker,
         _targetSector,
-        _convoyDefinition get "vehicleManifest",
-        _cargo
-    ]] call BATTLESPACE_STRATEGIC_LOG;
+        _cargo,
+        _debit,
+        _convoyDefinition
+    ] call BATTLESPACE_LOGISTICS_CREATE_CONVOY;
+    if (_taskForceId == "") exitWith {
+        false
+    };
+    BATTLESPACE_LOGISTICS_MISSING_ENTRY_WARNED deleteAt _targetSector;
     true
 };
 
-BATTLESPACE_LOGISTICS_DECISION_TICK = {
-    if !([] call BATTLESPACE_STRATEGIC_SERVER_CALL_ALLOWED) exitWith {};
+BATTLESPACE_LOGISTICS_EVACUATION_DECISION_TICK = {
+    params [["_perTickOverride", -1]];
+    if !([] call BATTLESPACE_STRATEGIC_SERVER_CALL_ALLOWED) exitWith {0};
     private _activeLimit = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_ACTIVE_CONVOYS", 3];
     private _remainingSlots = _activeLimit - (["CONVOY"] call BATTLESPACE_STRATEGIC_COUNT_OPERATIONS);
-    private _perTick = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_CONVOYS_PER_TICK", 2];
-    private _remaining = _remainingSlots min _perTick;
-    if (_remaining <= 0) exitWith {};
+    private _configuredPerTick = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_CONVOYS_PER_TICK", 2];
+    private _perTick = [_configuredPerTick, _perTickOverride] select (_perTickOverride >= 0);
+    private _remaining = (_remainingSlots min _perTick) max 0;
+    if (_remaining <= 0) exitWith {0};
+
+    private _candidates = [];
+    {
+        if ((_y getOrDefault ["owner", ""]) != "OPFOR") then {continue};
+        if ([_x] call BATTLESPACE_LOGISTICS_HAS_ACTIVE_EVACUATION_FROM_SOURCE) then {continue};
+        if ([_x] call BATTLESPACE_LOGISTICS_HAS_ACTIVE_CONVOY_FOR_TARGET) then {continue};
+        private _excess = [_x] call BATTLESPACE_LOGISTICS_BUILD_FRONT_EXCESS;
+        if (count _excess == 0) then {
+            BATTLESPACE_LOGISTICS_EVACUATION_BLOCKED_WARNED deleteAt _x;
+            continue;
+        };
+        private _depth = [_x, blufor_sectors + ["startbase_marker"]] call NETWORKED_SECTORS_GET_DISTANCE_FROM_FRONTLINE;
+        if (_depth < 0) then {continue};
+        private _totalExcess = 0;
+        {_totalExcess = _totalExcess + _y} forEach _excess;
+        _candidates pushBack [(_depth * 1000000) - _totalExcess, _x];
+    } forEach BATTLESPACE_SECTOR_STATES;
+
+    _candidates = [_candidates, [], {_x param [0, 0]}, "ASCEND"] call BIS_fnc_sortBy;
+    private _dispatched = 0;
+    {
+        if (_remaining <= 0) exitWith {};
+        if ([_x param [1, ""]] call BATTLESPACE_LOGISTICS_DISPATCH_EVACUATION) then {
+            _remaining = _remaining - 1;
+            _dispatched = _dispatched + 1;
+        };
+    } forEach _candidates;
+    _dispatched
+};
+
+BATTLESPACE_LOGISTICS_DECISION_TICK = {
+    params [["_perTickOverride", -1]];
+    if !([] call BATTLESPACE_STRATEGIC_SERVER_CALL_ALLOWED) exitWith {0};
+    private _activeLimit = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_ACTIVE_CONVOYS", 3];
+    private _remainingSlots = _activeLimit - (["CONVOY"] call BATTLESPACE_STRATEGIC_COUNT_OPERATIONS);
+    private _configuredPerTick = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_CONVOYS_PER_TICK", 2];
+    private _perTick = [_configuredPerTick, _perTickOverride] select (_perTickOverride >= 0);
+    private _remaining = (_remainingSlots min _perTick) max 0;
+    if (_remaining <= 0) exitWith {0};
 
     private _candidates = [];
     {
         if ((_y getOrDefault ["owner", ""]) != "OPFOR") then { continue };
         if (CBA_missionTime < (_y getOrDefault ["nextResupplyAt", 0])) then { continue };
         if (["CONVOY", _x] call BATTLESPACE_STRATEGIC_HAS_OPERATION_FOR_TARGET) then { continue };
+        if ([_x] call BATTLESPACE_LOGISTICS_HAS_ACTIVE_EVACUATION_FROM_SOURCE) then { continue };
 
         private _request = [_x] call BATTLESPACE_LOGISTICS_BUILD_REQUEST;
         if (count _request == 0) then { continue };
@@ -1109,13 +1523,16 @@ BATTLESPACE_LOGISTICS_DECISION_TICK = {
     } forEach BATTLESPACE_SECTOR_STATES;
 
     _candidates = [_candidates, [], {_x param [0, 999]}, "ASCEND"] call BIS_fnc_sortBy;
+    private _dispatched = 0;
     {
         if (_remaining <= 0) exitWith {};
         _x params ["_depth", "_sector", "_request"];
         if ([_sector, _request] call BATTLESPACE_LOGISTICS_DISPATCH) then {
             _remaining = _remaining - 1;
+            _dispatched = _dispatched + 1;
         };
     } forEach _candidates;
+    _dispatched
 };
 
 BATTLESPACE_STRATEGIC_HANDLE_TASK_FORCE_EVENT = {
@@ -1152,25 +1569,18 @@ BATTLESPACE_STRATEGIC_HANDLE_TASK_FORCE_EVENT = {
             if (_destinationSector != "") then {
                 private _crateCount = (_operation getOrDefault ["cargoCrateCount", 0]) max 0;
                 private _cratesLost = (_operation getOrDefault ["cargoCratesLost", 0]) max 0 min _crateCount;
-                private _ratio = if (_crateCount > 0) then {
-                    (_crateCount - _cratesLost) / _crateCount
+                private _cargo = [_taskForce, _operation] call BATTLESPACE_LOGISTICS_BUILD_CONVOY_CURRENT_LOAD;
+                private _purpose = _operation getOrDefault ["convoyPurpose", "RESUPPLY"];
+                private _accepted = if (_outcome == "RETURNED") then {
+                    // A return is a rollback of surviving committed material, not
+                    // ordinary stock ingress, so a lower front cap cannot erase it.
+                    [_destinationSector, _cargo] call BATTLESPACE_RESOURCE_RESTORE_TRANSFER
                 } else {
-                    [_taskForce, _operation] call BATTLESPACE_STRATEGIC_GET_SURVIVAL_RATIO
+                    [_destinationSector, _cargo] call BATTLESPACE_RESOURCE_DEPOSIT_CLAMPED
                 };
-                private _cargo = [
-                    _operation getOrDefault ["cargo", createHashMap],
-                    _ratio
-                ] call BATTLESPACE_STRATEGIC_SCALE_RESOURCES;
-                private _survivingForce = [
-                    _taskForce,
-                    _operation
-                ] call BATTLESPACE_STRATEGIC_GET_SURVIVING_FORCE_RESOURCES;
-                {
-                    _cargo set [_x, (_cargo getOrDefault [_x, 0]) + _y];
-                } forEach _survivingForce;
-                private _accepted = [_destinationSector, _cargo] call BATTLESPACE_RESOURCE_DEPOSIT_CLAMPED;
                 [format [
-                    "Convoy %1 %2 at %3 with %4/%5 cargo shares; cargo and surviving force accepted %6",
+                    "%1 convoy %2 %3 at %4 with %5/%6 cargo shares; cargo and surviving force accepted %7",
+                    toLower _purpose,
                     _taskForceId,
                     toLower _outcome,
                     _destinationSector,
@@ -1186,6 +1596,7 @@ BATTLESPACE_STRATEGIC_HANDLE_TASK_FORCE_EVENT = {
             };
         };
         case "DEFENDER";
+        case "RESERVE";
         case "REINFORCEMENT";
         case "AIRBORNE_TRANSPORT";
         case "AIRBORNE_REINFORCEMENT";
@@ -1198,7 +1609,13 @@ BATTLESPACE_STRATEGIC_HANDLE_TASK_FORCE_EVENT = {
             };
             if (_destinationSector != "") then {
                 private _survivors = [_taskForce, _operation] call BATTLESPACE_STRATEGIC_GET_SURVIVING_FORCE_RESOURCES;
-                private _accepted = [_destinationSector, _survivors] call BATTLESPACE_RESOURCE_DEPOSIT_CLAMPED;
+                private _returningFundedDefense = _kind in ["DEFENDER", "RESERVE"]
+                    && {(_operation getOrDefault ["outcome", ""]) == "RETURNED"};
+                private _accepted = if (_returningFundedDefense) then {
+                    [_destinationSector, _survivors] call BATTLESPACE_RESOURCE_RESTORE_TRANSFER
+                } else {
+                    [_destinationSector, _survivors] call BATTLESPACE_RESOURCE_DEPOSIT_CLAMPED
+                };
                 [format ["Strategic %1 %2 settled at %3 with %4", _kind, _taskForceId, _destinationSector, _accepted]] call BATTLESPACE_STRATEGIC_LOG;
             };
         };
@@ -1272,7 +1689,9 @@ if (isServer) then {
             };
 
             if (CBA_missionTime >= _nextDecision) then {
-                [] call BATTLESPACE_LOGISTICS_DECISION_TICK;
+                private _convoyBudget = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_CONVOYS_PER_TICK", 2];
+                private _evacuationConvoys = [_convoyBudget] call BATTLESPACE_LOGISTICS_EVACUATION_DECISION_TICK;
+                [(_convoyBudget - _evacuationConvoys) max 0] call BATTLESPACE_LOGISTICS_DECISION_TICK;
                 if (!isNil "BATTLESPACE_BATTLEGROUP_DECISION_TICK") then {
                     [] call BATTLESPACE_BATTLEGROUP_DECISION_TICK;
                 };
@@ -1284,6 +1703,9 @@ if (isServer) then {
                 };
                 if (!isNil "BATTLESPACE_MINEFIELDS_DECISION_TICK") then {
                     [] call BATTLESPACE_MINEFIELDS_DECISION_TICK;
+                };
+                if (!isNil "BATTLESPACE_DEFENSE_DECISION_TICK") then {
+                    [] call BATTLESPACE_DEFENSE_DECISION_TICK;
                 };
                 _nextDecision = CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DECISION_INTERVAL", 1800]);
             };

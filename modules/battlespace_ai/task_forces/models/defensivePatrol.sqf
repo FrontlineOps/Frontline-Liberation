@@ -1,235 +1,148 @@
+BATTLESPACE_TASK_FORCE_DEFENSIVE_PATROL_BUILD_ASSIGNMENT = {
+    params ["_sector"];
+    private _center = getMarkerPos _sector;
+    private _position = _center getPos [150 + random 250, random 360];
+    if (surfaceIsWater _position) then {
+        _position = [_center, 0, 350, 10, 0, 0.35, 0] call BIS_fnc_findSafePos;
+    };
+    if !((count _position) in [2, 3]) then {_position = +_center};
+    _position set [2, 0];
+    _position
+};
 
+BATTLESPACE_TASK_FORCE_DEFENSIVE_PATROL_SELECT_LEG = {
+    params ["_taskForceName", "_taskForce", ["_operation", createHashMap]];
+    private _sector = _operation getOrDefault ["assignedSector", _taskForce param [12, ""]];
+    if (_sector == "") then {
+        _sector = [sectors_allSectors, _taskForce param [10, _taskForce param [1, []]]] call BIS_fnc_nearestPosition;
+        _taskForce set [12, _sector];
+    };
+    private _center = getMarkerPos _sector;
+    private _front = [_sector, blufor_sectors + ["startbase_marker"]] call NETWORKED_SECTORS_traverseGraphAndFindFirstBluforSector;
+    if (isNil "_front") then {_front = _sector};
+    private _direction = if (_front == _sector) then {random 360} else {_center getDir (getMarkerPos _front)};
+    private _destination = [];
+    for "_attempt" from 1 to 8 do {
+        private _candidate = _center getPos [350 + random 500, _direction - 110 + random 220];
+        if (!surfaceIsWater _candidate) exitWith {_destination = _candidate};
+    };
+    if (_destination isEqualTo []) exitWith {false};
+    _destination set [2, 0];
+    _taskForce set [2, _destination];
+    BATTLESPACE_TASK_FORCE_PATHS deleteAt _taskForceName;
+    [_taskForceName, _taskForce param [1, []], _destination] call QUEUE_PATHFIND_REQUEST;
+    {
+        _x setBehaviourStrong "AWARE";
+        _x setCombatMode "YELLOW";
+        _x setSpeedMode "LIMITED";
+    } forEach (_taskForce param [4, []]);
+    true
+};
 
 [
-	"Defensive Patrol",
-	createHashMapFromArray [
-		[
-			"canProc",
-			{
-				params ["_taskForceName", "_taskForce"];
-				_taskForce params [
-					"_taskForceType", // 0
-					"_currentLoc", // 1
-					["_destination", []], // 2
-					"_composition", // 3
-					["_activeGroups", []], // 4
-					["_state", []], // 5
-					["_taskForceSide", east], // 6
-					["_despawnCounter", 0], // 7
-					["_activeObjects", []], // 8
-					["_wasDespawning", false], // 9
-					["_homePoint", []], // 10
-					["_spawning", false], // 11
-					["_hpSector", nil] // 12
-				];
+    "Defensive Patrol",
+    createHashMapFromArray [
+        ["buildAssignment", BATTLESPACE_TASK_FORCE_DEFENSIVE_PATROL_BUILD_ASSIGNMENT],
+        ["canProc", BATTLESPACE_TASK_FORCE_DEFENSE_MODEL_CAN_PROC],
+        [
+            "doSpawn",
+            {
+                params ["_taskForceName", "_taskForce"];
+                if (_taskForce param [11, false]) exitWith {};
+                _taskForce set [11, true];
+                [_taskForceName, _taskForce] spawn {
+                    params ["_taskForceName", "_taskForce"];
+                    private _success = [_taskForceName, _taskForce, false, false, false, false, "LIMITED"] call BATTLESPACE_TASK_FORCE_DEFAULT_TRY_SPAWN;
+                    [_taskForceName, _taskForce, _success] call BATTLESPACE_TASK_FORCE_DEFAULT_FINISH_SPAWN;
+                };
+            }
+        ],
+        ["isAlive", BATTLESPACE_TASK_FORCE_DEFENSE_MODEL_IS_ALIVE],
+        [
+            "onDecisionTick",
+            {
+                params ["_taskForceName", "_taskForce"];
+                private _operation = BATTLESPACE_STRATEGIC_OPERATIONS get _taskForceName;
+                private _assigned = !isNil "_operation"
+                    && {(_operation getOrDefault ["kind", ""]) == "DEFENDER"}
+                    && {(_operation getOrDefault ["defenseRole", ""]) == "DEFENSIVE_PATROL"};
 
-				private _meetsReq = false;
-				private _req = [] call BATTLESPACE_TASK_FORCE_GET_NEEDED_PLAYERCOUNT_FOR_PROC;
-				private _procRange = [_taskForceType] call BATTLESPACE_TASK_FORCE_GET_PROC_RANGE;
-				{
-					private _pos = _x get "Position";
-					private _players = _x get "Players";
+                if (!_assigned) exitWith {
+                    private _retreat = [_taskForceName, _taskForce] call BATTLESPACE_TASK_FORCE_DEFENDER_RETREAT_TICK;
+                    _retreat params ["_retreating", "_retreatDone"];
+                    if (_retreating) exitWith {_retreatDone};
+                    private _runtime = [_taskForce] call BATTLESPACE_TASK_FORCE_DEFENSE_UPDATE_LOCATION;
+                    _runtime params ["_activeGroups", "_currentLocation"];
+                    private _destination = _taskForce param [2, []];
+                    if (_destination isEqualTo [] || {_currentLocation distance2D _destination <= 40}) then {
+                        [_taskForceName, _taskForce] call BATTLESPACE_TASK_FORCE_DEFENSIVE_PATROL_SELECT_LEG;
+                    };
+                    if (_activeGroups isEqualTo []) then {
+                        [_taskForceName, _taskForce] call BATTLESPACE_TASK_FORCE_MOVE_SIMULATED_GROUP;
+                    };
+                    false
+                };
 
-					if((count _players) < _req) then {
-						continue;
-					};
-					
+                private _phase = _operation getOrDefault ["phase", "DEPLOYING"];
+                if (_phase == "LOST") exitWith {true};
+                private _assignedSector = _operation getOrDefault ["assignedSector", ""];
+                private _assignedState = BATTLESPACE_SECTOR_STATES get _assignedSector;
+                if (
+                    _phase != "RETURNING"
+                    && {_assignedSector == "" || {isNil "_assignedState"} || {(_assignedState getOrDefault ["owner", ""]) != "OPFOR"}}
+                ) then {
+                    _phase = ["LOST", "RETURNING"] select (
+                        [_taskForceName, _taskForce, _operation, "its assigned objective was lost"] call BATTLESPACE_TASK_FORCE_DEFENSE_BEGIN_RETURN
+                    );
+                };
+                if (_phase == "LOST") exitWith {true};
 
-					if((_pos distance2D _currentLoc) <= _procRange) exitWith {
-						_meetsReq = true;
-						true
-					};
-					
-				} forEach BATTLESPACE_TASK_FORCES_BLUFOR_CLUSTERS;
-				
-	
-				_meetsReq
-			}
-		],
-		[
-			"doSpawn",
-			{
-				params ["_taskForceName", "_taskForce"];
-				_taskForce params [
-					"_taskForceType", // 0
-					"_currentLoc", // 1
-					["_destination", []], // 2
-					"_composition", // 3
-					["_activeGroups", []], // 4
-					["_state", []], // 5
-					["_taskForceSide", east], // 6
-					["_despawnCounter", 0], // 7
-					["_activeObjects", []], // 8
-					["_wasDespawning", false], // 9
-					["_homePoint", []], // 10
-					["_spawning", false], // 11
-					["_hpSector", nil] // 12
-				];
+                private _retreat = [_taskForceName, _taskForce] call BATTLESPACE_TASK_FORCE_DEFENDER_RETREAT_TICK;
+                _retreat params ["_retreating", "_retreatDone"];
+                if (_retreating) exitWith {_retreatDone};
 
-				if(!_spawning) then {
-					_taskForce set [11, true];
-					[_taskForceName, _taskForce] spawn {
-						params ["_taskForceName", "_taskForce"];
-						private _success = [_taskForceName, _taskForce, false, false] call BATTLESPACE_TASK_FORCE_DEFAULT_TRY_SPAWN;
+                private _runtime = [_taskForce] call BATTLESPACE_TASK_FORCE_DEFENSE_UPDATE_LOCATION;
+                _runtime params ["_activeGroups", "_currentLocation"];
 
-						
-						[_taskForceName, _taskForce, _success] call BATTLESPACE_TASK_FORCE_DEFAULT_FINISH_SPAWN;
-						//publicVariable "BATTLESPACE_TASK_FORCES";
-						
-					};
-				};
-				
-			}	
-		],
-		[
-			"isAlive",
-			{
-				params ["_taskForceName", "_taskForce"];
-				_taskForce params [
-					"_taskForceType", // 0
-					"_currentLoc", // 1
-					["_destination", []], // 2
-					"_composition", // 3
-					["_activeGroups", []], // 4
-					["_state", []], // 5
-					["_taskForceSide", east], // 6
-					["_despawnCounter", 0], // 7
-					["_activeObjects", []], // 8
-					["_wasDespawning", false], // 9
-					["_homePoint", []], // 10
-					["_spawning", false], // 11
-					["_hpSector", nil] // 12
-				];
-				
-				// Validate active groups
-				if(count _activeGroups > 0) then {
-					private _invalids = [];
-					{
-						private _aliveUnits = (units _x) select { alive _x };
+                if (_phase == "DEPLOYING") exitWith {
+                    private _targetPosition = _operation getOrDefault ["targetPosition", _taskForce param [2, []]];
+                    private _arrivalRadius = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DEFENDER_ARRIVAL_RADIUS", 100];
+                    if (_currentLocation distance2D _targetPosition <= _arrivalRadius) then {
+                        _operation set ["phase", "ON_STATION"];
+                        private _tourDuration = _operation getOrDefault ["tourDuration", 0];
+                        if (_tourDuration > 0) then {_operation set ["expiresAt", CBA_missionTime + _tourDuration]};
+                        BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceName, _operation];
+                        BATTLESPACE_TASK_FORCE_PATHS deleteAt _taskForceName;
+                        [_taskForceName, _taskForce, _operation] call BATTLESPACE_TASK_FORCE_DEFENSIVE_PATROL_SELECT_LEG;
+                        [format ["Defensive patrol %1 began its circuit around %2", _taskForceName, _assignedSector]] call BATTLESPACE_STRATEGIC_LOG;
+                    } else {
+                        if (_activeGroups isEqualTo []) then {
+                            [_taskForceName, _taskForce] call BATTLESPACE_TASK_FORCE_MOVE_SIMULATED_GROUP;
+                        };
+                    };
+                    false
+                };
 
-						if(count _aliveUnits <= 0) then {
-							_invalids pushBack _x;
-						};
-					} forEach _activeGroups;
-
-					_taskForce set [4, _activeGroups - _invalids];
-				};
-
-				private _currentManpower = _composition getOrDefault ["manpower", 0];
-				_currentManpower > 0
-			}
-		],
-		[
-			"onDecisionTick",
-			{
-				params ["_taskForceName", "_taskForce"];
-				_taskForce params [
-					"_taskForceType", // 0
-					"_currentLoc", // 1
-					["_destination", []], // 2
-					"_composition", // 3
-					["_activeGroups", []], // 4
-					["_state", []], // 5
-					["_taskForceSide", east], // 6
-					["_despawnCounter", 0], // 7
-					["_activeObjects", []], // 8
-					["_wasDespawning", false], // 9
-					["_homePoint", []], // 10
-					["_spawning", false], // 11
-					["_hpSector", nil] // 12
-				];
-
-				private _retreat = [_taskForceName, _taskForce] call BATTLESPACE_TASK_FORCE_DEFENDER_RETREAT_TICK;
-				_retreat params ["_retreating", "_retreatDone"];
-				if (_retreating) exitWith {_retreatDone};
-				
-				// Distance check to destination
-
-				if((_currentLoc distance2D _destination) <= 25) exitWith {
-					// Generate a new location to pathfind towards
-					
-					if(!(isNil { _homePoint })) then {
-						if(isNil { _hpSector }) then {
-							_hpSector = [sectors_allSectors, _homePoint] call BIS_fnc_nearestPosition;
-
-							_taskForce set [12, _hpSector];
-						};
-
-						private _sector = _hpSector;
-						private _closestBluforSector = [_sector, blufor_sectors + ["startbase_marker"]] call NETWORKED_SECTORS_traverseGraphAndFindFirstBluforSector;
-						// Fallback, not sure what will happen
-						// TODO: Refactor and make this better and randomized direction
-						if(isNil { _closestBluforSector }) then {
-							_closestBluforSector = _sector;
-						};
-						private _maximumRange = (getMarkerPos _sector) distance2D (getMarkerPos _closestBluforSector);
-
-						_maximumRange = _maximumRange * 0.75;
-						_maximumRange = 500 max _maximumRange;
-						_maximumRange = 1000 min _maximumRange;
-
-						private _pos = (getMarkerPos _sector);
-
-						private _dirToBlufor = _pos getDir (getMarkerPos _closestBluforSector);
-						if(_closestBluforSector == _sector) then {
-							_dirToBlufor = [random 1, random 1, 0];
-						};
-
-						private _dir = (_dirToBlufor - 110);
-						if(_dir < 0) then {
-							_dir = 360 + _dir;
-						};
-
-						_dir = _dir + (random 220);
-						if(_dir > 360) then {
-							_dir = _dir - 360;
-						};
-
-						private _minRange = _maximumRange / 2;
-						private _step = _minRange / 50;
-
-						private _newDestination = _pos getPos [_minRange + (random (_minRange * 0.9)), _dir];
-						private _execs = 0;
-						while { surfaceIsWater _newDestination && _execs < 5 } do {
-							_dir = (_dirToBlufor - 110);
-
-							if(_dir < 0) then {
-								_dir = 360 + _dir;
-							};
-
-							_dir = _dir + (random 220);
-
-							if(_dir > 360) then {
-								_dir = _dir - 360;
-							};
-							_newDestination = _pos getPos [_minRange - (_execs * _step) + (random (_minRange * 0.9)), _dir];
-							_execs = _execs + 1;
-						};
-						if(!(surfaceIsWater _newDestination)) then {
-							_taskForce set [2, _newDestination];
-							BATTLESPACE_TASK_FORCE_PATHS deleteAt _taskForceName;
-							[_taskForceName, _currentLoc, _newDestination] call QUEUE_PATHFIND_REQUEST;
-						};
-					};
-
-					false
-				};
-				
-				// If group is active don't do anything
-				if(count _activeGroups > 0) exitWith {
-					_taskForce set [1, getPos (leader (_activeGroups#0))];
-					false
-				};
-
-				// Else
-				// Navigate terrain
-
-				[_taskForceName, _taskForce] call BATTLESPACE_TASK_FORCE_MOVE_SIMULATED_GROUP;
-
-				_taskForce set [4, _activeGroups];
-
-				false
-			}
-		]
-	]
+                if (_phase == "ON_STATION") exitWith {
+                    private _expiresAt = _operation getOrDefault ["expiresAt", -1];
+                    if (
+                        _expiresAt >= 0
+                        && {CBA_missionTime >= _expiresAt}
+                        && {!(_assignedSector in (missionNamespace getVariable ["active_sectors", []]))}
+                    ) exitWith {
+                        !([_taskForceName, _taskForce, _operation, "its defensive patrol completed"] call BATTLESPACE_TASK_FORCE_DEFENSE_BEGIN_RETURN)
+                    };
+                    private _destination = _taskForce param [2, []];
+                    if (_destination isEqualTo [] || {_currentLocation distance2D _destination <= 40}) then {
+                        [_taskForceName, _taskForce, _operation] call BATTLESPACE_TASK_FORCE_DEFENSIVE_PATROL_SELECT_LEG;
+                    };
+                    if (_activeGroups isEqualTo []) then {
+                        [_taskForceName, _taskForce] call BATTLESPACE_TASK_FORCE_MOVE_SIMULATED_GROUP;
+                    };
+                    false
+                };
+                false
+            }
+        ]
+    ]
 ] call BATTLESPACE_TASK_FORCE_REGISTER_MODEL;

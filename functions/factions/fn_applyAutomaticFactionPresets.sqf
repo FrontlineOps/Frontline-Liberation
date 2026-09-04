@@ -249,14 +249,7 @@ private _opfor = _catalogs get "opfor";
     opfor_ammo_truck = [_logisticsPool, _generalClass] call _first;
     [opfor_ammobox_transport] call _registerTransportConfig;
 
-    BATTLESPACE_DEFENDERS_VEHICLE_CLASSES = opfor_vehicles + opfor_battlegroup_vehicles;
     BATTLESPACE_DEFENDERS_STATIC_CLASSES = +(_opfor get "static");
-    BATTLESPACE_DEFENDERS_MECHANIZED_PATROL_DEFS = _transportPool apply {
-        [[_x], BATTLESPACE_SQUAD_SIZE]
-    };
-    if (BATTLESPACE_DEFENDERS_MECHANIZED_PATROL_DEFS isEqualTo []) then {
-        BATTLESPACE_DEFENDERS_MECHANIZED_PATROL_DEFS = [[[], BATTLESPACE_SQUAD_SIZE]];
-    };
 
     BATTLESPACE_SAM_SITE_TELS = +(_opfor get "aa");
     BATTLESPACE_SAM_SITE_FCRS = +(_opfor get "aa");

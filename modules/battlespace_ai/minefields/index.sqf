@@ -86,7 +86,7 @@ BATTLESPACE_MINEFIELDS_BUILD = {
     private _sectorType = _state getOrDefault ["type", ""];
     private _resources = _state getOrDefault ["resources", createHashMap];
     private _threshold = ([_sectorType, "Fortification"] call BATTLESPACE_SECTOR_GET_THRESHOLD_MAP) getOrDefault ["construction_supplies", -1];
-    private _capacity = [_sectorType, "construction_supplies"] call BATTLESPACE_SECTOR_GET_CAPACITY;
+    private _capacity = [_sector, "construction_supplies", _sectorType] call BATTLESPACE_SECTOR_GET_EFFECTIVE_CAPACITY;
     private _minimumStock = _constructionCost max (ceil (_capacity * _threshold));
     if (_constructionCost <= 0 || {_threshold < 0} || {(_resources getOrDefault ["construction_supplies", 0]) < _minimumStock}) exitWith {false};
 
@@ -188,7 +188,7 @@ BATTLESPACE_MINEFIELDS_DECISION_TICK = {
         if (_depth < 0 || {_depth > (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MINEFIELD_MAX_FRONT_DEPTH", 1])}) then {continue};
         private _cost = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MINEFIELD_CONSTRUCTION_COST", 6];
         private _type = _state getOrDefault ["type", ""];
-        private _capacity = [_type, "construction_supplies"] call BATTLESPACE_SECTOR_GET_CAPACITY;
+        private _capacity = [_sector, "construction_supplies", _type] call BATTLESPACE_SECTOR_GET_EFFECTIVE_CAPACITY;
         private _threshold = ([_type, "Fortification"] call BATTLESPACE_SECTOR_GET_THRESHOLD_MAP) getOrDefault ["construction_supplies", -1];
         private _available = (_state getOrDefault ["resources", createHashMap]) getOrDefault ["construction_supplies", 0];
         if (_cost <= 0 || {_threshold < 0} || {_available < (_cost max (ceil (_capacity * _threshold)))}) then {continue};

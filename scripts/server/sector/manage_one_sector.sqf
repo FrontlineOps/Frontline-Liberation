@@ -49,16 +49,16 @@ private _requiredPlayerCount = [] call BATTLESPACE_TASK_FORCE_GET_NEEDED_PLAYERC
 if (_nearbyPlayerCount >= _requiredPlayerCount) then {
     private _lastCaptureTime = blufor_sectors_cap_times getOrDefault [_sector, -1200];
     if (CBA_missionTime - _lastCaptureTime >= 600) then {
-        if (isNil "BATTLESPACE_DEFENDERS_SECTORS_SPAWNED") then {
-            BATTLESPACE_DEFENDERS_SECTORS_SPAWNED = createHashMap;
+        if (isNil "BATTLESPACE_CIVILIANS_SECTORS_POPULATED") then {
+            BATTLESPACE_CIVILIANS_SECTORS_POPULATED = createHashMap;
         };
-        if (!(BATTLESPACE_DEFENDERS_SECTORS_SPAWNED getOrDefault [_sector, false])) then {
-            BATTLESPACE_DEFENDERS_SECTORS_SPAWNED set [_sector, true];
-            [_sector] spawn BATTLESPACE_DEFENDERS_CREATE_TASK_FORCES;
+        if (!(BATTLESPACE_CIVILIANS_SECTORS_POPULATED getOrDefault [_sector, false])) then {
+            BATTLESPACE_CIVILIANS_SECTORS_POPULATED set [_sector, true];
+            [_sector] call BATTLESPACE_DEFENDERS_CREATE_AMBIENT_CIVILIANS;
         };
     };
 
-    // Allow newly-created virtual defenders to enter the existing proc queue.
+    // Allow newly-created ambient civilians to enter the existing proc queue.
     sleep 10;
 };
 

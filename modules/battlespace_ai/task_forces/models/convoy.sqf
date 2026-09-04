@@ -106,10 +106,21 @@
                 private _operation = BATTLESPACE_STRATEGIC_OPERATIONS get _taskForceName;
                 if (!isNil "_operation") then {
                     private _phase = _operation getOrDefault ["phase", "ENROUTE"];
+                    private _purpose = _operation getOrDefault ["convoyPurpose", "RESUPPLY"];
                     private _targetSector = _operation getOrDefault ["targetSector", ""];
-                    private _targetIsOpfor = !(_targetSector in blufor_sectors);
+                    private _arrived = _currentLoc distance2D _destination <= 100;
+                    private _targetIsOpfor = _targetSector != "" && {!(_targetSector in blufor_sectors)};
                     if (_targetIsOpfor) then {
                         [_targetSector, "OPFOR"] call BATTLESPACE_SECTOR_SET_OWNER;
+                    };
+                    if (_purpose == "EVACUATION" && {_phase == "ENROUTE"} && {_targetIsOpfor}) then {
+                        private _sourceDepth = _operation getOrDefault ["evacuationSourceDepth", -1];
+                        private _targetDepth = [_targetSector, blufor_sectors + ["startbase_marker"]] call NETWORKED_SECTORS_GET_DISTANCE_FROM_FRONTLINE;
+                        _targetIsOpfor = _targetDepth > _sourceDepth;
+                        if (_targetIsOpfor && {_arrived}) then {
+                            private _actualLoad = [_taskForce, _operation] call BATTLESPACE_LOGISTICS_BUILD_CONVOY_CURRENT_LOAD;
+                            _targetIsOpfor = [_targetSector, _actualLoad] call BATTLESPACE_LOGISTICS_TARGET_CAN_ACCEPT_LOAD;
+                        };
                     };
 
                     if (_phase == "ENROUTE" && {!_targetIsOpfor}) then {
@@ -126,14 +137,28 @@
                             BATTLESPACE_TASK_FORCE_PATHS deleteAt _taskForceName;
                             [_taskForceName, _currentLoc, _destination] call QUEUE_PATHFIND_REQUEST;
                             BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceName, _operation];
+                            if (_purpose == "EVACUATION") then {
+                                [format [
+                                    "Front-stock evacuation convoy %1 is returning to %2 because its deeper destination no longer honors ownership, depth, or capacity",
+                                    _taskForceName,
+                                    _sourceSector
+                                ]] call BATTLESPACE_STRATEGIC_LOG;
+                            };
                             false
                         } else {
                             _operation set ["outcome", "ABORTED"];
                             BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceName, _operation];
+                            if (_purpose == "EVACUATION") then {
+                                [format [
+                                    "Front-stock evacuation convoy %1 was lost after its destination became invalid and source %2 was unavailable",
+                                    _taskForceName,
+                                    _sourceSector
+                                ]] call BATTLESPACE_STRATEGIC_LOG;
+                            };
                             true
                         };
                     } else {
-                        if (_currentLoc distance2D _destination <= 100) then {
+                        if (_arrived) then {
                             _operation set ["outcome", ["DELIVERED", "RETURNED"] select (_phase == "RETURNING")];
                             BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceName, _operation];
                             true

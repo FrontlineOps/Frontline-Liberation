@@ -82,10 +82,13 @@ if (!isNil { BATTLESPACE_LOCAL_TESTING }) then {
 // Live strategic layer:
 // - Every current sector has a finite server-owned resource stockpile.
 // - Threshold-driven transfers use interceptable Convoy task forces.
+// - Stock stranded above a lower front-depth cap evacuates through the same finite convoys.
 // - Resource-backed military-sector attacks use Battlegroup task forces.
+// - Defensive task forces are formed from rear stock for explicit frontline assignments.
+// - Pre-formed mobile reserves answer casualty pressure without creating emergency forces.
 // - OPFOR objectives spend construction stock on persistent defensive sites.
 // - Quiet frontline objectives may spend construction stock on persistent minefields.
 // - The strategic decision interval is configured in kp_liberation_config.sqf.
 //
-// Tactical defenders, airborne/air responses, artillery/SAM expenditure, and
+// Defensive operations, airborne/air responses, artillery/SAM expenditure, and
 // ZEN diagnostics consume the same server-owned stockpiles.
