@@ -135,13 +135,13 @@ BATTLESPACE_STRATEGIC_INITIAL_STOCK_RATIO = 0.75;
 BATTLESPACE_STRATEGIC_INITIAL_DELAY = 300;
 BATTLESPACE_STRATEGIC_DECISION_INTERVAL = 1800;
 BATTLESPACE_STRATEGIC_SAVE_INTERVAL = 300;
-BATTLESPACE_STRATEGIC_MAX_ACTIVE_CONVOYS = 3;
+BATTLESPACE_STRATEGIC_MAX_ACTIVE_CONVOYS = 4;
 BATTLESPACE_STRATEGIC_MAX_ACTIVE_BATTLEGROUPS = 2;
 BATTLESPACE_STRATEGIC_MAX_CONVOYS_PER_TICK = 2; // Shared by front-stock evacuation and normal resupply.
 BATTLESPACE_STRATEGIC_MAX_BATTLEGROUPS_PER_TICK = 1;
 BATTLESPACE_STRATEGIC_RESUPPLY_COOLDOWN = 1800;
 BATTLESPACE_STRATEGIC_BATTLEGROUP_COOLDOWN = 3600;
-BATTLESPACE_STRATEGIC_BATTLEGROUP_TARGET_COOLDOWN = [3600, 5400]; // Random cooldown before any origin may attack the same objective again (sec)
+BATTLESPACE_STRATEGIC_BATTLEGROUP_TARGET_COOLDOWN = [5400, 8100]; // Random cooldown before any origin may attack the same objective again (sec)
 BATTLESPACE_STRATEGIC_RETREAT_STRENGTH_RATIO = 0.35;
 BATTLESPACE_STRATEGIC_BATTLEGROUP_MANPOWER = 28;
 // [formation name, preferred target sector types, repeating dominant vehicle categories]
@@ -163,26 +163,28 @@ BATTLESPACE_STRATEGIC_EMERGENCY_COOLDOWN = 900;
 // stock stranded above a reduced allowance waits for a finite convoy to move it deeper.
 BATTLESPACE_STRATEGIC_FRONT_STOCK_CAPACITY_MULTIPLIERS = [0.25, 0.5, 0.75, 1.0];
 // Paid defensive groups are formed in depth and dispatched as persistent task forces.
-BATTLESPACE_STRATEGIC_MAX_ACTIVE_DEFENDERS = 24;
-BATTLESPACE_STRATEGIC_MAX_DEFENDERS_PER_SECTOR = 2;
+// One of each role may cover an objective; eligible uncovered objectives receive priority.
+BATTLESPACE_STRATEGIC_MAX_ACTIVE_DEFENDERS = 48;
 BATTLESPACE_STRATEGIC_MAX_DEFENDERS_PER_TICK = 2;
-BATTLESPACE_STRATEGIC_DEFENDER_PLAYER_EXCLUSION_RADIUS = 2500;
-BATTLESPACE_STRATEGIC_DEFENDER_QUIET_TIME = 600;
+BATTLESPACE_STRATEGIC_DEFENDER_DECISION_INTERVAL = 600;
+BATTLESPACE_STRATEGIC_DEFENDER_QUIET_TIME = 300;
 BATTLESPACE_STRATEGIC_DEFENDER_SOURCE_RESERVE_RATIO = 0.4;
 BATTLESPACE_STRATEGIC_DEFENDER_ARRIVAL_RADIUS = 100;
+BATTLESPACE_STRATEGIC_DEFENSIVE_PATROL_VEHICLE_CHANCE = 0.20; // At most one light vehicle per patrol.
 // [purpose, model, manpower, global cap, max target depth, objective types, on-station duration range]
 BATTLESPACE_STRATEGIC_DEFENDER_ROLES = [
-    ["GARRISON", "Garrison", 9, 8, 3, ["military", "bigtown", "factory", "capture"], [0, 0]],
-    ["DEFENSIVE_PATROL", "Defensive Patrol", 7, 8, 2, ["military", "bigtown", "factory", "capture", "tower"], [2400, 3600]],
-    ["RECON_SCREEN", "Reconnaissance Patrol", 7, 5, 1, ["military", "bigtown", "factory", "capture", "tower"], [1800, 3000]],
-    ["AMBUSH", "Ambush Patrol", 7, 5, 1, ["military", "bigtown", "factory", "capture", "tower"], [2400, 3600]]
+    ["GARRISON", "Garrison", 9, 16, 3, ["military", "bigtown", "factory", "capture"], [0, 0]],
+    ["DEFENSIVE_PATROL", "Defensive Patrol", 7, 16, 2, ["military", "bigtown", "factory", "capture", "tower"], [2400, 3600]],
+    ["RECON_SCREEN", "Reconnaissance Patrol", 7, 10, 1, ["military", "bigtown", "factory", "capture", "tower"], [1800, 3000]],
+    ["AMBUSH", "Ambush Patrol", 7, 6, 1, ["military", "bigtown", "factory", "capture", "tower"], [2400, 3600]]
 ];
 // Mobile reserves replace the former casualty-created 14-man/one-vehicle reinforcement.
 BATTLESPACE_STRATEGIC_RESERVE_RESPONSE_COOLDOWN = 600;
 BATTLESPACE_STRATEGIC_RESERVE_MANPOWER = 14;
 BATTLESPACE_STRATEGIC_MAX_ACTIVE_RESERVES = 3;
 BATTLESPACE_STRATEGIC_MAX_RESERVES_PER_TICK = 1;
-BATTLESPACE_STRATEGIC_RESERVE_MIN_FRONT_DEPTH = 2;
+BATTLESPACE_STRATEGIC_RESERVE_MIN_FRONT_DEPTH = 1; // Staging: depth 0 is the frontline itself.
+BATTLESPACE_STRATEGIC_RESERVE_MAX_FRONT_DEPTH = 2;
 BATTLESPACE_STRATEGIC_RESERVE_SOURCE_RATIO = 0.5;
 BATTLESPACE_STRATEGIC_RESERVE_RESPONSE_MAX_HOPS = 5;
 BATTLESPACE_STRATEGIC_RESERVE_HOLD_DURATION = 900;
@@ -247,6 +249,8 @@ BATTLESPACE_ARTILLERY_MAXIMUM_CYCLES_TO_SWAP = 8; // Exclusive: produces 5-7 cyc
 BATTLESPACE_ARTILLERY_COOLDOWN_PER_SHELL = 30;
 BATTLESPACE_ARTILLERY_MIN_COOLDOWN = 60;
 BATTLESPACE_ARTILLERY_MAX_COOLDOWN = 120;
+BATTLESPACE_ARTILLERY_SMOKE_CHANCE = 0.15; // Probability per observer update; 0 disables smoke requests, 1 always requests smoke.
+BATTLESPACE_ARTILLERY_FIRE_ORDER_TIMEOUT = 90; // Seconds allowed for each salvo/ripple to fire before aborting and refunding unfired rounds.
 BATTLESPACE_ARTILLERY_TARGET_MOVEMENT_ACCURACY_LOSS_BAND_DISTANCE = 90; // Target movement before 10% of accumulated observer accuracy is lost (m)
 BATTLESPACE_ARTILLERY_TARGET_MOVEMENT_ACCURACY_LOSS_DISTANCE = 175; // Target movement before 40% of accumulated observer accuracy is lost (m)
 BATTLESPACE_SAM_STRATEGIC_MISSILES_PER_LAUNCHER = 8;

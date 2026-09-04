@@ -73,7 +73,7 @@
                     ["its deployable strength fell below the reserve minimum"] call _beginReturn;
                     _phase = "RETURNING";
                 };
-                if (_homeRelocated && {_phase == "READY"}) then {
+                if (_homeRelocated && {_phase in ["READY", "STAGING"]}) then {
                     ["its staging objective was lost"] call _beginReturn;
                     _phase = "RETURNING";
                 };
@@ -126,7 +126,7 @@
                     };
                 };
 
-                if (_phase == "RETURNING") exitWith {
+                if (_phase in ["STAGING", "RETURNING"]) exitWith {
                     private _destination = getMarkerPos _homeSector;
                     private _arrivalRadius = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_RESERVE_ARRIVAL_RADIUS", 150];
                     private _arrived = if (_activeGroups isNotEqualTo []) then {
@@ -137,7 +137,7 @@
                     } else {
                         _currentLocation distance2D _destination <= _arrivalRadius
                     };
-                    if (_arrived && {_homeQuiet}) then {
+                    if (_arrived && {_homeQuiet || {_phase == "STAGING" && {!_mustDemobilize}}}) then {
                         if (_operation getOrDefault ["demobilizeOnReturn", _mustDemobilize]) then {
                             _operation set ["outcome", "RETURNED"];
                             BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceName, _operation];
@@ -158,7 +158,7 @@
                                 [_x, true, true] call KPLIB_fnc_taskReset;
                                 [_x, _destination, 300, 4, [], false, true] call KPLIB_fnc_taskPatrol;
                             } forEach _activeGroups;
-                            [format ["Mobile reserve %1 returned ready at %2", _taskForceName, _homeSector]] call BATTLESPACE_STRATEGIC_LOG;
+                            [format ["Mobile reserve %1 is ready at %2 after %3", _taskForceName, _homeSector, toLower _phase]] call BATTLESPACE_STRATEGIC_LOG;
                             false
                         };
                     } else {

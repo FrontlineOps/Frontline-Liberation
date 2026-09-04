@@ -1678,9 +1678,17 @@ if (isServer) then {
             [] call BATTLESPACE_MINEFIELDS_RETIRE_LEGACY;
         };
 
-        private _nextDecision = CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_INITIAL_DELAY", 300]);
+        private _strategicInitialDelay = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_INITIAL_DELAY", 300];
+        private _defenderDecisionInterval = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DEFENDER_DECISION_INTERVAL", 600];
+        private _nextDecision = CBA_missionTime + _strategicInitialDelay;
+        private _nextDefenseDecision = CBA_missionTime + _strategicInitialDelay;
         private _nextAirResponse = CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_AIR_RESPONSE_INITIAL_DELAY", 600]);
         private _nextSave = CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_SAVE_INTERVAL", 300]);
+        [format [
+            "Defender allocation scheduled: first pass in %1 seconds, then every %2 seconds; active/player-observed targets are eligible",
+            _strategicInitialDelay,
+            _defenderDecisionInterval
+        ]] call BATTLESPACE_STRATEGIC_LOG;
         while {GRLIB_endgame == 0} do {
             [] call BATTLESPACE_SECTOR_SYNC_OWNERS;
             [] call BATTLESPACE_STRATEGIC_RECONCILE_OPERATIONS;
@@ -1704,10 +1712,14 @@ if (isServer) then {
                 if (!isNil "BATTLESPACE_MINEFIELDS_DECISION_TICK") then {
                     [] call BATTLESPACE_MINEFIELDS_DECISION_TICK;
                 };
+                _nextDecision = CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DECISION_INTERVAL", 1800]);
+            };
+
+            if (CBA_missionTime >= _nextDefenseDecision) then {
                 if (!isNil "BATTLESPACE_DEFENSE_DECISION_TICK") then {
                     [] call BATTLESPACE_DEFENSE_DECISION_TICK;
                 };
-                _nextDecision = CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DECISION_INTERVAL", 1800]);
+                _nextDefenseDecision = CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DEFENDER_DECISION_INTERVAL", 600]);
             };
 
             if (CBA_missionTime >= _nextAirResponse) then {

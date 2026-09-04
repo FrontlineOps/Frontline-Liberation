@@ -74,6 +74,29 @@ BATTLESPACE_ARTILLERY_RESOLVE_AMMUNITION = {
 	[_heShell, _smokeShell, _available]
 };
 
+BATTLESPACE_ARTILLERY_GET_AI_FIRE_RANGES = {
+	params ["_piece", "_shellType"];
+	private _weapons = weapons _piece;
+	private _cached = _piece getVariable ["BSAFireRanges", []];
+	if (count _cached == 3 && {(_cached select 0) isEqualTo _weapons} && {(_cached select 1) == _shellType}) exitWith {_cached select 2};
+
+	private _ranges = [];
+	{
+		if !(_shellType in compatibleMagazines _x) then {continue};
+		private _weaponCfg = configFile >> "CfgWeapons" >> _x;
+		{
+			private _modeCfg = _weaponCfg >> _x;
+			private _minimum = getNumber (_modeCfg >> "minRange");
+			private _maximum = getNumber (_modeCfg >> "maxRange");
+			if (getNumber (_modeCfg >> "artilleryCharge") > 0 && {_maximum > _minimum}) then {
+				_ranges pushBackUnique [_minimum, _maximum];
+			};
+		} forEach getArray (_weaponCfg >> "modes");
+	} forEach _weapons;
+	_piece setVariable ["BSAFireRanges", [_weapons, _shellType, _ranges]];
+	_ranges
+};
+
 BATTLESPACE_ARTILLERY_CAN_REACH_AREA = {
 	params [
 		["_piece", objNull, [objNull]],
@@ -82,6 +105,7 @@ BATTLESPACE_ARTILLERY_CAN_REACH_AREA = {
 		["_margin", 0, [0]]
 	];
 	if (isNull _piece || {_targetPos isEqualTo []} || {_shellType == ""}) exitWith {false};
+	private _aiRanges = [_piece, _shellType] call BATTLESPACE_ARTILLERY_GET_AI_FIRE_RANGES;
 
 	private _testPositions = [+_targetPos];
 	if (_margin > 0) then {
@@ -91,7 +115,11 @@ BATTLESPACE_ARTILLERY_CAN_REACH_AREA = {
 	};
 
 	(_testPositions findIf {
-		!(_x inRangeOfArtillery [[_piece], _shellType])
+		private _position = _x;
+		private _distance = _piece distance2D _position;
+		// The ballistic envelope can exceed the distances accepted by the weapon's AI modes.
+		(_aiRanges findIf {_distance >= (_x select 0) && {_distance <= (_x select 1)}}) == -1
+			|| {!(_position inRangeOfArtillery [[_piece], _shellType])}
 	}) == -1
 };
 
@@ -327,7 +355,7 @@ BATTLESPACE_SPAWN_BATTERY = {
 		BATTLESPACE_DISABLE_ARTILLERY = BATTLESPACE_ARTILLERY_PIECE_CLASSES isEqualTo [];
 		[format ["Artillery battery spawn rejected (pieceClass=%1, reason=no usable HE magazine, artilleryAmmo=%2, remainingPool=%3)", _pieceClass, _probeAvailable, BATTLESPACE_ARTILLERY_PIECE_CLASSES], "BATTLESPACE"] call KPLIB_fnc_log;
 	};
-	[format ["Artillery range probe ready (pieceClass=%1, crew=%2, HE=%3, artilleryAmmo=%4)", _pieceClass, count crew _rangeProbe, _probeHE, _probeAvailable], "BATTLESPACE"] call KPLIB_fnc_log;
+	[format ["Artillery range probe ready (pieceClass=%1, crew=%2, HE=%3, artilleryAmmo=%4, aiFireRanges=%5)", _pieceClass, count crew _rangeProbe, _probeHE, _probeAvailable, [_rangeProbe, _probeHE] call BATTLESPACE_ARTILLERY_GET_AI_FIRE_RANGES], "BATTLESPACE"] call KPLIB_fnc_log;
 	
 	private _costDepth = 8;
 	private _spawnSectors = [blufor_sectors, _costDepth] call NETWORKED_SECTORS_GET_SECTORS_UP_TO_COST;
@@ -788,13 +816,26 @@ BATTLESPACE_ARTILLERY_POLL_REQUESTS = {
 		private _currentHighestAccuracyKey = nil;
 		private _section = _x;
 		{
-			_y params ["_observer", "_target", "_timeInCombat", ["_systemTargeted", false], ["_targetedAt", CBA_missionTime]];
+			_y params ["_observer", "_target", "_timeInCombat", ["_systemTargeted", false], ["_targetedAt", CBA_missionTime], ["_wp", false]];
 
 			// Out of range, arbitrary value
 			if(_target distance2D (leader _section) >= 17000) then {
 				if (BATTLESPACE_ARTILLERY_DEBUG) then {systemChat "Too far";};
 				continue
 			};
+			private _requestShell = _section getVariable ["BSAHEShell", ""];
+			if (_wp) then {_requestShell = _section getVariable ["BSAWPShell", ""]};
+			if (_requestShell == "") then {_requestShell = _section getVariable ["BSAHEShell", ""]};
+			// Ready batteries are unloaded, so check AI mode limits without an ammunition-dependent engine query.
+			if ((units _section findIf {
+				private _piece = vehicle _x;
+				private _distance = _piece distance2D _target;
+				alive _piece && {_piece isNotEqualTo _x} && {
+					([_piece, _requestShell] call BATTLESPACE_ARTILLERY_GET_AI_FIRE_RANGES) findIf {
+						_distance >= (_x select 0) && {_distance <= (_x select 1)}
+					} != -1
+				}
+			}) == -1) then {continue};
 
 			if((CBA_missionTime - _targetedAt) >= 600) then {
 				[_x] remoteExec ["BATTLESPACE_ARTILLERY_BROADCAST_CLEAR_TARGET", 2];
@@ -928,7 +969,10 @@ BATTLESPACE_ARTILLERY_FULFILL_REQUEST = {
 
 	_battery setVariable ["BSAState", _state, true];
 
-	[format ["Artillery mission accepted (group=%1, sector=%2, type=%3, shell=%4, pieces=%5, rounds=%6)", _battery, _battery getVariable ["BSAFundingSector", ""], ["HE", "WP/SMOKE"] select _wp, _shellType, count _readyVehicles, _usableReservation], "BATTLESPACE"] call KPLIB_fnc_log;
+	private _fireControlChecks = _readyVehicles apply {
+		[typeOf _x, local _x, round (_target distance2D _x), [_x, _target getPos [0,0], _shellType] call BATTLESPACE_ARTILLERY_CAN_REACH_AREA, unitCombatMode (gunner _x)]
+	};
+	[format ["Artillery mission accepted (group=%1, sector=%2, type=%3, shell=%4, pieces=%5, rounds=%6, checks[class,local,distance,inRange,gunnerMode]=%7)", _battery, _battery getVariable ["BSAFundingSector", ""], ["HE", "WP/SMOKE"] select _wp, _shellType, count _readyVehicles, _usableReservation, _fireControlChecks], "BATTLESPACE"] call KPLIB_fnc_log;
 	[_battery, _req, _obsKey] spawn BATTLESPACE_ARTILLERY_DO_REQUEST;
 
 };
@@ -954,6 +998,24 @@ BATTLESPACE_ARTILLERY_DO_REQUEST = {
 	} forEach (units _battery);
 
 	_vehs = _vehs arrayIntersect _vehs;
+	private _fireProgress = [];
+	{
+		// Server-local pieces retain one hook across missions; only the active magazine is counted.
+		if (isNil {_x getVariable "BSAFiredHandler"}) then {
+			private _handler = [_x, "Fired", {
+				params ["_piece", "", "", "", "", "_magazine"];
+				private _progress = _piece getVariable ["BSAFireProgress", []];
+				if (count _progress == 3 && {_magazine == (_progress select 0)}) then {
+					_progress set [2, (_progress select 2) + 1];
+					_piece setVariable ["BSAFireProgress", _progress];
+				};
+			}] call CBA_fnc_addBISEventHandler;
+			_x setVariable ["BSAFiredHandler", _handler];
+		};
+		private _progress = [_shellType, 0, 0];
+		_fireProgress pushBack _progress;
+		_x setVariable ["BSAFireProgress", _progress];
+	} forEach _vehs;
 	private _isRocketArtillery = (_battery getVariable ["BSAPieceResource", ""]) == "rocket_artillery";
 	private _rocketMagazineCapacity = 0;
 	private _rocketRippleSize = 1;
@@ -975,13 +1037,17 @@ BATTLESPACE_ARTILLERY_DO_REQUEST = {
 
 	private _targets = [];
 	private _shellsFired = 0;
+	private _roundsOrdered = 0;
 	private _roundsRemaining = _reservedRounds;
+	private _rangeRejectedOrders = 0;
+	private _timedOut = false;
 
 	if (BATTLESPACE_ARTILLERY_DEBUG) then {systemChat format ["We are shooting %1", _shellType];};
 	for "_i" from 1 to _fireOrdersPerPiece do {
 		if (_roundsRemaining <= 0) exitWith {};
 		{	
 			if (_roundsRemaining <= 0) then {continue};
+			if (!alive _x || {!alive gunner _x}) then {continue};
 			private _roundsThisOrder = 1;
 			if (_isRocketArtillery) then {
 				_roundsThisOrder = (_rocketRippleSize min (_roundsPerPiece - ((_i - 1) * _rocketRippleSize))) min _roundsRemaining;
@@ -1016,10 +1082,10 @@ BATTLESPACE_ARTILLERY_DO_REQUEST = {
 					};
 				};
 
-				_inRange = _new inRangeOfArtillery [[_x], _shellType];
+				_inRange = [_x, _new, _shellType] call BATTLESPACE_ARTILLERY_CAN_REACH_AREA;
 
 				if(_inRange) then {
-					_shellsFired = _shellsFired + _roundsThisOrder;
+					_roundsOrdered = _roundsOrdered + _roundsThisOrder;
 					_roundsRemaining = _roundsRemaining - _roundsThisOrder;
 					_tLoc = _new;
 					_execs = 26;
@@ -1041,64 +1107,42 @@ BATTLESPACE_ARTILLERY_DO_REQUEST = {
 
 				
 
+				private _progress = _x getVariable "BSAFireProgress";
+				_progress set [1, (_progress select 1) + _roundsThisOrder];
+				_x setVariable ["BSAFireProgress", _progress];
 				_x commandArtilleryFire [_tLoc, _shellType, _roundsThisOrder];
+			} else {
+				_rangeRejectedOrders = _rangeRejectedOrders + 1;
 			};
 		
 		} forEach _vehs;
+		private _deadline = CBA_missionTime + BATTLESPACE_ARTILLERY_FIRE_ORDER_TIMEOUT;
 		waitUntil {
 			sleep 1;
-			private _readys = 0;
-
-			{
-
-				private _rdy = true;
-				{
-					_rdy = _rdy && (unitReady _x);
-				} forEach [
-					commander _x,
-					gunner _x,
-					driver _x
-				];
-
-				if(_rdy) then {
-					_readys = _readys + 1;
-				};
-			} forEach _vehs;
-
-			_readys == (count _vehs);
-		};
-	};
-
-	
-
-	waitUntil {
-		sleep 2;
-		private _readys = 0;
-
-		{
-
-			private _rdy = true;
-			{
-				_rdy = _rdy && (unitReady _x);
-			} forEach [
-				commander _x,
-				gunner _x,
-				driver _x
-			];
-
-			if(_rdy) then {
-				_readys = _readys + 1;
+			private _pending = _vehs findIf {
+				alive _x && {alive gunner _x} && {
+					private _progress = _x getVariable "BSAFireProgress";
+					(_progress select 2) < (_progress select 1)
+				}
 			};
-		} forEach _vehs;
-
-		_readys == (count _vehs);
+			_timedOut = _pending != -1 && {CBA_missionTime >= _deadline};
+			_pending == -1 || _timedOut
+		};
+		if (_timedOut) exitWith {};
 	};
+	sleep 2;
 
 	[_observer] remoteExec ["BATTLESPACE_ARTILLERY_BROADCAST_CLEAR_TARGET", 2];
 	[_obsKey] remoteExec ["BATTLESPACE_ARTILLERY_BROADCAST_CLEAR_TARGET", 2];
 	
 
-	{[_x, 0] remoteExec ["setVehicleAmmoDef", _x]} forEach _vehs;
+	{
+		doStop gunner _x;
+		_x setVehicleAmmoDef 0;
+		// Keep the mission's counter even if a piece was deleted after firing.
+		_shellsFired = _shellsFired + ((_fireProgress select _forEachIndex) select 2);
+		_x setVariable ["BSAFireProgress", []];
+	} forEach _vehs;
 	private _unusedRounds = (_reservedRounds - _shellsFired) max 0;
 	if (_unusedRounds > 0) then {
 		private _fundingSector = _battery getVariable ["BSAFundingSector", ""];
@@ -1118,7 +1162,7 @@ BATTLESPACE_ARTILLERY_DO_REQUEST = {
 	// We still set the cooldown time though, that way if something is suppressed and their timer elapses, then we'd set it to COOLING DOWN instead of READY
 	_state set [9, CBA_missionTime + _cooldown];
 	_battery setVariable ["BSAState", _state, true];
-	[format ["Artillery mission completed (group=%1, sector=%2, type=%3, shell=%4, fired=%5, refunded=%6, cooldown=%7 seconds)", _battery, _battery getVariable ["BSAFundingSector", ""], ["HE", "WP/SMOKE"] select _wp, _shellType, _shellsFired, _unusedRounds, _cooldown], "BATTLESPACE"] call KPLIB_fnc_log;
+	[format ["Artillery mission completed (group=%1, sector=%2, type=%3, shell=%4, ordered=%5, refunded=%6, cooldown=%7 seconds, pieces=%8, noSafeRangeOrders=%9, fired=%10, timedOut=%11)", _battery, _battery getVariable ["BSAFundingSector", ""], ["HE", "WP/SMOKE"] select _wp, _shellType, _roundsOrdered, _unusedRounds, _cooldown, count _vehs, _rangeRejectedOrders, _shellsFired, _timedOut], "BATTLESPACE"] call KPLIB_fnc_log;
 	_cooldown = _cooldown - 15;
 
 	sleep 15;
@@ -1219,11 +1263,12 @@ BATTLESPACE_ARTILLERY_OBSERVER_COROUTINE = {
 	_state params [
 		["_timeInCombat", 0],
 		["_inCombat", false],
-		["_callInWp", (random 100) < 50]
+		["_callInWp", false]
 	];
 	
 
-	_state set [2, [_callInWp, !_callInWp] select ((random 100) >= 50)];
+	_callInWp = (random 1) < (0 max BATTLESPACE_ARTILLERY_SMOKE_CHANCE min 1);
+	_state set [2, _callInWp];
 
 	
 
@@ -1383,6 +1428,7 @@ BATTLESPACE_ARTILLERY_RENDER_REQUEST = {
 
 if (isServer) then {
 	["Compact Battlespace artillery curator-render snapshot service initialized", "BATTLESPACE"] call KPLIB_fnc_log;
+	[format ["Artillery observer smoke chance configured (%1 percent per update)", 100 * (0 max BATTLESPACE_ARTILLERY_SMOKE_CHANCE min 1)], "BATTLESPACE"] call KPLIB_fnc_log;
 	[format ["Artillery observer movement accuracy bands configured (mild=%1m, severe=%2m)", BATTLESPACE_ARTILLERY_TARGET_MOVEMENT_ACCURACY_LOSS_BAND_DISTANCE, BATTLESPACE_ARTILLERY_TARGET_MOVEMENT_ACCURACY_LOSS_DISTANCE], "BATTLESPACE"] call KPLIB_fnc_log;
 };
 
