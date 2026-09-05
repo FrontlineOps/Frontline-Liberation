@@ -6,24 +6,12 @@ class KPLIB {
         class addActionsPlayer       {};
         class createClearanceConfirm {};
     };
-    class functions_arsenal {
-        file = "functions\arsenal";
-
-        class checkGear           {};
-        class checkWeaponCargo    {};
-        class crawlAllItems       {};
-        class getWeaponComponents {};
-        class isRadio             {};
-    };
     class functions_civilian {
         file = "functions\civilian";
 
         class civKillWarning     {};
         class crAddAceAction     {};
-        class crGetMulti         {};
         class crGlobalMsg        {};
-        class getResistanceTier  {};
-        class spawnGuerillaGroup {};
     };
     class functions_common {
         file = "functions\common";
@@ -84,19 +72,14 @@ class KPLIB {
         class countUnitsBySide          {};
         class getBluforRatio            {};
         class getLocationName           {};
-        class getNearestBluforObjective {};
-        class getNearestBluforSector    {};
         class getNearestOpforSector     {};
         class getNearestSector          {};
         class getNearestTower           {};
         class getOpforCap               {};
-        class getOpforFactor            {};
-        class getOpforSpawnPoint        {};
         class getSectorOwnership        {};
         class getSectorRange            {};
         class getUnitsCount             {};
         class initSectors               {};
-        class isBigtownActive           {};
     };
     class functions_units {
         file = "functions\units";
@@ -104,23 +87,16 @@ class KPLIB {
         class createManagedUnit {};
         class forceBluforCrew   {};
         class getGroupType      {};
-        class getSquadComp      {};
-        class spawnMilitiaCrew  {};
     };
     class functions_vehicles {
         file = "functions\vehicles";
 
         class addRopeAttachEh        {};
-        class allowCrewInImmobile    {};
-        class cleanOpforVehicle      {};
-        class getAdaptiveVehicle     {};
         class getNearestViVTransport {};
         class isClassUAV             {};
         class setLoadableViV         {};
-        class setupVehicle           {};
         class setVehicleCaptured     {};
         class setVehicleSeized       {};
-        class spawnVehicle           {};
     };
     class functions_curator {
         file = "functions\curator";

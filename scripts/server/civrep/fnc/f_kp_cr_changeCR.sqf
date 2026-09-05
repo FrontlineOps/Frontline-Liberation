@@ -27,8 +27,6 @@ if (KP_liberation_civ_rep == -100) then {
     while {!_goodSector && count _sectors > 0 && _loops <= _maxLoops} do {
         _sector = (selectRandom _sectors)#1;
         _loops = _loops + 1;
-
-        //_bluforSector = [markerPos _sector] call KPLIB_fnc_getNearestBluforObjective;
         _bluforSector = [_sector, blufor_sectors] call NETWORKED_SECTORS_traverseGraphAndFindFirstBluforSector;
 
         if ((_bluforSector in sectors_bigtown || _bluforSector in sectors_capture || _bluforSector in sectors_factory) && markerText _bluforSector != "Lighthouse" && count ([markerPos _bluforSector, 1] call KPLIB_fnc_getNearbyPlayers) == 0) then {

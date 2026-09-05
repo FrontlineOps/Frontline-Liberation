@@ -415,14 +415,6 @@ KPLIB_b_infantry_classes                    = KPLIB_b_infantry_classes          
 KPLIB_b_infantry_classes                    = KPLIB_b_infantry_classes                  arrayIntersect KPLIB_b_infantry_classes;
 
 /*
-    Opfor squad compositions
-*/
-KPLIB_o_squadStd    = [opfor_squad_leader, opfor_medic, opfor_machinegunner, opfor_heavygunner, opfor_medic, opfor_marksman, opfor_grenadier, opfor_rpg];
-KPLIB_o_squadInf    = [opfor_squad_leader, opfor_medic, opfor_machinegunner, opfor_heavygunner, opfor_heavygunner, opfor_marksman, opfor_sharpshooter, opfor_sniper];
-KPLIB_o_squadTank   = [opfor_squad_leader, opfor_medic, opfor_machinegunner, opfor_rpg, opfor_rpg, opfor_grenadier, opfor_grenadier, opfor_at];
-KPLIB_o_squadAir    = [opfor_squad_leader, opfor_medic, opfor_machinegunner, opfor_rpg, opfor_rpg, opfor_aa, opfor_grenadier, opfor_aa];
-
-/*
     Liberation specific collections
 */
 
@@ -506,9 +498,6 @@ military_alphabet = ["Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "G
 
 // Misc variables
 markers_reset = [99999,99999,0];
-zeropos = [0,0,0];
-KPLIB_sarWreck = "Land_Wreck_Heli_Attack_01_F";
-KPLIB_sarFire = "test_EmptyObjectForFireBig";
 
 KPLIB_initPresets = true;
 

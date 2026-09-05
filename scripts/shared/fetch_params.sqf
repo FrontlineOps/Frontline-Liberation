@@ -40,7 +40,6 @@ if(isServer) then {
     GET_PARAM(GRLIB_unitcap, "Unitcap", 2);
     GET_PARAM(GRLIB_difficulty_modifier, "Difficulty", 2);
     GET_PARAM(GRLIB_csat_aggressivity, "Aggressivity", 2);
-    GET_PARAM_BOOL(GRLIB_adaptive_opfor, "AdaptToPlayercount", 1);
     GET_PARAM(GRLIB_civilian_activity, "Civilians", 1);
     GET_PARAM(GRLIB_maximum_fobs, "MaximumFobs", 26);
     GET_PARAM(GRLIB_max_squad_size, "MaxSquadSize", 10);
@@ -58,7 +57,6 @@ if(isServer) then {
     ["--- Gameplay Options ---", "PARAM"] call KPLIB_fnc_log;
     GET_PARAM_BOOL(GRLIB_fatigue, "Fatigue", 1);
     GET_PARAM_BOOL(KPLIB_sway, "WeaponSway", 1);
-    GET_PARAM_BOOL(KP_liberation_arsenalUsePreset, "ArsenalUsePreset", 1);
     GET_PARAM_BOOL(KP_liberation_mapmarkers, "MapMarkers", 1);
     GET_PARAM_BOOL(KP_liberation_mobilerespawn, "MobileRespawn", 1);
     GET_PARAM(KP_liberation_respawn_cooldown, "RespawnCooldown", 900);
@@ -66,7 +64,6 @@ if(isServer) then {
     GET_PARAM_BOOL(KPLIB_respawnOnAttackedSectors, "AttackedSectorRespawn", 0);
     GET_PARAM_BOOL(KP_liberation_cr_param_buildings, "CR_Building", 0);
     GET_PARAM_BOOL(KP_liberation_clear_cargo, "ClearCargo", 1);
-    GET_PARAM(KP_liberation_allowEnemiesInImmobile, "AllowEnemiesInImmobile", 50);
     GET_PARAM(KP_liberation_delayDespawnMax, "DelayDespawnMax", 5);
     GET_PARAM_BOOL(KP_liberation_limited_zeus, "LimitedZeus", 1);
     GET_PARAM_BOOL(KP_liberation_commander_zeus, "CommanderZeus", 1);
@@ -213,10 +210,6 @@ if (!isDedicated && hasInterface) then {
     };
     _text = _text + format ["<font color='#ff8000'>%1</font><br />%2<br /><br />", _param, _value];
 
-    _param = localize "STR_PARAM_ADAPT_TO_PLAYERCOUNT";
-    _value = if (GRLIB_adaptive_opfor) then {localize "STR_PARAMS_ENABLED";} else {localize "STR_PARAMS_DISABLED";};
-    _text = _text + format ["<font color='#ff8000'>%1</font><br />%2<br /><br />", _param, _value];
-
     _param = localize "STR_PARAMS_CIVILIANS";
     switch (GRLIB_civilian_activity) do {
         case 0.5: {_value = localize "STR_PARAMS_CIVILIANS2";};
@@ -288,10 +281,6 @@ if (!isDedicated && hasInterface) then {
     _value = if (KPLIB_sway) then {localize "STR_PARAMS_ENABLED";} else {localize "STR_PARAMS_DISABLED";};
     _text = _text + format ["<font color='#ff8000'>%1</font><br />%2<br /><br />", _param, _value];
 
-    _param = localize "STR_PARAMS_ARSENALUSEPRESET";
-    _value = if (KP_liberation_arsenalUsePreset) then {localize "STR_PARAMS_USEPRESET";} else {localize "STR_PARAMS_NORESTRICTIONS";};
-    _text = _text + format ["<font color='#ff8000'>%1</font><br />%2<br /><br />", _param, _value];
-
     _param = localize "STR_PARAMS_MAPMARKERS";
     _value = if (KP_liberation_mapmarkers) then {localize "STR_PARAMS_ENABLED";} else {localize "STR_PARAMS_DISABLED";};
     _text = _text + format ["<font color='#ff8000'>%1</font><br />%2<br /><br />", _param, _value];
@@ -318,10 +307,6 @@ if (!isDedicated && hasInterface) then {
 
     _param = localize "STR_PARAM_CLEAR_CARGO";
     _value = if (KP_liberation_clear_cargo) then {localize "STR_PARAMS_ENABLED";} else {localize "STR_PARAMS_DISABLED";};
-    _text = _text + format ["<font color='#ff8000'>%1</font><br />%2<br /><br />", _param, _value];
-
-    _param = localize "STR_PARAM_ALLOW_ENEMIES_IN_IMMOBILE";
-    _value = if (KP_liberation_allowEnemiesInImmobile == 0) then {localize "STR_PARAMS_DISABLED";} else {KP_liberation_allowEnemiesInImmobile;};
     _text = _text + format ["<font color='#ff8000'>%1</font><br />%2<br /><br />", _param, _value];
 
     _param = localize "STR_PARAM_DELAY_DESPAWN_MAX";

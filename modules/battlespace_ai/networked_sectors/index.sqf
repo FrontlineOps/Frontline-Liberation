@@ -25,12 +25,6 @@ if (isNil { NETWORKED_SECTORS }) then {
 };
 // TODO: move to zeus enhanced toggle
 
-NETWORKED_SECTORS_IS_FRONTLINE = {
-	params ["_sectorName", "_bluforSectors"];
-	private _distance = [_sectorName, _bluforSectors] call NETWORKED_SECTORS_GET_DISTANCE_FROM_FRONTLINE;
-
-	_distance == 0
-};
 
 NETWORKED_SECTORS_GET_SECTORS_UP_TO_COST = {
 	params ["_bluforSectors", "_desiredCost"];
@@ -58,21 +52,6 @@ NETWORKED_SECTORS_GET_SECTORS_UP_TO_COST = {
 };
 
 
-NETWORKED_SECTORS_GET_SECTORS_AT_COST = {
-	params ["_bluforSectors", "_desiredCost"];
-
-	private _frontlineSectors = [];
-
-	{
-		private _cost = [_x, _bluforSectors] call NETWORKED_SECTORS_GET_DISTANCE_FROM_FRONTLINE;
-
-		if(_cost == _desiredCost) then {
-			_frontlineSectors pushBack _x;
-		};
-	} forEach sectors_allSectors;
-
-	_frontlineSectors
-};
 
 // BFS - Returns nil if no sectors capped yet
 BLUFOR_TRAVERSE_CACHE = createHashMap;

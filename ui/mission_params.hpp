@@ -35,12 +35,6 @@ class Params {
         texts[] = {$STR_AGGRESSIVITY_PARAM0, $STR_AGGRESSIVITY_PARAM1, $STR_AGGRESSIVITY_PARAM2, $STR_AGGRESSIVITY_PARAM3, $STR_AGGRESSIVITY_PARAM4};
         default = 4;
     };
-    class AdaptToPlayercount {
-        title = $STR_PARAM_ADAPT_TO_PLAYERCOUNT;
-        values[] = {1, 0};
-        texts[] = {$STR_PARAMS_ENABLED, $STR_PARAMS_DISABLED};
-        default = 1;
-    };
     class Civilians {
         title = $STR_PARAMS_CIVILIANS;
         values[] = {0, 1, 2, 3};
@@ -137,12 +131,6 @@ class Params {
         texts[] = {$STR_PARAMS_DISABLED, $STR_PARAMS_ENABLED};
         default = 1;
     };
-    class ArsenalUsePreset {
-        title = $STR_PARAMS_ARSENALUSEPRESET;
-        values[] = {0, 1};
-        texts[] = {$STR_PARAMS_NORESTRICTIONS, $STR_PARAMS_USEPRESET};
-        default = 1;
-    };
     class MapMarkers {
         title = $STR_PARAMS_MAPMARKERS;
         values[] = {0, 1};
@@ -184,12 +172,6 @@ class Params {
         values[] = {1, 0};
         texts[] = {$STR_PARAMS_ENABLED, $STR_PARAMS_DISABLED};
         default = 1;
-    };
-    class AllowEnemiesInImmobile {
-        title = $STR_PARAM_ALLOW_ENEMIES_IN_IMMOBILE;
-        values[] = {0, 25, 50, 75, 100};
-        text[] = {$STR_PARAMS_DISABLED, "25%", "50%", "75%", "100%"};
-        default = 75;
     };
     class DelayDespawnMax {
         title = $STR_PARAM_DELAY_DESPAWN_MAX;

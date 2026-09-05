@@ -158,10 +158,6 @@ BATTLESPACE_SECTOR_CREATE_STATE = {
     ]
 };
 
-BATTLESPACE_SECTOR_GET_STATE = {
-    params ["_sector"];
-    BATTLESPACE_SECTOR_STATES get _sector
-};
 
 BATTLESPACE_SECTOR_SET_OWNER = {
     params ["_sector", "_owner"];

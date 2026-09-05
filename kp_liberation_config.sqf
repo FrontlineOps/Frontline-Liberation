@@ -106,9 +106,6 @@ BATTLESPACE_MINEFIELD_PROC_RANGE = 1125;
 BATTLESPACE_AA_PROC_RANGE = 2500;
 BATTLESPACE_AIR_PROC_RANGE = 1500; // How far e.g. CAS defenders will spawn
 
-// How many units should be in each OPFOR squad
-BATTLESPACE_SQUAD_SIZE = 7;
-
 // Server-owned hybrid routing for virtual and materialized Battlespace forces.
 // Ground vehicles use an A* road trunk with terrain-grid A* connectors; infantry
 // uses the terrain grid, while all-air forces retain direct flight routing.
@@ -321,7 +318,6 @@ GRLIB_color_enemy = "ColorOPFOR";            			// Enemy sector color
 GRLIB_color_enemy_bright = "ColorRED";       			// Enemy active sector color
 
 GRLIB_fob_range = 300;                       			// FOB building range
-GRLIB_halo_altitude = 0;                     			// HALO jump altitude
 GRLIB_recycling_percentage = 0.6;            			// Recycling return
 KP_liberation_production_interval = 120;      			// Resource production time (min), when resources multiplier set to 1
 KP_liberation_allow_fob_vehcile_building = false;		// Allow building vehicles at FOBs
@@ -368,7 +364,6 @@ KPLIB_intelligence_operation_kinds = [
 
 GRLIB_sector_size = 3000;                    			// Sector activation range
 GRLIB_capture_size = 225;                    			// Sector cap circle size
-GRLIB_defended_buildingpos_part = 0.7;       			// Multiplier for defenders in buildings
 GRLIB_vulnerability_timer = 840;             			// OPFOR sector cap timer (sec)
 GRLIB_radiotower_size = 2500;                			// Radio tower range
 KPLIB_surrender_chance = 40;                 			// Surrender chance after a group breaks or a battle is resolved
@@ -390,22 +385,9 @@ KP_liberation_cr_sector_gain = 5;           			// Civrep sector capture gain
 KP_liberation_cr_wounded_chance = 15;        			// Wounded civ chance
 KP_liberation_cr_wounded_gain = 3;           			// Wounded civ healed civrep gain
 
-KP_liberation_convoy_ambush_chance = 0;      			// AI logistics (unused)
-KP_liberation_convoy_ambush_duration = 0; 				// AI logistics (unused)
-
-KP_liberation_resistance_tier2 = 30;         			// Guerilla strength at tier 2
-KP_liberation_resistance_tier3 = 70;         			// Guerilla strength at tier 3
-KP_liberation_resistance_at_chance = 50;     			// RPG chance (tier 2 and 3)
-KP_liberation_resistance_sector_chance = 75; 			// Guerilla chance to join ongoing attack
-KP_liberation_resistance_ambush_chance = 80; 			// Guerilla spawn in BLUFOR sectors at low civrep
-
 KP_liberation_sector_resource_chance = 100;  			// BLUFOR sector resource chance on capture
 KP_liberation_sector_resource_crate_count = [3, 5];	// Inclusive physical crate count range
 KP_liberation_sector_resource_crate_value = 100;		// Base value per crate before resource multiplier
-
-// Remove terrain objects around battlegroup spawns
-KP_liberation_battlegroup_clearance = [];
-
 
 KP_liberation_medical_vehicles = [
 	// Prairie Fire
@@ -441,18 +423,11 @@ KPLIB_trashCleanup_classnames = ["GroundWeaponHolder"];
 
 KP_liberation_ace_crates = [];
 
-
 // Randomly selected radio tower classnames
 KPLIB_radioTowerClassnames = [
 	"Land_Vysilac_vez",
 	"Land_TTowerBig_2_F"
 ];
-
-// Obsolete arsenal blacklist
-blacklisted_from_arsenal = [];
-
-// Obsolete arsenal whitelist
-KP_liberation_allowed_items_extension = [];
 
 /* Vehicle resource loading config
 	[

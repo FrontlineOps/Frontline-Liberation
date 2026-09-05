@@ -403,22 +403,6 @@ BATTLESPACE_TASK_FORCES_SAVE = {
 	if (_flush) then {saveProfileNamespace};
 };
 
-// Used for testing, spawns two basic patrols at the specified point
-BATTLESPACE_TASK_FORCES_SEED = {
-	{
-		for "_i" from 1 to 2 do {
-			private _pos = getMarkerPos _x;
-			_pos set [2, 0]; 
-			private _comp = createHashMap; 
-			_comp set ["manpower", BATTLESPACE_SQUAD_SIZE];
-			_comp set ["vehicles", []]; 
-
-			private _spos = _pos getPos [random 1000, random 360];
-			["Patrol",_comp, _spos ,_spos, _pos] call BATTLESPACE_TASK_FORCES_INIT; 
-		};
-
-	} forEach sectors_allSectors;
-};
 
 BATTLESPACE_TASK_FORCES_INIT = {
 	params ["_type", "_composition", "_originPoint", ["_initialTargetLocation", []], ["_homePoint", []], ["_side", GRLIB_side_enemy]];

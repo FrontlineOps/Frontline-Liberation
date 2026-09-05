@@ -1709,20 +1709,6 @@
             <Korean>경고: 아군 공격</Korean>
             <Czech>Varování: Střelba do vlastních řad</Czech>
         </Key>
-        <Key ID="STR_PARAM_ADAPT_TO_PLAYERCOUNT">
-            <Original>Hostile presence adapts to player count</Original>
-            <French>La présence hostile s'adapte au nombre de joueurs</French>
-            <German>Feindpräsenz passt sich der Spielerzahl an</German>
-            <Spanish>Adaptar presencia hostil según la cantidad de jugadores</Spanish>
-            <Russian>Вражеские силы адаптируются к количеству игроков</Russian>
-            <Italian>presenza ostile adattata al numero dei giocatori</Italian>
-            <Chinesesimp>随玩家数量调整敌军活动</Chinesesimp>
-            <Chinese>隨玩家數量調整敵人活動程度</Chinese>
-            <Turkish>Düşman birlikleri oyuncu sayısına göre adapte olur</Turkish>
-            <Portuguese>Adaptar presença hostil de acordo com a quantidade de jogadores</Portuguese>
-            <Korean>플레이어수에 따른 적군 활동 조절</Korean>
-            <Czech>Počet nepřátel se adaptuje na počet hráčů</Czech>
-        </Key>
         <Key ID="STR_BUILD1">
             <Original>Infantry units</Original>
             <French>Unités d'infanterie</French>
@@ -2480,14 +2466,6 @@
             <Original>Zeus for Commander</Original>
             <German>Zeus für Kommandant</German>
         </Key>
-        <Key ID="STR_PARAM_ALLOW_ENEMIES_IN_IMMOBILE">
-            <Original>Chance that enemies will stay in immobile/damaged vehicles</Original>
-            <German>Chance, dass Feinde in fahrunfähigen/beschädigten Fahrzeugen verbleiben</German>
-            <Spanish>Probabilidad de que los enemigos se quedarán dentro de un vehículo inmovilziado/dañado</Spanish>
-            <Russian>Шанс того, что враги будут оставаться в неподвижных/поврежденных автомобилях</Russian>
-            <Turkish>Düşmanların hasarlı araçların içinde kalma şansı</Turkish>
-            <Czech>Šance, že nepřátelé zůstanou v nepohyblivých / poškozených vozidlech</Czech>
-        </Key>
         <Key ID="STR_DEPLOY_IN_PROGRESS">
             <Original>Deployment in progress...</Original>
             <Korean>고공침투 중...</Korean>
@@ -2907,34 +2885,6 @@
             <Portuguese>-- OBJETIVOS SECUNDÁRIOS</Portuguese>
             <Korean>-- 부차적인 작전목표</Korean>
             <Czech>-- VEDLEJŠÍ ÚKOLY</Czech>
-        </Key>
-        <Key ID="STR_SECONDARY_OBJECTIVES_TITLE">
-            <Original>SECONDARY OBJECTIVES</Original>
-            <French>OBJECTIFS SECONDAIRES</French>
-            <German>SEKUNDÄRE ZIELE</German>
-            <Spanish>OBJETIVOS SECUNDARIOS</Spanish>
-            <Russian>ДОПОЛНИТЕЛЬНЫЕ ЗАДАЧИ</Russian>
-            <Italian>OBIETTIVI SECONDARI</Italian>
-            <Chinesesimp>次要目标</Chinesesimp>
-            <Chinese>次要目標</Chinese>
-            <Turkish>İKİNCİL GÖREVLER</Turkish>
-            <Portuguese>OBJETIVOS SECUNDÁRIOS</Portuguese>
-            <Korean>부차적인 작전목표</Korean>
-            <Czech>VEDLEJŠÍ ÚKOLY</Czech>
-        </Key>
-        <Key ID="STR_SECONDARY_OBJECTIVES_START">
-            <Original>Start</Original>
-            <French>Commencer</French>
-            <German>Beginnen</German>
-            <Spanish>Empezar</Spanish>
-            <Russian>Старт</Russian>
-            <Italian>Inizia</Italian>
-            <Chinesesimp>开始</Chinesesimp>
-            <Chinese>開始</Chinese>
-            <Turkish>Başla</Turkish>
-            <Portuguese>Iniciar</Portuguese>
-            <Korean>시작</Korean>
-            <Czech>Začít</Czech>
         </Key>
         <Key ID="STR_SECONDARY_INTEL">
             <Original>Current intel: %1</Original>
@@ -3621,19 +3571,6 @@
             <Portuguese>-- Alterar painel de recursos</Portuguese>
             <Korean>-- 군수물자현황 조회</Korean>
             <Czech>-- Změnit zobrazení surovin</Czech>
-        </Key>
-        <Key ID="STR_BLACKLISTED_ITEM_FOUND">
-            <Original>Following items are not allowed:\n%1</Original>
-            <German>Folgende Gegenstände sind nicht erlaubt:\n%1</German>
-            <Spanish>Los siguientes items no son permitidos:\n%1</Spanish>
-            <Russian>Следующие предметы не разрешены:\n%1</Russian>
-            <Italian>Questi elementi non sono ammessi:\n%1</Italian>
-            <Chinesesimp>以下物品已被禁用：\n%1</Chinesesimp>
-            <Chinese>以下品已被禁用：\n%1</Chinese>
-            <Turkish>Şu eşyalar yasaklı:\n%1</Turkish>
-            <Portuguese>Os seguintes itens não são permitidos:\n%1</Portuguese>
-            <Korean>허용 금지 항목 :\n%1</Korean>
-            <Czech>Následující věci nejsou dovoleny:\n%1</Czech>
         </Key>
         <Key ID="STR_PRODUCTION_ACTION">
             <Original>-- Production Settings</Original>
@@ -4627,45 +4564,6 @@
             <Portuguese>&lt;br/&gt;&lt;br/&gt;Quando um jogador assume a função de comandante, ele recebem acesso à interface Zeus ao pressionar a tecla correspondente (a tecla padrão é 'Y'). Essa interface permite o comando de forças aliadas na plataforma 3D ou através do mapa.&lt;br/&gt; &lt;br/&gt;Ademais, o comandante recebe opções adicionais de construção que o permitirão obter veículos tripulados ou grupos predeterminados.&lt;br/&gt; &lt;br/&gt;Tal função é agora obrigatória, pois possibilita acesso direto à gestão dos setores de produção e logísticas automatizadas. Quando estiver posicionado numa FOB, você poderá observar as opções "Configuração de Produção" e "Visão Geral de Logística".&lt;br/&gt; &lt;br/&gt; A primeira habilita a capacidade de decidir que fabrica/refinaria irá produzir qual recurso específico, bem como uma visão geral detalhada sobre o serviço.&lt;br/&gt; &lt;br/&gt; O último permite a você comandar o sistema automatizado de comboio logístico, onde você poderá "adicionar" grupos logísticos, adquirir quantos transportes desejar e os comandar para transportar quantidades específicas de recursos através do território.&lt;br/&gt; &lt;br/&gt;</Portuguese>
             <Korean>&lt;br/&gt;&lt;br/&gt;- 지휘 :&lt;br/&gt; &lt;br/&gt;지휘권한은 관리자가 허가한 자만이 획득할 수 있다. 지휘자는 각 거점에서 생산되고 있는 군수물자를 지정하거나 내역을 살펴 볼 수 있고, 각 군수물자를 AI수송부대를 이용하여 운반할 수 있다. 또한 제우스 기능을 사용할 수 있다.&lt;br/&gt; &lt;br/&gt;- 기타 정보 :&lt;br/&gt; &lt;br/&gt;항공기를 사용하기 위해서는 반드시 '비행 관제소'를 먼저 만들어야만 한다. 이후 '항공기 격납고'를 만들고 항공기를 배치한다. 항공기 격납고 수에 따라 운행할 수 있는 항공기 숫자가 결정된다.&lt;br/&gt; &lt;br/&gt;비행장은 평지라 할지라도 습기가 많은 지역은 항공기 이착률이 힘들기 때문에 적군 비행장을 점령하여 사용하기를 권한다.&lt;br/&gt; &lt;br/&gt;고급 장비는 특정한 군사기지를 점령해야만 전초기지에서 생산(배치)할 수 있다. 지도에 보면 군사기지 이름 옆에 원이 그려져 있고 체크가 된 곳이 있는데 이 곳을 점령하게되면 체크 옆에 표기되어 있는 장비를 생산(배치)할 수 있게 된다.&lt;br/&gt; &lt;br/&gt;전투에 사용한 장비는 반드시 전초기지로 가지고 귀환해야 한다. 전초기지범위 밖에 있으면 사라지기 때문이다. 노획장비 또한 없어지지 않기 때문에 반드시 전초기지로 귀환해서 접속종료를 하기 바란다.&lt;br/&gt; &lt;br/&gt;AI은 1플레이어가 최대 12명까지 뽑아서 사용할 수있으나, 지휘하기엔 의무병과 공병을 포함하여 3~5명정도를 추천한다.&lt;br/&gt; &lt;br/&gt;함부로 민간인을 학살하거나 재산(특히 집)을 파괴하거나 약탈(차량같은 것)하지 말라. 민병대 출현하게 되면 머리 아프다.&lt;br/&gt; &lt;br/&gt;민간인들에게 환영받기 위해서는 부상당한 민간인(간혹 지도에 보라색이 생김)들을 도와줘라.&lt;br/&gt; &lt;br/&gt;끝으로 재미있는 게임 시간이 되길 바란다!&lt;br/&gt; &lt;br/&gt;</Korean>
             <Czech>&lt;br/&gt;&lt;br/&gt;Když hráč použije roli Velitele, získá přístup k rozhraní Zeus stisknutím odpovídající klávesy (ve výchozím nastavení Y). Toto rozhraní umožňuje velení přátelských sil v zobrazení 3D nebo mapy.&lt;br/&gt; &lt;br/&gt;Navíc komandér získá přístup postavit vozidla s posádkou nebo celé předvytvořené družstva.&lt;br/&gt; &lt;br/&gt;Tato role je důležitá, a jako taková dává přímý přístup k spravování produkce v sektorech a logistice AI. Pokud budete stát na FOB, dostanete možnosti "Nastavení produkce" a "Logistický přehled".&lt;br/&gt; &lt;br/&gt; První vám dá možnost nastavit která továrna bude produkovat kterou surovinu, jako také detailní přehled.&lt;br/&gt; &lt;br/&gt; Písmena vám dovolí rozkazovat AI logistickým konvojům, kde můžete "Přidat" logistické skupiny, koupit jakékoliv množství náklaďáků na skupinu a přikázat jim převážet specifické množství surovin napříč celou oblastí pro vás.&lt;br/&gt; &lt;br/&gt;</Czech>
-        </Key>
-        <Key ID="STR_PARAMS_ARSENALUSEPRESET">
-            <Original>Arsenal mode</Original>
-            <German>Arsenalmodus</German>
-            <Spanish>Modo Arsenal</Spanish>
-            <Russian>Режим арсенала</Russian>
-            <Italian>Modalità Arsenale</Italian>
-            <Chinesesimp>军火库模式</Chinesesimp>
-            <Chinese>軍火庫模式</Chinese>
-            <Turkish>Ekipman(Arsenal) modu</Turkish>
-            <Portuguese>Modo do Arsenal</Portuguese>
-            <Korean>무기고 모델</Korean>
-            <Czech>Nastavení Zbrojnice</Czech>
-        </Key>
-        <Key ID="STR_PARAMS_NORESTRICTIONS">
-            <Original>No restrictions</Original>
-            <German>Keine Einschränkungen</German>
-            <Spanish>Sin restricciones</Spanish>
-            <Russian>Без ограничений</Russian>
-            <Italian>Senza Restrizioni</Italian>
-            <Chinesesimp>无限制</Chinesesimp>
-            <Chinese>無限制</Chinese>
-            <Turkish>Kısıtlama yok</Turkish>
-            <Portuguese>Sem restrições</Portuguese>
-            <Korean>제한 없음</Korean>
-            <Czech>Bez Omezení</Czech>
-        </Key>
-        <Key ID="STR_PARAMS_USEPRESET">
-            <Original>Use preset from config</Original>
-            <German>Benutze Preset aus Konfiguration</German>
-            <Spanish>Usar pre-definición desde configuracion</Spanish>
-            <Russian>Использовать предустановки из конфигурации</Russian>
-            <Italian>Usa il file config.sqf</Italian>
-            <Chinesesimp>使用配置文件中的预设内容</Chinesesimp>
-            <Chinese>使用設定文件中的預設內容</Chinese>
-            <Turkish>config.sqf kullan</Turkish>
-            <Portuguese>Usar predefinição de config.sqf</Portuguese>
-            <Korean>사용자 설정(기본임무설정)</Korean>
-            <Czech>Použít nastavení z configu</Czech>
         </Key>
         <Key ID="STR_ACTION_CRATE_PUSH">
             <Original>-- PUSH CRATE</Original>

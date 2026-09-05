@@ -75,22 +75,6 @@ if (!KPLIB_sway) then {
 
 execVM "scripts\client\ui\intro.sqf";
 
-//--- Spawn them at the OPFOR place but wait for the game to be started
-/*
-private _marker = "kog_base";
-if ( playerside isequalto GRLIB_side_enemy && { !isnil "_marker" } ) then {
-    [ 
-        { dostartgame == 1 }, 
-        {
-            private _marker = param [ 0, "", [""] ];
-            player setposatl getmarkerpos _marker;
-            player setdir markerdir _marker
-        },
-        [ _marker ]   
-    ] call CBA_fnc_waituntilAndExecute
-};
-*/
-
 // Commander init
 if (player isEqualTo ([] call KPLIB_fnc_getCommander)) then {
     // Request Zeus if enabled
