@@ -202,6 +202,13 @@ if (isNil "KPLIB_autoFactionCompatibilityItems") then {
             if (getNumber (_cfg >> "ACE_isMedicalItem") > 0) then {_aceMedical pushBackUnique (configName _cfg)};
             if (getNumber (_cfg >> "ACE_isTool") > 0) then {_aceTools pushBackUnique (configName _cfg)};
         } forEach ("isClass _x" configClasses (configFile >> "CfgWeapons"));
+
+        // Medical consumables with remaining doses can be CfgMagazines classes.
+        {
+            if (getNumber (_x >> "scope") >= 1 && {getNumber (_x >> "ACE_isMedicalItem") > 0}) then {
+                _aceMedical pushBackUnique (configName _x);
+            };
+        } forEach ("isClass _x" configClasses (configFile >> "CfgMagazines"));
     };
 
     private _tfarLoaded =
