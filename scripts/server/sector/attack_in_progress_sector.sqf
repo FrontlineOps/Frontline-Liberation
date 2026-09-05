@@ -1,109 +1,51 @@
 params [["_sector", "", [""]]];
-if (_sector isEqualTo "") exitWith {};
-
+if (!isServer || {_sector == ""}) exitWith {};
 private _position = markerPos _sector;
-private _clearAttackState = {
+private _getOwnership = {[_sector] call BATTLESPACE_CAPTURE_GET_OWNERSHIP};
+private _record = createHashMap;
+// Active offensive capture age already persists in the unversioned operation.
+{
+    if ((_y getOrDefault ["kind", ""]) == "BATTLEGROUP" && {(_y getOrDefault ["targetSector", ""]) == _sector} && {(_y getOrDefault ["phase", ""]) == "ASSAULTING"}) exitWith {_record = _y};
+} forEach BATTLESPACE_STRATEGIC_OPERATIONS;
+private _clear = {
     sectors_under_attack set [_sector, false];
+    _record deleteAt "captureStartedAt";
+    _record set ["attackNotified", false];
 };
-private _getOwnership = {
-    [_position] call KPLIB_fnc_getSectorOwnership
-};
-
-private _ownership = call _getOwnership;
-private _confirmationEndsAt = time + 120;
-while {
-    time <= _confirmationEndsAt
-    && {_ownership == GRLIB_side_enemy}
-    && {_sector in blufor_sectors}
-    && {GRLIB_endgame == 0}
-} do {
+private _started = _record getOrDefault ["captureStartedAt", CBA_missionTime];
+// A restored capture age can legitimately put its start before this session's zero.
+_record set ["captureStartedAt", _started];
+private _owner = call _getOwnership;
+while {CBA_missionTime - _started < 120 && {_owner == GRLIB_side_enemy} && {_sector in blufor_sectors} && {GRLIB_endgame == 0}} do {
     sleep 5;
-    _ownership = call _getOwnership;
+    _owner = call _getOwnership;
 };
-
-if (
-    time <= _confirmationEndsAt
-    || {_ownership != GRLIB_side_enemy}
-    || {!(_sector in blufor_sectors)}
-    || {GRLIB_endgame != 0}
-) exitWith {
-    call _clearAttackState;
+if (_owner != GRLIB_side_enemy || {!(_sector in blufor_sectors)} || {GRLIB_endgame != 0}) exitWith {
+    call _clear;
     [format ["Sector attack monitor cancelled before confirmation for %1", _sector], "SECTOR"] call KPLIB_fnc_log;
 };
-
-[_sector, 1] remoteExec ["remote_call_sector"];
-private _attackTime = GRLIB_vulnerability_timer;
-
-while {
-    _attackTime > 0
-    && {_ownership in [GRLIB_side_enemy, GRLIB_side_resistance]}
-    && {_sector in blufor_sectors}
-    && {GRLIB_endgame == 0}
-} do {
-    _ownership = call _getOwnership;
-    _attackTime = _attackTime - 1;
+if !(_record getOrDefault ["attackNotified", false]) then {[_sector, 1] remoteExec ["remote_call_sector", 0]};
+_record set ["attackNotified", true];
+private _lastUpdate = CBA_missionTime;
+private _requiredTime = 120 + GRLIB_vulnerability_timer;
+while {_owner in [GRLIB_side_enemy, GRLIB_side_resistance] && {_sector in blufor_sectors} && {GRLIB_endgame == 0}} do {
+    if (_owner == GRLIB_side_enemy && {CBA_missionTime - _started >= _requiredTime}) exitWith {};
     sleep 1;
+    private _now = CBA_missionTime;
+    private _nextOwner = call _getOwnership;
+    // Contested time never advances capture; friendly control or empty ground cancels it.
+    if (_owner == GRLIB_side_resistance || {_nextOwner == GRLIB_side_resistance}) then {_started = _started + (_now - _lastUpdate)};
+    _record set ["captureStartedAt", _started];
+    _lastUpdate = _now;
+    _owner = _nextOwner;
 };
-
-waitUntil {
-    sleep 1;
-    GRLIB_endgame != 0
-        || {(call _getOwnership) != GRLIB_side_resistance}
-        || {!(_sector in blufor_sectors)}
-};
-
 if (GRLIB_endgame == 0 && {_sector in blufor_sectors}) then {
-    _ownership = call _getOwnership;
-    if (_attackTime <= 1 && {_ownership == GRLIB_side_enemy}) then {
-        blufor_sectors = blufor_sectors - [_sector];
-        sector_to_blufor = createHashMap;
-        {sector_to_blufor set [_x, true]} forEach blufor_sectors;
-
-        if (isNil "BATTLESPACE_CIVILIANS_SECTORS_POPULATED") then {
-            BATTLESPACE_CIVILIANS_SECTORS_POPULATED = createHashMap;
-        };
-        BATTLESPACE_CIVILIANS_SECTORS_POPULATED set [_sector, false];
-
-        if (isNil "blufor_sectors_cap_times") then {
-            blufor_sectors_cap_times = createHashMap;
-        };
-        blufor_sectors_cap_times set [_sector, CBA_missionTime];
-        last_blufor_sector_change = CBA_missionTime;
-
-        if (_sector in sectors_military) then {
-            blufor_military_sectors = blufor_military_sectors - [_sector];
-            publicVariable "blufor_military_sectors";
-        };
-        publicVariable "blufor_sectors";
-        [_sector, 2] remoteExec ["remote_call_sector"];
-        stats_sectors_lost = stats_sectors_lost + 1;
-
-        private _productionIndex = KP_liberation_production findIf {_sector in _x};
-        if (_productionIndex >= 0) then {
-            private _production = KP_liberation_production select _productionIndex;
-            private _storageData = _production param [3, []];
-            if (count _storageData == 3) then {
-                private _storage = (nearestObjects [_storageData select 0, [KP_liberation_small_storage_building], 10]) param [0, objNull];
-                if (isNull _storage) then {
-                    [format ["Sector %1 lost without its expected production storage object", _sector], "SECTOR"] call KPLIB_fnc_log;
-                } else {
-                    {
-                        detach _x;
-                        deleteVehicle _x;
-                    } forEach attachedObjects _storage;
-                    deleteVehicle _storage;
-                };
-            };
-            KP_liberation_production deleteAt _productionIndex;
-        };
-
-        [] spawn KPLIB_fnc_doSave;
+    if (_owner == GRLIB_side_enemy && {CBA_missionTime - _started >= _requiredTime} && {[_sector] call BATTLESPACE_CAPTURE_SECTOR_FOR_OPFOR}) then {
         [format ["Sector attack succeeded at %1", _sector], "SECTOR"] call KPLIB_fnc_log;
     } else {
-        [_sector, 3] remoteExec ["remote_call_sector"];
+        [_sector, 3] remoteExec ["remote_call_sector", 0];
         [_position, GRLIB_capture_size * 0.8, "SECTOR_DEFENDED"] call KPLIB_SURRENDER_SERVER_TRIGGER_AREA;
         [format ["Sector attack defeated at %1", _sector], "SECTOR"] call KPLIB_fnc_log;
     };
 };
-
-call _clearAttackState;
+call _clear;

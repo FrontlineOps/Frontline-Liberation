@@ -108,7 +108,8 @@ BATTLESPACE_STRATEGIC_CREATE_FUNDED_TASK_FORCE = {
 
     private _taskForceId = [_type, _composition, _originPoint, _initialTargetLocation, _homePoint] call BATTLESPACE_TASK_FORCES_INIT;
     if (_taskForceId == "") exitWith {
-        if (count _cost > 0) then {[_fundingSector, _cost] call BATTLESPACE_RESOURCE_DEPOSIT_CLAMPED};
+        // Restore the debit even when a shifted front left the source over capacity.
+        if (count _cost > 0) then {[_fundingSector, _cost] call BATTLESPACE_RESOURCE_RESTORE_TRANSFER};
         ""
     };
 

@@ -709,6 +709,7 @@ QUEUE_PATHFIND_REQUEST = {
         private _activeDestination = BATTLESPACE_PATHFIND_ACTIVE_JOB getOrDefault ["destination", []];
         if (
             _activeTaskForce == _taskForceName
+            && {(BATTLESPACE_PATHFIND_ACTIVE_JOB getOrDefault ["generation", -1]) == (BATTLESPACE_PATHFIND_REQUEST_GENERATIONS getOrDefault [_taskForceName, -2])}
             && {_activeDestination isNotEqualTo []}
             && {_activeDestination distance2D _destination <= 1}
         ) then {_alreadyQueued = true};

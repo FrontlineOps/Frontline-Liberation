@@ -324,7 +324,7 @@ BATTLESPACE_STRATEGIC_SERIALIZE_OPERATION = {
             _saved set [_x + "Remaining", ((_saved getOrDefault [_x, CBA_missionTime]) - CBA_missionTime) max 0];
             _saved deleteAt _x;
         };
-    } forEach ["expiresAt", "loiterUntil", "contactGraceUntil", "holdUntil"];
+    } forEach ["expiresAt", "loiterUntil", "contactGraceUntil", "holdUntil", "nextManeuverAt", "legDeadline"];
     _saved
 };
 
@@ -342,7 +342,7 @@ BATTLESPACE_STRATEGIC_DESERIALIZE_OPERATION = {
             _operation set [_x, CBA_missionTime + (_operation getOrDefault [_remainingKey, 0])];
             _operation deleteAt _remainingKey;
         };
-    } forEach ["expiresAt", "loiterUntil", "contactGraceUntil", "holdUntil"];
+    } forEach ["expiresAt", "loiterUntil", "contactGraceUntil", "holdUntil", "nextManeuverAt", "legDeadline"];
     _operation
 };
 
@@ -684,9 +684,32 @@ BATTLESPACE_STRATEGIC_FIND_NEAREST_OPFOR_SECTOR = {
     _nearest
 };
 
+BATTLESPACE_CAPTURE_GET_OWNERSHIP = {
+    params ["_sector"];
+    private _position = getMarkerPos _sector;
+    private _physicalOwner = [_position] call KPLIB_fnc_getSectorOwnership;
+    if (_physicalOwner != GRLIB_side_civilian) exitWith {_physicalOwner};
+    // A virtual force may occupy empty ground, but cannot defeat a real garrison
+    // or complete an unseen capture while nearby opposition awaits materialization.
+    if ([_position, BATTLESPACE_UNIT_PROC_RANGE, GRLIB_side_friendly] call KPLIB_fnc_getUnitsCount > 0) exitWith {_physicalOwner};
+    private _occupied = false;
+    {
+        if ((_y getOrDefault ["kind", ""]) != "BATTLEGROUP" || {(_y getOrDefault ["phase", ""]) != "ASSAULTING"} || {(_y getOrDefault ["targetSector", ""]) != _sector}) then {continue};
+        if ((_y getOrDefault ["stagePosition", []]) isEqualTo []) then {continue};
+        private _taskForce = BATTLESPACE_TASK_FORCES get _x;
+        if (isNil "_taskForce" || {(_taskForce param [4, []]) isNotEqualTo []} || {_taskForce param [11, false]}) then {continue};
+        if ((_taskForce select 1) distance2D _position > GRLIB_capture_size) then {continue};
+        if (((_taskForce select 3) getOrDefault ["manpower", 0]) <= 3) then {continue};
+        if ([_taskForce, _y] call BATTLESPACE_STRATEGIC_GET_SURVIVAL_RATIO < (_y getOrDefault ["retreatRatio", 0.5])) then {continue};
+        _occupied = true;
+    } forEach BATTLESPACE_STRATEGIC_OPERATIONS;
+    [_physicalOwner, GRLIB_side_enemy] select _occupied
+};
+
 BATTLESPACE_CAPTURE_SECTOR_FOR_OPFOR = {
     params ["_sector"];
     if (!([] call BATTLESPACE_STRATEGIC_SERVER_CALL_ALLOWED) || {!(_sector in blufor_sectors)} || {!(_sector in sectors_allSectors)}) exitWith { false };
+    if ([_sector] call BATTLESPACE_CAPTURE_GET_OWNERSHIP != GRLIB_side_enemy) exitWith {false};
 
     blufor_sectors = blufor_sectors - [_sector];
     sector_to_blufor = createHashMap;
@@ -710,7 +733,7 @@ BATTLESPACE_CAPTURE_SECTOR_FOR_OPFOR = {
         publicVariable "blufor_military_sectors";
     };
 
-    if (_sector in sectors_factory && {!isNil "KP_liberation_production"}) then {
+    if (!isNil "KP_liberation_production") then {
         {
             if !(_sector in _x) then { continue };
             private _storageDefinition = _x param [3, []];
@@ -744,7 +767,7 @@ BATTLESPACE_CAPTURE_SECTOR_FOR_OPFOR = {
     if (!isNil "KPLIB_fnc_doSave") then {
         [] spawn KPLIB_fnc_doSave;
     };
-    [format ["Strategic battlegroup captured sector %1", _sector]] call BATTLESPACE_STRATEGIC_LOG;
+    [format ["OPFOR secured sector %1 through the common sector capture monitor", _sector]] call BATTLESPACE_STRATEGIC_LOG;
     true
 };
 
@@ -1682,6 +1705,7 @@ if (isServer) then {
         private _defenderDecisionInterval = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DEFENDER_DECISION_INTERVAL", 600];
         private _nextDecision = CBA_missionTime + _strategicInitialDelay;
         private _nextDefenseDecision = CBA_missionTime + _strategicInitialDelay;
+        private _nextOffensiveDecision = CBA_missionTime + _strategicInitialDelay;
         private _nextAirResponse = CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_AIR_RESPONSE_INITIAL_DELAY", 600]);
         private _nextSave = CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_SAVE_INTERVAL", 300]);
         [format [
@@ -1692,6 +1716,7 @@ if (isServer) then {
         while {GRLIB_endgame == 0} do {
             [] call BATTLESPACE_SECTOR_SYNC_OWNERS;
             [] call BATTLESPACE_STRATEGIC_RECONCILE_OPERATIONS;
+            [] call BATTLESPACE_OFFENSIVE_SAMPLE_CONTACTS;
             if (!isNil "BATTLESPACE_TACTICAL_MAINTENANCE_TICK") then {
                 [] call BATTLESPACE_TACTICAL_MAINTENANCE_TICK;
             };
@@ -1700,9 +1725,6 @@ if (isServer) then {
                 private _convoyBudget = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_CONVOYS_PER_TICK", 2];
                 private _evacuationConvoys = [_convoyBudget] call BATTLESPACE_LOGISTICS_EVACUATION_DECISION_TICK;
                 [(_convoyBudget - _evacuationConvoys) max 0] call BATTLESPACE_LOGISTICS_DECISION_TICK;
-                if (!isNil "BATTLESPACE_BATTLEGROUP_DECISION_TICK") then {
-                    [] call BATTLESPACE_BATTLEGROUP_DECISION_TICK;
-                };
                 if (!isNil "BATTLESPACE_DEEP_RECON_DECISION_TICK") then {
                     [] call BATTLESPACE_DEEP_RECON_DECISION_TICK;
                 };
@@ -1713,6 +1735,11 @@ if (isServer) then {
                     [] call BATTLESPACE_MINEFIELDS_DECISION_TICK;
                 };
                 _nextDecision = CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DECISION_INTERVAL", 1800]);
+            };
+
+            if (CBA_missionTime >= _nextOffensiveDecision) then {
+                [] call BATTLESPACE_BATTLEGROUP_DECISION_TICK;
+                _nextOffensiveDecision = CBA_missionTime + BATTLESPACE_OFFENSIVE_DECISION_INTERVAL;
             };
 
             if (CBA_missionTime >= _nextDefenseDecision) then {

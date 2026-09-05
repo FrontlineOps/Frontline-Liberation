@@ -192,7 +192,7 @@ BATTLESPACE_TASK_FORCE_DEFAULT_FINISH_SPAWN = {
 };
 
 BATTLESPACE_TASK_FORCE_DEFAULT_TRY_SPAWN = {
-	params ["_taskForceName", "_taskForce", ["_garrisonedInfantry", false], ["_infantryCombinedWithVehicles", false], ["_ambush", false], ["_civilian", false], ["_speed", "LIMITED"], ["_overrideSquadAdditions", []]];
+	params ["_taskForceName", "_taskForce", ["_garrisonedInfantry", false], ["_infantryCombinedWithVehicles", false], ["_ambush", false], ["_civilian", false], ["_speed", "LIMITED"], ["_overrideSquadAdditions", []], ["_allowVehiclePassengers", true]];
 	_taskForce params [
 		"_type", // 0
 		"_currentLoc", // 1
@@ -400,7 +400,7 @@ BATTLESPACE_TASK_FORCE_DEFAULT_TRY_SPAWN = {
 		
 		// If remaining manpower is >= 2, try to spawn passengers if the vehicle supports it
 		// Minimum squad size is SL and medic
-		if(_remainingManpower >= 2) then {
+		if(_remainingManpower >= 2 && {_allowVehiclePassengers}) then {
 			private _canHavePassengers = true;
 			if(_canHavePassengers && !_garrisonedInfantry) then {
 				private _cargoSpots = fullCrew [_veh, "cargo", true];
@@ -780,7 +780,7 @@ BATTLESPACE_TASK_FORCE_DEFENSE_BEGIN_RETURN = {
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\models\reconnaissancePatrol.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\models\deepReconnaissancePatrol.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\models\ambushPatrol.sqf";
-[] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\models\battlegroup.sqf";
+[] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\models\groundOffensive.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\models\mobileReserve.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\models\garrison.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\models\fortifications.sqf";

@@ -15,7 +15,7 @@ if (hasInterface) then {
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\artillery\index.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\index.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\logistics\index.sqf";
-[] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\battlegroup\index.sqf";
+[] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\ground_offensives\index.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\tactical\index.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\airborne_reinforcement\index.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\air_response\index.sqf";
@@ -83,7 +83,7 @@ if (!isNil { BATTLESPACE_LOCAL_TESTING }) then {
 // - Every current sector has a finite server-owned resource stockpile.
 // - Threshold-driven transfers use interceptable Convoy task forces.
 // - Stock stranded above a lower front-depth cap evacuates through the same finite convoys.
-// - Resource-backed military-sector attacks use Battlegroup task forces.
+// - Opportunity-led ground offensives stage and maneuver using paid task forces.
 // - Defensive task forces are formed from rear stock for explicit frontline assignments.
 // - Pre-formed mobile reserves answer casualty pressure without creating emergency forces.
 // - OPFOR objectives spend construction stock on persistent defensive sites.

@@ -143,13 +143,34 @@ BATTLESPACE_STRATEGIC_RESUPPLY_COOLDOWN = 1800;
 BATTLESPACE_STRATEGIC_BATTLEGROUP_COOLDOWN = 3600;
 BATTLESPACE_STRATEGIC_BATTLEGROUP_TARGET_COOLDOWN = [5400, 8100]; // Random cooldown before any origin may attack the same objective again (sec)
 BATTLESPACE_STRATEGIC_RETREAT_STRENGTH_RATIO = 0.35;
-BATTLESPACE_STRATEGIC_BATTLEGROUP_MANPOWER = 28;
-// [formation name, preferred target sector types, repeating dominant vehicle categories]
+// Ground offensives retain the Battlegroup save identity. These are finite,
+// opportunity-led maneuver forces, not periodic marker-directed attack waves.
+BATTLESPACE_OFFENSIVE_DECISION_INTERVAL = 120;
+BATTLESPACE_OFFENSIVE_OBSERVERS_PER_TICK = 8;
+BATTLESPACE_OFFENSIVE_CONTACT_MAX_AGE = 180;
+BATTLESPACE_OFFENSIVE_RECENT_CAPTURE_WINDOW = 1800;
+BATTLESPACE_OFFENSIVE_SOURCE_RESERVE_RATIO = 0.5;
+BATTLESPACE_OFFENSIVE_OBSERVE_DURATION = [120, 240];
+BATTLESPACE_OFFENSIVE_TOUR_DURATION = 3600;
+BATTLESPACE_OFFENSIVE_LEG_TIMEOUT = 600;
+BATTLESPACE_OFFENSIVE_MAX_SHIFTS = 3;
+BATTLESPACE_OFFENSIVE_MAX_PROBES = 2;
+BATTLESPACE_OFFENSIVE_STEP_DISTANCE = 350;
+BATTLESPACE_OFFENSIVE_LATERAL_DISTANCE = 300;
+BATTLESPACE_OFFENSIVE_ARRIVAL_RADIUS = 100;
+BATTLESPACE_OFFENSIVE_TARGET_STANDOFF = 450;
+BATTLESPACE_OFFENSIVE_CONTACT_RADIUS = 1200;
+BATTLESPACE_OFFENSIVE_RETREAT_RATIO = [0.45, 0.60];
+BATTLESPACE_OFFENSIVE_SECURE_DURATION = 600;
+// [formation name, infantry, desired vehicle categories]; unsupported vehicles
+// fall back to a fully paid infantry force. Weights favor small probing forces.
 BATTLESPACE_STRATEGIC_BATTLEGROUP_FORMATIONS = [
-    ["ARMORED", ["military", "factory"], ["tanks", "tanks", "ifv", "apc"]],
-    ["MECHANIZED", ["military", "factory", "bigtown", "capture"], ["ifv", "ifv", "apc", "apc"]],
-    ["MOTORIZED", ["bigtown", "capture", "tower"], ["car", "car", "car", "apc"]]
+    ["INFANTRY", 14, []],
+    ["MOTORIZED", 14, ["car"]],
+    ["MECHANIZED", 21, ["ifv", "apc"]],
+    ["ARMORED", 21, ["tanks", "ifv"]]
 ];
+BATTLESPACE_OFFENSIVE_FORMATION_WEIGHTS = [0.35, 0.35, 0.20, 0.10];
 BATTLESPACE_STRATEGIC_CONVOY_MANPOWER = 8;
 BATTLESPACE_STRATEGIC_CONVOY_TRUCKS = 2;
 BATTLESPACE_STRATEGIC_CONVOY_CRATE_VALUE = 100;
@@ -333,7 +354,6 @@ KPLIB_intelligence_operation_kinds = [
 GRLIB_sector_size = 3000;                    			// Sector activation range
 GRLIB_capture_size = 225;                    			// Sector cap circle size
 GRLIB_defended_buildingpos_part = 0.7;       			// Multiplier for defenders in buildings
-GRLIB_battlegroup_size = 4;                  			// Battlegroup size
 GRLIB_vulnerability_timer = 840;             			// OPFOR sector cap timer (sec)
 GRLIB_radiotower_size = 2500;                			// Radio tower range
 KPLIB_surrender_chance = 40;                 			// Surrender chance after a group breaks or a battle is resolved
@@ -774,23 +794,6 @@ KP_liberation_small_storage_positions = [
 // DO NOT CHANGE (unless you know what you are doing)
 GRLIB_endgame = 0;
 // KP_liberation_production_interval = ceil (KP_liberation_production_interval / GRLIB_resources_multiplier);
-private _battlegroupBaseSize = GRLIB_battlegroup_size;
-private _battlegroupAggressivityScale = 0.25 + (0.75 * (GRLIB_csat_aggressivity / 4));
-GRLIB_battlegroup_size = 2 max (round (
-    _battlegroupBaseSize
-    * GRLIB_unitcap
-    * _battlegroupAggressivityScale
-));
-if (isServer) then {
-    [format [
-        "Battlegroup vehicle limit scaled from %1 to %2 (AI amount %3, OPFOR aggressiveness %4, scale %5)",
-        _battlegroupBaseSize,
-        GRLIB_battlegroup_size,
-        GRLIB_unitcap,
-        GRLIB_csat_aggressivity,
-        _battlegroupAggressivityScale
-    ], "BATTLESPACE"] call KPLIB_fnc_log;
-};
 GRLIB_blufor_cap = (GRLIB_blufor_cap * GRLIB_unitcap) min 100;
 GRLIB_sector_cap = GRLIB_sector_cap * GRLIB_unitcap;
 GRLIB_kog_trucks = ["UK3CB_ARD_O_GAZ_Vodnik"];//"vn_o_wheeled_z157_01_vcmf"rhs_ka60_grey

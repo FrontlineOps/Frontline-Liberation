@@ -528,6 +528,10 @@ BATTLESPACE_TASK_FORCE_PATH_FAILED = {
 	private _taskForce = BATTLESPACE_TASK_FORCES get _taskForceName;
 
 	if(isNil { _taskForce }) exitWith {};
+	// Models with conserved maneuver lifecycles own their failure response.
+	private _model = BATTLESPACE_TASK_FORCE_MODELS getOrDefault [_taskForce param [0, ""], createHashMap];
+	private _onPathFailed = _model get "onPathFailed";
+	if (!isNil "_onPathFailed") exitWith {[_taskForceName, _taskForce] call _onPathFailed};
 
 	_taskForce params [
 		"_taskForceType", // 0
