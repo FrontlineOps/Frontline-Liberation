@@ -77,6 +77,7 @@ KPLIB_INTEL_CLIENT_RENDER_MARKERS = {
             case "CONVOY": {"o_motor_inf"};
             case "GROUND OFFENSIVE": {"o_mech_inf"};
             case "ARTILLERY": {"o_art"};
+            case "ARTILLERY TRP": {"mil_destroy"};
             case "SAM": {"o_antiair"};
             case "SECTOR ASSESSMENT": {"mil_unknown"};
             default {"o_unknown"};

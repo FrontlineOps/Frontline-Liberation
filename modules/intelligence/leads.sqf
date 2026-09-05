@@ -26,7 +26,9 @@ KPLIB_INTEL_SERVER_CAPTURE_SOURCE = {
                 || {(_x getOrDefault ["assigned", ""]) == _sector}
                 || {(_x getOrDefault ["objective", ""]) == _sector}
         };
-        _related = [_related, [], {_x get "priority"}, "DESCEND"] call BIS_fnc_sortBy;
+        _related = [_related, [], {
+            (_x get "priority") + ([0, 30] select (!_prisoner && {(_x get "kind") == "ARTILLERY TRP"}))
+        }, "DESCEND"] call BIS_fnc_sortBy;
     };
     private _record = if (_related isNotEqualTo []) then {_related # 0} else {
         [_sector, [_sector], _raw] call KPLIB_INTEL_SERVER_ASSESS_REGION

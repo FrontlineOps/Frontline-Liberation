@@ -286,6 +286,17 @@ BATTLESPACE_ARTILLERY_SMOKE_CHANCE = 0.15; // Probability per observer update; 0
 BATTLESPACE_ARTILLERY_FIRE_ORDER_TIMEOUT = 90; // Seconds allowed for each salvo/ripple to fire before aborting and refunding unfired rounds.
 BATTLESPACE_ARTILLERY_TARGET_MOVEMENT_ACCURACY_LOSS_BAND_DISTANCE = 90; // Target movement before 10% of accumulated observer accuracy is lost (m)
 BATTLESPACE_ARTILLERY_TARGET_MOVEMENT_ACCURACY_LOSS_DISTANCE = 175; // Target movement before 40% of accumulated observer accuracy is lost (m)
+// Enemy prepared fire plans: one point per defended approach/offensive objective.
+BATTLESPACE_ARTILLERY_TRP_ENABLED = true;
+BATTLESPACE_ARTILLERY_TRP_PLAN_INTERVAL = 60;
+BATTLESPACE_ARTILLERY_TRP_REGISTRATION_TIME = 180;
+BATTLESPACE_ARTILLERY_TRP_LIFETIME = 1800;
+BATTLESPACE_ARTILLERY_TRP_MAX_PER_BATTERY = 4;
+BATTLESPACE_ARTILLERY_TRP_MAX_TOTAL = 8;
+BATTLESPACE_ARTILLERY_TRP_RADIUS = 180; // Recent observer contact must fall within this radius (m).
+BATTLESPACE_ARTILLERY_TRP_RELOCATION_DISTANCE = 100;
+BATTLESPACE_ARTILLERY_TRP_AIM_FLOOR = 180; // Dispersion only; original request still sets shell count.
+BATTLESPACE_ARTILLERY_TRP_PRIORITY_BONUS = 100; // Queue preference; never bypass network/cooldown.
 BATTLESPACE_SAM_STRATEGIC_MISSILES_PER_LAUNCHER = 8;
 BATTLESPACE_SAM_TACTICAL_MISSILES_PER_LAUNCHER = 4;
 BATTLESPACE_SAM_RELOAD_BATCH = 4;

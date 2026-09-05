@@ -154,6 +154,21 @@ KPLIB_INTEL_SERVER_COLLECT_RAW_REPORTS = {
             ["classes", _vehicles apply {typeOf _x}], ["physical", true], ["priority", 95]
         ];
     } forEach (missionNamespace getVariable ["BATTLESPACE_SAM_EXISTING_SITES", []]);
+    // Prepared plans are server-only raw observations; coverage admits these at T2+.
+    {
+        private _trp = _y;
+        if (([_trp] call BATTLESPACE_TRP_INVALID_REASON) != "") then {continue};
+        private _battery = _trp get "battery";
+        _reports pushBack createHashMapFromArray [
+            ["id", _trp get "id"], ["kind", "ARTILLERY TRP"], ["minTier", 2],
+            ["phase", (["REGISTERED", "PREPARING"] select (CBA_missionTime < (_trp get "readyAt")))],
+            ["position", +(_trp get "position")], ["sector", _trp get "sector"],
+            ["funding", _battery getVariable ["BSAFundingSector", ""]], ["assigned", _trp get "sector"],
+            ["men", 0], ["classes", []], ["physical", false], ["priority", 92],
+            ["radius", _trp get "radius"], ["battery", str _battery], ["batteryPosition", +(_trp get "batteryAnchor")],
+            ["readyAt", _trp get "readyAt"], ["expiresAt", _trp get "expiresAt"], ["lastFiredAt", _trp get "lastFiredAt"]
+        ];
+    } forEach (localNamespace getVariable ["BSA_TRPS", createHashMap]);
     _reports
 };
 
@@ -211,6 +226,30 @@ KPLIB_INTEL_SERVER_BUILD_OBSERVATION = {
     private _offset = _radius * (0.25 + (_seed mod 50) / 100);
     private _observed = if (_assessment) then {+_position} else {
         [(_position # 0) + sin _angle * _offset, (_position # 1) + cos _angle * _offset, 0]
+    };
+    if (_kind == "ARTILLERY TRP") exitWith {
+        private _details = ["Enemy artillery may have prepared a fixed fire area on this approach. Observer contact is still needed to activate it."];
+        private _title = "Suspected prepared fire area near " + ([_raw get "sector"] call KPLIB_INTEL_SERVER_LABEL);
+        private _displayPhase = "SUSPECTED";
+        if (_tier >= 3) then {
+            _observed = +_position;
+            _radius = _raw get "radius";
+            _displayPhase = _phase;
+            _title = "Fire plan " + _id + " near " + ([_raw get "sector"] call KPLIB_INTEL_SERVER_LABEL);
+            _details pushBack format ["Reference point: grid %1. Marked radius %2m is the observer contact area, not the shell impact boundary.", mapGridPosition _position, _radius];
+            _details pushBack format ["Supporting battery: %1, recorded at grid %2. Destroying or forcing it to relocate invalidates this registration.", _raw get "battery", mapGridPosition (_raw get "batteryPosition")];
+            _details pushBack format ["Registration: %1. Plan valid for approximately %2 more minutes at observation time.", _phase, ceil (0 max (((_raw get "expiresAt") - CBA_missionTime) / 60))];
+            private _lastFire = _raw get "lastFiredAt";
+            if (_lastFire >= 0) then {_details pushBack format ["Firing recorded %1 seconds before this observation.", round (CBA_missionTime - _lastFire)]};
+        };
+        private _meta = createHashMapFromArray [
+            ["title", _title], ["details", _details], ["priority", _raw get "priority"],
+            ["status", "CURRENT"], ["regions", +_regions],
+            ["window", "Avoid lingering on this approach, screen enemy observers, or disrupt the supporting guns. Shells remain aimed at the reference point after you move away."],
+            ["confidence", ["MODERATE - suspected prepared area", "HIGH - identified fire plan; activation remains conditional"] select (_tier >= 3)]
+        ];
+        [_id, "ARTILLERY TRP", _displayPhase, _regions param [0, ""], _observed, _radius,
+            CBA_missionTime, "", [], "Prepared fire area", [], _tier, _meta]
     };
     private _classes = _raw get "classes";
     private _men = _raw get "men";
@@ -290,7 +329,7 @@ KPLIB_INTEL_SERVER_BUILD_OBSERVATION = {
                 if ((_raw getOrDefault ["ammunition", -1]) == 0) then {
                     _details pushBack "Supporting ammunition stock reported empty. New fire missions depend on resupply; already reserved salvos may still fire.";
                 };
-                if (_phase == "COOLDOWN") then {_window = "MODERATE confidence: battery reported between missions. Cooldown is not a guarantee that the position is undefended."};
+                if (_phase in ["COOLDOWN", "COOLING DOWN"]) then {_window = "MODERATE confidence: battery reported between missions. Cooldown is not a guarantee that the position is undefended."};
             };
             case "SAM": {_details pushBack "Air-defense suppression opportunity: disabling the observed site could open a local flight corridor. Other air defenses are not ruled out."};
             case "RESERVE": {_details pushBack "Fix or intercept this reserve to reduce its ability to reinforce another fight. A commitment elsewhere may leave a temporary opening."};

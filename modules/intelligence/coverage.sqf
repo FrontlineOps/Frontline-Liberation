@@ -49,7 +49,7 @@ KPLIB_INTEL_SERVER_SELECT_CANDIDATES = {
             if (_coverageTier > _tier) then {_tier = _coverageTier};
             if (_admitRegion == "" && {(_counts getOrDefault [_x, 0]) < _regionLimit}) then {_admitRegion = _x};
         } forEach _membership;
-        if (_admitRegion == "") then {continue};
+        if (_admitRegion == "" || {_tier < (_raw getOrDefault ["minTier", 1])}) then {continue};
         _counts set [_admitRegion, 1 + (_counts getOrDefault [_admitRegion, 0])];
         // Shared reports are visible under every overlapping region, at the best paid tier.
         _candidates set [_raw get "id", [_raw, _tier, _membership]];

@@ -619,7 +619,11 @@ BATTLESPACE_ARTILLERY_GET_READY_BATTERIES = {
 	BATTLESPACE_ARTILLERY_SECTIONS = BATTLESPACE_ARTILLERY_SECTIONS - _invalids;
 	_readyBatteries;
 };
+[] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\artillery\trp.sqf";
+
 BATTLESPACE_ARTILLERY_POLL_REQUESTS = {
+    if (!isServer || {isRemoteExecuted}) exitWith {};
+    call BATTLESPACE_TRP_PLAN;
 	(_this select 0) params [["_nextTick", 0], ["_counter", 0], ["_cycleCount", 0], ["_nextCycleSwap", 0], ["_networkEnabled", true]];
 
 
@@ -814,9 +818,11 @@ BATTLESPACE_ARTILLERY_POLL_REQUESTS = {
 	{
 		private _currentHighestAccuracyRequest = [objNull, objNull, 0];
 		private _currentHighestAccuracyKey = nil;
+        private _currentHighestPriority = 0;
 		private _section = _x;
 		{
-			_y params ["_observer", "_target", "_timeInCombat", ["_systemTargeted", false], ["_targetedAt", CBA_missionTime], ["_wp", false]];
+            private _candidate = [_section, _y] call BATTLESPACE_TRP_PREPARE_REQUEST;
+            _candidate params ["_observer", "_target", "_timeInCombat", ["_systemTargeted", false], ["_targetedAt", CBA_missionTime], ["_wp", false]];
 
 			// Out of range, arbitrary value
 			if(_target distance2D (leader _section) >= 17000) then {
@@ -870,12 +876,15 @@ BATTLESPACE_ARTILLERY_POLL_REQUESTS = {
 				continue;
 			};
 			if(_systemTargeted) exitWith {
-				_currentHighestAccuracyRequest = _y;
+                _currentHighestAccuracyRequest = _candidate;
 				_currentHighestAccuracyKey = _x;
 			};
 
-			if(!_systemTargeted && _timeInCombat > (_currentHighestAccuracyRequest select 2)) then {
-				_currentHighestAccuracyRequest = _y;
+            private _priority = _timeInCombat;
+            if ((_candidate param [9, []]) isNotEqualTo []) then {_priority = _priority + BATTLESPACE_ARTILLERY_TRP_PRIORITY_BONUS};
+            if (!_systemTargeted && {_timeInCombat > 0} && {_priority > _currentHighestPriority}) then {
+                _currentHighestPriority = _priority;
+                _currentHighestAccuracyRequest = _candidate;
 				_currentHighestAccuracyKey = _x;
 			};
 		} forEach BATTLESPACE_ARTILLERY_OBSERVER_TARGETS;
@@ -893,7 +902,10 @@ BATTLESPACE_ARTILLERY_POLL_REQUESTS = {
 };
 
 BATTLESPACE_ARTILLERY_FULFILL_REQUEST = {
-	_this params ["_battery", "_req", "_obsKey"];
+    if (!isServer || {isRemoteExecuted}) exitWith {};
+    _this params ["_battery", "_req", "_obsKey"];
+    _req = +_req;
+    if !([_battery, _req] call BATTLESPACE_TRP_MISSION_VALID) exitWith {};
 	
 	(_req) params [["_observer", objNull], ["_target", nil], ["_accuracy", 0], ["_systemTargeted", false], ["_targetedAt", CBA_missionTime], ["_wp", false]];
 
@@ -956,7 +968,10 @@ BATTLESPACE_ARTILLERY_FULFILL_REQUEST = {
 	_req set [7, _shellType];
 	_req set [8, _salvos];
 
-	_state set [0, "IN MISSION"];
+    private _trpMetadata = _req param [9, []];
+    _battery setVariable ["BSATRP", _trpMetadata param [0, ""]];
+    _battery setVariable ["BSAAimAccuracy", _trpMetadata param [1, _accuracy]];
+    _state set [0, "IN MISSION"];
 
 	_state set [3, _target];
 	_state set [4, _accuracy];
@@ -977,11 +992,14 @@ BATTLESPACE_ARTILLERY_FULFILL_REQUEST = {
 
 };
 BATTLESPACE_ARTILLERY_DO_REQUEST = {
+    if (!isServer || {isRemoteExecuted}) exitWith {};
 	params ["_battery", "_req", "_obsKey"];
 
 	(_req) params [["_observer", objNull], ["_target", nil], ["_accuracy", 0], ["_systemTargeted", false], ["_targetedAt", CBA_missionTime], ["_wp", false], ["_reservedRounds", 0], ["_shellType", ""], ["_plannedSalvos", -1]];
 
-	private _shells = [_req] call BATTLESPACE_ARTILLERY_GET_REQUEST_SALVOS;
+    private _trpMetadata = _req param [9, []];
+    private _aimAccuracy = _trpMetadata param [1, _accuracy];
+    private _shells = [_req] call BATTLESPACE_ARTILLERY_GET_REQUEST_SALVOS;
 	if (_plannedSalvos > 0) then {_shells = _plannedSalvos};
 
 
@@ -1007,7 +1025,10 @@ BATTLESPACE_ARTILLERY_DO_REQUEST = {
 				private _progress = _piece getVariable ["BSAFireProgress", []];
 				if (count _progress == 3 && {_magazine == (_progress select 0)}) then {
 					_progress set [2, (_progress select 2) + 1];
-					_piece setVariable ["BSAFireProgress", _progress];
+                    _piece setVariable ["BSAFireProgress", _progress];
+                    private _trpId = _piece getVariable ["BSAFireTRP", ""];
+                    private _trp = (localNamespace getVariable ["BSA_TRPS", createHashMap]) getOrDefault [_trpId, createHashMap];
+                    if (count _trp > 0) then {_trp set ["lastFiredAt", CBA_missionTime]};
 				};
 			}] call CBA_fnc_addBISEventHandler;
 			_x setVariable ["BSAFiredHandler", _handler];
@@ -1015,6 +1036,7 @@ BATTLESPACE_ARTILLERY_DO_REQUEST = {
 		private _progress = [_shellType, 0, 0];
 		_fireProgress pushBack _progress;
 		_x setVariable ["BSAFireProgress", _progress];
+        _x setVariable ["BSAFireTRP", _trpMetadata param [0, ""]];
 	} forEach _vehs;
 	private _isRocketArtillery = (_battery getVariable ["BSAPieceResource", ""]) == "rocket_artillery";
 	private _rocketMagazineCapacity = 0;
@@ -1044,7 +1066,10 @@ BATTLESPACE_ARTILLERY_DO_REQUEST = {
 
 	if (BATTLESPACE_ARTILLERY_DEBUG) then {systemChat format ["We are shooting %1", _shellType];};
 	for "_i" from 1 to _fireOrdersPerPiece do {
-		if (_roundsRemaining <= 0) exitWith {};
+        if (_roundsRemaining <= 0) exitWith {};
+        if !([_battery, _req] call BATTLESPACE_TRP_MISSION_VALID) exitWith {
+            [format ["Artillery TRP mission stopped (group=%1, point=%2, reason=plan invalidated or friendly troops entered fire area)", _battery, _trpMetadata param [0, ""]], "BATTLESPACE"] call KPLIB_fnc_log;
+        };
 		{	
 			if (_roundsRemaining <= 0) then {continue};
 			if (!alive _x || {!alive gunner _x}) then {continue};
@@ -1055,8 +1080,8 @@ BATTLESPACE_ARTILLERY_DO_REQUEST = {
 			if (_roundsThisOrder <= 0) then {continue};
 
 			
-			private _minDispersion = [_accuracy, _wp] call BATTLESPACE_GET_MIN_DISPERSION;
-			private _maxDispersion = [_accuracy, _wp] call BATTLESPACE_GET_MAX_DISPERSION;
+            private _minDispersion = [_aimAccuracy, _wp] call BATTLESPACE_GET_MIN_DISPERSION;
+            private _maxDispersion = [_aimAccuracy, _wp] call BATTLESPACE_GET_MAX_DISPERSION;
 			if (_isRocketArtillery) then {
 				_minDispersion = _minDispersion * 1.5;
 				_maxDispersion = _maxDispersion * 1.5;
@@ -1110,7 +1135,8 @@ BATTLESPACE_ARTILLERY_DO_REQUEST = {
 				private _progress = _x getVariable "BSAFireProgress";
 				_progress set [1, (_progress select 1) + _roundsThisOrder];
 				_x setVariable ["BSAFireProgress", _progress];
-				_x commandArtilleryFire [_tLoc, _shellType, _roundsThisOrder];
+                _x commandArtilleryFire [_tLoc, _shellType, _roundsThisOrder];
+
 			} else {
 				_rangeRejectedOrders = _rangeRejectedOrders + 1;
 			};
@@ -1223,10 +1249,16 @@ BATTLESPACE_ARTILLERY_OBSERVER_REPORT_REMOTE = {
 };
 
 BATTLESPACE_ARTILLERY_OBSERVER_REPORT_REMOTE_REPLY = {
-	params ["_observer", "_targets"];
-
-
-	_observer setVariable ["BSA_Targets", _targets, true];
+    params [["_observer", objNull, [objNull]], ["_targets", [], [[]]]];
+    // Accept evidence only from the machine that owns this observer (including HC).
+    if (!isRemoteExecuted || {isNull _observer} || {remoteExecutedOwner != owner _observer}) exitWith {};
+    _targets = (_targets select {_x isEqualType objNull && {!isNull _x}}) select [0, 64];
+    _observer setVariable ["BSA_Targets", _targets, true];
+    if (isServer) then {
+        private _contacts = localNamespace getVariable "BSA_TRP_CONTACTS";
+        _contacts set [str _observer, [_observer, (_targets select {alive _x && {side _x == GRLIB_side_friendly} && {!(_x isKindOf "Air")} && {!(_x getVariable ["ACE_isUnconscious", false])}}) apply {getPosATL _x}, CBA_missionTime, remoteExecutedOwner]];
+        if (count _contacts > 128) then {_contacts deleteAt ((keys _contacts) # 0)};
+    };
 };
 
 BATTLESPACE_ARTILLERY_BROADCAST_TARGET = {
@@ -1397,9 +1429,12 @@ BATTLESPACE_ARTILLERY_BUILD_RENDER_SNAPSHOT = {
 			_systemTargeted,
 			_cooldownExpiresAt,
 			_suppressedUntil,
-			_wp
-		];
-	} forEach BATTLESPACE_ARTILLERY_SECTIONS;
+            _wp,
+            _x getVariable ["BSATRP", ""],
+            _x getVariable ["BSAAimAccuracy", _accuracy],
+            _x getVariable ["BSAPieceResource", ""]
+        ];
+    } forEach BATTLESPACE_ARTILLERY_SECTIONS;
 
 	[
 		_observers,
@@ -1407,9 +1442,10 @@ BATTLESPACE_ARTILLERY_BUILD_RENDER_SNAPSHOT = {
 		[
 			missionNamespace getVariable ["BATTLESPACE_ARTILLERY_NETWORK_ENABLED", true],
 			missionNamespace getVariable ["BATTLESPACE_ARTILLERY_CURRENT_CYCLE", 0],
-			missionNamespace getVariable ["BATTLESPACE_ARTILLERY_CYCLES_REQUIRED", 0]
-		]
-	]
+            missionNamespace getVariable ["BATTLESPACE_ARTILLERY_CYCLES_REQUIRED", 0]
+        ],
+        call BATTLESPACE_TRP_SNAPSHOT
+    ]
 };
 
 BATTLESPACE_ARTILLERY_RENDER_REQUEST = {
@@ -1436,13 +1472,20 @@ if (hasInterface) then {
 	["KPLIB_battlespaceArtilleryRenderSnapshot", {
 		params [["_snapshot", [[], [], [true, 0, 0]], [[]]]];
 		BATTLESPACE_ARTILLERY_RENDER_DATA = _snapshot;
+        BSA_RENDER_RECEIVED_AT = CBA_missionTime;
 	}] call CBA_fnc_addEventHandler;
 };
 
 RENDER_BATTLESPACE_ARTILLERY = true;
+RENDER_BATTLESPACE_ARTILLERY_TRPS = true;
+RENDER_BATTLESPACE_ARTILLERY_PFH_ID = -1;
+
 RENDER_BATTLESPACE_ARTILLERY_PFH = {
 	(_this select 0) params [["_nextTick", 0]];
-	if(!RENDER_BATTLESPACE_ARTILLERY) exitWith {[_this select 1] call CBA_fnc_removePerFrameHandler};
+    if (!RENDER_BATTLESPACE_ARTILLERY) exitWith {
+        [_this select 1] call CBA_fnc_removePerFrameHandler;
+        RENDER_BATTLESPACE_ARTILLERY_PFH_ID = -1;
+    };
 	if(isNull curatorCamera) exitWith {};
 	if(accTime <= 0 || isGamePaused) exitWith {};
 
@@ -1454,8 +1497,10 @@ RENDER_BATTLESPACE_ARTILLERY_PFH = {
 	BATTLESPACE_ARTILLERY_RENDER_DATA params [
 		["_renderObservers", []],
 		["_renderBatteries", []],
-		["_renderNetwork", [true, 0, 0]]
-	];
+        ["_renderNetwork", [true, 0, 0]],
+        ["_renderTRPs", []]
+    ];
+    if (RENDER_BATTLESPACE_ARTILLERY_TRPS && {!isNil "BATTLESPACE_TRP_DRAW"}) then {[_renderTRPs] call BATTLESPACE_TRP_DRAW};
 	_renderNetwork params ["_networkEnabled", "_currentCycle", "_cyclesRequired"];
 	private _networkStr = [
 		format ["NETWORK OFF (%1/%2)", _currentCycle, _cyclesRequired],
@@ -1495,8 +1540,9 @@ RENDER_BATTLESPACE_ARTILLERY_PFH = {
 	{
 		_x params [
 			"_batteryName", "_batteryPosition", "_status", "_accuracy", "_targetLocations",
-			"_targetLocation", "_systemTargeted", "_cooldownExpiresAt", "_suppressedUntil", "_wp"
-		];
+            "_targetLocation", "_systemTargeted", "_cooldownExpiresAt", "_suppressedUntil", "_wp",
+            ["_trp", ""], ["_aim", _accuracy], ["_pieceResource", ""]
+        ];
 		private _cffType = "FIRE-FOR-EFFECT";
 		if(_accuracy < 300) then {_cffType = "ADJUST FIRE"};
 		if(_wp) then {_cffType = "IMMEDIATE SMOKE"};
@@ -1504,7 +1550,8 @@ RENDER_BATTLESPACE_ARTILLERY_PFH = {
 			_cffType = ["SUPPRESSION", "NEUTRALIZATION"] select (_accuracy >= 200);
 		};
 
-		private _statusStr = _status;
+        if (_trp != "" && {_status == "IN MISSION"}) then {_cffType = "REGISTERED " + _trp};
+        private _statusStr = _status;
 		if(_status == "SUPPRESSED") then {
 			private _timeRemaining = 0 max ceil (_suppressedUntil - CBA_missionTime);
 			if(_timeRemaining == 0) then {
@@ -1538,8 +1585,12 @@ RENDER_BATTLESPACE_ARTILLERY_PFH = {
 		if(_targetLocation isNotEqualTo []) then {
 			private _targetPos = _targetLocation vectorAdd [0,0,40];
 			drawIcon3D ["\A3\ui_f\data\map\groupicons\selector_selectedEnemy_ca.paa", [1,0.4,0.4,1], _targetPos, 1, 1, 0, format ["BATTERY %1 %2 (%3)", _batteryName, _cffType, _accuracy], 1, 0.03, "TahomaB"];
-			private _minDispersion = [_accuracy, _wp] call BATTLESPACE_GET_MIN_DISPERSION;
-			private _maxDispersion = [_accuracy, _wp] call BATTLESPACE_GET_MAX_DISPERSION;
+            private _minDispersion = [_aim, _wp] call BATTLESPACE_GET_MIN_DISPERSION;
+            private _maxDispersion = [_aim, _wp] call BATTLESPACE_GET_MAX_DISPERSION;
+            if (_pieceResource == "rocket_artillery") then {
+                _minDispersion = _minDispersion * 1.5;
+                _maxDispersion = _maxDispersion * 1.5;
+            };
 			for "_i" from 0 to 35 do {
 				private _angle = _i * 10;
 				private _innerPos = _targetPos getPos [_minDispersion, _angle];
@@ -1556,8 +1607,8 @@ RENDER_BATTLESPACE_ARTILLERY_PFH = {
 };
 
 if(hasInterface) then {
-	[
-		{ _this call RENDER_BATTLESPACE_ARTILLERY_PFH },
+    RENDER_BATTLESPACE_ARTILLERY_PFH_ID = [
+        { _this call RENDER_BATTLESPACE_ARTILLERY_PFH },
 		0,
 		[0]
 	] call CBA_fnc_addPerFrameHandler;
@@ -1573,4 +1624,3 @@ if (isServer) then {
 
 	
 };
-
