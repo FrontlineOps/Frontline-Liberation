@@ -1,11 +1,13 @@
 /*
     Builds a normalized, merged catalog for one side from selected faction
-    classnames. Returns an empty `factions` field when validation fails.
+    classnames plus optional individual CfgVehicles additions. Returns an empty
+    `factions` field when validation fails.
 */
 
 params [
     ["_requestedFactions", [], [[]]],
-    ["_expectedSide", -1, [0]]
+    ["_expectedSide", -1, [0]],
+    ["_extraClasses", [], [[]]]
 ];
 
 private _empty = createHashMapFromArray [
@@ -68,6 +70,23 @@ private _validFactions = [];
 
 if (_validFactions isEqualTo []) exitWith {_empty};
 
+// Explicit additions may come from any faction or side. Keep the cached index
+// unchanged so an addition to one side cannot leak into another side's catalog.
+private _validExtras = [];
+{
+    if !(_x isEqualType "") then {
+        [format ["Automatic faction addition %1 for side %2 must be a classname string; skipped", _x, _expectedSide], "FACTIONS"] call KPLIB_fnc_log;
+        continue;
+    };
+    if (([_x] call KPLIB_fnc_classifyFactionVehicle) isEqualTo []) then {
+        [format ["Automatic faction addition '%1' for side %2 is missing, hidden or unsupported; skipped", _x, _expectedSide], "FACTIONS"] call KPLIB_fnc_log;
+        continue;
+    };
+    _validExtras pushBackUnique (configName (configFile >> "CfgVehicles" >> _x));
+} forEach _extraClasses;
+private _classSources = _validFactions apply {_vehicleIndex getOrDefault [toLower _x, []]};
+_classSources pushBack _validExtras;
+
 private _pools = createHashMap;
 {
     _pools set [_x, []];
@@ -87,8 +106,6 @@ private _reconGroups = [];
 private _paraGroups = [];
 
 {
-    private _factionKey = toLower _x;
-
     {
         private _class = _x;
         private _categories = [_class] call KPLIB_fnc_classifyFactionVehicle;
@@ -114,8 +131,8 @@ private _paraGroups = [];
                 };
             } forEach _categories;
         };
-    } forEach (_vehicleIndex getOrDefault [_factionKey, []]);
-} forEach _validFactions;
+    } forEach _x;
+} forEach _classSources;
 
 {
     private _factionKey = toLower _x;

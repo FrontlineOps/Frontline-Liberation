@@ -13,10 +13,23 @@ KP_liberation_autoFaction_opfor = ["CUP_O_RU"];
 KP_liberation_autoFaction_resistance = ["CUP_I_NAPA"];
 KP_liberation_autoFaction_civilians = ["CUP_C_RU"];
 
+/* Optional individual additions to each generated side.
+    Use CfgVehicles classnames for vehicles, soldiers, static weapons or supply
+    crates, including classes from factions not selected above. Categories and
+    prices are automatic. Duplicates are ignored; missing, hidden or unsupported
+    classes are skipped with a log message. Changes apply on mission restart.
+    Example: KP_liberation_autoFaction_bluforExtras = ["B_MRAP_01_F", "B_Soldier_F"];
+*/
+KP_liberation_autoFaction_bluforExtras = [];
+KP_liberation_autoFaction_opforExtras = [];
+KP_liberation_autoFaction_resistanceExtras = [];
+KP_liberation_autoFaction_civiliansExtras = [];
+
 // Include loaded compatibility equipment in the generated restricted arsenal.
 KP_liberation_autoFaction_includeAceMedical = true;
 KP_liberation_autoFaction_includeAceTools = true;
 KP_liberation_autoFaction_includeTfarRadios = true;
+// Additional weapons, magazines, uniforms, equipment and backpacks for the Arsenal.
 KP_liberation_autoFaction_arsenalExtraItems = [];
 KP_liberation_autoFaction_arsenalBlacklist = [];
 

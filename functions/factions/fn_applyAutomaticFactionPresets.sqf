@@ -10,10 +10,10 @@ private _resistanceFactions = +(missionNamespace getVariable ["KP_liberation_aut
 private _civilianFactions = +(missionNamespace getVariable ["KP_liberation_autoFaction_civilians", []]);
 
 private _catalogs = createHashMapFromArray [
-    ["blufor", [_bluforFactions, 1] call KPLIB_fnc_buildFactionCatalog],
-    ["opfor", [_opforFactions, 0] call KPLIB_fnc_buildFactionCatalog],
-    ["resistance", [_resistanceFactions, 2] call KPLIB_fnc_buildFactionCatalog],
-    ["civilians", [_civilianFactions, 3] call KPLIB_fnc_buildFactionCatalog]
+    ["blufor", [_bluforFactions, 1, missionNamespace getVariable ["KP_liberation_autoFaction_bluforExtras", []]] call KPLIB_fnc_buildFactionCatalog],
+    ["opfor", [_opforFactions, 0, missionNamespace getVariable ["KP_liberation_autoFaction_opforExtras", []]] call KPLIB_fnc_buildFactionCatalog],
+    ["resistance", [_resistanceFactions, 2, missionNamespace getVariable ["KP_liberation_autoFaction_resistanceExtras", []]] call KPLIB_fnc_buildFactionCatalog],
+    ["civilians", [_civilianFactions, 3, missionNamespace getVariable ["KP_liberation_autoFaction_civiliansExtras", []]] call KPLIB_fnc_buildFactionCatalog]
 ];
 
 private _configurationErrors = [];
