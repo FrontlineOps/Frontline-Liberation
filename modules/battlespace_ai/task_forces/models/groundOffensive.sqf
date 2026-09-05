@@ -249,7 +249,7 @@ BATTLESPACE_OFFENSIVE_ON_DECISION_TICK = {
             private _phase = _operation getOrDefault ["phase", ""];
             if (_phase in ["OBSERVING", "SECURING"]) exitWith {};
             // The model owns disengagement; failed routes cannot teleport/delete it.
-            private _retryAt = CBA_missionTime + ([0, BATTLESPACE_OFFENSIVE_DECISION_INTERVAL] select (_phase == "RETURNING"));
+            private _retryAt = CBA_missionTime + ([0, BATTLESPACE_OFFENSIVE_RETURN_RETRY_INTERVAL] select (_phase == "RETURNING"));
             _operation set ["legDeadline", _retryAt];
             _operation set ["nextManeuverAt", _retryAt];
             [format ["Ground offensive %1 route failed during %2; retaining its force for withdrawal/retry", _id, toLower _phase]] call BATTLESPACE_STRATEGIC_LOG;

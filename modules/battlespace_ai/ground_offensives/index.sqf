@@ -197,5 +197,5 @@ BATTLESPACE_BATTLEGROUP_SETTLE = {
 };
 
 if (isServer) then {
-    [format ["Ground offensives use opportunity-led staging/probing/shifting; allocation check %1 seconds, no periodic automatic assault", BATTLESPACE_OFFENSIVE_DECISION_INTERVAL]] call BATTLESPACE_STRATEGIC_LOG;
+    [format ["Ground offensives use opportunity-led staging/probing/shifting; allocation shares the %1-second defender evaluation", BATTLESPACE_STRATEGIC_DEFENDER_DECISION_INTERVAL]] call BATTLESPACE_STRATEGIC_LOG;
 };

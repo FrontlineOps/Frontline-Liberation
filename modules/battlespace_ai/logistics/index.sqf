@@ -142,6 +142,7 @@ BATTLESPACE_SECTOR_CREATE_STATE = {
         ["type", _sectorType],
         ["owner", _owner],
         ["resources", _resources],
+        ["refillingResources", []],
         ["lastOwnerChange", CBA_missionTime],
         ["nextResupplyAt", 0],
         ["nextBattlegroupAt", 0],
@@ -177,6 +178,7 @@ BATTLESPACE_SECTOR_SET_OWNER = {
 
     _state set ["owner", _owner];
     _state set ["resources", _resources];
+    _state set ["refillingResources", []];
     _state set ["lastOwnerChange", CBA_missionTime];
     _state set [
         "nextResupplyAt",
@@ -253,6 +255,7 @@ BATTLESPACE_RESOURCE_APPLY_STRICT = {
     } forEach _proposed;
     _state set ["resources", _resources];
     BATTLESPACE_SECTOR_STATES set [_sector, _state];
+    [_sector, false] call BATTLESPACE_LOGISTICS_UPDATE_REFILL_STATE;
     true
 };
 
@@ -282,6 +285,7 @@ BATTLESPACE_RESOURCE_DEPOSIT_CLAMPED = {
 
     _state set ["resources", _resources];
     BATTLESPACE_SECTOR_STATES set [_sector, _state];
+    [_sector, false] call BATTLESPACE_LOGISTICS_UPDATE_REFILL_STATE;
     _accepted
 };
 
@@ -308,6 +312,7 @@ BATTLESPACE_RESOURCE_RESTORE_TRANSFER = {
 
     _state set ["resources", _resources];
     BATTLESPACE_SECTOR_STATES set [_sector, _state];
+    [_sector, false] call BATTLESPACE_LOGISTICS_UPDATE_REFILL_STATE;
     _restored
 };
 
@@ -362,6 +367,7 @@ BATTLESPACE_LOGISTICS_SAVE = {
         _savedSectors set [_x, createHashMapFromArray [
             ["owner", _state getOrDefault ["owner", "BLUFOR"]],
             ["resources", _persistedResources],
+            ["refillingResources", +(_state getOrDefault ["refillingResources", []])],
             ["ownerAge", (CBA_missionTime - (_state getOrDefault ["lastOwnerChange", CBA_missionTime])) max 0],
             ["resupplyCooldown", ((_state getOrDefault ["nextResupplyAt", 0]) - CBA_missionTime) max 0],
             ["battlegroupCooldown", ((_state getOrDefault ["nextBattlegroupAt", 0]) - CBA_missionTime) max 0],
@@ -439,6 +445,10 @@ BATTLESPACE_LOGISTICS_LOAD = {
                     } forEach BATTLESPACE_RESOURCE_TYPES;
                 };
                 _state set ["resources", _resources];
+                private _refilling = _savedState getOrDefault ["refillingResources", []];
+                if (_refilling isEqualType []) then {
+                    _state set ["refillingResources", (_refilling arrayIntersect BATTLESPACE_RESOURCE_TYPES)];
+                };
             };
 
             if (_savedOwner == _currentOwner) then {
@@ -458,6 +468,7 @@ BATTLESPACE_LOGISTICS_LOAD = {
             };
         };
         BATTLESPACE_SECTOR_STATES set [_sector, _state];
+        [_sector, false] call BATTLESPACE_LOGISTICS_UPDATE_REFILL_STATE;
     } forEach sectors_allSectors;
 
     BATTLESPACE_STRATEGIC_OPERATIONS = createHashMap;
@@ -771,6 +782,41 @@ BATTLESPACE_CAPTURE_SECTOR_FOR_OPFOR = {
     true
 };
 
+BATTLESPACE_LOGISTICS_UPDATE_REFILL_STATE = {
+    params ["_sector", ["_startNew", true]];
+    if !([] call BATTLESPACE_STRATEGIC_SERVER_CALL_ALLOWED) exitWith {[]};
+    private _state = BATTLESPACE_SECTOR_STATES get _sector;
+    if (isNil "_state") exitWith {[]};
+    if ((_state getOrDefault ["owner", ""]) != "OPFOR") exitWith {
+        _state set ["refillingResources", []];
+        []
+    };
+
+    private _previous = _state getOrDefault ["refillingResources", []];
+    if (!_startNew && {_previous isEqualTo []}) exitWith {[]};
+    private _sectorType = _state get "type";
+    private _resources = _state get "resources";
+    private _thresholds = [_sectorType, "Resupply"] call BATTLESPACE_SECTOR_GET_THRESHOLD_MAP;
+    private _targetRatio = (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_RESUPPLY_TARGET_RATIO", 1]) max 0 min 1;
+    private _refilling = [];
+    // Ledger updates only close existing cycles; ordinary evaluation starts
+    // them. Completion is recorded immediately, before stock can be spent again.
+    private _toCheck = if (_startNew) then {BATTLESPACE_RESOURCE_TYPES} else {_previous};
+    {
+        private _threshold = _thresholds getOrDefault [_x, -1];
+        private _capacity = [_sector, _x, _sectorType] call BATTLESPACE_SECTOR_GET_EFFECTIVE_CAPACITY;
+        if (_threshold < 0 || {_capacity <= 0}) then {continue};
+        private _current = _resources getOrDefault [_x, 0];
+        private _trigger = ceil (_capacity * _threshold);
+        private _target = ceil (_capacity * (_targetRatio max _threshold min 1));
+        if (_current < _target && {_x in _previous || {_startNew && {_current < _trigger}}}) then {
+            _refilling pushBack _x;
+        };
+    } forEach _toCheck;
+    _state set ["refillingResources", _refilling];
+    _refilling
+};
+
 BATTLESPACE_LOGISTICS_BUILD_REQUEST = {
     params ["_sector", ["_thresholdType", "Resupply"]];
     private _request = createHashMap;
@@ -780,13 +826,18 @@ BATTLESPACE_LOGISTICS_BUILD_REQUEST = {
     private _sectorType = _state get "type";
     private _resources = _state get "resources";
     private _thresholds = [_sectorType, _thresholdType] call BATTLESPACE_SECTOR_GET_THRESHOLD_MAP;
+    private _normalResupply = _thresholdType == "Resupply";
+    private _refilling = if (_normalResupply) then {[_sector] call BATTLESPACE_LOGISTICS_UPDATE_REFILL_STATE} else {[]};
+    private _targetRatio = (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_RESUPPLY_TARGET_RATIO", 1]) max 0 min 1;
     {
         private _threshold = _thresholds getOrDefault [_x, -1];
         private _capacity = [_sector, _x, _sectorType] call BATTLESPACE_SECTOR_GET_EFFECTIVE_CAPACITY;
         if (_threshold < 0 || {_capacity <= 0}) then { continue };
+        if (_normalResupply && {!(_x in _refilling)}) then {continue};
 
         private _current = _resources getOrDefault [_x, 0];
-        private _desired = ceil (_capacity * _threshold);
+        private _desiredRatio = if (_normalResupply) then {_targetRatio max _threshold min 1} else {_threshold};
+        private _desired = ceil (_capacity * _desiredRatio);
         if (_current < _desired) then {
             private _batchLimit = (ceil (_capacity * 0.25)) max 1;
             _request set [_x, (_desired - _current) min _batchLimit];
@@ -801,6 +852,21 @@ BATTLESPACE_LOGISTICS_FIND_SECTOR_SOURCES = {
     private _targetNetwork = NETWORKED_SECTORS get _targetSector;
     if (isNil "_targetNetwork") exitWith { _candidates };
 
+    // Reduced forward capacity can leave the immediate neighbours with no
+    // surplus. Exhaust the connected on-map supply network before importing.
+    private _blocked = blufor_sectors + ["startbase_marker"];
+    private _potentialSources = [];
+    {
+        if ((_y getOrDefault ["owner", ""]) != "OPFOR") then {
+            _blocked pushBackUnique _x;
+        } else {
+            if (_x != _targetSector) then {_potentialSources pushBack _x};
+        };
+    } forEach BATTLESPACE_SECTOR_STATES;
+    private _reachable = [_targetSector, _potentialSources, _blocked] call NETWORKED_SECTORS_traverseGraphAndFindNodes;
+    private _directLinks = _targetNetwork getOrDefault ["Links", []];
+    private _targetPosition = getMarkerPos _targetSector;
+
     {
         private _source = _x;
         private _state = BATTLESPACE_SECTOR_STATES get _source;
@@ -808,10 +874,14 @@ BATTLESPACE_LOGISTICS_FIND_SECTOR_SOURCES = {
         private _sectorType = _state get "type";
         private _resources = _state get "resources";
         private _sendThresholds = [_sectorType, "ResupplySend"] call BATTLESPACE_SECTOR_GET_THRESHOLD_MAP;
+        private _refilling = [_source, false] call BATTLESPACE_LOGISTICS_UPDATE_REFILL_STATE;
         private _cargo = createHashMap;
         private _total = 0;
         {
             private _resourceType = _x;
+            // Keep incoming refill stock at its destination until that resource
+            // has recovered; other resources remain available to the network.
+            if (_resourceType in _refilling) then {continue};
             private _threshold = _sendThresholds getOrDefault [_resourceType, -1];
             if (_threshold < 0) then { continue };
 
@@ -829,12 +899,20 @@ BATTLESPACE_LOGISTICS_FIND_SECTOR_SOURCES = {
         } forEach _request;
 
         if (_total > 0) then {
-            _candidates pushBack [_total, _source, _cargo];
+            // Keep the existing neighbour-first policy and largest useful
+            // load preference. Distance breaks ties within each tier.
+            _candidates pushBack [
+                [1, 0] select (_source in _directLinks),
+                -_total,
+                _targetPosition distance2D (getMarkerPos _source),
+                _source,
+                _cargo
+            ];
         };
-    } forEach (_targetNetwork getOrDefault ["Links", []]);
+    } forEach _reachable;
 
-    _candidates = [_candidates, [], {_x param [0, 0]}, "DESCEND"] call BIS_fnc_sortBy;
-    _candidates apply {[_x param [1, ""], _x param [2, createHashMap]]}
+    _candidates sort true;
+    _candidates apply {[_x select 3, _x select 4]}
 };
 
 BATTLESPACE_LOGISTICS_BUILD_ENTRY_ANCHORS = {
@@ -1467,7 +1545,7 @@ BATTLESPACE_LOGISTICS_DISPATCH = {
         if !(BATTLESPACE_LOGISTICS_MISSING_ENTRY_WARNED getOrDefault [_targetSector, false]) then {
             BATTLESPACE_LOGISTICS_MISSING_ENTRY_WARNED set [_targetSector, true];
             [format [
-                "Convoy for %1 was not dispatched: no linked OPFOR sector can fund it and no reachable logistics_spawn marker exists",
+                "Convoy for %1 was not dispatched: no reachable OPFOR sector can fund it and no reachable logistics_spawn marker exists",
                 _targetSector
             ], "WARNING"] call BATTLESPACE_STRATEGIC_LOG;
         };
@@ -1485,6 +1563,14 @@ BATTLESPACE_LOGISTICS_DISPATCH = {
     ] call BATTLESPACE_LOGISTICS_CREATE_CONVOY;
     if (_taskForceId == "") exitWith {
         false
+    };
+    if (_sourceSector == "") then {
+        private _reason = if (_sourceCandidates isEqualTo []) then {
+            "no reachable OPFOR supplier offered surplus for the requested cargo"
+        } else {
+            format ["none of %1 reachable cargo suppliers could fund the convoy vehicles and crew", count _sourceCandidates]
+        };
+        [format ["Off-map resupply for %1 from %2: %3", _targetSector, _sourceMarker, _reason]] call BATTLESPACE_STRATEGIC_LOG;
     };
     BATTLESPACE_LOGISTICS_MISSING_ENTRY_WARNED deleteAt _targetSector;
     true
@@ -1713,11 +1799,10 @@ if (isServer) then {
         private _defenderDecisionInterval = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DEFENDER_DECISION_INTERVAL", 600];
         private _nextDecision = CBA_missionTime + _strategicInitialDelay;
         private _nextDefenseDecision = CBA_missionTime + _strategicInitialDelay;
-        private _nextOffensiveDecision = CBA_missionTime + _strategicInitialDelay;
         private _nextAirResponse = CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_AIR_RESPONSE_INITIAL_DELAY", 600]);
         private _nextSave = CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_SAVE_INTERVAL", 300]);
         [format [
-            "Defender allocation scheduled: first pass in %1 seconds, then every %2 seconds; active/player-observed targets are eligible",
+            "Defender and offensive allocation scheduled: first pass in %1 seconds, then every %2 seconds; existing role and opportunity gates apply",
             _strategicInitialDelay,
             _defenderDecisionInterval
         ]] call BATTLESPACE_STRATEGIC_LOG;
@@ -1745,15 +1830,11 @@ if (isServer) then {
                 _nextDecision = CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DECISION_INTERVAL", 1800]);
             };
 
-            if (CBA_missionTime >= _nextOffensiveDecision) then {
-                [] call BATTLESPACE_BATTLEGROUP_DECISION_TICK;
-                _nextOffensiveDecision = CBA_missionTime + BATTLESPACE_OFFENSIVE_DECISION_INTERVAL;
-            };
-
             if (CBA_missionTime >= _nextDefenseDecision) then {
                 if (!isNil "BATTLESPACE_DEFENSE_DECISION_TICK") then {
                     [] call BATTLESPACE_DEFENSE_DECISION_TICK;
                 };
+                [] call BATTLESPACE_BATTLEGROUP_DECISION_TICK;
                 _nextDefenseDecision = CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DEFENDER_DECISION_INTERVAL", 600]);
             };
 

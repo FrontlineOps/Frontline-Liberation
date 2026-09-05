@@ -886,13 +886,15 @@ private _constructionCapacityBySector = createHashMapFromArray [
 	["factory", 36]
 ];
 private _constructionThresholdPolicy = createHashMapFromArray [
-	["ResupplySend", 0.75],
-	["SendReinforcements", -1],
-	["Resupply", 1.0],
-	["EmergencyResupply", -1],
-	["Battlegroup", -1],
-	["Deep Reconnaissance Patrol", -1],
-	["Fortification", 0.5]
+    // Keep half for local defenses and share surplus through on-map logistics.
+    // Request below half, then let the normal refill cycle recover toward full.
+    ["ResupplySend", 0.5],
+    ["SendReinforcements", -1],
+    ["Resupply", 0.5],
+    ["EmergencyResupply", -1],
+    ["Battlegroup", -1],
+    ["Deep Reconnaissance Patrol", -1],
+    ["Fortification", 0.5]
 ];
 {
 	private _sectorType = _x;
