@@ -184,17 +184,26 @@ BATTLESPACE_STRATEGIC_EMERGENCY_COOLDOWN = 900;
 // stock stranded above a reduced allowance waits for a finite convoy to move it deeper.
 BATTLESPACE_STRATEGIC_FRONT_STOCK_CAPACITY_MULTIPLIERS = [0.25, 0.5, 0.75, 1.0];
 // Paid defensive groups are formed in depth and dispatched as persistent task forces.
-// One of each role may cover an objective; eligible uncovered objectives receive priority.
+// Fill frontline strength deficits before rear coverage; ordinary objectives allow one of each role.
 BATTLESPACE_STRATEGIC_MAX_ACTIVE_DEFENDERS = 48;
-BATTLESPACE_STRATEGIC_MAX_DEFENDERS_PER_TICK = 2;
+BATTLESPACE_STRATEGIC_MAX_DEFENDERS_PER_TICK = 6;
 BATTLESPACE_STRATEGIC_DEFENDER_DECISION_INTERVAL = 600;
+// Desired surviving infantry at front depths 0/1/2/3; incoming groups count toward the target.
+// Whole groups may exceed a target. Existing forces are never culled to meet it.
+BATTLESPACE_STRATEGIC_DEFENDER_MANPOWER_BY_DEPTH = [16, 9, 9, 9];
+// [frontline objective type, total manpower target, manpower allowance per role]
+// The physical spawner splits larger formations into nine-man squads.
+BATTLESPACE_STRATEGIC_DEFENDER_FRONT_FORMATIONS = [
+    ["military", 36, 9],
+    ["bigtown", 72, 18]
+];
 BATTLESPACE_STRATEGIC_DEFENDER_QUIET_TIME = 300;
 BATTLESPACE_STRATEGIC_DEFENDER_SOURCE_RESERVE_RATIO = 0.4;
 BATTLESPACE_STRATEGIC_DEFENDER_ARRIVAL_RADIUS = 100;
 BATTLESPACE_STRATEGIC_DEFENSIVE_PATROL_VEHICLE_CHANCE = 0.20; // At most one light vehicle per patrol.
 // [purpose, model, manpower, global cap, max target depth, objective types, on-station duration range]
 BATTLESPACE_STRATEGIC_DEFENDER_ROLES = [
-    ["GARRISON", "Garrison", 9, 16, 3, ["military", "bigtown", "factory", "capture"], [0, 0]],
+    ["GARRISON", "Garrison", 9, 16, 3, ["military", "bigtown", "factory", "capture", "tower"], [0, 0]],
     ["DEFENSIVE_PATROL", "Defensive Patrol", 7, 16, 2, ["military", "bigtown", "factory", "capture", "tower"], [2400, 3600]],
     ["RECON_SCREEN", "Reconnaissance Patrol", 7, 10, 1, ["military", "bigtown", "factory", "capture", "tower"], [1800, 3000]],
     ["AMBUSH", "Ambush Patrol", 7, 6, 1, ["military", "bigtown", "factory", "capture", "tower"], [2400, 3600]]

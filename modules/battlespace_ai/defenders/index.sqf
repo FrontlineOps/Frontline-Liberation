@@ -65,17 +65,71 @@ BATTLESPACE_DEFENSE_COUNT_ROLE = {
     _count
 };
 
-BATTLESPACE_DEFENSE_COUNT_AT_SECTOR = {
-    params ["_targetSector"];
-    private _count = 0;
+BATTLESPACE_DEFENSE_BUILD_COVERAGE = {
+    // Rebuilt once per allocation pass, including after load. The logical
+    // manifest already tracks casualties and survives physical virtualization.
+    private _coverage = createHashMap;
     {
-        if (
-            (_y getOrDefault ["kind", ""]) == "DEFENDER"
-            && {(_y getOrDefault ["assignedSector", ""]) == _targetSector}
-            && {(_y getOrDefault ["phase", ""]) != "RETURNING"}
-        ) then {_count = _count + 1};
+        if ((_y getOrDefault ["kind", ""]) != "DEFENDER") then {continue};
+        private _phase = _y getOrDefault ["phase", ""];
+        if !(_phase in ["DEPLOYING", "ON_STATION", "ENGAGED", "DISPLACING"]) then {continue};
+        private _sector = _y getOrDefault ["assignedSector", ""];
+        if (_sector == "") then {continue};
+        private _taskForce = BATTLESPACE_TASK_FORCES get _x;
+        if (isNil "_taskForce") then {continue};
+        private _manpower = ((_taskForce param [3, createHashMap]) getOrDefault ["manpower", 0]) max 0;
+        private _strength = _coverage getOrDefault [_sector, [0, 0]];
+        private _index = [0, 1] select (_phase == "DEPLOYING");
+        _strength set [_index, (_strength select _index) + _manpower];
+        _coverage set [_sector, _strength];
     } forEach BATTLESPACE_STRATEGIC_OPERATIONS;
-    _count
+    _coverage
+};
+
+BATTLESPACE_DEFENSE_GET_MANPOWER_TARGET = {
+    params ["_sectorType", "_depth"];
+    private _targets = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DEFENDER_MANPOWER_BY_DEPTH", [16, 9, 9, 9]];
+    if (_depth < 0 || {_depth >= count _targets}) exitWith {0};
+    private _target = (_targets select _depth) max 0;
+    if (_depth == 0) then {
+        {
+            if ((_x select 0) == _sectorType) exitWith {
+                _target = _target max (_x select 1);
+            };
+        } forEach (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DEFENDER_FRONT_FORMATIONS", []]);
+    };
+    _target
+};
+
+BATTLESPACE_DEFENSE_BUILD_ROLE_DEFINITION = {
+    params ["_targetSector", "_baseDefinition"];
+    private _definition = +_baseDefinition;
+    private _role = _definition select 0;
+    private _state = BATTLESPACE_SECTOR_STATES getOrDefault [_targetSector, createHashMap];
+    private _sectorType = _state getOrDefault ["type", ""];
+    private _formations = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DEFENDER_FRONT_FORMATIONS", []];
+    private _formation = (_formations select {(_x select 0) == _sectorType}) param [0, []];
+    if (_formation isEqualTo [] || {[_targetSector] call BATTLESPACE_DEFENSE_GET_FRONT_DEPTH != 0}) exitWith {
+        if ([_role, _targetSector] call BATTLESPACE_DEFENSE_COUNT_ROLE > 0) then {[]} else {_definition}
+    };
+
+    private _committed = 0;
+    {
+        if ((_y getOrDefault ["kind", ""]) != "DEFENDER") then {continue};
+        if ((_y getOrDefault ["assignedSector", ""]) != _targetSector) then {continue};
+        if ((_y getOrDefault ["defenseRole", ""]) != _role) then {continue};
+        if !((_y getOrDefault ["phase", ""]) in ["DEPLOYING", "ON_STATION", "ENGAGED", "DISPLACING"]) then {continue};
+        private _taskForce = BATTLESPACE_TASK_FORCES get _x;
+        if (isNil "_taskForce") then {continue};
+        _committed = _committed + (((_taskForce param [3, createHashMap]) getOrDefault ["manpower", 0]) max 0);
+    } forEach BATTLESPACE_STRATEGIC_OPERATIONS;
+    private _missing = (_formation select 2) - _committed;
+    if (_missing <= 0) exitWith {[]};
+
+    // Supplement older/smaller assignments with paid travelling squads. Do
+    // not resize their manifests or leave 1-2-man spawn remainders behind.
+    _definition set [2, 9 * ceil (_missing / 9)];
+    _definition
 };
 
 BATTLESPACE_DEFENSE_FIND_SOURCE = {
@@ -127,8 +181,9 @@ BATTLESPACE_DEFENSE_PICK_PATROL_VEHICLE = {
 
 BATTLESPACE_DEFENSE_DISPATCH_ROLE = {
     params ["_targetSector", "_roleDefinition"];
+    _roleDefinition = [_targetSector, _roleDefinition] call BATTLESPACE_DEFENSE_BUILD_ROLE_DEFINITION;
+    if (_roleDefinition isEqualTo []) exitWith {false};
     _roleDefinition params ["_role", "_model", "_manpower", "_roleCap", "_maximumDepth", "_sectorTypes", ["_tourRange", [0, 0]]];
-    if ([_role, _targetSector] call BATTLESPACE_DEFENSE_COUNT_ROLE > 0) exitWith {false};
     if ([_role] call BATTLESPACE_DEFENSE_COUNT_ROLE >= _roleCap) exitWith {false};
 
     private _sourceSector = [_targetSector, _manpower] call BATTLESPACE_DEFENSE_FIND_SOURCE;
@@ -412,56 +467,91 @@ BATTLESPACE_DEFENSE_DECISION_TICK = {
 
     private _maxActive = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_ACTIVE_DEFENDERS", 24];
     private _activeDefenders = ["DEFENDER"] call BATTLESPACE_STRATEGIC_COUNT_OPERATIONS;
-    private _formationLimit = (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_DEFENDERS_PER_TICK", 2]) min ((_maxActive - _activeDefenders) max 0);
+    private _formationLimit = (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_DEFENDERS_PER_TICK", 6]) min ((_maxActive - _activeDefenders) max 0);
     private _candidates = [];
     private _roles = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DEFENDER_ROLES", []];
+    private _coverage = [] call BATTLESPACE_DEFENSE_BUILD_COVERAGE;
     {
         private _targetSector = _x;
         if ((_y getOrDefault ["owner", ""]) != "OPFOR") then {continue};
         if !([_targetSector, _y] call BATTLESPACE_DEFENSE_SECTOR_COOLDOWN_ELAPSED) then {continue};
 
         private _depth = [_targetSector] call BATTLESPACE_DEFENSE_GET_FRONT_DEPTH;
-        private _assignedCount = [_targetSector] call BATTLESPACE_DEFENSE_COUNT_AT_SECTOR;
         private _sectorType = _y getOrDefault ["type", ""];
+        private _targetManpower = [_sectorType, _depth] call BATTLESPACE_DEFENSE_GET_MANPOWER_TARGET;
+        if (_targetManpower <= 0) then {continue};
+        private _strength = _coverage getOrDefault [_targetSector, [0, 0]];
+        _strength params ["_onStation", "_incoming"];
+        private _deficit = _targetManpower - _onStation - _incoming;
+        if (_deficit <= 0) then {continue};
+
+        // Empty fronts first, then understrength fronts, then supporting depth.
+        // Arrivals remain distinct from current coverage, but reserve their
+        // manpower so repeated decisions cannot keep filling the same gap.
+        private _tier = if (_depth == 0) then {
+            [1, 0] select (_onStation + _incoming <= 0)
+        } else {
+            2
+        };
         {
-            _x params ["_role", "_model", "_manpower", "_roleCap", "_maximumDepth", "_sectorTypes", ["_tourRange", [0, 0]]];
+            private _roleDefinition = [_targetSector, _x] call BATTLESPACE_DEFENSE_BUILD_ROLE_DEFINITION;
+            if (_roleDefinition isEqualTo []) then {continue};
+            _roleDefinition params ["_role", "_model", "_manpower", "_roleCap", "_maximumDepth", "_sectorTypes", ["_tourRange", [0, 0]]];
             if (_depth < 0 || {_depth > _maximumDepth} || {!(_sectorType in _sectorTypes)}) then {continue};
             private _roleCount = [_role] call BATTLESPACE_DEFENSE_COUNT_ROLE;
-            if (_roleCount >= _roleCap || {[_role, _targetSector] call BATTLESPACE_DEFENSE_COUNT_ROLE > 0}) then {continue};
-            private _deficit = _roleCap - _roleCount;
-            // Within each coverage tier, non-overlapping score bands preserve:
-            // role shortage, front depth, existing coverage, military type, randomness.
-            private _frontPriority = -(_depth * 10000);
-            private _coveragePriority = -(_assignedCount * 100);
-            private _typePriority = [0, 50] select (_sectorType == "military");
-            _candidates pushBack [(_deficit * 1000000) + _frontPriority + _coveragePriority + _typePriority + random 25, _targetSector, _x, _assignedCount == 0];
+            if (_roleCount >= _roleCap) then {continue};
+            // Lexicographic ordering keeps strength ahead of role variety.
+            // Prefer the group which best fits the remaining funded deficit.
+            private _priority = [
+                _tier,
+                _depth,
+                -((_targetManpower - _onStation) / _targetManpower),
+                -(_deficit / _targetManpower),
+                -_deficit,
+                abs (_deficit - _manpower),
+                -((_roleCap - _roleCount) / (_roleCap max 1)),
+                random 1
+            ];
+            // Native sort compares scalar columns; a nested priority array
+            // would be ignored. Keep the assignment payload after those keys.
+            _candidates pushBack (_priority + [[_targetSector, _roleDefinition, _targetManpower]]);
         } forEach _roles;
     } forEach BATTLESPACE_SECTOR_STATES;
-    _candidates = [_candidates, [], {_x param [0, 0]}, "DESCEND"] call BIS_fnc_sortBy;
-    // Give eligible gaps their first defender before layering another role onto a covered objective.
-    _candidates = (_candidates select {_x select 3}) + (_candidates select {!(_x select 3)});
+    _candidates sort true;
+    _candidates = _candidates apply {_x select 8};
 
     private _formed = 0;
     private _selectedTargets = [];
+    private _allocationDetails = [];
     {
         if (_formed >= _formationLimit) exitWith {};
         if (["DEFENDER"] call BATTLESPACE_STRATEGIC_COUNT_OPERATIONS >= _maxActive) exitWith {};
-        private _targetSector = _x param [1, ""];
+        _x params ["_targetSector", "_roleDefinition", "_targetManpower"];
         if (_targetSector in _selectedTargets) then {continue};
-        if ([_targetSector, _x param [2, []]] call BATTLESPACE_DEFENSE_DISPATCH_ROLE) then {
+        if ([_targetSector, _roleDefinition] call BATTLESPACE_DEFENSE_DISPATCH_ROLE) then {
             _selectedTargets pushBack _targetSector;
             _formed = _formed + 1;
+            private _strength = _coverage getOrDefault [_targetSector, [0, 0]];
+            private _newManpower = _roleDefinition select 2;
+            _allocationDetails pushBack format [
+                "%1: onStation=%2 incoming=%3 target=%4",
+                _targetSector,
+                _strength select 0,
+                (_strength select 1) + _newManpower,
+                _targetManpower
+            ];
         };
     } forEach _candidates;
     if (_formed > 0 || {_reservesFormed > 0} || {_reservesRestaged > 0}) then {
         [] call BATTLESPACE_LOGISTICS_SAVE;
         [format [
-            "Defensive allocation pass formed %1 assigned defender(s) across %2 distinct target(s) [%3], formed %4 reserve(s), and restaged %5 existing reserve(s)",
+            "Defensive allocation pass formed %1 assigned defender(s) across %2 distinct target(s) [%3], formed %4 reserve(s), and restaged %5 existing reserve(s); strength [%6]",
             _formed,
             count _selectedTargets,
             _selectedTargets joinString ", ",
             _reservesFormed,
-            _reservesRestaged
+            _reservesRestaged,
+            _allocationDetails joinString "; "
         ]] call BATTLESPACE_STRATEGIC_LOG;
     };
 };
@@ -502,5 +592,5 @@ BATTLESPACE_DEFENDERS_CREATE_AMBIENT_CIVILIANS = {
 };
 
 if (isServer) then {
-    [format ["Defensive allocation configured: uncovered objectives first, reserve staging depths %1-%2, patrol vehicle chance %3 percent", BATTLESPACE_STRATEGIC_RESERVE_MIN_FRONT_DEPTH, BATTLESPACE_STRATEGIC_RESERVE_MAX_FRONT_DEPTH, 100 * BATTLESPACE_STRATEGIC_DEFENSIVE_PATROL_VEHICLE_CHANCE], "BATTLESPACE"] call KPLIB_fnc_log;
+    [format ["Defensive allocation configured: frontline strength deficits first, up to %1 groups per pass, reserve staging depths %2-%3, patrol vehicle chance %4 percent", BATTLESPACE_STRATEGIC_MAX_DEFENDERS_PER_TICK, BATTLESPACE_STRATEGIC_RESERVE_MIN_FRONT_DEPTH, BATTLESPACE_STRATEGIC_RESERVE_MAX_FRONT_DEPTH, 100 * BATTLESPACE_STRATEGIC_DEFENSIVE_PATROL_VEHICLE_CHANCE], "BATTLESPACE"] call KPLIB_fnc_log;
 };
