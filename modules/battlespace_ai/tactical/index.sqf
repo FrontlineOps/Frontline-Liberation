@@ -29,7 +29,9 @@ BATTLESPACE_STRATEGIC_GET_RESOURCE_FOR_CLASS = {
             if ((_text find "rocket") >= 0 || {(_text find "mlrs") >= 0} || {(_text find "grad") >= 0}) then {"rocket_artillery"} else {"howitzers"}
         }
     };
-    if ("aa" in _categories) exitWith {if (_class isKindOf "StaticWeapon") then {"tactical_sam"} else {"spaag"}};
+    if ("samTel" in _categories || {"samRadar" in _categories}) exitWith {"strategic_sam"};
+    if ("samShorad" in _categories) exitWith {"tactical_sam"};
+    if ("aaGun" in _categories) exitWith {"spaag"};
     if (_class isKindOf "StaticWeapon") exitWith {"car"};
     if (_class isKindOf "Tank") exitWith {if (getNumber (configFile >> "CfgVehicles" >> _class >> "transportSoldier") > 0) then {"ifv"} else {"tanks"}};
     if ("groundLogistics" in _categories) exitWith {"truck"};

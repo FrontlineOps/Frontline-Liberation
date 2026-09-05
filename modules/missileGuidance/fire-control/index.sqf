@@ -13,12 +13,7 @@ IADS_Tracks = [];
 
 IADS_LaunchVehicles = [];
 IADS_SearchRadars = [];
-IADS_SearchRadarClasses = ["karmakut_9s32", "O_Radar_System_02_F", "pook_9K332_Root", "karmakut_sa15", "karmakut_mpq65"];
-IADS_LaunchVehicleClasses = ["karmakut_sa20", "O_SAM_System_04_F", "pook_9K332_Root", "pook_9K37_Root", "karmakut_sa15", "karmakut_sa6", "karmakut_tamir"];
-IADS_VLS = ["karmakut_sa20", "karmakut_sa15"];
-IADS_IGNORE_TURN = ["karmakut_sa20"];
-IADS_POINT_DEFENSE = ["pook_9K332_Root", "karmakut_sa15", "karmakut_tamir", "karmakut_sa20"];
-IADS_CRAM = ["karmakut_tamir"];
+[] call compileFinal preprocessFileLineNumbers "modules\missileGuidance\fire-control\catalog.sqf";
 
 
 [] call compileFinal preprocessFileLineNumbers "modules\missileGuidance\fire-control\calculateImpactPoint.sqf";
@@ -44,6 +39,8 @@ IADS_DISABLE_AUTOFIRE = {
 		[_this select 1] call CBA_fnc_removePerFrameHandler;
 	};
 
+    if (!local _vehicle || {isPlayer gunner _vehicle}) exitWith {};
+
 	(group _vehicle) setCombatMode "BLUE";
 
 	_vehicle setUnitCombatMode "BLUE";
@@ -65,7 +62,9 @@ IADS_DISABLE_AUTOFIRE = {
 		"init",
 		{
 			private _vehicle = _this#0;
-			IADS_LaunchVehicles pushBack _vehicle;
+            IADS_LaunchVehicles pushBackUnique _vehicle;
+            if (_vehicle getVariable ["IADS_FireControlRegistered", false]) exitWith {};
+            _vehicle setVariable ["IADS_FireControlRegistered", true];
 
 			
 			_vehicle setVehicleReportRemoteTargets ((typeOf _vehicle) in IADS_SearchRadarClasses);
@@ -91,7 +90,8 @@ IADS_DISABLE_AUTOFIRE = {
 		_x, 
 		"init", {
 			private _vehicle = _this#0;
-			IADS_SearchRadars pushBack _vehicle;
+            IADS_SearchRadars pushBackUnique _vehicle;
+            if (!local _vehicle) exitWith {};
 			_vehicle setVehicleRadar 1;
 			_vehicle setVehicleReportRemoteTargets true;
 			_vehicle setVehicleReceiveRemoteTargets true;

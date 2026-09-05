@@ -510,7 +510,9 @@ BATTLESPACE_STRATEGIC_BUILD_CLASS_POOLS = {
     private _aircraft = _all select {_x isKindOf "Air"};
     private _heavy = [(_opfor getOrDefault ["heavy", []])] call _validClasses;
     private _transport = [(_opfor getOrDefault ["transport", []])] call _validClasses;
-    private _aa = [(_opfor getOrDefault ["aa", []])] call _validClasses;
+    private _sam = [(_opfor getOrDefault ["samTel", []]) + (_opfor getOrDefault ["samRadar", []])] call _validClasses;
+    private _shorad = [(_opfor getOrDefault ["samShorad", []])] call _validClasses;
+    private _aaGuns = [(_opfor getOrDefault ["aaGun", []])] call _validClasses;
     private _artillery = [(_opfor getOrDefault ["artillery", []])] call _validClasses;
     private _light = [(_opfor getOrDefault ["light", []]) + (_opfor getOrDefault ["recon", []])] call _validClasses;
     private _mobileGround = {
@@ -544,14 +546,14 @@ BATTLESPACE_STRATEGIC_BUILD_CLASS_POOLS = {
     if (_howitzers isEqualTo []) then { _howitzers = +_artillery };
 
     BATTLESPACE_RESOURCE_CLASS_POOLS = createHashMapFromArray [
-        ["strategic_sam", +_aa],
-        ["tactical_sam", +_aa],
+        ["strategic_sam", _sam],
+        ["tactical_sam", _shorad],
         ["aircraft", _aircraft],
         ["tanks", _tanks],
         ["rocket_artillery", _rocketArtillery],
         ["howitzers", _howitzers],
         ["mortars", _mortars],
-        ["spaag", [_aa] call _mobileGround],
+        ["spaag", [_aaGuns] call _mobileGround],
         ["ifv", _armoredTransport],
         ["apc", _apcs],
         ["car", _light],

@@ -308,7 +308,9 @@ IADS_QueueFire = {
 						params ["_launcher", "_target"];
 
 						if(!(alive _target)) exitWith {};
-						_launcher fireAtTarget [_target, currentWeapon _launcher];
+                        private _weapons = ([typeOf _launcher] call KPLIB_fnc_getVehicleAirDefense) get "missileWeapons";
+                        if (_weapons isEqualTo [] || {!local _launcher} || {!alive _launcher}) exitWith {};
+                        _launcher fireAtTarget [_target, _weapons # 0];
 
 						[_target] remoteExec ["IADS_LaunchWarning", 0];
 						// [_launcher, currentWeapon _launcher] call BIS_fnc_fire;

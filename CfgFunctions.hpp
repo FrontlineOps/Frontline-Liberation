@@ -120,6 +120,7 @@ class KPLIB {
         class buildFactionCatalog          {};
         class buildFactionIndex            {};
         class classifyFactionVehicle       {};
+        class getVehicleAirDefense         {};
         class collectFactionArsenal        {};
         class getAutomaticFactionPrice     {};
         class getConfigCargo               {};

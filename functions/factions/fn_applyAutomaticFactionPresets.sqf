@@ -213,12 +213,11 @@ private _opfor = _catalogs get "opfor";
     private _transportPool = (_opfor get "transport") select {!(_x isKindOf "Air")};
     if (_transportPool isEqualTo []) then {_transportPool = +_generalPool};
     private _aaPool = +(_opfor get "aa");
-    if (_aaPool isEqualTo []) then {_aaPool = +_generalPool};
 
     militia_vehicles = +_generalPool;
     opfor_vehicles = +_generalPool;
     opfor_vehicles_low_intensity = +opfor_vehicles;
-    opfor_battlegroup_vehicles = _heavyPool + (_opfor get "aa") + (_opfor get "atgm") + (_opfor get "artillery");
+    opfor_battlegroup_vehicles = _heavyPool + ((_opfor get "aa") - (_opfor get "samRadar")) + (_opfor get "atgm") + (_opfor get "artillery");
     opfor_battlegroup_vehicles_low_intensity = _heavyPool + _generalPool;
     opfor_troup_transports = +_transportPool;
     opfor_choppers = (_opfor get "rotaryCas") + (_opfor get "rotaryLogistics");
@@ -249,12 +248,12 @@ private _opfor = _catalogs get "opfor";
     opfor_ammo_truck = [_logisticsPool, _generalClass] call _first;
     [opfor_ammobox_transport] call _registerTransportConfig;
 
-    BATTLESPACE_DEFENDERS_STATIC_CLASSES = +(_opfor get "static");
+    BATTLESPACE_DEFENDERS_STATIC_CLASSES = (_opfor get "static") - (_opfor get "samRadar");
 
-    BATTLESPACE_SAM_SITE_TELS = +(_opfor get "aa");
-    BATTLESPACE_SAM_SITE_FCRS = +(_opfor get "aa");
-    BATTLESPACE_SAM_SITE_SHORAD = (_opfor get "aa") apply {[_x]};
-    BATTLESPACE_ENABLE_SAM_SPAWNS = (_opfor get "aa") isNotEqualTo [];
+    BATTLESPACE_SAM_SITE_TELS = +(_opfor get "samTel");
+    BATTLESPACE_SAM_SITE_FCRS = +(_opfor get "samRadar");
+    BATTLESPACE_SAM_SITE_SHORAD = (_opfor get "samShorad") apply {[_x]};
+    [format ["Generated air defense: %1 TELs, %2 radars, %3 SHORAD, %4 gun AA", count BATTLESPACE_SAM_SITE_TELS, count BATTLESPACE_SAM_SITE_FCRS, count BATTLESPACE_SAM_SITE_SHORAD, count (_opfor get "aaGun")], "FACTIONS"] call KPLIB_fnc_log;
 
     private _artillery = _opfor get "artillery";
     if (_artillery isNotEqualTo []) then {

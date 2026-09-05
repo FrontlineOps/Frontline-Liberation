@@ -26,6 +26,10 @@ private _empty = createHashMapFromArray [
     ["artillery", []],
     ["atgm", []],
     ["aa", []],
+    ["samTel", []],
+    ["samRadar", []],
+    ["samShorad", []],
+    ["aaGun", []],
     ["heavy", []],
     ["rotaryLogistics", []],
     ["rotaryCas", []],
@@ -69,7 +73,7 @@ private _pools = createHashMap;
     _pools set [_x, []];
 } forEach [
     "allVehicles", "light", "recon", "medical", "groundLogistics",
-    "artillery", "atgm", "aa", "heavy", "rotaryLogistics",
+    "artillery", "atgm", "aa", "samTel", "samRadar", "samShorad", "aaGun", "heavy", "rotaryLogistics",
     "rotaryCas", "fixedWing", "static", "transport", "boat", "crates",
     "containers"
 ];

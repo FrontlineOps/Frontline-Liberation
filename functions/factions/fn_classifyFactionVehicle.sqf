@@ -38,17 +38,10 @@ private _armed = (_weapons findIf {
     !(_weapon in _utilityWeapons) && {(_weapon find "horn") < 0} && {(_weapon find "laserdesignator") != 0}
 }) >= 0;
 
-private _isAA =
-    (["aa"] call _hasToken) ||
-    {["sam"] call _hasText} ||
-    {["anti-air"] call _hasText} ||
-    {["antiair"] call _hasText} ||
-    {["stinger"] call _hasText} ||
-    {["igla"] call _hasText} ||
-    {["shilka"] call _hasText} ||
-    {["tunguska"] call _hasText} ||
-    {["zu23"] call _hasText} ||
-    {["zsu"] call _hasText};
+private _airDefense = [_class] call KPLIB_fnc_getVehicleAirDefense;
+private _airDefenseRole = _airDefense get "role";
+private _isAA = _airDefenseRole != "";
+if (_isAA) then {_categories pushBack _airDefenseRole};
 
 private _isATGM =
     (["atgm"] call _hasText) ||
@@ -119,7 +112,7 @@ if (_class isKindOf "LandVehicle") then {
         if !(_isArtillery || {_isATGM} || {_isAA}) then {_categories pushBack "heavy"};
         if (getNumber (_cfg >> "transportSoldier") > 0) then {_categories pushBack "transport"};
     } else {
-        if !(_isMedical || {_isLogistics}) then {_categories pushBack "light"};
+        if !(_isMedical || {_isLogistics} || {_airDefenseRole == "samRadar"}) then {_categories pushBack "light"};
         if (getNumber (_cfg >> "transportSoldier") > 0) then {_categories pushBack "transport"};
     };
 };

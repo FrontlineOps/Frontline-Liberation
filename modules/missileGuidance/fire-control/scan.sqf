@@ -79,6 +79,10 @@ IADS_Sweep = {
 
 	private _removes = [];
 
+    // Prune even when this machine has no custom launcher to run a sweep for.
+    IADS_LaunchVehicles = IADS_LaunchVehicles select {!isNull _x && {alive _x}};
+    IADS_SearchRadars = IADS_SearchRadars select {!isNull _x && {alive _x}};
+
 	private _hasOne = false;
 	{
 		if((local _x) && (alive _x)) then {

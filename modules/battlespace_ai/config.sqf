@@ -907,28 +907,11 @@ private _constructionThresholdPolicy = createHashMapFromArray [
 
 // SAMS
 BATTLESPACE_SAM_SITE_LIMIT = 4;
-BATTLESPACE_SAM_SITE_COMPOSITION = createHashMapFromArray [
-	[
-		"TEL",
-		1
-	],
-	[
-		"FCR",
-		1
-	]
-];
-BATTLESPACE_SAM_SITE_TELS = [
-	"karmakut_sa15",
-	"karmakut_sa20"
-];
-
-BATTLESPACE_SAM_SITE_FCRS = [
-	"karmakut_9s32"
-];
-
-BATTLESPACE_SAM_SITE_SHORAD = [
-	["UK3CB_KDF_O_Igla_AA_pod"]
-];
+BATTLESPACE_SAM_SITE_COMPOSITION = createHashMapFromArray [["TEL", 1], ["FCR", 1]];
+// Populated from the selected OPFOR catalog after faction generation.
+BATTLESPACE_SAM_SITE_TELS = [];
+BATTLESPACE_SAM_SITE_FCRS = [];
+BATTLESPACE_SAM_SITE_SHORAD = [];
 
 BATTLESPACE_SAM_PROC_RANGE = 6000;
 // 2hr 20m
