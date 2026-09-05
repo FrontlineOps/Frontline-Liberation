@@ -72,10 +72,7 @@ _player addAction [
         isNull (objectParent _originalTarget)
         && {alive _originalTarget}
         && {_originalTarget getVariable ['KPLIB_fobDist', 99999] < (GRLIB_fob_range * 0.8)}
-        && {
-            _originalTarget getVariable ['KPLIB_hasDirectAccess', false]
-            || {getPlayerUID _originalTarget in karmaLibBuild}
-        }
+        && {[_originalTarget, 'BUILD'] call KPLIB_fnc_hasPermission}
         && {build_confirmed isEqualTo 0}
     "
 ];
@@ -116,11 +113,7 @@ _player addAction [
         !(_originalTarget getVariable ['KPLIB_nearProd', []] isEqualTo [])
         && {isNull (objectParent _originalTarget)}
         && {alive _originalTarget}
-        && {
-            _originalTarget getVariable ['KPLIB_hasDirectAccess', false]
-            || {getPlayerUID _originalTarget in karmaLibBuild}
-            || {(_originalTarget getVariable ['resupplySquadGroupFlag', 'NONE']) == 'LOGI'}
-        }
+        && {[_originalTarget, 'BUILD'] call KPLIB_fnc_hasPermission}
         && {(_originalTarget getVariable ['KPLIB_nearProd', []] select 3) isEqualTo []}
         && {build_confirmed isEqualTo 0}
     "
@@ -139,11 +132,7 @@ _player addAction [
         !(_originalTarget getVariable ['KPLIB_nearProd', []] isEqualTo [])
         && {isNull (objectParent _originalTarget)}
         && {alive _originalTarget}
-        && {
-            _originalTarget getVariable ['KPLIB_hasDirectAccess', false]
-            || {getPlayerUID _originalTarget in karmaLibBuild}
-            || {(_originalTarget getVariable ['resupplySquadGroupFlag', 'NONE']) == 'LOGI'}
-        }
+        && {[_originalTarget, 'BUILD'] call KPLIB_fnc_hasPermission}
         && {!((_originalTarget getVariable ['KPLIB_nearProd', []] select 3) isEqualTo [])}
         && {!((_originalTarget getVariable ['KPLIB_nearProd', []]) select 4)}
         && {build_confirmed isEqualTo 0}
@@ -163,11 +152,7 @@ _player addAction [
         !(_originalTarget getVariable ['KPLIB_nearProd', []] isEqualTo [])
         && {isNull (objectParent _originalTarget)}
         && {alive _originalTarget}
-        && {
-            _originalTarget getVariable ['KPLIB_hasDirectAccess', false]
-            || {getPlayerUID _originalTarget in karmaLibBuild}
-            || {(_originalTarget getVariable ['resupplySquadGroupFlag', 'NONE']) == 'LOGI'}
-        }
+        && {[_originalTarget, 'BUILD'] call KPLIB_fnc_hasPermission}
         && {!((_originalTarget getVariable ['KPLIB_nearProd', []] select 3) isEqualTo [])}
         && {!((_originalTarget getVariable ['KPLIB_nearProd', []]) select 5)}
         && {build_confirmed isEqualTo 0}
@@ -187,11 +172,7 @@ _player addAction [
         !(_originalTarget getVariable ['KPLIB_nearProd', []] isEqualTo [])
         && {isNull (objectParent _originalTarget)}
         && {alive _originalTarget}
-        && {
-            _originalTarget getVariable ['KPLIB_hasDirectAccess', false]
-            || {getPlayerUID _originalTarget in karmaLibBuild}
-            || {(_originalTarget getVariable ['resupplySquadGroupFlag', 'NONE']) == 'LOGI'}
-        }
+        && {[_originalTarget, 'BUILD'] call KPLIB_fnc_hasPermission}
         && {!((_originalTarget getVariable ['KPLIB_nearProd', []] select 3) isEqualTo [])}
         && {!((_originalTarget getVariable ['KPLIB_nearProd', []]) select 6)}
         && {build_confirmed isEqualTo 0}
@@ -225,11 +206,7 @@ _player addAction [
     "",
     "
         isNull (objectParent _originalTarget)
-        && {
-            _originalTarget getVariable ['KPLIB_hasDirectAccess', false]
-            || {getPlayerUID _originalTarget in karmaLibBuild
-            && {(_originalTarget getVariable ['resupplySquadGroupFlag', 'NONE']) == 'LOGI'}}
-        }
+        && {[_originalTarget, 'PRODUCTION'] call KPLIB_fnc_hasPermission}
         && {alive _originalTarget}
         && {!(KP_liberation_production isEqualTo [])}
         && {
@@ -268,7 +245,7 @@ _player addAction [
     true,
     "",
     "
-        _originalTarget getVariable ['KPLIB_hasDirectAccess', false]
+        [_originalTarget, 'BUILD'] call KPLIB_fnc_hasPermission
         && {isNull (objectParent _originalTarget)}
         && {alive _originalTarget}
         && {_originalTarget getVariable ['KPLIB_fobDist', 99999] < (GRLIB_fob_range * 0.8)}
@@ -340,5 +317,12 @@ private _getCoordsScript = {
 private _getCoords = ["GetCoords","Get Coordinates","",_getCoordsScript,{visibleMap}] call ace_interact_menu_fnc_createAction;
 [_player, 1, ["ACE_SelfActions"], _getCoords] call ace_interact_menu_fnc_addActionToObject;
 
+
+_player addAction [
+    "<t color='#FFFF00'>Player Permissions</t>",
+    {[] call KPLIB_fnc_openPermissions},
+    nil, -880, false, true, "",
+    "alive _originalTarget && {[_originalTarget] call KPLIB_fnc_isPermissionAdmin} && {build_confirmed == 0}"
+];
 
 true

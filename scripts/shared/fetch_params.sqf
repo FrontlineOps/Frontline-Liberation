@@ -346,7 +346,7 @@ if (!isDedicated && hasInterface) then {
 
     _param = localize "STR_PARAM_SUPPMOD";
     switch (KP_liberation_suppMod) do {
-        case 1: {_value = localize "STR_PARAM_SUPPMOD_CMDRANDWHITELIST";};
+        case 1: {_value = localize "STR_PARAM_SUPPMOD_COMMANDER";};
         case 2: {_value = localize "STR_PARAM_SUPPMOD_EVERYONE";};
         default {_value = localize "STR_PARAMS_DISABLED";};
     };

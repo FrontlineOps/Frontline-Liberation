@@ -1,42 +1,18 @@
-if (!isServer) exitWith {};
-
-params ["_sector", "_new_production"];
-
-private ["_tempProduction","_checkFor"];
-
-_tempProduction = [];
-
-{
-    if ((_x select 1) == _sector) then {
-
-        switch (_new_production) do {
-            case 1: {_checkFor = 5;};
-            case 2: {_checkFor = 6;};
-            default {_checkFor = 4;};
-        };
-
-        if (_x select _checkFor) then {
-            _tempProduction pushBack [
-                (_x select 0),
-                (_x select 1),
-                (_x select 2),
-                (_x select 3),
-                (_x select 4),
-                (_x select 5),
-                (_x select 6),
-                _new_production,
-                [] call KC_DETERMINE_PRODUCTION_INTERVAL,
-                (_x select 9),
-                (_x select 10),
-                (_x select 11)
-            ];
-        } else {
-            hint localize "STR_PRODUCTION_FACFALSE";
-            _tempProduction pushBack _x;
-        };
-    } else {
-        _tempProduction pushBack _x;
-    };
-} forEach KP_liberation_production;
-
-KP_liberation_production = _tempProduction;
+if (!isServer || {canSuspend}) exitWith {};
+params [["_sector", "", [""]], ["_production", -1, [0]]];
+private _caller = ["PRODUCTION"] call KPLIB_fnc_permissionRequest;
+if (isNull _caller || {!(_sector in blufor_sectors)} || {!(_production in [0, 1, 2, 3])}) exitWith {};
+private _atFob = ([_caller] call KPLIB_fnc_buildFobPosition) isNotEqualTo [];
+private _atProduction = (KP_liberation_production findIf {_caller distance2D getMarkerPos (_x select 1) <= 100}) != -1;
+if (!_atFob && {!_atProduction}) exitWith {};
+private _index = KP_liberation_production findIf {(_x select 1) == _sector};
+if (_index < 0) exitWith {};
+private _record = KP_liberation_production select _index;
+if ((_record select 3) isEqualTo []) exitWith {};
+if (_production != 3 && {!(_record select (4 + _production))}) exitWith {
+    [localize "STR_PRODUCTION_FACFALSE"] remoteExecCall ["hint", owner _caller];
+};
+if ((_record select 7) == _production) exitWith {};
+_record set [7, _production];
+_record set [8, [] call KC_DETERMINE_PRODUCTION_INTERVAL];
+[format ["Production changed at %1 to %2", _sector, _production], "PRODUCTION"] call KPLIB_fnc_log;

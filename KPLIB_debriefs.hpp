@@ -1,10 +1,3 @@
-class End1 {
-    title =	"Restricted Role";
-    subtitle = "";
-    description = "You have selected a role you do not have permissions for. If you would like to apply, visit forums.karmakut.com. Please select a different role.";
-    pictureBackground = "";
-};
-
 class End2 {
     title =	"Unlocked at 80 Players";
     subtitle = "";
@@ -25,13 +18,6 @@ class End4 {
     description = "Unlocked at 100 Players";
     pictureBackground = "";
 };
-
-class EndNonKOG {
-    title = "KOG Reserved Slot";
-    subtitle = "";
-    description = "OPFOR slots are reserved for KOG members.";
-    pictureBackground = "";
-}
 
 class BlacklistedMod {
     title =	"Use of Unapproved Mod";

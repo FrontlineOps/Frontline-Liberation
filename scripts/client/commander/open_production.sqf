@@ -1,3 +1,4 @@
+if !([player, "PRODUCTION"] call KPLIB_fnc_hasPermission) exitWith {hint "Production permission is required."};
 private ["_dialog", "_color_positive", "_color_neutral", "_color_negative", "_color_actual", "_sectorType", "_storage", "_crateCount", "_crateMax", "_producing", "_storagespace", "_productiontime", "_saveChanges", "_listselect", "_listcolor", "_selectedSector", "_mapdisplay", "_supplyValue", "_ammoValue", "_fuelValue"];
 
 _dialog = createDialog "liberation_production";
@@ -31,8 +32,9 @@ while {dialog && (alive player)} do {
 
     if (saveSectorSetting == 1) then {
         saveSectorSetting = 0;
-        [(_selectedSector select 1), new_production] remoteExec ["change_prod_remote_call",2];
-        waitUntil {sleep 0.5; (!(_selectedSector isEqualTo (KP_liberation_production select _listselect)))};
+        [(_selectedSector select 1), new_production] remoteExecCall ["change_prod_remote_call", 2];
+        private _deadline = diag_tickTime + 5;
+        waitUntil {sleep 0.2; !dialog || {!alive player} || {diag_tickTime > _deadline} || {!(_selectedSector isEqualTo (KP_liberation_production param [_listselect, []]))}};
     };
 
     _listselect = -1;
@@ -130,7 +132,7 @@ while {dialog && (alive player)} do {
     _mapdisplay ctrlMapAnimAdd [0.5, 0.2,(markerPos (_selectedSector select 1))];
     ctrlMapAnimCommit _mapdisplay;
 
-    waitUntil {!dialog || !(alive player) || (lbCurSel 75802) != _listselect || saveSectorSetting != 0};
+    waitUntil {sleep 0.1; !dialog || !(alive player) || (lbCurSel 75802) != _listselect || saveSectorSetting != 0};
 };
 
 "spawn_marker" setMarkerPosLocal markers_reset;

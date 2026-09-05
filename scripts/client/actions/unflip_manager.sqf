@@ -5,7 +5,7 @@ veh_action_distance = 10;
 
 while { true } do {
 
-    if (!(getPlayerUID player in karmaLibBlacklisted)) then {
+    if (alive player) then {
 
         _detected_vehicles = ((getpos player) nearEntities [["Tank","APC","IFV","Car"], veh_action_distance]) select {
             (count crew _x) == 0 &&

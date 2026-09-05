@@ -2195,174 +2195,6 @@
             <Korean>선택된 분대원이 전초기지 또는 재투입차량에 가까이 있지 않습니다. </Korean>
             <Czech>Vybraný člen družstva není dostatečně blízko k FOB nebo mobilnímu spawnu.</Czech>
         </Key>
-        <Key ID="STR_PERMISSIONS_TITLE">
-            <Original>PERMISSIONS MANAGEMENT</Original>
-            <French>GESTION DES PERMISSIONS</French>
-            <German>Rechteverwaltung</German>
-            <Spanish>GESTIÓN DE PERMISOS</Spanish>
-            <Russian>УПРАВЛЕНИЕ РАЗРЕШЕНИЯМИ</Russian>
-            <Italian>GESTIONE PERMESSI</Italian>
-            <Chinesesimp>权限管理</Chinesesimp>
-            <Chinese>權限管理</Chinese>
-            <Turkish>YETKİ YÖNETİMİ</Turkish>
-            <Portuguese>GESTÃO DE PERMISSÕES</Portuguese>
-            <Korean>사용 권한 설정</Korean>
-            <Czech>MANAŽER PRAVOMOCÍ</Czech>
-        </Key>
-        <Key ID="STR_PERMISSIONS_CONSTRUCTION">
-            <Original>Construction</Original>
-            <French>Construction</French>
-            <German>Konstruktionen</German>
-            <Spanish>Construcción</Spanish>
-            <Russian>Постройка</Russian>
-            <Italian>Costruzione</Italian>
-            <Chinesesimp>建造</Chinesesimp>
-            <Chinese>建造</Chinese>
-            <Turkish>İnşaat</Turkish>
-            <Portuguese>Construção</Portuguese>
-            <Korean>건설</Korean>
-            <Czech>Stavění</Czech>
-        </Key>
-        <Key ID="STR_PERMISSIONS_RECYCLING">
-            <Original>Recycling</Original>
-            <French>Recyclage</French>
-            <German>Wiederverwerten</German>
-            <Spanish>Reciclar</Spanish>
-            <Russian>Утилизация</Russian>
-            <Italian>Riciclaggio</Italian>
-            <Chinesesimp>回收</Chinesesimp>
-            <Chinese>回收</Chinese>
-            <Turkish>Geri dönüşüm</Turkish>
-            <Portuguese>Reciclando</Portuguese>
-            <Korean>재활용</Korean>
-            <Czech>Recyklování</Czech>
-        </Key>
-        <Key ID="STR_PERMISSIONS_MISC">
-            <Original>Others</Original>
-            <French>Autres</French>
-            <German>Andere</German>
-            <Spanish>Otros</Spanish>
-            <Russian>Остальное</Russian>
-            <Italian>Altro</Italian>
-            <Chinesesimp>其它</Chinesesimp>
-            <Chinese>其他</Chinese>
-            <Turkish>Diğer</Turkish>
-            <Portuguese>Outros</Portuguese>
-            <Korean>기타</Korean>
-            <Czech>Ostatní</Czech>
-        </Key>
-        <Key ID="STR_PERMISSIONS_ALL">
-            <Original>All</Original>
-            <French>Toutes</French>
-            <German>Alle</German>
-            <Spanish>Todos</Spanish>
-            <Russian>Все</Russian>
-            <Italian>Tutto</Italian>
-            <Chinesesimp>全部</Chinesesimp>
-            <Chinese>全部</Chinese>
-            <Turkish>Hepsi</Turkish>
-            <Portuguese>Todos</Portuguese>
-            <Korean>전체</Korean>
-            <Czech>Vše</Czech>
-        </Key>
-        <Key ID="STR_PERMISSIONS_NONE">
-            <Original>None</Original>
-            <French>Aucune</French>
-            <German>Keine</German>
-            <Spanish>Ninguno</Spanish>
-            <Russian>Сбросить</Russian>
-            <Italian>Nessuno</Italian>
-            <Chinesesimp>无</Chinesesimp>
-            <Chinese>無</Chinese>
-            <Turkish>Hiçbiri</Turkish>
-            <Portuguese>Nenhum</Portuguese>
-            <Korean>없음</Korean>
-            <Czech>Nic</Czech>
-        </Key>
-        <Key ID="STR_PERMISSIONS_TOOLTIP_CONSTRUCTION">
-            <Original>Allows the player to use the BUILD menu.</Original>
-            <French>Autorise le joueur à utiliser le menu CONSTRUCTION.</French>
-            <German>Erlaubt es dem Spieler, das Baumenü zu benutzen.</German>
-            <Spanish>Permite al jugador utilizar el menú de CONSTRUCCIÓN</Spanish>
-            <Russian>Позволяет игроку использовать меню постройки.</Russian>
-            <Italian>Permetti al giocatore di Costruire</Italian>
-            <Chinesesimp>允许玩家使用建造菜单</Chinesesimp>
-            <Chinese>允許玩家使用建造選單。</Chinese>
-            <Turkish>Oyuncunun İNŞAAT menüsünü kullanmasını sağlar</Turkish>
-            <Portuguese>Permite ao jogador utilizar o menu de CONTRUÇÃO.</Portuguese>
-            <Korean>플레이어가 전초기지에서 건설메뉴를 사용할 수 있는 권한를 허가 합니다.</Korean>
-            <Czech>Povolí hráči používat menu STAVĚNÍ.</Czech>
-        </Key>
-        <Key ID="STR_PERMISSIONS_TOOLTIP_RECYCLING">
-            <Original>Allows the player to use the RECYCLE action.</Original>
-            <French>Autorise le joueur à utiliser l'action RECYCLER.</French>
-            <German>Erlaubt es dem Spieler, die "WIEDERVERWERTEN"-Aktion zu benutzen.</German>
-            <Spanish>Permite al jugador utilizar la acción de RECICLAR</Spanish>
-            <Russian>Позволяет игроку утилизировать.</Russian>
-            <Italian>Permetti al giocatore di Riciclare</Italian>
-            <Chinesesimp>允许玩家使用回收功能。</Chinesesimp>
-            <Chinese>允許玩家使用回收功能。</Chinese>
-            <Turkish>Oyuncunun geri dönüşüm yapabilmesini sağlar</Turkish>
-            <Portuguese>Permite ao jogador utilizar a ação "RECICLAR".</Portuguese>
-            <Korean>플레이어가 필요없는 장비를 재활용할 수 있는 권한를 허가 합니다.</Korean>
-            <Czech>Povolí hráči RECYKLOVAT.</Czech>
-        </Key>
-        <Key ID="STR_PERMISSIONS_TOOLTIP_MISC">
-            <Original>Allows the player to use other actions: unflip, resource box manipulation, prisoner capture, etc.</Original>
-            <French>Autorise le joueur à utiliser les autres actions : retournement de véhicule, manipulation des boites de munition, capture de prisoniers, etc.</French>
-            <German>Erlaubt es dem Spieler, andere Aktionen durchzuführen: Umdrehen, Interaktion mit Munitionskisten, Gefangennahme, usw.</German>
-            <Spanish>Permite al jugador usar otras acciones: Recolocar vehículo, manipulación de cajas de munición, captura de prisioneros, etc.</Spanish>
-            <Russian>Позволяет игроку другие действия: перевернуть, взаимодействие с ящиками, захват заключенных и т.д.</Russian>
-            <Italian>Permetti al giocatore di usare le altre funzioni come , catturare prigionieri,raddrizzare veicoli ecc.</Italian>
-            <Chinesesimp>允许玩家使用其他功能：翻正、货箱控制、俘虏战俘，等等。</Chinesesimp>
-            <Chinese>允許玩家使用其他功能，如：翻正、貨物控制（裝載、卸載、倉儲等）、俘虜戰俘，等等。</Chinese>
-            <Turkish>Oyuncunun araçları ters döndürme, sandıkları yönetme, esir yakalama, vb. hareketleri yapabilmesini sağlar.</Turkish>
-            <Portuguese>Permite ao jogador executar outras ações: Desvirar veículo, manipular caixas de recursos, captura de prisioneiros, etc.</Portuguese>
-            <Korean>플레이어가 차량을 바로잡거나, 군수물자를 조작하거나 포로를 생포하거나 문서를 획득할 수 있는 권한를 허가 합니다.</Korean>
-            <Czech>Povolí hráči používat funkce jako: převrátit, manipulace s bednami, zajmutí zajatce, atd.</Czech>
-        </Key>
-        <Key ID="STR_PERMISSIONS_TOOLTIP_ALL">
-            <Original>Gives all permissions to the player.</Original>
-            <French>Donne toutes les permissions au joueur.</French>
-            <German>Gibt dem Spieler alle Rechte</German>
-            <Spanish>Darle todos los permisos al jugador</Spanish>
-            <Russian>Выдать все разрешения игроку.</Russian>
-            <Italian>Permetti tutto al giocatore.</Italian>
-            <Chinesesimp>给予玩家所有权限。</Chinesesimp>
-            <Chinese>給予玩家所有權限。</Chinese>
-            <Turkish>Oyuncuya bütün yetkileri verir.</Turkish>
-            <Portuguese>Libera todas as permissões para o jogador.</Portuguese>
-            <Korean>플레이어에게 모든 권한을 허가 합니다.</Korean>
-            <Czech>Povolí hráči VŠE.</Czech>
-        </Key>
-        <Key ID="STR_PERMISSIONS_TOOLTIP_NONE">
-            <Original>Removes all permissions from the player.</Original>
-            <French>Supprime toutes les permissions du joueur.</French>
-            <German>Nimmt dem Spieler alle Rechte weg.</German>
-            <Spanish>Quitar todos los permisos al jugador</Spanish>
-            <Russian>Убрать все разрешения у игрока.</Russian>
-            <Italian>Rimuovi tutti i permessi al giocatore.</Italian>
-            <Chinesesimp>移除玩家所有权限。</Chinesesimp>
-            <Chinese>移除玩家所有權限。</Chinese>
-            <Turkish>Oyuncudan bütün yetkileri alır.</Turkish>
-            <Portuguese>Remove todas as permissões do jogador.</Portuguese>
-            <Korean>플레이어의 허가된 권한 사항을 모두 제거합니다.</Korean>
-            <Czech>Zakáže hráči VŠE.</Czech>
-        </Key>
-        <Key ID="STR_COMMANDER_ACTION">
-            <Original>-- PERMISSIONS</Original>
-            <French>-- PERMISSIONS</French>
-            <German>-- RECHTE</German>
-            <Spanish>-- PERMISOS</Spanish>
-            <Russian>-- РАЗРЕШЕНИЯ</Russian>
-            <Italian>-- PERMESSI</Italian>
-            <Chinesesimp>-- 权限</Chinesesimp>
-            <Chinese>-- 權限</Chinese>
-            <Turkish>-- YETKİLER</Turkish>
-            <Portuguese>-- PERMISSÕES</Portuguese>
-            <Korean>-- 사용 권한</Korean>
-            <Czech>-- PRAVOMOCE</Czech>
-        </Key>
         <Key ID="STR_SAVE_CHANGES">
             <Original>Save Changes</Original>
             <French>Sauvegarder</French>
@@ -2376,34 +2208,6 @@
             <Portuguese>Salvar alterações</Portuguese>
             <Korean>변경사항저장</Korean>
             <Czech>Uložit změny</Czech>
-        </Key>
-        <Key ID="STR_PERMISSIONS_PARAM">
-            <Original>Permissions Management</Original>
-            <French>Gestion des Permissions</French>
-            <German>Rechteverwaltung</German>
-            <Spanish>Gestión de permisos</Spanish>
-            <Russian>Управление Разрешениями</Russian>
-            <Italian>Permessi Gestione</Italian>
-            <Chinesesimp>权限管理</Chinesesimp>
-            <Chinese>權限管理</Chinese>
-            <Turkish>Yetkileri Yönet</Turkish>
-            <Portuguese>Gestão de Permissões</Portuguese>
-            <Korean>사용 권한 설정</Korean>
-            <Czech>Manažer pravomocí</Czech>
-        </Key>
-        <Key ID="STR_PERMISSION_WARNING">
-            <Original>No permissions have been set. The commander must setup the permissions to allow player actions and vehicle usage. Alternatively, the permission system can be disabled from the mission options.</Original>
-            <French>Aucune permission n'a été définie. Le commandant doit configurer les permissions pour permettre aux joueurs d'effectuer des actions et d'utiliser les véhicules. Sinon, le système de permissions peut être désactivé dans les options de mission.</French>
-            <German>Keine Rechte wurden vergeben. Der Kommandant muss die Rechte verwalten, um Spielern Aktionen und die Nutzung von Fahrzeugen zu erlaubne. Alternativ kann das Rechtesystem in den Missionsoptionen deaktiviert werden.</German>
-            <Spanish>No hay permisos definidos. El comandante debe asignar los permisos para permitir a los jugadores el uso de los vehículos y acciones. Alternativamente, puede desactivarse el sistema de permisos desde las opciones de misión</Spanish>
-            <Russian>Разрешения не были выданы. Командир должен настроить разрешения, чтобы позволить игрокам выполнять действия и использовать транспорт. Вы можете выключить эти разрешения в настройках миссии.</Russian>
-            <Italian>I permessi non sono settati.Il comandante deve entrare nel menu e attribuire i permessi ai giocatori.</Italian>
-            <Chinesesimp>没有设定任何权限。指挥官必须为玩家设定可用功能和载具。另外，权限系统可以在任务选项中关闭。</Chinesesimp>
-            <Chinese>沒有設定任何權限。指揮官必須為玩家指定可使用的功能與載具類型。另外，權限系統可以在任務選項中關閉。</Chinese>
-            <Turkish>Yetkiler ayarlanmadı. Koumandan oyuncuların kullanabilicekleri araçlar için yetkileri ayarlamalı. Bunun yerine, bütün yetki sistemi de görev ayarlarından kapatılabilir.</Turkish>
-            <Portuguese>Nenhuma permissão foi liberada. O comandante precisa alterar as permissões para permitir que o jogador execute ações e utiliza veículos. Alternativamente, o sistema de permissão pode ser desabilitado no menu de opções da missão.</Portuguese>
-            <Korean>사용 권한를 허가 받지 못하였습니다. 관리자는 플레이어들이 장비를 사용할 수 있는 권한을 설정해야 합니다. 사용 권한 설정 메뉴에서 권한을 허가 하거나 제거할 수 있습니다.</Korean>
-            <Czech>Nejsou nastaveny pravomoce. Komandér musí nastavit pravomoce na používání funkcí a vozidel. Alternativně lze pravomoce úplně vypnou v nastaveni mise.</Czech>
         </Key>
         <Key ID="STR_ARSENAL_TITLE">
             <Original>ARSENAL</Original>
@@ -6163,10 +5967,10 @@
             <German>Zugriff auf BI Support System</German>
             <Czech>BI Podpora přístupu do systému</Czech>
         </Key>
-        <Key ID="STR_PARAM_SUPPMOD_CMDRANDWHITELIST">
-            <Original>Commander and Whitelist</Original>
-            <German>Kommandant und Whitelist</German>
-            <Czech>Velitel a whitelist</Czech>
+        <Key ID="STR_PARAM_SUPPMOD_COMMANDER">
+            <Original>Commander</Original>
+            <German>Kommandant</German>
+            <Czech>Velitel</Czech>
         </Key>
         <Key ID="STR_PARAM_SUPPMOD_EVERYONE">
             <Original>Everyone</Original>

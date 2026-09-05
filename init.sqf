@@ -44,16 +44,7 @@ OPFOR_ARSENAL_CRATES = [];
 [] call compileFinal preprocessFileLineNumbers "modules\field_hospital\index.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\trash_cleanup\index.sqf";
 
-if (isDedicated) then 
-{
-    [] call compileFinal preprocessFileLineNumbers "\userconfig\perms\perms.sqf";
-    [] call compileFinal preprocessFileLineNumbers "\userconfig\KOG\KOGWhitelist.sqf";
-    publicVariable "KOGFOR";
-};
-if (isServer && hasInterface) then 
-{
-    [] call compileFinal preprocessFileLineNumbers "perms_non_dedicated.sqf";
-};
+[] call compileFinal preprocessFileLineNumbers "modules\permissions\index.sqf";
 
 [] call compileFinal preprocessFileLineNumbers "presets\init_presets.sqf";
 [] call compileFinal preprocessFileLineNumbers "arsenal_presets\rolearsenal.sqf";

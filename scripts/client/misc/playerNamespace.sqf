@@ -34,8 +34,12 @@ while {true} do {
     player setVariable ["KPLIB_fobName", _fobName];
     player setVariable ["KPLIB_fobPos", _fobPos];
 
-    // Direct acces due to config, commander or admin
-    player setVariable ["KPLIB_hasDirectAccess", (getPlayerUID player) in KP_liberation_commander_actions || {player == ([] call KPLIB_fnc_getCommander)} || {serverCommandAvailable "#kick"}];
+    // Refresh once on join, respawn or admin login/logout; grants also arrive on change.
+    private _accessState = [player, [player] call KPLIB_fnc_isPermissionAdmin];
+    if (_accessState isNotEqualTo (localNamespace getVariable ["KPLIB_permissionClientState", []])) then {
+        localNamespace setVariable ["KPLIB_permissionClientState", _accessState];
+        [false] remoteExecCall ["KPLIB_fnc_requestPermissions", 2];
+    };
 
     // Outside of startbase "safezone"
     player setVariable ["KPLIB_isAwayFromStart", (player distance2d startbase) > 1000];

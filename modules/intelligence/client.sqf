@@ -191,11 +191,13 @@ KPLIB_INTEL_CLIENT_DIALOG_REFRESH = {
     if (_activeForRegion isNotEqualTo []) then {_activeTier = (_activeForRegion # 0) # 1};
 
     (_display displayCtrl 107) ctrlSetText format ["SHARED INTEL RESERVE: %1", missionNamespace getVariable ["resources_intel", 0]];
-    private _canActivate = _region != "" && {_tier > 0} && {_tier >= _activeTier} && {(missionNamespace getVariable ["resources_intel", 0]) >= _cost};
+    private _canActivate = [player, "INTELLIGENCE"] call KPLIB_fnc_hasPermission
+        && {_region != ""} && {_tier > 0} && {_tier >= _activeTier} && {(missionNamespace getVariable ["resources_intel", 0]) >= _cost};
     _activate ctrlEnable _canActivate;
     private _tooltip = "Not enough intelligence in the shared reserve.";
     if (_tier < _activeTier) then {_tooltip = "Live coverage cannot be downgraded."};
     if (_canActivate) then {_tooltip = "Activate or renew this coverage tier."};
+    if !([player, "INTELLIGENCE"] call KPLIB_fnc_hasPermission) then {_tooltip = "An admin must grant intelligence spending permission."};
     _activate ctrlSetTooltip _tooltip;
 
     if (_region == "") exitWith {

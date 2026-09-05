@@ -87,10 +87,7 @@ disabledAI = 1;
 disableRandomization[] = {};
 
 // Debug console access
-enableDebugConsole[] = {
-    "76561198343484805",
-    "76561198874160679"	
-};
+enableDebugConsole = 1;
 
 // Adv flight model mode
 // 0 - client

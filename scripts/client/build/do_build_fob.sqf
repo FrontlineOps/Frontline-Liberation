@@ -1,4 +1,5 @@
 params ["_fobContainer"];
+if !([player, "BUILD"] call KPLIB_fnc_hasPermission) exitWith {hint "Building permission is required."};
 
 if (count GRLIB_all_fobs >= GRLIB_maximum_fobs) exitWith {
     hint format [localize "STR_HINT_FOBS_EXCEEDED", GRLIB_maximum_fobs];
@@ -8,7 +9,6 @@ private _minimumFobDistance = 1000;
 private _minimumSectorDistance = 300;
 
 FOB_build_in_progress = true;
-publicVariable "FOB_build_in_progress";
 
 private _nearFobIndex = GRLIB_all_fobs findIf {
     player distance _x < _minimumFobDistance
@@ -20,7 +20,6 @@ if (_nearFobIndex != -1) exitWith {
         floor (player distance (GRLIB_all_fobs select _nearFobIndex))
     ];
     FOB_build_in_progress = false;
-    publicVariable "FOB_build_in_progress";
 };
 
 private _nearSectorIndex = sectors_allSectors findIf {
@@ -33,9 +32,8 @@ if (_nearSectorIndex != -1) exitWith {
         floor (player distance (markerPos (sectors_allSectors select _nearSectorIndex)))
     ];
     FOB_build_in_progress = false;
-    publicVariable "FOB_build_in_progress";
 };
 
 buildtype = 99;
 dobuild = 1;
-deleteVehicle _fobContainer;
+KPLIB_buildFobContainer = _fobContainer;

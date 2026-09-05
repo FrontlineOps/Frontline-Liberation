@@ -1,13 +1,5 @@
 [] call compileFinal preprocessFileLineNumbers "scripts\client\misc\init_markers.sqf";
 
-if(roleDescription player find "Odin" > -1) then {
-	if (!(getPlayerUID player in KP_liberation_commander_actions)) then 
-    {
-        ["The Odin slot is reserved for administrators. You will be kicked back to the lobby.", "Restricted Role", "I Understand"] call BIS_fnc_guiMessage;
-        endMission "END1"; 
-    };
-};
-
 if (typeOf player == "VirtualSpectator_F") exitWith {
     execVM "scripts\client\markers\empty_vehicles_marker.sqf";
     execVM "scripts\client\markers\fob_markers.sqf";
@@ -115,8 +107,5 @@ if (player isEqualTo ([] call KPLIB_fnc_getCommander)) then {
 // GRAB OUR GLOBAL BYPASS VARIABLE FOR ENFORCED ARSENAL FROM SERVER, INITIALLY.
 BYPASS_ENFORCED_ARSENAL = [missionNamespace, "BYPASS_ENFORCED_ARSENAL", false] call BIS_fnc_getServerVariable;
 
-// Check if unit is not an elevated player.
-if !((getPlayerUID player) in KP_liberation_commander_actions) then {
-    // Arsenal Enforcement applies to all non-elevated players
-    execVM "scripts\client\misc\enforced_arsenal.sqf";
-};
+// Faction arsenal rules apply equally to all players.
+execVM "scripts\client\misc\enforced_arsenal.sqf";

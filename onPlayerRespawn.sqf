@@ -76,96 +76,12 @@ private _loadedMods = getLoadedModsInfo;
 } forEach _blacklistedMods;
 
 
-private _role = [player] call RoleArsenal_DetermineRole;
-
-abortPlayerWithoutPerms = {
-    ["You have selected a role you do not have permissions for. If you would like to request or apply, visit 8ID Discord. You will be kicked to the lobby, please select a different role.", "Restricted Role", "I Understand"] call BIS_fnc_guiMessage;
-    endMission "END1"; 
-};
-
-abortNonKogPlayer = {
-    ["OPFOR slots are reserved for KOG members.", "Restricted Role", "I Understand"] call BIS_fnc_guiMessage;
-    endMission "EndNonKOG"; 
-};
-if (side player == GRLIB_side_friendly) then {
-    switch (_role) do {
-        case "Odin": {
-            if (!(getPlayerUID player in KP_liberation_commander_actions)) then {[] call abortPlayerWithoutPerms};
-            localnamespace setvariable [ "AdminSlot", true ];
-            showChat true;
-        };
-        case "CO";
-        case "XO": {
-            if (!(getPlayerUID player in karmaLibCompanyCmd)) then {[] call abortPlayerWithoutPerms};
-        };
-        case "PL";
-        case "PSgt": {
-            if (!(getPlayerUID player in karmaLibPltLead)) then {[] call abortPlayerWithoutPerms};
-        };
-        case "PLTO";
-        case "HAAL";
-        case "SGoblin";
-        case "WTL";
-        case "SL": {
-            if (!(getPlayerUID player in karmaLibSL)) then {[] call abortPlayerWithoutPerms};
-        };
-        case "PMed": {
-            if (!(getPlayerUID player in karmaLibPltMed)) then {[] call abortPlayerWithoutPerms};
-            if (_role == "PMed" && (getPlayerUID player in karmaLibMedicBlacklist)) then {[] call abortPlayerWithoutPerms};
-        };
-        case "JFOLeader";
-        case "JFO": { 
-            if (!(getPlayerUID player in karmaLibSiren)) then {[] call abortPlayerWithoutPerms};
-        }; 
-        case "ShadowTL";
-        case "ShadowE": {
-            if (!(getPlayerUID player in (karmaLibSiren + karmaLibFixedWing))) then {[] call abortPlayerWithoutPerms};
-        };
-        // 2022-07-11 Oats - Vehicle Driver and Gunner slots added to each Squad, can sometimes operate non-perm vehicles
-        case "ButcherGunner";
-        case "ButcherDriver";
-        case "ButcherCommander": {
-            if (!(getPlayerUID player in karmaLibArmor)) then {[] call abortPlayerWithoutPerms};
-        };
-        case "Hermes"; 
-        case "BansheePilot": {
-            if (!(getPlayerUID player in karmaLibRotaryLogi)) then {[] call abortPlayerWithoutPerms};
-        };
-        case "Hades": {
-            if (!(getPlayerUID player in karmaLibRotaryCas)) then {[] call abortPlayerWithoutPerms};
-        };
-        case "Chevy";
-        case "Reaper": {
-            if (!(getPlayerUID player in karmaLibFixedWing)) then {[] call abortPlayerWithoutPerms};
-        };
-        case "FoxSniper";
-        case "FoxSpotter";
-        case "FoxScout": {
-            if (!(getPlayerUID player in karmaLibPhantom)) then {[] call abortPlayerWithoutPerms};
-        };
-        case "BNTL";
-        case "BNM": {
-            if (!(getPlayerUID player in karmaLibBanshee)) then {[] call abortPlayerWithoutPerms};
-        };
-        case "Medic": {
-            if (getPlayerUID player in karmaLibMedicBlacklist) then {[] call abortPlayerWithoutPerms};
-        };
-        default { };
-    };
-};
-
-//--- This should work, just teleports them back requardless then the abortPlayerWithoutPerms will do the rest
-if ( playerside isequalto GRLIB_side_enemy ) then {
-    if ( !( getplayeruid player in KOGFOR ) ) then { [] call abortNonKogPlayer };
-    //private _marker = "kog_base";
-    //player setposatl getmarkerpos _marker;
-    //player setdir markerdir _marker;
-};
+[false] remoteExecCall ["KPLIB_fnc_requestPermissions", 2];
 
 // Support Module handling
 if ([
     false,
-    player isEqualTo ([] call KPLIB_fnc_getCommander) || (getPlayerUID player) in KP_liberation_suppMod_whitelist,
+    player isEqualTo ([] call KPLIB_fnc_getCommander),
     true
 ] select KP_liberation_suppMod) then {
     waitUntil {!isNil "KPLIB_suppMod_req" && !isNil "KPLIB_suppMod_arty" && time > 5};

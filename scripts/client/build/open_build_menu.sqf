@@ -1,3 +1,4 @@
+if !([player, "BUILD"] call KPLIB_fnc_hasPermission) exitWith {hint "Building permission is required."};
 if (([getPos player, 500, GRLIB_side_enemy] call KPLIB_fnc_getUnitsCount) > 4) exitWith {
     hint localize "STR_BUILD_ENEMIES_NEARBY";
 };

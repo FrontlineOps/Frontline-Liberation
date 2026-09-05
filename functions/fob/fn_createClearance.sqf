@@ -26,6 +26,12 @@ params [
     ["_save", false, [false]]
 ];
 
+if (isRemoteExecuted) then {
+    private _caller = ["BUILD"] call KPLIB_fnc_permissionRequest;
+    private _fob = if (isNull _caller) then {[]} else {[_caller] call KPLIB_fnc_buildFobPosition};
+    if (_fob isEqualTo [] || {_centerPos distance2D _fob > 1} || {!finite _radius} || {_radius <= 0} || {_radius > GRLIB_fob_range * 0.9}) exitWith {_radius = 0};
+};
+
 if (_centerPos isEqualTo [0, 0, 0]) exitWith {["Zero position given"] call BIS_fnc_error; false};
 if (_radius isEqualTo 0) exitWith {["Zero radius given"] call BIS_fnc_error; false};
 

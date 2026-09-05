@@ -66,6 +66,9 @@ KPLIB_COPS_REDEPLOY_REFRESH = 1;
 KPLIB_COPS_REQUEST_COOLDOWN = 2;
 KPLIB_COPS_MARKER_TEXT = "PB";
 KPLIB_COPS_MARKER_OFFSET = [-17, 11, 0];
+// Admin-managed permission grants use their own server profile record.
+KPLIB_permissions_save_key = GRLIB_save_key + "_PLAYER_PERMISSIONS";
+
 KPLIB_COPS_SAVE_KEY = GRLIB_save_key + "_COPS";
 
 // [classname, model-space offset, model-space direction, principal structure]
@@ -403,12 +406,6 @@ KP_liberation_sector_resource_crate_value = 100;		// Base value per crate before
 // Remove terrain objects around battlegroup spawns
 KP_liberation_battlegroup_clearance = [];
 
-// Commandant actions access regardless of slot
-// NOTE: Remember to update enableDebugConsole in description.ext!! And on Training Server description.ext + map composition
-KP_liberation_commander_actions = [
-    "76561198343484805",         // Azraeel
-	"76561198874160679"          // Felix
-];
 
 KP_liberation_medical_vehicles = [
 	// Prairie Fire
@@ -444,11 +441,6 @@ KPLIB_trashCleanup_classnames = ["GroundWeaponHolder"];
 
 KP_liberation_ace_crates = [];
 
-// Whitelist for BI support framework access
-KP_liberation_suppMod_whitelist = [
-    "76561198343484805",
-	"76561198874160679"
-];
 
 // Randomly selected radio tower classnames
 KPLIB_radioTowerClassnames = [

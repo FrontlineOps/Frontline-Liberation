@@ -23,7 +23,7 @@ veh_action_distance = 10;
 while {true} do {
     waitUntil {sleep 2; player getVariable ['KPLIB_fobDist', 99999] < GRLIB_fob_range};
 
-    if (getPlayerUID player in KP_liberation_commander_actions) then {
+    if ([player, "RECYCLE"] call KPLIB_fnc_hasPermission) then {
         private _detected_vehicles = (getPos player) nearObjects veh_action_detect_distance select {
             (((toLower (typeof _x)) in _recycleable_classnames && (({alive _x} count (crew _x)) == 0 || unitIsUAV _x) && (locked _x == 0 || locked _x == 1 || locked _x == -1)) ||
             (toLower (typeOf _x)) in KPLIB_b_buildings_classes ||

@@ -193,7 +193,7 @@ private _weights = [
     blufor_sectors,
     combat_readiness,
     GRLIB_all_fobs,
-    GRLIB_permissions,
+    [], // Reserved legacy permission slot; new grants have a separate server profile key.
     GRLIB_vehicle_to_military_base_links,
     KP_liberation_civ_rep,
     KP_liberation_clearances,

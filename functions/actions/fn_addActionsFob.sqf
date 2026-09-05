@@ -34,7 +34,7 @@ if ((typeOf _obj) isEqualTo FOB_typename) exitWith {
         false,
         true,
         "",
-        "isNull (objectParent _this) && {player getVariable ['KPLIB_hasDirectAccess', false]}",
+        "isNull (objectParent _this) && {[player, 'BUILD'] call KPLIB_fnc_hasPermission}",
         20
     ];
     true
@@ -50,7 +50,7 @@ if ((typeOf _obj) in [FOB_box_typename, FOB_truck_typename]) exitWith {
         false,
         true,
         "",
-        "isNull (objectParent _this) && {!FOB_build_in_progress} && {player getVariable ['KPLIB_hasDirectAccess', false] || {getPlayerUID player in karmaLibBuild}} && {player getVariable ['KPLIB_isAwayFromStart', false]} && {!(surfaceIsWater getPos player)}",
+        "isNull (objectParent _this) && {!FOB_build_in_progress} && {[player, 'BUILD'] call KPLIB_fnc_hasPermission} && {player getVariable ['KPLIB_isAwayFromStart', false]} && {!(surfaceIsWater getPos player)}",
         10
     ];
     true

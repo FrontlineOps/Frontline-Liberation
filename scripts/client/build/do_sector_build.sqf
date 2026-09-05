@@ -1,5 +1,7 @@
 params ["_target", "_caller", "_actionId", "_arguments"];
 
+if !([player, "BUILD"] call KPLIB_fnc_hasPermission) exitWith {hint "Building permission is required."};
+
 private _classname = _arguments select 0;
 if (_classname isEqualTo KP_liberation_small_storage_building) then {
     build_confirmed = 1;
@@ -76,24 +78,8 @@ if (_classname isEqualTo KP_liberation_small_storage_building) then {
     };
 
     if (build_confirmed isEqualTo 2 && {!isNull _preview}) then {
-        private _buildingDirection = getDir _preview;
+        [([100] call KPLIB_fnc_getNearestSector), getPos _preview, getDir _preview, KP_vector] remoteExecCall ["KPLIB_fnc_buildSectorStorage", 2];
         deleteVehicle _preview;
-        sleep 0.1;
-
-        private _building = _classname createVehicle _truePosition;
-        _building allowDamage false;
-        _building setDir _buildingDirection;
-        _building setPos _truePosition;
-        if (KP_vector) then {
-            _building setVectorUp [0, 0, 1];
-        } else {
-            _building setVectorUp surfaceNormal position _building;
-        };
-        _building setVariable ["KP_liberation_storage_type", 1, true];
-
-        sleep 0.3;
-        _building allowDamage true;
-        _building setDamage 0;
     };
 
     player removeAction _cancelAction;
@@ -107,5 +93,5 @@ if (_classname isEqualTo KP_liberation_small_storage_building) then {
     build_confirmed = 0;
 } else {
     private _production = player getVariable ["KPLIB_nearProd", []];
-    [_production param [1, ""], _classname] remoteExec ["build_fac_remote_call", 2];
+    [_production param [1, ""], _classname] remoteExecCall ["build_fac_remote_call", 2];
 };

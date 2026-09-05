@@ -73,8 +73,6 @@ blufor_sectors = [];
 combat_readiness = 0;
 // All FOBs
 GRLIB_all_fobs = [];
-// Player permissions data
-GRLIB_permissions = [];
 // Vehicle unlock links
 GRLIB_vehicle_to_military_base_links = [];
 // Enemy weight for anti infantry
@@ -182,7 +180,6 @@ if (!isNil "_saveData") then {
         blufor_sectors                              = _saveData select  7;
         combat_readiness                            = _saveData select  8;
         GRLIB_all_fobs                              = _saveData select  9;
-        GRLIB_permissions                           = _saveData select 10;
         GRLIB_vehicle_to_military_base_links        = _saveData select 11;
         KP_liberation_civ_rep                       = _saveData select 12;
         KP_liberation_clearances                    = _saveData select 13;
@@ -247,7 +244,6 @@ if (!isNil "_saveData") then {
         _stats                                      = _saveData select  8;
         _weights                                    = _saveData select  9;
         GRLIB_vehicle_to_military_base_links        = _saveData select 10;
-        GRLIB_permissions                           = _saveData select 11;
         _aiGroups                                   = _saveData select 12;
         resources_intel                             = _saveData select 13;
         KP_liberation_civ_rep                       = _saveData select 15;

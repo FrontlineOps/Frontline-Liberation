@@ -1,27 +1,28 @@
-if (!isServer) exitWith {};
-
-params [ "_new_fob", "_create_fob_building" ];
-private [ "_fob_building", "_fob_pos" ];
-
-GRLIB_all_fobs pushback _new_fob;
-publicVariable "GRLIB_all_fobs";
-
-if ( _create_fob_building ) then {
-    _fob_pos = [ (_new_fob select 0) + 15, (_new_fob select 1) + 2, 0 ];
-    [_fob_pos, 20, true] call KPLIB_fnc_createClearance;
-    _fob_building = FOB_typename createVehicle _fob_pos;
-    _fob_building setpos _fob_pos;
-    _fob_building setVectorUp [0,0,1];
-    [_fob_building] call KPLIB_fnc_addObjectInit;
-    sleep 1;
+if (!isServer || {canSuspend}) exitWith {};
+params [["_container", objNull, [objNull]], ["_position", [], [[]]], ["_direction", 0, [0]], ["_level", true, [false]]];
+private _caller = ["BUILD"] call KPLIB_fnc_permissionRequest;
+if (isNull _caller || {isNull _container} || {!alive _container}) exitWith {};
+if !(typeOf _container in [FOB_box_typename, FOB_truck_typename]) exitWith {};
+if (_caller distance _container > 10 || {!isNull attachedTo _container} || {({alive _x} count crew _container) > 0}) exitWith {};
+if !([_caller, _position, _direction, FOB_typename] call KPLIB_fnc_validBuildPosition) exitWith {};
+private _centre = getPos _caller;
+if (surfaceIsWater _centre || {surfaceIsWater _position} || {_caller distance2D startbase <= 1000}
+    || {count GRLIB_all_fobs >= GRLIB_maximum_fobs}
+    || {(GRLIB_all_fobs findIf {_centre distance2D _x < 1000}) != -1}
+    || {(sectors_allSectors findIf {_centre distance2D getMarkerPos _x < 300}) != -1}) exitWith {
+    ["FOB deployment cancelled: this location is unavailable. Your container is unchanged."] remoteExecCall ["hint", owner _caller];
 };
-
-[] spawn KPLIB_fnc_doSave;
-
-sleep 3;
-[_new_fob, 0] remoteExec ["remote_call_fob"];
-
+private _building = createVehicle [FOB_typename, _position, [], 0, "CAN_COLLIDE"];
+if (isNull _building) exitWith {};
+_building setDir _direction;
+_building setPos _position;
+_building setVectorUp (if (_level) then {[0, 0, 1]} else {surfaceNormal position _building});
+deleteVehicle _container;
+GRLIB_all_fobs pushBack _centre;
+publicVariable "GRLIB_all_fobs";
+[_building] call KPLIB_fnc_addObjectInit;
 stats_fobs_built = stats_fobs_built + 1;
-
-FOB_build_in_progress = false;
-publicVariable "FOB_build_in_progress";
+please_recalculate = true;
+[] spawn KPLIB_fnc_doSave;
+[_centre, 0] remoteExec ["remote_call_fob"];
+["FOB deployment committed", "BUILD"] call KPLIB_fnc_log;

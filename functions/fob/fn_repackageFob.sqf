@@ -14,10 +14,7 @@ if !(_selection in [1, 2]) exitWith {false};
 private _requestOwner = owner _caller;
 
 private _hasAccess = {
-    _caller == ([] call KPLIB_fnc_getCommander)
-        || {getPlayerUID _caller in (missionNamespace getVariable ["KP_liberation_commander_actions", []])}
-        || {admin (owner _caller) > 0}
-        || {hasInterface && {_caller == player} && {serverCommandAvailable "#kick"}}
+    [_caller, "BUILD"] call KPLIB_fnc_hasPermission
 };
 private _validRequest = {
     !isNull _building
@@ -26,6 +23,7 @@ private _validRequest = {
         && {getObjectType _building >= 8}
         && {alive _caller}
         && {isPlayer _caller}
+        && {side group _caller == GRLIB_side_friendly}
         && {owner _caller == _requestOwner}
         && {isNull objectParent _caller}
         && {_caller distance _building <= 22}

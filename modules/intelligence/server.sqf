@@ -528,10 +528,14 @@ KPLIB_INTEL_SERVER_REGISTER_PRISONER_ESCORT = {
 };
 
 KPLIB_INTEL_SERVER_ACTIVATE_COVERAGE = {
+    if (!isServer || {canSuspend}) exitWith {};
     params [["_region", "", [""]], ["_tier", 0, [0]]];
     if !(missionNamespace getVariable ["KPLIB_intelligence_enabled", true]) exitWith {};
     private _caller = call KPLIB_INTEL_SERVER_GET_CALLER;
     if (isNull _caller || {!alive _caller} || {vehicle _caller isNotEqualTo _caller} || {side group _caller != GRLIB_side_friendly}) exitWith {};
+    if !([_caller, "INTELLIGENCE"] call KPLIB_fnc_hasPermission) exitWith {
+        [_caller, "Intelligence spending permission is required."] call KPLIB_INTEL_SERVER_REJECT;
+    };
     if !([_caller] call KPLIB_INTEL_SERVER_IS_NEAR_TERMINAL) exitWith {[_caller, "Intelligence analysis is only available at the start base or a FOB."] call KPLIB_INTEL_SERVER_REJECT};
     call KPLIB_INTEL_SERVER_REBUILD_REGIONS;
     if !([_region] call KPLIB_INTEL_SERVER_IS_REGION_ELIGIBLE) exitWith {[_caller, "That region is no longer eligible for coverage."] call KPLIB_INTEL_SERVER_REJECT};
