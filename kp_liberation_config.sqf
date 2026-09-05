@@ -325,7 +325,7 @@ KP_liberation_allow_fixedwing_at_fobs = false;			// Allow fixed wing aircraft to
 
 // Player intelligence network. All observations are generated and sanitized by the server.
 KPLIB_intelligence_enabled = true;
-KPLIB_intelligence_tier_costs = [10, 25, 45];            // Activity, tracking, identification
+KPLIB_intelligence_tier_costs = [10, 25, 45];            // Assessment, movement, opportunities
 KPLIB_intelligence_coverage_duration = 1800;             // Seconds per activation or renewal
 KPLIB_intelligence_max_frontline_depth = 2;              // OPFOR regions available for analysis
 KPLIB_intelligence_region_hops = 1;                      // Linked sectors covered around the selected region
@@ -336,7 +336,12 @@ KPLIB_intelligence_strength_bands = [12, 30];            // Moderate and heavy w
 KPLIB_intelligence_vehicle_strength_weight = 4;
 KPLIB_intelligence_max_reports = 40;
 KPLIB_intelligence_max_reports_per_region = 10;
-KPLIB_intelligence_route_point_limit = 12;
+// Consecutive real path points; longer corridors are explicitly marked partial.
+KPLIB_intelligence_route_point_limit = 48;
+KPLIB_intelligence_lost_contact_duration = 300;
+KPLIB_intelligence_lead_duration = 600;
+// Separate bounded pools for lost observations and recovered leads.
+KPLIB_intelligence_max_archived_reports = 12;
 KPLIB_intelligence_terminal_distance = 75;
 KPLIB_intelligence_interaction_distance = 4;
 KPLIB_intelligence_delivery_distance = 40;

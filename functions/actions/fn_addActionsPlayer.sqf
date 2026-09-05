@@ -77,7 +77,7 @@ _player addAction [
     "
 ];
 
-// Shared intelligence analysis terminal
+// Shared reports remain readable in the field; the server restricts paid analysis to terminals.
 if (KPLIB_intelligence_enabled) then {
     _player addAction [
         "<t color='#7FC9FF'>Intelligence Analysis</t>",
@@ -91,10 +91,6 @@ if (KPLIB_intelligence_enabled) then {
             isNull (objectParent _originalTarget)
             && {alive _originalTarget}
             && {side _originalTarget isEqualTo GRLIB_side_friendly}
-            && {
-                _originalTarget getVariable ['KPLIB_fobDist', 99999] < KPLIB_intelligence_terminal_distance
-              || {_originalTarget getVariable ['KPLIB_isNearStart', false]}
-            }
             && {build_confirmed isEqualTo 0}
         "
     ];

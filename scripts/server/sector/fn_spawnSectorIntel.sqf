@@ -44,6 +44,9 @@ if !(_sector in KPLIB_sectorIntelSpawned) then {
                 _obj setdir (random 360);
                 _obj setPosATL _spawnPos;
                 _obj allowDamage false;
+                if (!isNil "KPLIB_INTEL_SERVER_CAPTURE_SOURCE") then {
+                    [_obj, _sector] call KPLIB_INTEL_SERVER_CAPTURE_SOURCE;
+                };
             };
         };
     };

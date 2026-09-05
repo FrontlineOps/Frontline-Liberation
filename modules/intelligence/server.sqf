@@ -1,5 +1,7 @@
 KPLIB_INTEL_COVERAGE = createHashMap;
 KPLIB_INTEL_OBSERVATIONS = createHashMap;
+KPLIB_INTEL_LOST_CONTACTS = createHashMap;
+KPLIB_INTEL_LEADS = createHashMap;
 KPLIB_INTEL_ELIGIBLE_REGIONS = [];
 KPLIB_INTEL_REGION_OWNERSHIP_KEY = "";
 KPLIB_INTEL_LAST_FINGERPRINT = "";
@@ -103,340 +105,22 @@ KPLIB_INTEL_SERVER_TRIM_ROUTE = {
     _route select [_routeIndex]
 };
 
-KPLIB_INTEL_SERVER_COLLECT_RAW_REPORTS = {
-    private _rawReports = [];
-    private _allowedKinds = missionNamespace getVariable ["KPLIB_intelligence_operation_kinds", []];
+// Separate bounded report construction, coverage history and recovered source context.
+[] call compileFinal preprocessFileLineNumbers "modules\intelligence\reports.sqf";
+[] call compileFinal preprocessFileLineNumbers "modules\intelligence\coverage.sqf";
+[] call compileFinal preprocessFileLineNumbers "modules\intelligence\leads.sqf";
 
-    {
-        private _id = if (_x isEqualType "") then {_x} else {str _x};
-        private _operation = _y;
-        private _kind = toUpper (_operation getOrDefault ["kind", ""]);
-        if !(_kind in _allowedKinds) then {continue};
-
-        private _taskForce = BATTLESPACE_TASK_FORCES get _x;
-        if (isNil "_taskForce") then {continue};
-        private _position = _taskForce param [1, []];
-        private _destinationPosition = _taskForce param [2, []];
-        private _fallbackSector = _operation getOrDefault [
-            "pressureSector",
-            _operation getOrDefault [
-                "targetSector",
-                _operation getOrDefault ["fundingSector", _operation getOrDefault ["originSector", ""]]
-            ]
-        ];
-        private _sector = [_position, _fallbackSector] call KPLIB_INTEL_SERVER_NEAREST_SECTOR;
-        private _destinationSector = _operation getOrDefault ["targetSector", _operation getOrDefault ["pressureSector", ""]];
-        if (_destinationSector != "") then {_destinationPosition = getMarkerPos _destinationSector};
-
-        private _composition = _taskForce param [3, createHashMap];
-        private _manpower = 0;
-        private _vehicles = 0;
-        if (typeName _composition == "HASHMAP") then {
-            _manpower = floor (_composition getOrDefault ["manpower", 0]);
-            private _vehicleData = _composition getOrDefault ["vehicles", []];
-            _vehicles = switch (typeName _vehicleData) do {
-                case "ARRAY": {count _vehicleData};
-                case "SCALAR": {floor _vehicleData};
-                default {0};
-            };
-        };
-        if (_vehicles == 0) then {
-            _vehicles = count (_operation getOrDefault ["vehicleManifest", []]);
-        };
-
-        private _route = [BATTLESPACE_TASK_FORCE_PATHS getOrDefault [_x, []], _taskForce] call KPLIB_INTEL_SERVER_TRIM_ROUTE;
-        _rawReports pushBack [
-            _id,
-            _kind,
-            toUpper (_operation getOrDefault ["phase", "ACTIVE"]),
-            _position,
-            _sector,
-            _destinationSector,
-            _destinationPosition,
-            _manpower,
-            _vehicles,
-            _route
-        ];
-    } forEach BATTLESPACE_STRATEGIC_OPERATIONS;
-
-    {
-        private _group = _x;
-        if (isNull _group) then {continue};
-        private _aliveVehicles = [];
-        {
-            private _vehicle = vehicle _x;
-            if (_vehicle isNotEqualTo _x && {alive _vehicle}) then {_aliveVehicles pushBackUnique _vehicle};
-        } forEach units _group;
-        private _aliveCrew = {alive _x} count units _group;
-        if (_aliveVehicles isEqualTo [] && {_aliveCrew == 0}) then {continue};
-        private _sector = _group getVariable ["BSAFundingSector", ""];
-        private _position = if (_aliveVehicles isNotEqualTo []) then {getPosATL (_aliveVehicles # 0)} else {getPosATL leader _group};
-        private _groupIdentity = groupId _group;
-        if (_groupIdentity == "") then {_groupIdentity = str _forEachIndex};
-        private _stateValue = _group getVariable ["BSAState", "READY"];
-        private _phase = switch (typeName _stateValue) do {
-            case "ARRAY": {toUpper (_stateValue param [0, "READY"])};
-            case "STRING": {toUpper _stateValue};
-            default {"READY"};
-        };
-        _rawReports pushBack [
-            format ["ARTILLERY_%1_%2", _sector, _groupIdentity],
-            "ARTILLERY",
-            _phase,
-            _position,
-            _sector,
-            "",
-            [],
-            _aliveCrew,
-            count _aliveVehicles,
-            []
-        ];
-    } forEach (missionNamespace getVariable ["BATTLESPACE_ARTILLERY_SECTIONS", []]);
-
-    {
-        private _units = (_x getOrDefault ["Units", []]) select {!isNull _x && {alive _x}};
-        if (_units isEqualTo []) then {continue};
-        private _sector = _x getOrDefault ["Sector", ""];
-        private _aliveCrew = 0;
-        {_aliveCrew = _aliveCrew + ({alive _x} count crew _x)} forEach _units;
-        _rawReports pushBack [
-            format ["SAM_%1", _x getOrDefault ["Id", _forEachIndex]],
-            "SAM",
-            "ACTIVE",
-            getPosATL (_units # 0),
-            _sector,
-            "",
-            [],
-            _aliveCrew,
-            count _units,
-            []
-        ];
-    } forEach (missionNamespace getVariable ["BATTLESPACE_SAM_EXISTING_SITES", []]);
-
-    _rawReports
-};
-
-KPLIB_INTEL_SERVER_SAMPLE_ROUTE = {
-    params ["_route"];
-    private _limit = 2 max floor (missionNamespace getVariable ["KPLIB_intelligence_route_point_limit", 12]);
-    if !(_route isEqualType [] && {_route isNotEqualTo []}) exitWith {[]};
-    if ((count _route) <= _limit) exitWith {+_route};
-
-    private _sample = [];
-    private _lastIndex = (count _route) - 1;
-    for "_index" from 0 to (_limit - 1) do {
-        _sample pushBack (_route # round ((_index / (_limit - 1)) * _lastIndex));
-    };
-    _sample
-};
-
-KPLIB_INTEL_SERVER_BUILD_OBSERVATION = {
-    params ["_raw", "_tier", "_region"];
-    _raw params ["_id", "_kind", "_phase", "_position", "_sector", "_destinationSector", "_destinationPosition", "_manpower", "_vehicles", "_route"];
-
-    private _uncertaintyValues = missionNamespace getVariable ["KPLIB_intelligence_uncertainty_radii", [1200, 600, 200]];
-    private _uncertainty = _uncertaintyValues param [_tier - 1, 1200];
-    private _angle = random 360;
-    private _offset = sqrt (random 1) * _uncertainty;
-    private _observedPosition = [
-        (_position param [0, 0]) + (sin _angle * _offset),
-        (_position param [1, 0]) + (cos _angle * _offset),
-        0
-    ];
-
-    private _displayKind = _kind;
-    if (_tier == 1) then {
-        _displayKind = switch true do {
-            case (_kind find "AIR" >= 0): {"AIR ACTIVITY"};
-            case (_kind == "CONVOY"): {"LOGISTICS ACTIVITY"};
-            case (_kind in ["ARTILLERY", "SAM", "FORTIFICATION"]): {"FIXED DEFENSE"};
-            default {"GROUND ACTIVITY"};
-        };
-    };
-
-    private _strength = "UNKNOWN";
-    if (_tier == 2) then {
-        private _weight = _manpower + (_vehicles * (missionNamespace getVariable ["KPLIB_intelligence_vehicle_strength_weight", 4]));
-        private _bands = missionNamespace getVariable ["KPLIB_intelligence_strength_bands", [12, 30]];
-        _strength = if (_weight >= (_bands param [1, 30])) then {"HEAVY"} else {if (_weight >= (_bands param [0, 12])) then {"MODERATE"} else {"LIGHT"}};
-    };
-    if (_tier >= 3) then {
-        _strength = format ["%1 personnel / %2 vehicles", _manpower, _vehicles];
-    };
-
-    private _sampledRoute = if (_tier >= 3) then {[_route] call KPLIB_INTEL_SERVER_SAMPLE_ROUTE} else {[]};
-    if (_sampledRoute isNotEqualTo []) then {
-        private _deltaX = (_observedPosition # 0) - (_position param [0, 0]);
-        private _deltaY = (_observedPosition # 1) - (_position param [1, 0]);
-        _sampledRoute = _sampledRoute apply {[
-            (_x param [0, 0]) + _deltaX,
-            (_x param [1, 0]) + _deltaY,
-            0
-        ]};
-    };
-
-    private _displayPhase = [_phase, "DETECTED"] select (_tier == 1);
-    [
-        _id,
-        _displayKind,
-        _displayPhase,
-        _region,
-        _observedPosition,
-        _uncertainty,
-        CBA_missionTime,
-        [_destinationSector, ""] select (_tier < 2),
-        [_destinationPosition, []] select (_tier < 2),
-        _strength,
-        _sampledRoute,
-        _tier
-    ]
-};
-
-KPLIB_INTEL_SERVER_BUILD_PAYLOAD = {
-    private _coverages = [];
-    {
-        _coverages pushBack [_x, _y get "tier", _y get "expiresAt"];
-    } forEach KPLIB_INTEL_COVERAGE;
-    _coverages = [_coverages, [], {_x # 0}, "ASCEND"] call BIS_fnc_sortBy;
-
-    private _reports = [];
-    {_reports pushBack +(_y get "report")} forEach KPLIB_INTEL_OBSERVATIONS;
-    _reports = [_reports, [], {_x # 0}, "ASCEND"] call BIS_fnc_sortBy;
-
-    [
-        KPLIB_INTEL_REVISION,
-        missionNamespace getVariable ["resources_intel", 0],
-        _coverages,
-        _reports,
-        +KPLIB_INTEL_ELIGIBLE_REGIONS
-    ]
-};
-
-KPLIB_INTEL_SERVER_SEND_PAYLOAD = {
-    params [["_targets", [], [[], objNull]]];
-    if (_targets isEqualType [] && {_targets isEqualTo []}) exitWith {};
-    [call KPLIB_INTEL_SERVER_BUILD_PAYLOAD] remoteExecCall ["KPLIB_INTEL_CLIENT_RECEIVE_SNAPSHOT", _targets];
-};
-
-KPLIB_INTEL_SERVER_RECONCILE = {
-    params [["_force", false, [false]]];
-    if (!isServer || {!(missionNamespace getVariable ["KPLIB_intelligence_enabled", true])}) exitWith {};
-    call KPLIB_INTEL_SERVER_UPDATE_INFORMANT;
-    if (isNil "BATTLESPACE_STRATEGIC_OPERATIONS" || {isNil "BATTLESPACE_TASK_FORCES"}) exitWith {};
-
-    private _changed = call KPLIB_INTEL_SERVER_REBUILD_REGIONS;
-    private _now = CBA_missionTime;
-    {
-        private _region = _x;
-        private _coverage = KPLIB_INTEL_COVERAGE get _region;
-        if ((_coverage getOrDefault ["expiresAt", 0]) <= _now || {!([_region] call KPLIB_INTEL_SERVER_IS_REGION_ELIGIBLE)}) then {
-            KPLIB_INTEL_COVERAGE deleteAt _region;
-            _changed = true;
-        };
-    } forEach (keys KPLIB_INTEL_COVERAGE);
-
-    if (count KPLIB_INTEL_COVERAGE == 0) exitWith {
-        if (count KPLIB_INTEL_OBSERVATIONS > 0) then {
-            KPLIB_INTEL_OBSERVATIONS = createHashMap;
-            _changed = true;
-        };
-        private _payload = call KPLIB_INTEL_SERVER_BUILD_PAYLOAD;
-        private _fingerprint = str (_payload select [1]);
-        if (_force || {_changed} || {_fingerprint != KPLIB_INTEL_LAST_FINGERPRINT}) then {
-            KPLIB_INTEL_REVISION = KPLIB_INTEL_REVISION + 1;
-            KPLIB_INTEL_LAST_FINGERPRINT = _fingerprint;
-            private _targets = allPlayers select {isPlayer _x && {side group _x == GRLIB_side_friendly}};
-            [_targets] call KPLIB_INTEL_SERVER_SEND_PAYLOAD;
-        };
-    };
-
-    private _rawReports = call KPLIB_INTEL_SERVER_COLLECT_RAW_REPORTS;
-    private _candidates = createHashMap;
-    private _regionCounts = createHashMap;
-    private _totalLimit = 1 max floor (missionNamespace getVariable ["KPLIB_intelligence_max_reports", 40]);
-    private _regionLimit = 1 max floor (missionNamespace getVariable ["KPLIB_intelligence_max_reports_per_region", 10]);
-
-    {
-        private _region = _x;
-        private _coverage = _y;
-        private _tier = _coverage get "tier";
-        private _coveredSectors = _coverage get "sectors";
-        {
-            private _raw = _x;
-            private _sector = _raw # 4;
-            private _inside = _sector in _coveredSectors;
-            if (!_inside && {(_raw # 3) isEqualType []} && {count (_raw # 3) >= 2}) then {
-                {
-                    if (((getMarkerPos _x) distance2D (_raw # 3)) <= GRLIB_sector_size) exitWith {_inside = true};
-                } forEach _coveredSectors;
-            };
-            if (!_inside) then {continue};
-
-            private _id = _raw # 0;
-            private _existingCandidate = _candidates get _id;
-            if (isNil "_existingCandidate") then {
-                if (count _candidates >= _totalLimit) then {continue};
-                private _regionCount = _regionCounts getOrDefault [_region, 0];
-                if (_regionCount >= _regionLimit) then {continue};
-                _regionCounts set [_region, _regionCount + 1];
-                _candidates set [_id, [_raw, _tier, _region]];
-            } else {
-                if (_tier > (_existingCandidate # 1)) then {
-                    _candidates set [_id, [_raw, _tier, _region]];
-                };
-            };
-        } forEach _rawReports;
-    } forEach KPLIB_INTEL_COVERAGE;
-
-    {
-        private _id = _x;
-        _y params ["_raw", "_tier", "_region"];
-        private _observation = KPLIB_INTEL_OBSERVATIONS get _id;
-        private _refreshValues = missionNamespace getVariable ["KPLIB_intelligence_refresh_intervals", [180, 90, 30]];
-        private _refreshInterval = _refreshValues param [_tier - 1, 180];
-        private _mustRefresh = isNil "_observation";
-        if (!_mustRefresh) then {
-            _mustRefresh = (_observation getOrDefault ["tier", 0]) != _tier
-                || {(_observation getOrDefault ["region", ""]) != _region}
-                || {_now >= (_observation getOrDefault ["refreshAt", 0])};
-        };
-        if (_mustRefresh) then {
-            KPLIB_INTEL_OBSERVATIONS set [_id, createHashMapFromArray [
-                ["tier", _tier],
-                ["region", _region],
-                ["refreshAt", _now + _refreshInterval],
-                ["report", [_raw, _tier, _region] call KPLIB_INTEL_SERVER_BUILD_OBSERVATION]
-            ]];
-            _changed = true;
-        };
-    } forEach _candidates;
-
-    {
-        if (isNil {_candidates get _x}) then {
-            KPLIB_INTEL_OBSERVATIONS deleteAt _x;
-            _changed = true;
-        };
-    } forEach (keys KPLIB_INTEL_OBSERVATIONS);
-
-    private _payload = call KPLIB_INTEL_SERVER_BUILD_PAYLOAD;
-    private _fingerprint = str (_payload select [1]);
-    if (_force || {_changed} || {_fingerprint != KPLIB_INTEL_LAST_FINGERPRINT}) then {
-        KPLIB_INTEL_REVISION = KPLIB_INTEL_REVISION + 1;
-        KPLIB_INTEL_LAST_FINGERPRINT = _fingerprint;
-        private _targets = allPlayers select {isPlayer _x && {side group _x == GRLIB_side_friendly}};
-        [_targets] call KPLIB_INTEL_SERVER_SEND_PAYLOAD;
-    };
-};
-
-KPLIB_INTEL_SERVER_ADD_RESERVE = {
+localNamespace setVariable ["KPLIB_INTEL_ADD_RESERVE", {
     params ["_amount", "_source"];
     if (!isServer || {_amount <= 0}) exitWith {};
     resources_intel = (missionNamespace getVariable ["resources_intel", 0]) + floor _amount;
     publicVariable "resources_intel";
     private _targets = allPlayers select {isPlayer _x && {side group _x == GRLIB_side_friendly}};
-    ["EARNED", floor _amount, _source] remoteExecCall ["KPLIB_INTEL_CLIENT_NOTIFY", _targets];
-    [true] call KPLIB_INTEL_SERVER_RECONCILE;
-};
+    if (_targets isNotEqualTo []) then {
+        ["EARNED", floor _amount, _source] remoteExecCall ["KPLIB_INTEL_CLIENT_NOTIFY", _targets];
+    };
+    [{[true] call KPLIB_INTEL_SERVER_RECONCILE}] call CBA_fnc_execNextFrame;
+}];
 
 KPLIB_INTEL_SERVER_REJECT = {
     params ["_player", "_message"];
@@ -452,7 +136,9 @@ KPLIB_INTEL_SERVER_COMMIT_PRISONER = {
         ["_source", "unknown", [""]]
     ];
 
+    if (!isServer) exitWith {false};
     private _unitId = if (isNull _unit) then {"null"} else {netId _unit};
+    if (isRemoteExecuted && {remoteExecutedOwner != 2} && {_caller isNotEqualTo (call KPLIB_INTEL_SERVER_GET_CALLER)}) exitWith {false};
     if !(missionNamespace getVariable ["KPLIB_intelligence_enabled", true]) exitWith {
         [format ["Prisoner intelligence delivery rejected (unit=%1, source=%2, reason=disabled)", _unitId, _source], "INTELLIGENCE"] call KPLIB_fnc_log;
         false
@@ -482,6 +168,7 @@ KPLIB_INTEL_SERVER_COMMIT_PRISONER = {
     };
 
     _unit setVariable ["KPLIB_intelligenceDelivered", true, true];
+    [_unit] call (localNamespace getVariable "KPLIB_INTEL_CLAIM_LEAD");
     private _range = if ((typeOf _unit) in militia_squad) then {
         missionNamespace getVariable ["KPLIB_intelligence_prisoner_yield_militia", [3, 6]]
     } else {
@@ -489,7 +176,7 @@ KPLIB_INTEL_SERVER_COMMIT_PRISONER = {
     };
     private _amount = [_range] call KPLIB_INTEL_SERVER_RANDOM_YIELD;
     stats_prisoners_captured = (missionNamespace getVariable ["stats_prisoners_captured", 0]) + 1;
-    [_amount, "prisoner"] call KPLIB_INTEL_SERVER_ADD_RESERVE;
+    [_amount, "prisoner"] call (localNamespace getVariable "KPLIB_INTEL_ADD_RESERVE");
     [format ["Prisoner intelligence delivery committed (unit=%1, source=%2, intel=%3)", _unitId, _source, _amount], "INTELLIGENCE"] call KPLIB_fnc_log;
     [format ["Prisoner intelligence cleanup (unit=%1, class=%2)", _unitId, typeOf _unit], "INTELLIGENCE"] call KPLIB_fnc_log;
     deleteVehicle _unit;
@@ -541,9 +228,16 @@ KPLIB_INTEL_SERVER_ACTIVATE_COVERAGE = {
     if !([_region] call KPLIB_INTEL_SERVER_IS_REGION_ELIGIBLE) exitWith {[_caller, "That region is no longer eligible for coverage."] call KPLIB_INTEL_SERVER_REJECT};
 
     private _costs = missionNamespace getVariable ["KPLIB_intelligence_tier_costs", [10, 25, 45]];
-    if (_tier < 1 || {_tier > count _costs}) exitWith {[_caller, "Invalid intelligence tier."] call KPLIB_INTEL_SERVER_REJECT};
+    if (_tier != floor _tier || {_tier < 1} || {_tier > (count _costs min 3)}) exitWith {[_caller, "Invalid intelligence tier."] call KPLIB_INTEL_SERVER_REJECT};
     private _activeCoverage = KPLIB_INTEL_COVERAGE get _region;
+    if (!isNil "_activeCoverage" && {(_activeCoverage getOrDefault ["expiresAt", 0]) <= CBA_missionTime}) then {
+        KPLIB_INTEL_COVERAGE deleteAt _region;
+        _activeCoverage = nil;
+    };
     if (!isNil "_activeCoverage" && {_tier < (_activeCoverage getOrDefault ["tier", 1])}) exitWith {[_caller, "Select the active tier or a higher tier; live coverage cannot be downgraded."] call KPLIB_INTEL_SERVER_REJECT};
+    if (!isNil "_activeCoverage" && {CBA_missionTime - (_activeCoverage getOrDefault ["purchasedAt", -10]) < 3}) exitWith {
+        [_caller, "Coverage was just activated; wait a moment before another purchase."] call KPLIB_INTEL_SERVER_REJECT;
+    };
     private _cost = _costs # (_tier - 1);
     if ((missionNamespace getVariable ["resources_intel", 0]) < _cost) exitWith {[_caller, "The shared reserve does not contain enough intelligence."] call KPLIB_INTEL_SERVER_REJECT};
 
@@ -551,14 +245,17 @@ KPLIB_INTEL_SERVER_ACTIVATE_COVERAGE = {
     publicVariable "resources_intel";
     KPLIB_INTEL_COVERAGE set [_region, createHashMapFromArray [
         ["tier", _tier],
+        ["purchasedAt", CBA_missionTime],
         ["expiresAt", CBA_missionTime + (missionNamespace getVariable ["KPLIB_intelligence_coverage_duration", 1800])],
         ["sectors", [_region] call KPLIB_INTEL_SERVER_GET_REGION_SECTORS]
     ]];
     private _label = markerText _region;
     if (_label == "") then {_label = _region};
     private _targets = allPlayers select {isPlayer _x && {side group _x == GRLIB_side_friendly}};
-    ["ACTIVATED", _tier, _label] remoteExecCall ["KPLIB_INTEL_CLIENT_NOTIFY", _targets];
-    [true] call KPLIB_INTEL_SERVER_RECONCILE;
+    if (_targets isNotEqualTo []) then {
+        ["ACTIVATED", _tier, _label] remoteExecCall ["KPLIB_INTEL_CLIENT_NOTIFY", _targets];
+    };
+    [{[true] call KPLIB_INTEL_SERVER_RECONCILE}] call CBA_fnc_execNextFrame;
 };
 
 KPLIB_INTEL_SERVER_COLLECT_DOCUMENT = {
@@ -570,8 +267,9 @@ KPLIB_INTEL_SERVER_COLLECT_DOCUMENT = {
     if ((_caller distance _object) > _distance || {!((typeOf _object) in KPLIB_intelObjectClasses)}) exitWith {};
     if (_object getVariable ["KPLIB_intelligenceCollected", false]) exitWith {};
     _object setVariable ["KPLIB_intelligenceCollected", true, true];
+    [_object] call (localNamespace getVariable "KPLIB_INTEL_CLAIM_LEAD");
     deleteVehicle _object;
-    [[missionNamespace getVariable ["KPLIB_intelligence_document_yield", [8, 15]]] call KPLIB_INTEL_SERVER_RANDOM_YIELD, "documents"] call KPLIB_INTEL_SERVER_ADD_RESERVE;
+    [[missionNamespace getVariable ["KPLIB_intelligence_document_yield", [8, 15]]] call KPLIB_INTEL_SERVER_RANDOM_YIELD, "documents"] call (localNamespace getVariable "KPLIB_INTEL_ADD_RESERVE");
 };
 
 KPLIB_INTEL_SERVER_INFORMANT_TARGETS = {
@@ -659,7 +357,7 @@ KPLIB_INTEL_SERVER_COMMIT_INFORMANT = {
     [format ["Civilian informant debrief completed (unit=%1, playerOwner=%2, source=%3, intel=%4)", netId _unit, owner _caller, _source, _amount], "INTELLIGENCE"] call KPLIB_fnc_log;
     [true] call KPLIB_INTEL_SERVER_CLEAR_INFORMANT;
     if (!isNil "F_cr_changeCR") then {[2] spawn F_cr_changeCR};
-    [_amount, "informant"] call KPLIB_INTEL_SERVER_ADD_RESERVE;
+    [_amount, "informant"] call (localNamespace getVariable "KPLIB_INTEL_ADD_RESERVE");
     true
 };
 
@@ -850,8 +548,15 @@ KPLIB_INTEL_SERVER_REQUEST_SYNC = {
     private _caller = call KPLIB_INTEL_SERVER_GET_CALLER;
     if (isNull _caller || {side group _caller != GRLIB_side_friendly}) exitWith {};
     private _activeInformant = KPLIB_INTEL_INFORMANT_STATE getOrDefault ["unit", objNull];
-    [false] call KPLIB_INTEL_SERVER_RECONCILE;
-    [_caller] call KPLIB_INTEL_SERVER_SEND_PAYLOAD;
+    // Coalesce repeated sync requests on this player object; no persistent identity data.
+    private _lastSync = _caller getVariable ["KPLIB_intelligenceLastSync", -10];
+    if (CBA_missionTime - _lastSync < 2) exitWith {};
+    _caller setVariable ["KPLIB_intelligenceLastSync", CBA_missionTime];
+    [{
+        params ["_caller"];
+        [false] call KPLIB_INTEL_SERVER_RECONCILE;
+        if (!isNull _caller && {side group _caller == GRLIB_side_friendly}) then {[_caller] call KPLIB_INTEL_SERVER_SEND_PAYLOAD};
+    }, [_caller]] call CBA_fnc_execNextFrame;
     private _informant = KPLIB_INTEL_INFORMANT_STATE;
     private _unit = _informant getOrDefault ["unit", objNull];
     if (!isNull _unit && {alive _unit} && {_unit isEqualTo _activeInformant}) then {
@@ -867,6 +572,6 @@ KPLIB_INTEL_SERVER_INIT = {
 
     KPLIB_INTEL_SERVER_INITIALIZED = true;
     call KPLIB_INTEL_SERVER_SCHEDULE_INFORMANT;
-    [true] call KPLIB_INTEL_SERVER_RECONCILE;
+    [{[true] call KPLIB_INTEL_SERVER_RECONCILE}] call CBA_fnc_execNextFrame;
     KPLIB_INTEL_SERVER_PFH = [{[false] call KPLIB_INTEL_SERVER_RECONCILE}, missionNamespace getVariable ["KPLIB_intelligence_reconcile_interval", 15]] call CBA_fnc_addPerFrameHandler;
 };

@@ -37,6 +37,9 @@ KPLIB_SURRENDER_SERVER_CONVERT_UNIT = {
         [false, _wasMounted, false]
     };
 
+    if (!isNil "KPLIB_INTEL_SERVER_CAPTURE_SOURCE") then {
+        [_unit, "", true] call KPLIB_INTEL_SERVER_CAPTURE_SOURCE;
+    };
     private _releasedFromTaskForce = false;
     if (!isNil "BATTLESPACE_TASK_FORCE_RELEASE_PERSON") then {
         _releasedFromTaskForce = [_unit] call BATTLESPACE_TASK_FORCE_RELEASE_PERSON;
