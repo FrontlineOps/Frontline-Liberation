@@ -43,6 +43,7 @@ class KPLIB {
         class getMobileRespawns {};
         class getNearestFob     {};
         class potatoScan        {};
+        class repackageFob      {};
         class setFobMass        {};
     };
     class functions_players {

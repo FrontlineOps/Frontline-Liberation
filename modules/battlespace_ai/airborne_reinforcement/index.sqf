@@ -270,7 +270,7 @@ BATTLESPACE_AIRBORNE_TRANSPORT_ON_DECISION_TICK = {
     if (_phase == "LOST") exitWith {true};
     if (_phase == "DEPLOYING") exitWith {false};
 
-    if (_phase == "ENROUTE") then {
+    if (_phase == "ENROUTE") exitWith {
         private _targetSector = _operation getOrDefault ["targetSector", ""];
         private _targetState = BATTLESPACE_SECTOR_STATES get _targetSector;
         if (isNil "_targetState" || {(_targetState getOrDefault ["owner", ""]) != "OPFOR"}) exitWith {
@@ -279,21 +279,30 @@ BATTLESPACE_AIRBORNE_TRANSPORT_ON_DECISION_TICK = {
         if (_current distance2D (getMarkerPos _targetSector) <= (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_AIRBORNE_DROP_RADIUS", 600])) exitWith {
             !([_taskForceId, _operation] call BATTLESPACE_AIRBORNE_QUEUE_DEPLOY)
         };
+        if (_activeGroups isEqualTo []) then {
+            [_taskForceId, _taskForce] call BATTLESPACE_TASK_FORCE_MOVE_SIMULATED_GROUP;
+        };
+        false
     };
 
-    if (_phase == "RETURNING") then {
+    if (_phase == "RETURNING") exitWith {
         private _returnSector = _operation getOrDefault ["returnSector", ""];
         private _returnState = BATTLESPACE_SECTOR_STATES get _returnSector;
         if (isNil "_returnState" || {(_returnState getOrDefault ["owner", ""]) != "OPFOR"}) then {
-            if !([_taskForceId, _taskForce, _operation] call BATTLESPACE_AIRBORNE_BEGIN_RETURN) exitWith {true};
+            [_taskForceId, _taskForce, _operation] call BATTLESPACE_AIRBORNE_BEGIN_RETURN;
             _operation = BATTLESPACE_STRATEGIC_OPERATIONS get _taskForceId;
             _returnSector = _operation getOrDefault ["returnSector", ""];
         };
+        if ((_operation getOrDefault ["outcome", ""]) == "LOST") exitWith {true};
         if (_returnSector != "" && {_current distance2D (getMarkerPos _returnSector) <= (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_AIRBORNE_RETURN_RADIUS", 500])}) exitWith {
             _operation set ["outcome", "RETURNED"];
             BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceId, _operation];
             true
         };
+        if (_activeGroups isEqualTo []) then {
+            [_taskForceId, _taskForce] call BATTLESPACE_TASK_FORCE_MOVE_SIMULATED_GROUP;
+        };
+        false
     };
 
     if (_activeGroups isEqualTo []) then {

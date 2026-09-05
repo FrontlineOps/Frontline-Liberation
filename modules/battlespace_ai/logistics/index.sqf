@@ -1282,19 +1282,6 @@ BATTLESPACE_LOGISTICS_CREATE_CONVOY = {
     private _origin = getMarkerPos _sourceMarker;
     private _roads = _origin nearRoads 200;
     if (_roads isNotEqualTo []) then {_origin = getPos (selectRandom _roads)};
-    private _taskForceId = [
-        "Convoy",
-        _convoyDefinition get "composition",
-        _origin,
-        getMarkerPos _targetSector,
-        getMarkerPos _sourceMarker
-    ] call BATTLESPACE_TASK_FORCES_INIT;
-    if (_taskForceId == "") exitWith {
-        [] call _restoreDebit;
-        [format ["Convoy creation for %1 failed; committed sector debit was restored", _targetSector], "WARNING"] call BATTLESPACE_STRATEGIC_LOG;
-        ""
-    };
-
     private _operation = createHashMapFromArray [
         ["kind", "CONVOY"],
         ["convoyPurpose", _purpose],
@@ -1313,7 +1300,27 @@ BATTLESPACE_LOGISTICS_CREATE_CONVOY = {
     if (typeName _metadata == "HASHMAP") then {
         {_operation set [_x, _y]} forEach _metadata;
     };
-    BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceId, _operation];
+    private _taskForceId = "";
+    // Admission and registration must be indivisible across scheduled normal,
+    // evacuation and emergency producers. Physical spawning happens later.
+    isNil {
+        if (["CONVOY"] call BATTLESPACE_STRATEGIC_COUNT_OPERATIONS >= (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_ACTIVE_CONVOYS", 3])) exitWith {};
+        _taskForceId = [
+            "Convoy",
+            _convoyDefinition get "composition",
+            _origin,
+            getMarkerPos _targetSector,
+            getMarkerPos _sourceMarker
+        ] call BATTLESPACE_TASK_FORCES_INIT;
+        if (_taskForceId != "") then {
+            BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceId, _operation];
+        };
+    };
+    if (_taskForceId == "") exitWith {
+        [] call _restoreDebit;
+        [format ["Convoy creation for %1 rejected by capacity or constructor; committed sector debit was restored", _targetSector], "WARNING"] call BATTLESPACE_STRATEGIC_LOG;
+        ""
+    };
 
     _targetState set [
         "nextResupplyAt",
@@ -1418,6 +1425,7 @@ BATTLESPACE_LOGISTICS_DISPATCH_EVACUATION = {
 BATTLESPACE_LOGISTICS_DISPATCH = {
     params ["_targetSector", "_request"];
     if (!([] call BATTLESPACE_STRATEGIC_SERVER_CALL_ALLOWED) || {count _request == 0}) exitWith { false };
+    if (["CONVOY"] call BATTLESPACE_STRATEGIC_COUNT_OPERATIONS >= (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_ACTIVE_CONVOYS", 3])) exitWith {false};
     if ([_targetSector] call BATTLESPACE_LOGISTICS_HAS_ACTIVE_CONVOY_FOR_TARGET) exitWith { false };
     if ([_targetSector] call BATTLESPACE_LOGISTICS_HAS_ACTIVE_EVACUATION_FROM_SOURCE) exitWith { false };
 

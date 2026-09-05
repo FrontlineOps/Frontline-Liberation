@@ -250,187 +250,74 @@ NETWORKED_SECTORS_HAS_UP_TO_LINK_DEPTH = {
 };
 // Is _targetSector within _distance away from _sector in the Sector Graph.
 NETWORKED_SECTORS_IS_NODE_WITHIN_DISTANCE_FOR_NODE = {
-	params ["_sector", "_targetSector", "_bluforSectors", "_distance"];
+    params ["_sector", "_targetSector", "_bluforSectors", "_distance"];
+    if (isNil "NETWORKED_SECTORS" || {_distance < 0}) exitWith {false};
+    if (!(_sector in NETWORKED_SECTORS) || {!(_targetSector in NETWORKED_SECTORS)}) exitWith {false};
+    if (_sector == _targetSector) exitWith {true};
 
-	diag_log format ["NETWORKED_SECTORS_IS_NODE_WITHIN_DISTANCE_FOR_NODE (%1, %2, %3)", _sector, _targetSector, _distance];
-
-
-	private _networkedSectorData = NETWORKED_SECTORS get _sector;
-	private _openSet = [];
-
-	{
-		_openSet pushBack [_x, 1];
-	} forEach (_networkedSectorData get "Links");
-	private _highestCost = 0;
-
-	private _valid = false;
-	private _visitedSet = createHashMap;
-
-	private _execs = 0;
-	while { (count _openSet) > 0 && _execs < 500 && !_valid } do 
-	{
-		_execs = _execs + 1;
-		private _currentNodeData = _openSet deleteAt ((count _openSet) - 1);
-
-		_currentNodeData params ["_currentNode", "_currentCost"];
-		
-		_visitedSet set [_currentNode, true];
-		
-		private _data = NETWORKED_SECTORS get _currentNode;
-
-		if(_currentNode == _targetSector) exitWith {
-			_valid = true;
-		};
-
-
-
-		
-
-		
-
-		private _newLinks = _data get "Links";
-
-
-		{
-			if((_currentCost + 1) > _distance) then { continue; };
-			if(_x in _bluforSectors) then { continue; };
-			if (!(isNil { _visitedSet get _x })) then { continue; };
-
-			_visitedSet set [_x, true];
-			_openSet pushBack [_x, _currentCost + 1];
-
-			if(_x == _targetSector) exitWith { _valid = true; };
-		} forEach _newLinks;
-
-
-	};
-
-	if(_execs >= 500) then {
-		diag_log format ["broke out due to loop"];
-	};
-
-	_valid
+    // FIFO discovery visits each node at its shortest distance. A deeper
+    // branch must never prevent a later, shorter route reaching the target.
+    private _queue = [[_sector, 0]];
+    private _visited = createHashMapFromArray [[_sector, true]];
+    private _cursor = 0;
+    private _found = false;
+    while {_cursor < count _queue && {!_found}} do {
+        (_queue select _cursor) params ["_current", "_cost"];
+        _cursor = _cursor + 1;
+        if (_cost >= _distance) then {continue};
+        {
+            // Graph repair has always admitted existing first-hop links,
+            // applying ownership exclusions only to subsequent traversal.
+            if ((_cost > 0 && {_x in _bluforSectors}) || {_x in _visited} || {!(_x in NETWORKED_SECTORS)}) then {continue};
+            _visited set [_x, true];
+            if (_x == _targetSector) exitWith {_found = true};
+            _queue pushBack [_x, _cost + 1];
+        } forEach ((NETWORKED_SECTORS get _current) getOrDefault ["Links", []]);
+    };
+    _found
 };
+
 NETWORKED_SECTORS_GET_DISTANCE_FROM_FRONTLINE = {
-	params ["_sector", "_blacklist"];
+    params ["_sector", "_blacklist"];
+    if (isNil "_sector" || {isNil "_blacklist"}) exitWith {69};
+    if (_sector in _blacklist) exitWith {-1};
+    if (isNil "NETWORKED_SECTORS" || {!(missionNamespace getVariable ["NETWORKED_SECTORS_LINKED", false])}) exitWith {-1};
 
-	if(isNil "_blacklist") exitWith { 
-		diag_log format ["Networked sectors get distance was passed nil blacklist"];
-		systemChat format ["Networked sectors get distance was passed nil blacklist"];
-		69
-	};
+    // Cache the actual seed set, including startbase when the caller supplies
+    // it. Graph reconstruction clears this cache in networked_sectors/index.
+    private _seeds = _blacklist arrayIntersect _blacklist;
+    _seeds sort true;
+    private _key = str _seeds;
+    if (isNil "NETWORKED_SECTOR_COST_CACHE") then {
+        NETWORKED_SECTOR_COST_CACHE = createHashMap;
+    };
+    private _costs = NETWORKED_SECTOR_COST_CACHE get _key;
+    if (!isNil "_costs") exitWith {_costs getOrDefault [_sector, 69]};
 
-	if(isNil "_sector") exitWith {
-		diag_Log format ["Networked sectors get distance was passed nil sector"];
-		systemChat format ["Networked sectors get distance was passed nil sector"];
-		69
-	};
-
-	if(_sector in _blacklist) exitWith { -1 };
-	// This function apparently is called 200+ times so async guard
-	if(!isNil "NETWORKED_SECTOR_REBUILDING_COST_CACHE") exitWith { -1 };
-
-	if(isNil "blufor_sectors") exitWith { -1 };
-
-	if(isNil "NETWORKED_SECTORS") exitWith { -1 };
-
-	if(isNil "NETWORKED_SECTORS_LINKED") exitWith { -1 };
-
-	private _hadToRebuild = false;
-	
-	if(isNil "NETWORKED_SECTOR_COST_CACHE") then {
-		NETWORKED_SECTOR_COST_CACHE = createHashMap;
-		NETWORKED_SECTOR_COST_CACHE set ["BluforSectors", +blufor_sectors];
-		diag_log format ["Cost cache nil, constructing"];
-		diag_log format ["%2: Reconstructing Cost Cache..... Blufor sectors is %1", blufor_sectors, diag_tickTime];
-		diag_log format ["%1: Cost cache networked sector at time is %2", diag_tickTime, NETWORKED_SECTORS];
-		_hadToRebuild = true;
-	};
-
-	private _cachedCost = NETWORKED_SECTOR_COST_CACHE get _sector;
-
-	
-	private _bluforSectorsWhenCached = NETWORKED_SECTOR_COST_CACHE get "BluforSectors";
-	// Kind of expensive but this function does not get run often enough that a simple numerical check can be sufficient at preventing stale cache
-
-	private _whatExists = createHashMap;
-
-	{
-		_whatExists set [_x, true];
-	} forEach _bluforSectorsWhenCached;
-	private _valid = true;
-	{
-		if(isNil { _whatExists get _x }) exitWith {
-			_valid = false;
-		};
-	} forEach blufor_sectors;
-
-	if((count _bluforSectorsWhenCached) != (count blufor_sectors)) then {
-		_valid = false;
-	};
-	if(!_valid) then {
-		_cachedCost = nil;
-		NETWORKED_SECTOR_COST_CACHE = createHashMap;
-		NETWORKED_SECTOR_COST_CACHE set ["BluforSectors", +blufor_sectors];
-		diag_log format ["Cost cache is not equal to previous cached blufor sectors"];
-		diag_log format ["%2: Reconstructing Cost Cache..... Blufor sectors is %1", blufor_sectors, diag_tickTime];
-		diag_log format ["%1: Cost cache networked sector at time is %2", diag_tickTime, NETWORKED_SECTORS];
-		_hadToRebuild = true;
-	};
-
-	if(!isNil "_cachedCost") exitWith { _cachedCost };
-	
-	if(!_hadToRebuild) exitWith { 69 };
-
-	systemChat format ["Rebuilding"];
-
-	// Loop through from blacklisted sectors and radiate outwards. 
-
-	private _openNodes = [];
-
-	{
-		_openNodes pushBack [_x, -2];
-	} forEach _blacklist;
-
-	private _visitedSet = createHashMap;
-
-	NETWORKED_SECTOR_REBUILDING_COST_CACHE = true;
-	while { (count _openNodes) > 0 } do {
-		private _currentNode = _openNodes deleteAt 0;
-
-		_currentNode params ["_sectorName", "_cost"];
-		
-		_cost = _cost + 1;
-		diag_log format ["Determined cost for %1 to be %2", _sectorName, _cost];
-		NETWORKED_SECTOR_COST_CACHE set [_sectorName, _cost];
-		_visitedSet set [_sectorName, _cost];
-
-
-		private _neighbors = NETWORKED_SECTORS get _sectorName;
-
-		if (isNil "_neighbors") then {
-			continue;
-		};
-
-		_neighbors = _neighbors get "Links";
-
-		{
-			if(_x in _blacklist) then { continue };
-
-			private _visited = _visitedSet getOrDefault [_x, 9000];
-
-			if(((_cost+1) < _visited)) then {
-				diag_log format ["Sector %1 unvisited, push with %2", _x, _cost];
-				_openNodes pushBack [_x, _cost];
-				_visitedSet set [_x, _cost+1];
-			};
-
-		} forEach _neighbors;
-
-
-	};
-	diag_log format ["Cache rebuilt"];
-	NETWORKED_SECTOR_REBUILDING_COST_CACHE = nil;
-
-	NETWORKED_SECTOR_COST_CACHE getOrDefault [_sector, 69]
+    // Build locally, then publish a complete map; other scheduled callers
+    // never see a partially rebuilt cache or a temporary negative depth.
+    _costs = createHashMap;
+    private _queue = [];
+    {
+        _costs set [_x, -1];
+        _queue pushBack _x;
+    } forEach _seeds;
+    private _cursor = 0;
+    while {_cursor < count _queue} do {
+        private _current = _queue select _cursor;
+        _cursor = _cursor + 1;
+        private _node = NETWORKED_SECTORS getOrDefault [_current, createHashMap];
+        private _nextCost = (_costs get _current) + 1;
+        {
+            if (_x in _costs || {!(_x in NETWORKED_SECTORS)}) then {continue};
+            _costs set [_x, _nextCost];
+            _queue pushBack _x;
+        } forEach (_node getOrDefault ["Links", []]);
+    };
+    // Bound storage across ownership changes and unusual caller seed sets.
+    if (count NETWORKED_SECTOR_COST_CACHE >= 4) then {
+        NETWORKED_SECTOR_COST_CACHE deleteAt ((keys NETWORKED_SECTOR_COST_CACHE) select 0);
+    };
+    NETWORKED_SECTOR_COST_CACHE set [_key, _costs];
+    _costs getOrDefault [_sector, 69]
 };
