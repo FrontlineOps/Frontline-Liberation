@@ -77,6 +77,8 @@ KPLIB_COPS_CONTEST_COUNT = 3;
 KPLIB_COPS_REDEPLOY_RADIUS = 20;
 KPLIB_COPS_REDEPLOY_REFRESH = 1;
 KPLIB_COPS_REQUEST_COOLDOWN = 2;
+// A placed PB must remain deployed for this long before it can be dismantled.
+KPLIB_COPS_DISMANTLE_COOLDOWN = 45 * 60;
 KPLIB_COPS_MARKER_TEXT = "PB";
 KPLIB_COPS_MARKER_OFFSET = [-17, 11, 0];
 // Admin-managed permission grants use their own server profile record.

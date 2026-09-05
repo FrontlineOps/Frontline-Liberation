@@ -34,6 +34,10 @@ private _saveData = [] call KPLIB_fnc_getSaveData;
 
 // Write data in the server profileNamespace
 profileNamespace setVariable [GRLIB_save_key, str _saveData];
+// Persist the PB dismantling timer at the same point as the campaign snapshot.
+if (!isNil "KPLIB_COPS_SERVER_SAVE" && {missionNamespace getVariable ["KPLIB_COPS_READY", false]}) then {
+    [false] call KPLIB_COPS_SERVER_SAVE;
+};
 saveProfileNamespace;
 
 KPLIB_lastSaveDuration = diag_tickTime - _saveStartedAt;

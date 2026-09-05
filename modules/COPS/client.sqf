@@ -125,6 +125,29 @@ KPLIB_COPS_CLIENT_REQUEST_DEPLOY = {
     [{KPLIB_COPS_CLIENT_REQUEST_PENDING = false}, [], 5] call CBA_fnc_waitAndExecute;
 };
 
+KPLIB_COPS_CLIENT_CAN_DISMANTLE = {
+    params [["_unit", player, [objNull]]];
+    !isNull _unit
+        && {alive _unit}
+        && {side _unit == GRLIB_side_friendly}
+        && {isNull objectParent _unit}
+        && {[_unit] call KPLIB_COPS_CLIENT_IS_GROUP_LEADER}
+        && {!KPLIB_COPS_CLIENT_REQUEST_PENDING}
+        && {[_unit] call KPLIB_COPS_CLIENT_IS_NEAR}
+};
+
+KPLIB_COPS_CLIENT_REQUEST_DISMANTLE = {
+    params [["_unit", player, [objNull]]];
+    if !([_unit] call KPLIB_COPS_CLIENT_CAN_DISMANTLE) exitWith {};
+    private _entries = KPLIB_COPS_CLIENT_SNAPSHOT select 2;
+    private _index = _entries findIf {_unit distance2D (_x select 1) <= KPLIB_COPS_REDEPLOY_RADIUS};
+    if (_index < 0) exitWith {};
+
+    KPLIB_COPS_CLIENT_REQUEST_PENDING = true;
+    [(_entries select _index) select 0] remoteExecCall ["KPLIB_COPS_SERVER_REQUEST_DISMANTLE", 2];
+    [{KPLIB_COPS_CLIENT_REQUEST_PENDING = false}, [], 5] call CBA_fnc_waitAndExecute;
+};
+
 KPLIB_COPS_CLIENT_INIT = {
     if (!hasInterface || {KPLIB_COPS_CLIENT_INITIALIZED}) exitWith {};
     KPLIB_COPS_CLIENT_INITIALIZED = true;
@@ -142,6 +165,22 @@ KPLIB_COPS_CLIENT_INIT = {
     ] call ace_interact_menu_fnc_createAction;
     ["CAManBase", 1, ["ACE_SelfActions"], _deployAction, true] call ace_interact_menu_fnc_addActionToClass;
 
-    ["PB ACE self-action registered for current group leaders", "COPS"] call KPLIB_fnc_log;
+    private _dismantleAction = [
+        "KPLIB_COPS_DISMANTLE",
+        "Dismantle PB",
+        "res\ui_build.paa",
+        {
+            params ["_target", "_player"];
+            [_player] call KPLIB_COPS_CLIENT_REQUEST_DISMANTLE
+        },
+        {
+            params ["_target", "_player"];
+            _target isEqualTo _player
+                && {[_player] call KPLIB_COPS_CLIENT_CAN_DISMANTLE}
+        }
+    ] call ace_interact_menu_fnc_createAction;
+    ["CAManBase", 1, ["ACE_SelfActions"], _dismantleAction, true] call ace_interact_menu_fnc_addActionToClass;
+
+    ["PB ACE self-actions registered for current group leaders", "COPS"] call KPLIB_fnc_log;
     [] remoteExecCall ["KPLIB_COPS_SERVER_REQUEST_SNAPSHOT", 2];
 };

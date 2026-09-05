@@ -70,6 +70,7 @@ KPLIB_COPS_SERVER_SEND_SNAPSHOT = {
 };
 
 KPLIB_COPS_SERVER_SAVE = {
+    params [["_flush", true, [false]]];
     if (!isServer || {isRemoteExecuted}) exitWith {false};
 
     private _savedEntries = [];
@@ -95,14 +96,15 @@ KPLIB_COPS_SERVER_SAVE = {
             } forEach _objects;
 
             if !(_savedObjects isEqualTo []) then {
-                _savedEntries pushBack [_id, _markerPos, _savedObjects];
+                private _dismantleRemaining = ((_entry getOrDefault ["dismantleAt", 0]) - CBA_missionTime) max 0;
+                _savedEntries pushBack [_id, _markerPos, _savedObjects, _dismantleRemaining];
             };
         };
     } forEach KPLIB_COPS_STATE;
 
     _savedEntries sort true;
     profileNamespace setVariable [KPLIB_COPS_SAVE_KEY, [KPLIB_COPS_NEXT_ID, _savedEntries]];
-    saveProfileNamespace;
+    if (_flush) then {saveProfileNamespace};
     true
 };
 
@@ -203,14 +205,18 @@ KPLIB_COPS_SERVER_CREATE_FROM_PLAYER = {
 
 KPLIB_COPS_SERVER_RESTORE_ENTRY = {
     params ["_savedEntry"];
-    if !(_savedEntry isEqualType [] && {count _savedEntry == 3}) exitWith {false};
+    if !(_savedEntry isEqualType [] && {count _savedEntry in [3, 4]}) exitWith {false};
     _savedEntry params ["_id", "_markerPos", "_savedObjects"];
+    private _dismantleRemaining = _savedEntry param [3, 0];
     if !(
         _id isEqualType 0
         && {_id >= 0}
         && {[_markerPos] call KPLIB_COPS_SERVER_POSITION_VALID}
         && {_savedObjects isEqualType []}
         && {!(_savedObjects isEqualTo [])}
+        && {_dismantleRemaining isEqualType 0}
+        && {finite _dismantleRemaining}
+        && {_dismantleRemaining >= 0}
     ) exitWith {false};
 
     private _objects = [];
@@ -250,7 +256,8 @@ KPLIB_COPS_SERVER_RESTORE_ENTRY = {
     private _entry = createHashMapFromArray [
         ["markerPos", +_markerPos],
         ["objects", _objects],
-        ["primary", _primary]
+        ["primary", _primary],
+        ["dismantleAt", CBA_missionTime + _dismantleRemaining]
     ];
     KPLIB_COPS_STATE set [_id, _entry];
     [_primary, _id] call KPLIB_COPS_SERVER_ATTACH_LIFECYCLE;
@@ -343,13 +350,14 @@ KPLIB_COPS_SERVER_REQUEST_DEPLOY = {
     KPLIB_COPS_STATE set [_id, createHashMapFromArray [
         ["markerPos", _markerPos],
         ["objects", _objects],
-        ["primary", _primary]
+        ["primary", _primary],
+        ["dismantleAt", CBA_missionTime + (KPLIB_COPS_DISMANTLE_COOLDOWN max 0)]
     ]];
     KPLIB_COPS_NEXT_ID = _id + 1;
     [_primary, _id] call KPLIB_COPS_SERVER_ATTACH_LIFECYCLE;
 
     KPLIB_COPS_REVISION = KPLIB_COPS_REVISION + 1;
-    [] spawn KPLIB_COPS_SERVER_SAVE;
+    [{[] call KPLIB_COPS_SERVER_SAVE}] call CBA_fnc_execNextFrame;
     [-1] call KPLIB_COPS_SERVER_SEND_SNAPSHOT;
     [format [
         "PB deployed (id=%1, position=%2, hostileObjectiveStandoff=%3m, composition=%4)",
@@ -358,7 +366,64 @@ KPLIB_COPS_SERVER_REQUEST_DEPLOY = {
         KPLIB_COPS_MIN_HOSTILE_SECTOR_DISTANCE,
         KPLIB_COPS_COMPOSITION apply {_x select 0}
     ], "COPS"] call KPLIB_COPS_SERVER_LOG;
-    [true, "PB deployed."] remoteExecCall ["KPLIB_COPS_CLIENT_RECEIVE_RESULT", _ownerId];
+    [true, format ["PB deployed. Dismantling unlocks after %1 minutes.", ceil ((KPLIB_COPS_DISMANTLE_COOLDOWN max 0) / 60)]] remoteExecCall ["KPLIB_COPS_CLIENT_RECEIVE_RESULT", _ownerId];
+};
+
+KPLIB_COPS_SERVER_VALIDATE_DISMANTLE = {
+    params ["_player", "_id"];
+    if (isNull _player || {!isPlayer _player} || {!alive _player}) exitWith {"Unable to dismantle a PB while dead or disconnected."};
+    if (side _player != GRLIB_side_friendly) exitWith {"Only BLUFOR may dismantle a PB."};
+    if !(isNull objectParent _player) exitWith {"Leave your vehicle before dismantling a PB."};
+    if !([_player] call KPLIB_COPS_SERVER_IS_GROUP_LEADER) exitWith {"Only the current group leader may dismantle the PB."};
+
+    private _entry = KPLIB_COPS_STATE getOrDefault [_id, createHashMap];
+    if (count _entry == 0) exitWith {"That PB is no longer deployed."};
+    private _primary = _entry getOrDefault ["primary", objNull];
+    if (isNull _primary || {!alive _primary} || {(_primary getVariable ["KPLIB_COPS_ID", -1]) != _id}) exitWith {"That PB is no longer available."};
+    if (_player distance2D (_entry get "markerPos") > KPLIB_COPS_REDEPLOY_RADIUS) exitWith {
+        format ["Move within %1 m of the PB before dismantling it.", KPLIB_COPS_REDEPLOY_RADIUS]
+    };
+    private _remaining = ((_entry getOrDefault ["dismantleAt", 0]) - CBA_missionTime) max 0;
+    if (_remaining > 0) exitWith {
+        format ["This PB cannot be dismantled yet. %1 minute(s) remaining.", ceil (_remaining / 60)]
+    };
+    ""
+};
+
+// Leave remote execution before calling the server-only removal/save helpers.
+KPLIB_COPS_SERVER_DISMANTLE = {
+    params ["_player", "_id", "_ownerId"];
+    if (!isServer || {isRemoteExecuted} || {!KPLIB_COPS_READY}) exitWith {};
+
+    isNil {
+        // Recheck everything after scheduling; claim/removal cannot interleave
+        // with a second request, a destroyed PB or a leadership change.
+        if (isNull _player || {owner _player != _ownerId}) exitWith {};
+        private _error = [_player, _id] call KPLIB_COPS_SERVER_VALIDATE_DISMANTLE;
+        if (_error != "") exitWith {
+            [false, _error] remoteExecCall ["KPLIB_COPS_CLIENT_RECEIVE_RESULT", _ownerId];
+        };
+        if ([_id, false, "DISMANTLED"] call KPLIB_COPS_SERVER_REMOVE) then {
+            [format ["PB dismantled (id=%1)", _id], "COPS"] call KPLIB_COPS_SERVER_LOG;
+            [true, "PB dismantled. You may place a new PB."] remoteExecCall ["KPLIB_COPS_CLIENT_RECEIVE_RESULT", _ownerId];
+        };
+    };
+};
+
+KPLIB_COPS_SERVER_REQUEST_DISMANTLE = {
+    params [["_id", -1, [0]]];
+    if (!isServer || {!isRemoteExecuted} || {!KPLIB_COPS_READY}) exitWith {};
+    if (!finite _id || {_id < 0} || {_id != floor _id}) exitWith {};
+    private _ownerId = remoteExecutedOwner;
+    private _player = [] call KPLIB_COPS_SERVER_GET_CALLER;
+    if (isNull _player) exitWith {};
+
+    private _now = diag_tickTime;
+    if (_now < (KPLIB_COPS_REQUEST_DEADLINES getOrDefault [_ownerId, 0])) exitWith {
+        [false, "A PB request is already being processed."] remoteExecCall ["KPLIB_COPS_CLIENT_RECEIVE_RESULT", _ownerId];
+    };
+    KPLIB_COPS_REQUEST_DEADLINES set [_ownerId, _now + KPLIB_COPS_REQUEST_COOLDOWN];
+    [KPLIB_COPS_SERVER_DISMANTLE, [_player, _id, _ownerId]] call CBA_fnc_execNextFrame;
 };
 
 KPLIB_COPS_SERVER_REQUEST_SNAPSHOT = {
