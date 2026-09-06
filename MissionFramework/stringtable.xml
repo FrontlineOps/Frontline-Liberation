@@ -1173,10 +1173,10 @@
             <Turkish>Erzaklar</Turkish>
         </Key>
         <Key ID="STR_MISSION_TITLE">
-            <Original>FL LIBERATION v2.0.8</Original>
+            <Original>FL LIBERATION v2.0.9</Original>
         </Key>
         <Key ID="STR_MISSION_VERSION">
-            <Original>v2.0.8</Original>
+            <Original>v2.0.9</Original>
         </Key>
         <Key ID="STR_NORECBUILDING_ERROR">
             <Original>Can't recycle:\nNo Salvage Depot in FOB area</Original>
