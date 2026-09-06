@@ -37,7 +37,7 @@ if (KP_liberation_civ_rep == -100) then {
     };
     
     if (_bluforSector in sectors_bigtown + sectors_capture + sectors_factory) then {
-        [_bluforSector] remoteExec ["toggle_sector_remote", 2];
+        [_bluforSector] call KPLIB_CIVREP_LOSE_SECTOR;
         ["lib_admin_notification", ["Civilian sector lost", format ["%1 was lost due to revolting civilians!", markerText _bluforSector], "\A3\ui_f\data\gui\cfg\Debriefing\endDefault_ca.paa"]] remoteExec ["bis_fnc_shownotification"];
     };
 

@@ -53,6 +53,7 @@ KPLIB_fob_templates = [
 ];
 
 // Civil Reputation
+[] call compileFinal preprocessFileLineNumbers "scripts\server\sector\civilian_revolt.sqf";
 execVM "scripts\server\civrep\init_module.sqf";
 
 // Periodically mark groups for deletion when empty.

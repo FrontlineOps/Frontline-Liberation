@@ -64,7 +64,6 @@ Op_StartingItems = +(missionNamespace getVariable ["KPLIB_autoFactionOpforStarti
 [] call compileFinal preprocessFileLineNumbers "scripts\fireteams\init.sqf";
 
 [] call compileFinal preprocessFileLineNumbers "scripts\shared\init_shared.sqf";
-[] call compileFinal preprocessFileLineNumbers "scripts\libZeusActions\index.sqf";
 
 [] call compileFinal preprocessFileLineNumbers "modules\missileGuidance\index.sqf";
 if (isServer) then {
