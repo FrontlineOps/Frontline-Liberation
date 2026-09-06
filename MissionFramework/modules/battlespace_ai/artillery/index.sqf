@@ -1082,6 +1082,7 @@ BATTLESPACE_ARTILLERY_DO_REQUEST = {
         if !([_battery, _req] call BATTLESPACE_TRP_MISSION_VALID) exitWith {
             [format ["Artillery TRP mission stopped (group=%1, point=%2, reason=plan invalidated or friendly troops entered fire area)", _battery, _trpMetadata param [0, ""]], "BATTLESPACE"] call KPLIB_fnc_log;
         };
+        private _activeOrders = [];
 		{	
 			if (_roundsRemaining <= 0) then {continue};
 			if (!alive _x || {!alive gunner _x}) then {continue};
@@ -1153,6 +1154,7 @@ BATTLESPACE_ARTILLERY_DO_REQUEST = {
                 if (_roundsOrdered == _roundsThisOrder) then {
                     [format ["Artillery fire control released (group=%1, crew=%2, previousModes=%3, missionMode=RED)", _battery, count _crewModes, _crewModes apply {_x select 1}], "BATTLESPACE"] call KPLIB_fnc_log;
                 };
+                _activeOrders pushBack [_x, +_tLoc, gunner _x, crew _x, CBA_missionTime, -1, 0];
                 _x commandArtilleryFire [_tLoc, _shellType, _roundsThisOrder];
 
 			} else {
@@ -1163,6 +1165,60 @@ BATTLESPACE_ARTILLERY_DO_REQUEST = {
 		private _deadline = CBA_missionTime + BATTLESPACE_ARTILLERY_FIRE_ORDER_TIMEOUT;
 		waitUntil {
 			sleep 1;
+            {
+                private _order = _x;
+                _order params ["_piece", "_firePoint", "_operator", "_orderCrew", "_lastIssued", "_idleSince", "_retries"];
+                private _progress = _piece getVariable ["BSAFireProgress", ["", 0, 0]];
+                if ((_progress select 2) >= (_progress select 1) || {_retries >= 3} || {CBA_missionTime >= _deadline}) then {continue};
+                // A rejected engine order can leave a loaded gun idle with zero shots.
+                // Observe that idle state across ticks; never interrupt an active order.
+                private _idle = alive _piece && {local _piece} && {canFire _piece}
+                    && {simulationEnabled _piece} && {gunner _piece isEqualTo _operator}
+                    && {crew _piece isEqualTo _orderCrew} && {_orderCrew findIf {
+                        !alive _x || {!local _x} || {isPlayer _x} || {!simulationEnabled _x}
+                            || {_x getVariable ["ace_isUnconscious", false]}
+                            || {currentCommand _x != ""}
+                    } == -1} && {unitReady _piece};
+                if (!_idle) then {
+                    _order set [5, -1];
+                    continue;
+                };
+                if (_idleSince < 0) then {
+                    _order set [5, CBA_missionTime];
+                    continue;
+                };
+                // Radio orders may still be queued while currentCommand is empty.
+                if (CBA_missionTime - _idleSince < 10 || {CBA_missionTime - _lastIssued < 10}) then {continue};
+                if (((_battery getVariable ["BSAState", []]) param [0, ""]) != "IN MISSION"
+                    || {!([_battery, _req] call BATTLESPACE_TRP_MISSION_VALID)}
+                    || {!([_piece, _firePoint, _shellType] call BATTLESPACE_ARTILLERY_CAN_REACH_AREA)}
+                    || {_observer isEqualType objNull && {!isNull _observer} && {_observer distance2D _firePoint <= 300}}) then {continue};
+
+                // Keep the final readiness/count check and reissue in one simulation frame.
+                // A retry spends the outstanding order, not another reservation or salvo.
+                isNil {
+                    _progress = _piece getVariable ["BSAFireProgress", ["", 0, 0]];
+                    private _weaponState = weaponState [_piece, (assignedVehicleRole _operator) param [1, []]];
+                    private _remaining = (_progress select 1) - (_progress select 2);
+                    if (_remaining > 0 && {CBA_missionTime < _deadline} && {(_progress select 0) == _shellType}
+                        && {alive _piece} && {local _piece} && {canFire _piece} && {simulationEnabled _piece}
+                        && {gunner _piece isEqualTo _operator} && {crew _piece isEqualTo _orderCrew}
+                        && {unitReady _piece} && {_orderCrew findIf {
+                            !alive _x || {!local _x} || {isPlayer _x} || {!simulationEnabled _x}
+                                || {_x getVariable ["ace_isUnconscious", false]} || {currentCommand _x != ""}
+                        } == -1}
+                        && {(_weaponState param [4, 0]) > 0}
+                        && {(_weaponState param [5, -1]) == 0} && {(_weaponState param [6, -1]) == 0}
+                        && {_shellType in getArtilleryAmmo [_piece]}) then {
+                        {_x setUnitCombatMode "RED"} forEach _orderCrew;
+                        _piece commandArtilleryFire [_firePoint, _shellType, _remaining];
+                        _order set [4, CBA_missionTime];
+                        _order set [5, -1];
+                        _order set [6, _retries + 1];
+                        [format ["Artillery idle fire order retried (group=%1, piece=%2, class=%3, shell=%4, remaining=%5, attempt=%6/3)", _battery, netId _piece, typeOf _piece, _shellType, _remaining, _retries + 1], "BATTLESPACE"] call KPLIB_fnc_log;
+                    };
+                };
+            } forEach _activeOrders;
 			private _pending = _vehs findIf {
 				alive _x && {alive gunner _x} && {
 					private _progress = _x getVariable "BSAFireProgress";
