@@ -1796,6 +1796,7 @@ if (isServer) then {
         private _strategicInitialDelay = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_INITIAL_DELAY", 300];
         private _defenderDecisionInterval = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DEFENDER_DECISION_INTERVAL", 600];
         private _nextDecision = CBA_missionTime + _strategicInitialDelay;
+        private _nextLogisticsDecision = CBA_missionTime + _strategicInitialDelay;
         private _nextDefenseDecision = CBA_missionTime + _strategicInitialDelay;
         private _nextAirResponse = CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_AIR_RESPONSE_INITIAL_DELAY", 600]);
         private _nextSave = CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_SAVE_INTERVAL", 300]);
@@ -1811,10 +1812,14 @@ if (isServer) then {
                 [] call BATTLESPACE_TACTICAL_MAINTENANCE_TICK;
             };
 
-            if (CBA_missionTime >= _nextDecision) then {
+            if (CBA_missionTime >= _nextLogisticsDecision) then {
                 private _convoyBudget = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_CONVOYS_PER_TICK", 2];
                 private _evacuationConvoys = [_convoyBudget] call BATTLESPACE_LOGISTICS_EVACUATION_DECISION_TICK;
                 [(_convoyBudget - _evacuationConvoys) max 0] call BATTLESPACE_LOGISTICS_DECISION_TICK;
+                _nextLogisticsDecision = CBA_missionTime + (30 max (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_LOGISTICS_DECISION_INTERVAL", 60]));
+            };
+
+            if (CBA_missionTime >= _nextDecision) then {
                 if (!isNil "BATTLESPACE_DEEP_RECON_DECISION_TICK") then {
                     [] call BATTLESPACE_DEEP_RECON_DECISION_TICK;
                 };

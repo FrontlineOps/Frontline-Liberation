@@ -62,7 +62,8 @@ BATTLESPACE_ZEN_RECEIVE_SNAPSHOT = {
 			} forEach _resourceRows;
 			_lines pushBack "<br/>Operation pressure:<br/>";
 			{_lines pushBack format ["%1: %2%3<br/>", _x#0, _x#1, if ((_x#2) < 0) then {""} else {" / " + str (_x#2)}]} forEach _operationRows;
-			_settings params [["_decision", 0], ["_airDecision", 0], ["_pressure", 0], ["_emergency", 0], ["_reinforcement", 0], ["_deepRecon", 0], ["_airResponse", 0], ["_fortification", 0], ["_minefield", 0]];
+			_settings params [["_decision", 0], ["_airDecision", 0], ["_pressure", 0], ["_emergency", 0], ["_reinforcement", 0], ["_deepRecon", 0], ["_airResponse", 0], ["_fortification", 0], ["_minefield", 0], ["_logisticsDecision", 60]];
+			_lines pushBack format ["<br/>Logistics evaluation %1", [_logisticsDecision] call BATTLESPACE_ZEN_FORMAT_DURATION];
 			_lines pushBack format ["<br/>Strategic decision %1; air decision %2; casualty trigger %3; cooldowns E/R/D/A/F/M %4/%5/%6/%7/%8/%9",
 				[_decision] call BATTLESPACE_ZEN_FORMAT_DURATION,
 				[_airDecision] call BATTLESPACE_ZEN_FORMAT_DURATION,

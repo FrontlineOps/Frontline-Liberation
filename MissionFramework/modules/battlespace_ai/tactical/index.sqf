@@ -839,7 +839,8 @@ BATTLESPACE_STRATEGIC_BUILD_BALANCE_REPORT = {
         missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DEEP_RECON_COOLDOWN", 2400],
         missionNamespace getVariable ["BATTLESPACE_STRATEGIC_AIR_RESPONSE_COOLDOWN", 1800],
         missionNamespace getVariable ["BATTLESPACE_STRATEGIC_FORTIFICATION_COOLDOWN", 1800],
-        missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MINEFIELD_COOLDOWN", 3600]
+        missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MINEFIELD_COOLDOWN", 3600],
+        missionNamespace getVariable ["BATTLESPACE_STRATEGIC_LOGISTICS_DECISION_INTERVAL", 60]
     ]]
 };
 
