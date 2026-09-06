@@ -254,7 +254,8 @@ KPLIB_SURRENDER_SERVER_MONITOR_ESCORT = {
         };
 
         if (vehicle _unit isEqualTo _unit && {_unit distance _caller > 3}) then {
-            _unit doMove (getPosATL _caller);
+            // Joining a player's squad can move the prisoner's locality off the server.
+            [_unit, getPosATL _caller] remoteExecCall ["doMove", _unit];
         };
 
         private _deliveryDistance = missionNamespace getVariable ["KPLIB_intelligence_delivery_distance", 40];
@@ -303,11 +304,13 @@ KPLIB_SURRENDER_SERVER_BEGIN_ESCORT = {
 
     _unit setVariable ["KPLIB_intelligenceEscort", _caller];
     _unit setVariable ["KPLIB_surrenderEscortActive", true];
+    // Former garrisons and surrender poses can leave these disabled, including with ACE.
+    {
+        _unit enableAI _x;
+    } forEach ["ANIM", "MOVE", "PATH"];
+    _unit forceSpeed -1;
     if (KP_liberation_ace) then {
         ["ace_captives_setSurrendered", [_unit, false], _unit] call CBA_fnc_targetEvent;
-    } else {
-        _unit enableAI "ANIM";
-        _unit enableAI "MOVE";
     };
     _unit setCaptive true;
     _unit setUnitPos "AUTO";
@@ -325,10 +328,18 @@ KPLIB_SURRENDER_SERVER_BEGIN_ESCORT = {
         [format ["Prisoner escort rejected (unit=%1, reason=failed to join player group)", netId _unit], "SURRENDER"] call KPLIB_fnc_log;
         false
     };
-    _unit doMove (getPosATL _caller);
+    // Clearing ACE's state alone does not clear a lingering vanilla/replicated pose.
+    // The existing animation helper targets the owner and synchronizes its fallback.
+    if (vehicle _unit isEqualTo _unit
+        && {lifeState _unit != "INCAPACITATED"}
+        && {!(_unit getVariable ["ACE_isUnconscious", false])}) then {
+        [_unit, "AmovPercMstpSnonWnonDnon", 2] call KPLIB_fnc_doAnimation;
+    };
+    [_unit, getPosATL _caller] remoteExecCall ["doMove", _unit];
 
     [format ["Prisoner escort started (unit=%1, playerOwner=%2, group=%3)", netId _unit, owner _caller, groupId _escortGroup], "SURRENDER"] call KPLIB_fnc_log;
-    [_unit, _caller] spawn KPLIB_SURRENDER_SERVER_MONITOR_ESCORT;
+    // Leave the client request context so the server-only abandonment path can run.
+    [{_this spawn KPLIB_SURRENDER_SERVER_MONITOR_ESCORT}, [_unit, _caller]] call CBA_fnc_execNextFrame;
     true
 };
 
