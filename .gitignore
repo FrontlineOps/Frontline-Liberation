@@ -3,6 +3,10 @@
 *.bisign
 *.bikey
 
+# Generated mission folders, archives and previous build
+/build/
+/.build/
+
 # Arma/profile and crash/log output
 *.rpt
 *.mdmp
