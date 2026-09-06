@@ -285,7 +285,11 @@ KPLIB_INTEL_SERVER_BUILD_OBSERVATION = {
         };
         _details pushBack (switch (_kind) do {
             case "CONVOY": {format ["Purpose: %1.", _raw get "purpose"]};
-            case "RESERVE": {["Reserve available locally; could respond to fighting.", "Reserve committed away from its staging area."] select (_phase in ["RESPONDING", "DEPLOYING", "HOLDING", "ENGAGED"])};
+        case "RESERVE": {
+            if (_phase == "FIELD_HUNT") then {"Reserve responding to losses and searching the reported contact area."} else {
+                ["Reserve available locally; could respond to fighting.", "Reserve committed away from its staging area."] select (_phase in ["RESPONDING", "DEPLOYING", "HOLDING", "ENGAGED"])
+            }
+        };
             case "BATTLEGROUP": {"Offensive force maneuvering against the front. Its phase describes observed orders, not a guaranteed attack."};
             case "DEFENDER": {format ["Defensive role: %1.", _raw get "role"]};
             default {"Confirm disposition by reconnaissance before committing."};

@@ -30,12 +30,7 @@ BATTLESPACE_TASK_FORCE_AMBUSH_CONCEAL = {
     _taskForce set [2, []];
     BATTLESPACE_TASK_FORCE_PATHS deleteAt _taskForceName;
     {
-        [_x, true, true] call KPLIB_fnc_taskReset;
-        _x setVariable ["BATTLESPACE_DEFENDER_RETURNING", false];
-        _x setBehaviourStrong "STEALTH";
-        _x setCombatMode "GREEN";
-        _x setSpeedMode "LIMITED";
-        {doStop _x; _x setUnitPos "MIDDLE"} forEach (units _x select {alive _x});
+        if (local _x) then {[_x, false] call BATTLESPACE_DEFENSE_AMBUSH_GROUP} else {[_x, false] remoteExecCall ["BATTLESPACE_DEFENSE_AMBUSH_GROUP", groupOwner _x]};
     } forEach (_taskForce param [4, []]);
 };
 
@@ -45,14 +40,7 @@ BATTLESPACE_TASK_FORCE_AMBUSH_HAS_CONTACT = {
     {
         private _leader = leader _x;
         if (isNull _leader) then {continue};
-        private _nearby = (getPos _leader) nearEntities [["Man", "LandVehicle"], 350];
-        if (_nearby findIf {
-            if (_x isKindOf "Man") then {
-                alive _x && {side group _x == GRLIB_side_friendly}
-            } else {
-                alive _x && {(crew _x) findIf {alive _x && {side group _x == GRLIB_side_friendly}} >= 0}
-            }
-        } >= 0) exitWith {_contact = true};
+        if ([getPosATL _leader, 350, 45, false, _x] call BATTLESPACE_CONTACT_QUERY isNotEqualTo []) exitWith {_contact = true};
     } forEach (_taskForce param [4, []]);
     _contact
 };
@@ -61,19 +49,19 @@ BATTLESPACE_TASK_FORCE_AMBUSH_BEGIN_DISPLACE = {
     params ["_taskForceName", "_taskForce", "_operation"];
     private _sector = _operation getOrDefault ["assignedSector", ""];
     if (_sector == "") exitWith {false};
-    private _destination = [_sector] call BATTLESPACE_TASK_FORCE_AMBUSH_BUILD_ASSIGNMENT;
+    private _destination = +(_operation getOrDefault ["coveragePosition", []]);
+    if (_destination isEqualTo []) then {_destination = [_sector] call BATTLESPACE_TASK_FORCE_AMBUSH_BUILD_ASSIGNMENT};
     if (_destination isEqualTo []) exitWith {false};
     _operation set ["phase", "DISPLACING"];
     _operation set ["targetPosition", _destination];
+    _operation set ["lastProgressPosition", +(_taskForce select 1)];
+    _operation set ["legDeadline", CBA_missionTime + 900];
     _taskForce set [2, _destination];
     BATTLESPACE_TASK_FORCE_PATHS deleteAt _taskForceName;
     [_taskForceName, _taskForce param [1, []], _destination] call QUEUE_PATHFIND_REQUEST;
     BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceName, _operation];
     {
-        [_x, true, true] call KPLIB_fnc_taskReset;
-        _x setBehaviourStrong "AWARE";
-        _x setCombatMode "YELLOW";
-        _x setSpeedMode "LIMITED";
+        if (local _x) then {[_x] call BATTLESPACE_DEFENSE_RESET_GROUP} else {[_x] remoteExecCall ["BATTLESPACE_DEFENSE_RESET_GROUP", groupOwner _x]};
     } forEach (_taskForce param [4, []]);
     true
 };
@@ -107,10 +95,13 @@ BATTLESPACE_TASK_FORCE_AMBUSH_BEGIN_DISPLACE = {
             }
         ],
         ["isAlive", BATTLESPACE_TASK_FORCE_DEFENSE_MODEL_IS_ALIVE],
+        ["onPathFailed", BATTLESPACE_DEFENSE_PATH_FAILED],
         [
             "onDecisionTick",
             {
                 params ["_taskForceName", "_taskForce"];
+                private _retryAt = (BATTLESPACE_STRATEGIC_OPERATIONS getOrDefault [_taskForceName, createHashMap]) getOrDefault ["nextManeuverAt", 0];
+                if (CBA_missionTime < _retryAt) exitWith {false};
                 private _operation = BATTLESPACE_STRATEGIC_OPERATIONS get _taskForceName;
                 private _assigned = !isNil "_operation"
                     && {(_operation getOrDefault ["kind", ""]) == "DEFENDER"}
@@ -149,10 +140,6 @@ BATTLESPACE_TASK_FORCE_AMBUSH_BEGIN_DISPLACE = {
                     private _arrivalRadius = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DEFENDER_ARRIVAL_RADIUS", 100];
                     if (_currentLocation distance2D _targetPosition <= _arrivalRadius) then {
                         _operation set ["phase", "ON_STATION"];
-                        if (_phase == "DEPLOYING") then {
-                            private _tourDuration = _operation getOrDefault ["tourDuration", 0];
-                            if (_tourDuration > 0) then {_operation set ["expiresAt", CBA_missionTime + _tourDuration]};
-                        };
                         BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceName, _operation];
                         [_taskForceName, _taskForce] call BATTLESPACE_TASK_FORCE_AMBUSH_CONCEAL;
                         [format ["Ambush patrol %1 concealed near %2", _taskForceName, _assignedSector]] call BATTLESPACE_STRATEGIC_LOG;
@@ -166,23 +153,11 @@ BATTLESPACE_TASK_FORCE_AMBUSH_BEGIN_DISPLACE = {
 
                 private _hasContact = [_taskForce] call BATTLESPACE_TASK_FORCE_AMBUSH_HAS_CONTACT;
                 if (_phase == "ON_STATION") exitWith {
-                    private _expiresAt = _operation getOrDefault ["expiresAt", -1];
-                    if (
-                        !_hasContact
-                        && {_expiresAt >= 0}
-                        && {CBA_missionTime >= _expiresAt}
-                        && {!(_assignedSector in (missionNamespace getVariable ["active_sectors", []]))}
-                    ) exitWith {
-                        !([_taskForceName, _taskForce, _operation, "its ambush assignment completed"] call BATTLESPACE_TASK_FORCE_DEFENSE_BEGIN_RETURN)
-                    };
                     if (_hasContact) then {
                         _operation set ["phase", "ENGAGED"];
                         BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceName, _operation];
                         {
-                            private _groupLeader = leader _x;
-                            _x setBehaviourStrong "COMBAT";
-                            _x setCombatMode "RED";
-                            {_x doFollow _groupLeader; _x setUnitPos "AUTO"} forEach (units _x select {alive _x});
+                            if (local _x) then {[_x, true] call BATTLESPACE_DEFENSE_AMBUSH_GROUP} else {[_x, true] remoteExecCall ["BATTLESPACE_DEFENSE_AMBUSH_GROUP", groupOwner _x]};
                         } forEach _activeGroups;
                         [format ["Ambush patrol %1 engaged near %2", _taskForceName, _assignedSector]] call BATTLESPACE_STRATEGIC_LOG;
                     };
@@ -190,17 +165,7 @@ BATTLESPACE_TASK_FORCE_AMBUSH_BEGIN_DISPLACE = {
                 };
 
                 if (_phase == "ENGAGED" && {!_hasContact}) then {
-                    private _expiresAt = _operation getOrDefault ["expiresAt", -1];
-                    if (
-                        _expiresAt >= 0
-                        && {CBA_missionTime >= _expiresAt}
-                        && {!(_assignedSector in (missionNamespace getVariable ["active_sectors", []]))}
-                    ) then {
-                        [_taskForceName, _taskForce, _operation, "its ambush assignment completed"] call BATTLESPACE_TASK_FORCE_DEFENSE_BEGIN_RETURN;
-                    } else {
-                        [_taskForceName, _taskForce, _operation] call BATTLESPACE_TASK_FORCE_AMBUSH_BEGIN_DISPLACE;
-                        [format ["Ambush patrol %1 is displacing after contact near %2", _taskForceName, _assignedSector]] call BATTLESPACE_STRATEGIC_LOG;
-                    };
+                    [_taskForceName, _taskForce, _operation] call BATTLESPACE_TASK_FORCE_AMBUSH_BEGIN_DISPLACE;
                 };
                 false
             }

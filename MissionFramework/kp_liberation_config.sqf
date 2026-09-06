@@ -154,9 +154,7 @@ BATTLESPACE_STRATEGIC_INITIAL_DELAY = 300;
 BATTLESPACE_STRATEGIC_DECISION_INTERVAL = 1800;
 BATTLESPACE_STRATEGIC_SAVE_INTERVAL = 300;
 BATTLESPACE_STRATEGIC_MAX_ACTIVE_CONVOYS = 4;
-BATTLESPACE_STRATEGIC_MAX_ACTIVE_BATTLEGROUPS = 2;
 BATTLESPACE_STRATEGIC_MAX_CONVOYS_PER_TICK = 2; // Shared by front-stock evacuation and normal resupply.
-BATTLESPACE_STRATEGIC_MAX_BATTLEGROUPS_PER_TICK = 1;
 BATTLESPACE_STRATEGIC_RESUPPLY_COOLDOWN = 1800;
 // Once below a resource's Resupply trigger, continue bounded deliveries to this fill ratio.
 BATTLESPACE_STRATEGIC_RESUPPLY_TARGET_RATIO = 1.0;
@@ -206,35 +204,38 @@ BATTLESPACE_STRATEGIC_EMERGENCY_COOLDOWN = 900;
 // stock stranded above a reduced allowance waits for a finite convoy to move it deeper.
 BATTLESPACE_STRATEGIC_FRONT_STOCK_CAPACITY_MULTIPLIERS = [0.25, 0.5, 0.75, 1.0];
 // Paid defensive groups are formed in depth and dispatched as persistent task forces.
-// Fill frontline strength deficits before rear coverage; ordinary objectives allow one of each role.
-BATTLESPACE_STRATEGIC_MAX_ACTIVE_DEFENDERS = 48;
-BATTLESPACE_STRATEGIC_MAX_DEFENDERS_PER_TICK = 6;
+// Objective defence and exposed field approaches have separate assignments.
+// One shared cap includes garrisons, field groups, reserves, offensives and deep recon.
+BATTLESPACE_STRATEGIC_GROUND_FORCE_CAP = 96;
+BATTLESPACE_STRATEGIC_GROUND_FORMATIONS_PER_TICK = 12;
 BATTLESPACE_STRATEGIC_DEFENDER_DECISION_INTERVAL = 600;
-// Desired surviving infantry at front depths 0/1/2/3; incoming groups count toward the target.
+// Desired objective infantry at front depths 0/1/2/3. Field coverage is additional.
+// Incoming troops reserve an assignment but are shown separately from present troops.
 // Whole groups may exceed a target. Existing forces are never culled to meet it.
 BATTLESPACE_STRATEGIC_DEFENDER_MANPOWER_BY_DEPTH = [16, 9, 9, 9];
-// [frontline objective type, total manpower target, manpower allowance per role]
-// The physical spawner splits larger formations into nine-man squads.
+// [frontline objective type, objective infantry target].
 BATTLESPACE_STRATEGIC_DEFENDER_FRONT_FORMATIONS = [
-    ["military", 36, 9],
-    ["bigtown", 72, 18]
+    ["military", 36],
+    ["bigtown", 72]
 ];
 BATTLESPACE_STRATEGIC_DEFENDER_QUIET_TIME = 300;
 BATTLESPACE_STRATEGIC_DEFENDER_SOURCE_RESERVE_RATIO = 0.4;
 BATTLESPACE_STRATEGIC_DEFENDER_ARRIVAL_RADIUS = 100;
 BATTLESPACE_STRATEGIC_DEFENSIVE_PATROL_VEHICLE_CHANCE = 0.20; // At most one light vehicle per patrol.
-// [purpose, model, manpower, global cap, max target depth, objective types, on-station duration range]
+// [purpose, task-force model, new formation infantry]. Assignments persist until reassigned or lost.
 BATTLESPACE_STRATEGIC_DEFENDER_ROLES = [
-    ["GARRISON", "Garrison", 9, 16, 3, ["military", "bigtown", "factory", "capture", "tower"], [0, 0]],
-    ["DEFENSIVE_PATROL", "Defensive Patrol", 7, 16, 2, ["military", "bigtown", "factory", "capture", "tower"], [2400, 3600]],
-    ["RECON_SCREEN", "Reconnaissance Patrol", 7, 10, 1, ["military", "bigtown", "factory", "capture", "tower"], [1800, 3000]],
-    ["AMBUSH", "Ambush Patrol", 7, 6, 1, ["military", "bigtown", "factory", "capture", "tower"], [2400, 3600]]
+    ["GARRISON", "Garrison", 10],
+    ["DEFENSIVE_PATROL", "Defensive Patrol", 8],
+    ["RECON_SCREEN", "Reconnaissance Patrol", 8],
+    ["AMBUSH", "Ambush Patrol", 8]
 ];
+BATTLESPACE_FIELD_COVERAGE_SPACING = 1200; // Desired separation along exposed sector links (metres).
+BATTLESPACE_FIELD_COVERAGE_RADIUS = 350; // Area a field squad is assigned to operate within.
+BATTLESPACE_FIELD_COVERAGE_MERGE_DISTANCE = 650; // Nearby approaches share one assignment.
+BATTLESPACE_STRATEGIC_RESERVE_TARGET = 5; // Desired reserve presence within the shared ground allowance.
 // Mobile reserves replace the former casualty-created 14-man/one-vehicle reinforcement.
 BATTLESPACE_STRATEGIC_RESERVE_RESPONSE_COOLDOWN = 600;
 BATTLESPACE_STRATEGIC_RESERVE_MANPOWER = 14;
-BATTLESPACE_STRATEGIC_MAX_ACTIVE_RESERVES = 3;
-BATTLESPACE_STRATEGIC_MAX_RESERVES_PER_TICK = 1;
 BATTLESPACE_STRATEGIC_RESERVE_MIN_FRONT_DEPTH = 1; // Staging: depth 0 is the frontline itself.
 BATTLESPACE_STRATEGIC_RESERVE_MAX_FRONT_DEPTH = 2;
 BATTLESPACE_STRATEGIC_RESERVE_SOURCE_RATIO = 0.5;
@@ -242,6 +243,10 @@ BATTLESPACE_STRATEGIC_RESERVE_RESPONSE_MAX_HOPS = 5;
 BATTLESPACE_STRATEGIC_RESERVE_HOLD_DURATION = 900;
 BATTLESPACE_STRATEGIC_RESERVE_MINIMUM_MANPOWER = 8;
 BATTLESPACE_STRATEGIC_RESERVE_ARRIVAL_RADIUS = 150;
+BATTLESPACE_STRATEGIC_RESERVE_FIELD_RADIUS = 600; // Nearby field losses share one response and cooldown.
+BATTLESPACE_STRATEGIC_RESERVE_FIELD_CONTACT_RADIUS = 2000; // Maximum distance from the incident to a reported player position.
+BATTLESPACE_STRATEGIC_RESERVE_FIELD_CONTACT_MAX_AGE = 180; // Return after this long without a fresh player sighting.
+BATTLESPACE_STRATEGIC_RESERVE_FIELD_LOSS_WINDOW = 600; // Field losses expire after this long without further casualties.
 BATTLESPACE_STRATEGIC_MAX_ACTIVE_AIRBORNE_TRANSPORTS = 2;
 BATTLESPACE_STRATEGIC_AIRBORNE_MANPOWER = 14;
 BATTLESPACE_STRATEGIC_AIRBORNE_MAX_RANGE = 20000;
@@ -250,7 +255,6 @@ BATTLESPACE_STRATEGIC_AIRBORNE_DROP_RADIUS = 600;
 BATTLESPACE_STRATEGIC_AIRBORNE_RETURN_RADIUS = 500;
 BATTLESPACE_STRATEGIC_AIRBORNE_FLIGHT_HEIGHT = 300;
 BATTLESPACE_STRATEGIC_AIRBORNE_DEPLOYMENT_DURATION = 900;
-BATTLESPACE_STRATEGIC_MAX_ACTIVE_DEEP_RECON = 8;
 BATTLESPACE_STRATEGIC_DEEP_RECON_MANPOWER = 7;
 BATTLESPACE_STRATEGIC_DEEP_RECON_COOLDOWN = 2400;
 BATTLESPACE_STRATEGIC_DEEP_RECON_DURATION = [2400, 3600];

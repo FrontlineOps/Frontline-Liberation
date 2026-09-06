@@ -13,14 +13,9 @@ BATTLESPACE_TASK_FORCE_GARRISON_ORDER = {
         ([_x] call BIS_fnc_buildingPositions) isNotEqualTo []
     };
     {
-        [_x, true, true] call KPLIB_fnc_taskReset;
-        _x setVariable ["BATTLESPACE_DEFENDER_RETURNING", false];
         private _building = if (_buildings isEqualTo []) then {objNull} else {_buildings deleteAt 0};
-        if (isNull _building) then {
-            [_x, _position, 150, 4, [], false, true] call KPLIB_fnc_taskPatrol;
-        } else {
-            [_x, getPos _building] call KPLIB_fnc_garrison;
-        };
+        private _args = [_x, _position, if (isNull _building) then {[]} else {getPosATL _building}];
+        if (local _x) then {_args call BATTLESPACE_DEFENSE_GARRISON_GROUP} else {_args remoteExecCall ["BATTLESPACE_DEFENSE_GARRISON_GROUP", groupOwner _x]};
     } forEach _groups;
 };
 
@@ -47,10 +42,13 @@ BATTLESPACE_TASK_FORCE_GARRISON_ORDER = {
             }
         ],
         ["isAlive", BATTLESPACE_TASK_FORCE_DEFENSE_MODEL_IS_ALIVE],
+        ["onPathFailed", BATTLESPACE_DEFENSE_PATH_FAILED],
         [
             "onDecisionTick",
             {
                 params ["_taskForceName", "_taskForce"];
+                private _retryAt = (BATTLESPACE_STRATEGIC_OPERATIONS getOrDefault [_taskForceName, createHashMap]) getOrDefault ["nextManeuverAt", 0];
+                if (CBA_missionTime < _retryAt) exitWith {false};
                 private _operation = BATTLESPACE_STRATEGIC_OPERATIONS get _taskForceName;
                 private _assigned = !isNil "_operation"
                     && {(_operation getOrDefault ["kind", ""]) == "DEFENDER"}

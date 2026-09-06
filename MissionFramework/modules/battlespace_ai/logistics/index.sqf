@@ -1800,7 +1800,7 @@ if (isServer) then {
         private _nextAirResponse = CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_AIR_RESPONSE_INITIAL_DELAY", 600]);
         private _nextSave = CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_SAVE_INTERVAL", 300]);
         [format [
-            "Defender and offensive allocation scheduled: first pass in %1 seconds, then every %2 seconds; existing role and opportunity gates apply",
+            "Defender and offensive allocation scheduled: first pass in %1 seconds, then every %2 seconds; shared ground allowance and opportunity gates apply",
             _strategicInitialDelay,
             _defenderDecisionInterval
         ]] call BATTLESPACE_STRATEGIC_LOG;

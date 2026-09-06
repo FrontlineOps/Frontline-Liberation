@@ -3,7 +3,8 @@ private _rootAction = ["battlespaceAI", "Battlespace AI", ["", [1,1,1,1]], {}, {
 [_rootAction, [], 0] call zen_context_menu_fnc_addAction;
 
 
-[] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\zen\placePatrol.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\zen\renderToggle.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\zen\strategic.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\zen\artillery.sqf";
+
+[] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\zen\coverage.sqf";

@@ -89,7 +89,7 @@ BATTLESPACE_BATTLEGROUP_BUILD_DEFINITION = {
 BATTLESPACE_BATTLEGROUP_DISPATCH = {
     params ["_originSector", "_targetSector", ["_anchorSector", ""]];
     if !([] call BATTLESPACE_STRATEGIC_SERVER_CALL_ALLOWED) exitWith {false};
-    if (["BATTLEGROUP"] call BATTLESPACE_STRATEGIC_COUNT_OPERATIONS >= BATTLESPACE_STRATEGIC_MAX_ACTIVE_BATTLEGROUPS) exitWith {false};
+    if ([] call BATTLESPACE_GROUND_ALLOCATION_BLOCK != "") exitWith {false};
     if !(_targetSector in blufor_sectors) exitWith {false};
     if (["BATTLEGROUP", _targetSector] call BATTLESPACE_STRATEGIC_HAS_OPERATION_FOR_TARGET) exitWith {false};
     private _source = BATTLESPACE_SECTOR_STATES getOrDefault [_originSector, createHashMap];
@@ -132,7 +132,8 @@ BATTLESPACE_BATTLEGROUP_DISPATCH = {
 
 BATTLESPACE_BATTLEGROUP_DECISION_TICK = {
     if !([] call BATTLESPACE_STRATEGIC_SERVER_CALL_ALLOWED) exitWith {};
-    private _remaining = BATTLESPACE_STRATEGIC_MAX_BATTLEGROUPS_PER_TICK min (BATTLESPACE_STRATEGIC_MAX_ACTIVE_BATTLEGROUPS - (["BATTLEGROUP"] call BATTLESPACE_STRATEGIC_COUNT_OPERATIONS));
+    if ([] call BATTLESPACE_GROUND_ALLOCATION_BLOCK != "") exitWith {};
+    private _remaining = BATTLESPACE_STRATEGIC_GROUND_FORMATIONS_PER_TICK - (missionNamespace getVariable ["BATTLESPACE_GROUND_FORMATIONS_CREATED", 0]);
     if (_remaining <= 0) exitWith {};
     private _targets = blufor_sectors arrayIntersect sectors_allSectors;
     _targets = [_targets, [], {(BATTLESPACE_SECTOR_STATES getOrDefault [_x, createHashMap]) getOrDefault ["nextBattlegroupTargetAt", 0]}, "ASCEND"] call BIS_fnc_sortBy;

@@ -1019,7 +1019,7 @@ BATTLESPACE_TASK_FORCE_OBJECT_KILLED = {
 	_taskForce set [3, _composition];
 	BATTLESPACE_TASK_FORCES set [_taskForceName, _taskForce];
 	if (_recordedLoss && {!isNil "BATTLESPACE_STRATEGIC_RECORD_CASUALTY"}) then {
-		[_taskForceName, _type] call BATTLESPACE_STRATEGIC_RECORD_CASUALTY;
+		[_taskForceName, _type, _unit] call BATTLESPACE_STRATEGIC_RECORD_CASUALTY;
 	};
 	// publicVariable "BATTLESPACE_TASK_FORCES";
 };

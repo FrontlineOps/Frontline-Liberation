@@ -81,6 +81,8 @@ BATTLESPACE_STRATEGIC_CREATE_FUNDED_TASK_FORCE = {
         "_fundingSector", ["_kind", "DEFENDER"], ["_metadata", createHashMap], ["_extraCost", createHashMap]
     ];
     if (!([] call BATTLESPACE_STRATEGIC_SERVER_CALL_ALLOWED)) exitWith {""};
+    private _ground = toUpper _kind in BATTLESPACE_GROUND_OPERATION_KINDS;
+    if (_ground && {[] call BATTLESPACE_GROUND_ALLOCATION_BLOCK != ""}) exitWith {""};
     private _fundingState = BATTLESPACE_SECTOR_STATES get _fundingSector;
     if (isNil "_fundingState" || {(_fundingState getOrDefault ["owner", ""]) != "OPFOR"}) exitWith {""};
 
@@ -131,6 +133,7 @@ BATTLESPACE_STRATEGIC_CREATE_FUNDED_TASK_FORCE = {
         {_operation set [_x, _y]} forEach _metadata;
     };
     BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceId, _operation];
+    if (_ground) then {BATTLESPACE_GROUND_FORMATIONS_CREATED = 1 + (missionNamespace getVariable ["BATTLESPACE_GROUND_FORMATIONS_CREATED", 0])};
     _taskForceId
 };
 
@@ -185,8 +188,9 @@ BATTLESPACE_STRATEGIC_ADD_DEPLOYED_ASSETS_TO_SNAPSHOT = {
 };
 
 BATTLESPACE_STRATEGIC_RECORD_CASUALTY = {
-    params ["_taskForceId", "_lossType"];
+    params ["_taskForceId", "_lossType", ["_unit", objNull]];
     if (!isServer) exitWith {};
+    if (!isNull _unit) exitWith {[_taskForceId, _lossType, _unit] call BATTLESPACE_RESERVE_RECORD_FIELD_LOSS};
     private _operation = BATTLESPACE_STRATEGIC_OPERATIONS get _taskForceId;
     if (isNil "_operation") exitWith {};
     if !((_operation getOrDefault ["kind", ""]) in ["DEFENDER", "RESERVE", "DEEP RECONNAISSANCE PATROL", "REINFORCEMENT", "AIRBORNE_REINFORCEMENT"]) exitWith {};
@@ -307,7 +311,7 @@ BATTLESPACE_DEEP_RECON_BUILD_OBSERVATION_POSITION = {
 
 BATTLESPACE_DEEP_RECON_DISPATCH = {
     params ["_originSector", "_routeKey"];
-    if (["DEEP RECONNAISSANCE PATROL"] call BATTLESPACE_STRATEGIC_COUNT_OPERATIONS >= (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_ACTIVE_DEEP_RECON", 8])) exitWith {false};
+    if ([] call BATTLESPACE_GROUND_ALLOCATION_BLOCK != "") exitWith {false};
     if ([_routeKey] call BATTLESPACE_DEEP_RECON_HAS_ACTIVE_ROUTE) exitWith {false};
     private _routes = [_originSector] call BATTLESPACE_DEEP_RECON_GET_ROUTES;
     private _routeIndex = _routes findIf {(_x param [0, ""]) == _routeKey};
@@ -364,7 +368,7 @@ BATTLESPACE_DEEP_RECON_DECISION_TICK = {
     } forEach BATTLESPACE_SECTOR_STATES;
     _candidates = [_candidates, [], {_x param [0, 0]}, "DESCEND"] call BIS_fnc_sortBy;
     {
-        if (["DEEP RECONNAISSANCE PATROL"] call BATTLESPACE_STRATEGIC_COUNT_OPERATIONS >= (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_ACTIVE_DEEP_RECON", 8])) exitWith {};
+        if ([] call BATTLESPACE_GROUND_ALLOCATION_BLOCK != "") exitWith {};
         [_x param [1, ""], _x param [2, ""]] call BATTLESPACE_DEEP_RECON_DISPATCH;
     } forEach _candidates;
 };
@@ -398,6 +402,7 @@ BATTLESPACE_TACTICAL_MAINTENANCE_TICK = {
         [] call BATTLESPACE_MINEFIELDS_REFRESH_ACTIVE_COOLDOWNS;
     };
     [] call BATTLESPACE_TACTICAL_ABANDON_CAPTURED_DEFENDERS;
+    [] call BATTLESPACE_DEFENSE_MAINTAIN;
     private _threshold = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_CASUALTY_RESPONSE_THRESHOLD", 8];
     {
         private _pressure = _y getOrDefault ["casualtyPressure", 0];
@@ -435,6 +440,7 @@ BATTLESPACE_TACTICAL_MAINTENANCE_TICK = {
             [format ["Retained casualty pressure %1 at active sector %2 after strategic response dispatch", _pressure, _x]] call BATTLESPACE_STRATEGIC_LOG;
         };
     } forEach BATTLESPACE_SECTOR_STATES;
+    [] call BATTLESPACE_RESERVE_FIELD_TICK;
 };
 
 BATTLESPACE_STRATEGIC_BUILD_SECTOR_SNAPSHOT = {
@@ -677,7 +683,7 @@ BATTLESPACE_STRATEGIC_BUILD_INTEGRITY_AUDIT = {
             private _phase = _y getOrDefault ["phase", ""];
             if ((_taskForce param [0, ""]) != "Mobile Reserve") then {_errors pushBack format ["Reserve operation %1 uses the wrong task-force model", _x]};
             if ((_y getOrDefault ["defenseRole", ""]) != "MOBILE_RESERVE") then {_errors pushBack format ["Reserve operation %1 has no mobile-reserve purpose", _x]};
-            if !(_phase in ["READY", "RESPONDING", "HOLDING", "RETURNING"]) then {_errors pushBack format ["Reserve operation %1 has invalid phase %2", _x, _phase]};
+            if !(_phase in ["READY", "STAGING", "RESPONDING", "FIELD_HUNT", "HOLDING", "RETURNING"]) then {_errors pushBack format ["Reserve operation %1 has invalid phase %2", _x, _phase]};
             private _composition = _taskForce param [3, createHashMap];
             if (count (_composition getOrDefault ["vehicles", []]) > 1) then {_errors pushBack format ["Reserve operation %1 owns more than one vehicle", _x]};
         };
@@ -764,13 +770,8 @@ BATTLESPACE_STRATEGIC_BUILD_INTEGRITY_AUDIT = {
     if (["AIRBORNE_TRANSPORT"] call BATTLESPACE_STRATEGIC_COUNT_OPERATIONS > _globalAirborneCap) then {
         _errors pushBack format ["Global airborne-transport operation count exceeds %1", _globalAirborneCap];
     };
-    private _globalDefenderCap = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_ACTIVE_DEFENDERS", 24];
-    if (["DEFENDER"] call BATTLESPACE_STRATEGIC_COUNT_OPERATIONS > _globalDefenderCap) then {
-        _errors pushBack format ["Global defender operation count exceeds %1", _globalDefenderCap];
-    };
-    private _globalReserveCap = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_ACTIVE_RESERVES", 3];
-    if (["RESERVE"] call BATTLESPACE_STRATEGIC_COUNT_OPERATIONS > _globalReserveCap) then {
-        _errors pushBack format ["Global reserve operation count exceeds %1", _globalReserveCap];
+    if ([] call BATTLESPACE_GROUND_FORCE_COUNT > BATTLESPACE_STRATEGIC_GROUND_FORCE_CAP) then {
+        _warnings pushBack "Existing ground formations exceed the shared allowance; creation waits for room";
     };
     private _globalConvoyCap = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_ACTIVE_CONVOYS", 3];
     if (["CONVOY"] call BATTLESPACE_STRATEGIC_COUNT_OPERATIONS > _globalConvoyCap) then {
@@ -814,21 +815,21 @@ BATTLESPACE_STRATEGIC_BUILD_BALANCE_REPORT = {
         _resourceRows pushBack [_resource, _total, _capacity, _shortages];
     } forEach BATTLESPACE_RESOURCE_TYPES;
 
-    private _operationRows = [];
+    private _operationRows = [["GROUND TOTAL (shared)", [] call BATTLESPACE_GROUND_FORCE_COUNT, BATTLESPACE_STRATEGIC_GROUND_FORCE_CAP]];
     {
         _x params ["_kind", "_cap"];
         _operationRows pushBack [_kind, [_kind] call BATTLESPACE_STRATEGIC_COUNT_OPERATIONS, _cap];
     } forEach [
         ["CONVOY", missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_ACTIVE_CONVOYS", 3]],
-        ["BATTLEGROUP", missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_ACTIVE_BATTLEGROUPS", 2]],
-        ["RESERVE", missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_ACTIVE_RESERVES", 3]],
+        ["BATTLEGROUP", -1],
+        ["RESERVE", -1],
         ["AIRBORNE_TRANSPORT", missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_ACTIVE_AIRBORNE_TRANSPORTS", 2]],
         ["AIRBORNE_REINFORCEMENT", -1],
-        ["DEEP RECONNAISSANCE PATROL", missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_ACTIVE_DEEP_RECON", 8]],
+        ["DEEP RECONNAISSANCE PATROL", -1],
         ["AIR_RESPONSE", missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_ACTIVE_AIR_RESPONSES", 2]],
         ["FORTIFICATION", missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_ACTIVE_FORTIFICATIONS", 48]],
         ["MINEFIELD", missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_ACTIVE_MINEFIELDS", 36]],
-        ["DEFENDER", missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_ACTIVE_DEFENDERS", 24]]
+        ["DEFENDER", -1]
     ];
     [_resourceRows, _operationRows, [
         missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DECISION_INTERVAL", 1800],
@@ -843,220 +844,6 @@ BATTLESPACE_STRATEGIC_BUILD_BALANCE_REPORT = {
     ]]
 };
 
-BATTLESPACE_STRATEGIC_RUN_SELF_TEST = {
-    params ["_sector"];
-    private _errors = [];
-    private _warnings = [];
-    private _state = BATTLESPACE_SECTOR_STATES get _sector;
-    if (isNil "_state" || {(_state getOrDefault ["owner", ""]) != "OPFOR"}) then {
-        _errors pushBack "Select a position nearest to an OPFOR sector before running the self-test";
-    } else {
-        private _before = [(_state getOrDefault ["resources", createHashMap])] call BATTLESPACE_COPY_RESOURCE_MAP;
-        private _available = _before getOrDefault ["manpower", 0];
-        if ([_sector, createHashMapFromArray [["manpower", -(_available + 1)]]] call BATTLESPACE_RESOURCE_APPLY_STRICT) then {
-            _errors pushBack "An impossible strict debit was accepted";
-        };
-        private _afterRejectedDebit = (BATTLESPACE_SECTOR_STATES get _sector) getOrDefault ["resources", createHashMap];
-        {
-            if ((_afterRejectedDebit getOrDefault [_x, -1]) != _y) then {
-                _errors pushBack format ["Rejected debit changed %1", _x];
-            };
-        } forEach _before;
-
-        if (_available > 0) then {
-            if !([_sector, createHashMapFromArray [["manpower", -1]]] call BATTLESPACE_RESOURCE_APPLY_STRICT) then {
-                _errors pushBack "A valid one-point debit was rejected";
-            } else {
-                [_sector, createHashMapFromArray [["manpower", 1]]] call BATTLESPACE_RESOURCE_DEPOSIT_CLAMPED;
-                private _afterRoundTrip = (BATTLESPACE_SECTOR_STATES get _sector) getOrDefault ["resources", createHashMap];
-                {
-                    if ((_afterRoundTrip getOrDefault [_x, -1]) != _y) then {
-                        _errors pushBack format ["Debit/refund round trip changed %1", _x];
-                    };
-                } forEach _before;
-            };
-        } else {
-            _warnings pushBack "Selected sector has no manpower, so the successful debit/refund check was skipped";
-        };
-
-        private _sectorType = _state getOrDefault ["type", ""];
-        private _constructionCapacity = [_sector, "construction_supplies", _sectorType] call BATTLESPACE_SECTOR_GET_EFFECTIVE_CAPACITY;
-        private _constructionThreshold = ([_sectorType, "Fortification"] call BATTLESPACE_SECTOR_GET_THRESHOLD_MAP) getOrDefault ["construction_supplies", -1];
-        if (_constructionCapacity <= 0 || {_constructionThreshold < 0}) then {
-            _errors pushBack "Selected sector has no valid construction-supplies policy";
-        } else {
-            private _constructionAvailable = _before getOrDefault ["construction_supplies", 0];
-            if (_constructionAvailable > 0) then {
-                if !([_sector, createHashMapFromArray [["construction_supplies", -1]]] call BATTLESPACE_RESOURCE_APPLY_STRICT) then {
-                    _errors pushBack "A valid construction-supplies debit was rejected";
-                } else {
-                    [_sector, createHashMapFromArray [["construction_supplies", 1]]] call BATTLESPACE_RESOURCE_DEPOSIT_CLAMPED;
-                    private _afterConstructionRoundTrip = (BATTLESPACE_SECTOR_STATES get _sector) getOrDefault ["resources", createHashMap];
-                    if ((_afterConstructionRoundTrip getOrDefault ["construction_supplies", -1]) != _constructionAvailable) then {
-                        _errors pushBack "Construction-supplies debit/refund round trip changed the balance";
-                    };
-                };
-            } else {
-                _warnings pushBack "Selected sector has no construction supplies, so its successful debit/refund check was skipped";
-            };
-        };
-        _state = BATTLESPACE_SECTOR_STATES get _sector;
-        _state set ["resources", [_before] call BATTLESPACE_COPY_RESOURCE_MAP];
-        BATTLESPACE_SECTOR_STATES set [_sector, _state];
-    };
-
-    if !([] call BATTLESPACE_LOGISTICS_SAVE) then {_errors pushBack "Strategic save call failed"};
-    private _strategicSave = profileNamespace getVariable [BATTLESPACE_LOGISTICS_SAVE_KEY, createHashMap];
-    private _taskForceSave = profileNamespace getVariable [BATTLESPACE_TASK_FORCE_SAVE_KEY, createHashMap];
-    if (
-        typeName _strategicSave != "HASHMAP"
-        || {typeName (_strategicSave getOrDefault ["sectors", objNull]) != "HASHMAP"}
-        || {typeName (_strategicSave getOrDefault ["operations", objNull]) != "HASHMAP"}
-    ) then {
-        _errors pushBack "Structurally valid strategic snapshot was not written";
-    } else {
-        private _savedSectors = _strategicSave getOrDefault ["sectors", createHashMap];
-        private _savedOperations = _strategicSave getOrDefault ["operations", createHashMap];
-        if (typeName _savedSectors != "HASHMAP" || {count _savedSectors != count BATTLESPACE_SECTOR_STATES}) then {
-            _errors pushBack "Persisted sector count does not match live state";
-        };
-        {
-            if (isNil {_savedOperations get _x}) then {_errors pushBack format ["Operation %1 was not persisted", _x]};
-        } forEach BATTLESPACE_STRATEGIC_OPERATIONS;
-    };
-    if (
-        typeName _taskForceSave != "HASHMAP"
-        || {!((_taskForceSave getOrDefault ["AI", -1]) isEqualType 0)}
-        || {typeName (_taskForceSave getOrDefault ["TaskForces", objNull]) != "HASHMAP"}
-    ) then {
-        _errors pushBack "Structurally valid task-force snapshot was not written";
-    } else {
-        private _savedTaskForces = _taskForceSave getOrDefault ["TaskForces", createHashMap];
-        {
-            if (isNil {_savedTaskForces get _x}) then {_errors pushBack format ["Task force %1 was not persisted", _x]};
-        } forEach BATTLESPACE_TASK_FORCES;
-    };
-    [_errors, _warnings, count BATTLESPACE_SECTOR_STATES, count BATTLESPACE_STRATEGIC_OPERATIONS]
-};
-
-BATTLESPACE_ZEN_SERVER_CREATE_TASK_FORCE = {
-    params ["_type", "_composition", "_origin", "_destination", "_home"];
-    if (!isServer || {!isRemoteExecuted}) exitWith {};
-    private _caller = (allPlayers select {owner _x == remoteExecutedOwner}) param [0, objNull];
-    if (isNull _caller || {isNull (getAssignedCuratorLogic _caller)}) exitWith {};
-    if (_type != "Defensive Patrol") exitWith {};
-    if (typeName _composition != "HASHMAP") exitWith {};
-    if !(_origin isEqualType [] && {(count _origin) in [2, 3]} && {_origin findIf {!(_x isEqualType 0)} < 0}) exitWith {};
-    if !(_home isEqualType [] && {(count _home) in [2, 3]} && {_home findIf {!(_x isEqualType 0)} < 0}) exitWith {};
-    if !(_destination isEqualType [] && {count _destination == 0 || {(count _destination) in [2, 3] && {_destination findIf {!(_x isEqualType 0)} < 0}}}) exitWith {};
-    private _manpower = _composition getOrDefault ["manpower", -1];
-    private _vehicles = _composition getOrDefault ["vehicles", []];
-    private _structures = _composition getOrDefault ["structures", []];
-    if !(_manpower isEqualType 0 && {_manpower >= 0} && {_manpower <= 60} && {_vehicles isEqualType []} && {count _vehicles <= 16} && {_structures isEqualType []} && {count _structures <= 100}) exitWith {};
-    if (_vehicles findIf {
-        !(_x isEqualType "") || {!isClass (configFile >> "CfgVehicles" >> _x)} || {!(_x isKindOf "LandVehicle")}
-    } >= 0) exitWith {};
-    if (_structures findIf {
-        if (typeName _x != "HASHMAP") exitWith {true};
-        private _class = _x getOrDefault ["className", ""];
-        private _position = _x getOrDefault ["position", []];
-        _class == "" || {!isClass (configFile >> "CfgVehicles" >> _class)}
-        || {!(_class isKindOf "Building" || {_class isKindOf "StaticWeapon"})}
-        || {!(_position isEqualType [])} || {_position distance2D _origin > 1500}
-    } >= 0) exitWith {};
-    [_type, _composition, _origin, _destination, _home] call BATTLESPACE_TASK_FORCES_INIT;
-};
-
-BATTLESPACE_ZEN_EXECUTE_VALIDATED_ACTION = {
-    params ["_action", "_nearest", "_ownerId"];
-    switch (_action) do {
-        case "RUN_DECISION": {
-            private _convoyBudget = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_CONVOYS_PER_TICK", 2];
-            private _evacuationConvoys = [_convoyBudget] call BATTLESPACE_LOGISTICS_EVACUATION_DECISION_TICK;
-            [(_convoyBudget - _evacuationConvoys) max 0] call BATTLESPACE_LOGISTICS_DECISION_TICK;
-            [] call BATTLESPACE_BATTLEGROUP_DECISION_TICK;
-            [] call BATTLESPACE_DEEP_RECON_DECISION_TICK;
-            [] call BATTLESPACE_AIR_RESPONSE_DECISION_TICK;
-            [] call BATTLESPACE_FORTIFICATION_DECISION_TICK;
-            [] call BATTLESPACE_MINEFIELDS_DECISION_TICK;
-            [] call BATTLESPACE_DEFENSE_DECISION_TICK;
-        };
-        case "SAVE": {[] call BATTLESPACE_LOGISTICS_SAVE};
-        case "SELF_TEST": {
-            private _result = [_nearest] call BATTLESPACE_STRATEGIC_RUN_SELF_TEST;
-            ["SELF_TEST", _result] remoteExecCall ["BATTLESPACE_ZEN_RECEIVE_SNAPSHOT", _ownerId];
-        };
-        case "EMERGENCY": {
-            private _state = BATTLESPACE_SECTOR_STATES get _nearest;
-            if (!isNil "_state" && {(_state getOrDefault ["owner", ""]) == "OPFOR"}) then {
-                _state set ["casualtyPressure", missionNamespace getVariable ["BATTLESPACE_STRATEGIC_CASUALTY_RESPONSE_THRESHOLD", 8]];
-                _state set ["nextEmergencyAt", 0];
-                _state set ["nextReinforcementAt", 0];
-                BATTLESPACE_SECTOR_STATES set [_nearest, _state];
-                [] call BATTLESPACE_TACTICAL_MAINTENANCE_TICK;
-            };
-        };
-        case "REFILL";
-        case "DRAIN": {
-            private _state = BATTLESPACE_SECTOR_STATES get _nearest;
-            if (!isNil "_state" && {(_state getOrDefault ["owner", ""]) == "OPFOR"}) then {
-                private _resources = _state get "resources";
-                private _type = _state get "type";
-                {
-                    private _amount = if (_action == "REFILL") then {
-                        (_resources getOrDefault [_x, 0]) max ([_nearest, _x, _type] call BATTLESPACE_SECTOR_GET_EFFECTIVE_CAPACITY)
-                    } else {
-                        0
-                    };
-                    _resources set [_x, _amount];
-                } forEach BATTLESPACE_RESOURCE_TYPES;
-                _state set ["resources", _resources];
-                BATTLESPACE_SECTOR_STATES set [_nearest, _state];
-                [] call BATTLESPACE_LOGISTICS_SAVE;
-            };
-        };
-        case "FORTIFY": {
-            private _state = BATTLESPACE_SECTOR_STATES get _nearest;
-            if (!isNil "_state" && {(_state getOrDefault ["owner", ""]) == "OPFOR"}) then {
-                private _previousCooldown = _state getOrDefault ["nextFortificationAt", 0];
-                _state set ["nextFortificationAt", 0];
-                BATTLESPACE_SECTOR_STATES set [_nearest, _state];
-                if !([_nearest] call BATTLESPACE_FORTIFICATION_DISPATCH) then {
-                    _state = BATTLESPACE_SECTOR_STATES get _nearest;
-                    if (!isNil "_state") then {
-                        _state set ["nextFortificationAt", _previousCooldown];
-                        BATTLESPACE_SECTOR_STATES set [_nearest, _state];
-                    };
-                };
-            };
-        };
-        case "MINE": {
-            private _state = BATTLESPACE_SECTOR_STATES get _nearest;
-            if (!isNil "_state" && {(_state getOrDefault ["owner", ""]) == "OPFOR"}) then {
-                private _previousCooldown = _state getOrDefault ["nextMinefieldAt", 0];
-                _state set ["nextMinefieldAt", 0];
-                BATTLESPACE_SECTOR_STATES set [_nearest, _state];
-                if !([_nearest] call BATTLESPACE_MINEFIELDS_BUILD) then {
-                    _state = BATTLESPACE_SECTOR_STATES get _nearest;
-                    if (!isNil "_state") then {
-                        _state set ["nextMinefieldAt", _previousCooldown];
-                        BATTLESPACE_SECTOR_STATES set [_nearest, _state];
-                    };
-                };
-            };
-        };
-    };
-    if (_action == "SELF_TEST") exitWith {};
-    private _payload = if (_action in ["RUN_DECISION", "SAVE"]) then {
-        private _counts = [];
-        {_counts pushBack [_x, [_x] call BATTLESPACE_STRATEGIC_COUNT_OPERATIONS]} forEach ["CONVOY", "BATTLEGROUP", "DEFENDER", "RESERVE", "AIRBORNE_TRANSPORT", "AIRBORNE_REINFORCEMENT", "DEEP RECONNAISSANCE PATROL", "AIR_RESPONSE", "FORTIFICATION", "MINEFIELD"];
-        [count BATTLESPACE_SECTOR_STATES, count BATTLESPACE_TASK_FORCES, _counts]
-    } else {
-        [_nearest] call BATTLESPACE_STRATEGIC_BUILD_SECTOR_SNAPSHOT
-    };
-    [_action, _payload] remoteExecCall ["BATTLESPACE_ZEN_RECEIVE_SNAPSHOT", _ownerId];
-};
-
 BATTLESPACE_ZEN_SERVER_REQUEST = {
     params [["_action", "", [""]], ["_position", [], [[]]]];
     if (!isServer || {!isRemoteExecuted}) exitWith {};
@@ -1065,14 +852,13 @@ BATTLESPACE_ZEN_SERVER_REQUEST = {
     if (isNull _caller || {isNull (getAssignedCuratorLogic _caller)}) exitWith {
         [format ["Rejected Battlespace ZEN request %1 from owner %2", _action, _ownerId], "WARNING"] call BATTLESPACE_STRATEGIC_LOG;
     };
-    if !(_action in ["OVERVIEW", "INSPECT", "OVERLAY", "AUDIT", "BALANCE", "RUN_DECISION", "SAVE", "SELF_TEST", "EMERGENCY", "REFILL", "DRAIN", "FORTIFY", "MINE"]) exitWith {};
+    if !(_action in ["OVERVIEW", "INSPECT", "OVERLAY", "AUDIT", "BALANCE"]) exitWith {};
+    private _lastRequest = _caller getVariable ["BATTLESPACE_ZEN_STRATEGIC_REQUEST_AT", -10];
+    if (CBA_missionTime - _lastRequest < 1) exitWith {};
+    _caller setVariable ["BATTLESPACE_ZEN_STRATEGIC_REQUEST_AT", CBA_missionTime];
     private _nearest = "";
     if (_position isEqualType [] && {(count _position) in [2, 3]} && {_position findIf {!(_x isEqualType 0)} < 0}) then {
         _nearest = [sectors_allSectors, _position] call BIS_fnc_nearestPosition;
-    };
-
-    if (_action in ["RUN_DECISION", "SAVE", "SELF_TEST", "EMERGENCY", "REFILL", "DRAIN", "FORTIFY", "MINE"]) exitWith {
-        [{_this call BATTLESPACE_ZEN_EXECUTE_VALIDATED_ACTION}, [_action, _nearest, _ownerId], 0] call CBA_fnc_waitAndExecute;
     };
 
     private _payload = [];

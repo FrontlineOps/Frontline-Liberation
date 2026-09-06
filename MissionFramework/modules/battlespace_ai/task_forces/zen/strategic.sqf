@@ -41,13 +41,12 @@ BATTLESPACE_ZEN_SHOW_SECTOR_SNAPSHOT = {
 
 BATTLESPACE_ZEN_RECEIVE_SNAPSHOT = {
 	params ["_action", "_payload"];
-	if (!hasInterface) exitWith {};
+	if (!hasInterface || {!isRemoteExecuted} || {remoteExecutedOwner != 2}) exitWith {};
 	switch (_action) do {
 		case "OVERLAY": {BATTLESPACE_ZEN_STRATEGIC_OVERLAY_DATA = _payload};
-		case "AUDIT";
-		case "SELF_TEST": {
+		case "AUDIT": {
 			_payload params [["_errors", []], ["_warnings", []], ["_sectorCount", 0], ["_operationCount", 0]];
-			private _title = ["Battlespace Integrity Audit", "Battlespace Resource/Persistence Self-Test"] select (_action == "SELF_TEST");
+			private _title = "Battlespace Integrity Audit";
 			private _lines = [format ["<t size='1.25'>%1</t><br/>Sectors: %2 / Operations: %3<br/>Errors: %4 / Warnings: %5<br/><br/>", _title, _sectorCount, _operationCount, count _errors, count _warnings]];
 			{_lines pushBack format ["<t color='#ff6b6b'>ERROR</t> %1<br/>", _x]} forEach _errors;
 			{_lines pushBack format ["<t color='#ffd166'>WARN</t> %1<br/>", _x]} forEach _warnings;
@@ -78,9 +77,7 @@ BATTLESPACE_ZEN_RECEIVE_SNAPSHOT = {
 			];
 			hintSilent parseText (_lines joinString "");
 		};
-		case "OVERVIEW";
-		case "RUN_DECISION";
-		case "SAVE": {
+		case "OVERVIEW": {
 			_payload params [["_sectorCount", 0], ["_forceCount", 0], ["_counts", []]];
 			private _lines = [format ["<t size='1.25'>Battlespace Strategic Overview</t><br/>Sectors: %1<br/>Logical task forces: %2<br/><br/>", _sectorCount, _forceCount]];
 			{_lines pushBack format ["%1: %2<br/>", _x#0, _x#1]} forEach _counts;
@@ -147,17 +144,6 @@ BATTLESPACE_ZEN_TOGGLE_STRATEGIC_OVERLAY = {
 	};
 };
 
-BATTLESPACE_ZEN_CONFIRM_SERVER_ACTION = {
-	params ["_action", "_position", "_title"];
-	[
-		_title,
-		[["CHECKBOX", "Confirm server-side test action", [false]]],
-		{params ["_values", "_args"]; if (_values#0) then {_args remoteExecCall ["BATTLESPACE_ZEN_SERVER_REQUEST", 2]}},
-		{},
-		[_action, _position]
-	] call zen_dialog_fnc_create;
-};
-
 private _overview = ["battlespaceStrategicOverview", "Strategic Overview", ["", [1,1,1,1]], {
 	["OVERVIEW", _this#0] remoteExecCall ["BATTLESPACE_ZEN_SERVER_REQUEST", 2];
 }, {true}] call zen_context_menu_fnc_createAction;
@@ -182,22 +168,3 @@ private _overlay = ["battlespaceStrategicOverlay", "Toggle Strategic Overlay + L
 	[] call BATTLESPACE_ZEN_TOGGLE_STRATEGIC_OVERLAY;
 }, {true}] call zen_context_menu_fnc_createAction;
 [_overlay, ["battlespaceAI"], 0] call zen_context_menu_fnc_addAction;
-
-{
-	_x params ["_id", "_label", "_action"];
-	private _zenAction = [_id, _label, ["", [1,0.75,0.2,1]], {
-		params ["_position", "_objects", "_groups", "_waypoints", "_markers", "_hoveredEntity", "_args"];
-		_args params ["_serverAction", "_dialogTitle"];
-		[_serverAction, _position, _dialogTitle] call BATTLESPACE_ZEN_CONFIRM_SERVER_ACTION;
-	}, {true}, [_action, _label]] call zen_context_menu_fnc_createAction;
-	[_zenAction, ["battlespaceAI"], 0] call zen_context_menu_fnc_addAction;
-} forEach [
-	["battlespaceRunDecision", "Run Strategic Decision Tick (Test)", "RUN_DECISION"],
-	["battlespaceSave", "Save Strategic State (Test)", "SAVE"],
-	["battlespaceSelfTest", "Run Resource/Persistence Self-Test", "SELF_TEST"],
-	["battlespaceEmergency", "Request Emergency Response (Test)", "EMERGENCY"],
-	["battlespaceRefill", "Refill Nearest OPFOR Sector (Test)", "REFILL"],
-	["battlespaceDrain", "Drain Nearest OPFOR Sector (Test)", "DRAIN"],
-	["battlespaceFortify", "Construct Nearest OPFOR Site (Test)", "FORTIFY"],
-	["battlespaceMinefield", "Construct Nearest OPFOR Minefield (Test)", "MINE"]
-];

@@ -62,8 +62,7 @@
                     BATTLESPACE_TASK_FORCE_PATHS deleteAt _taskForceName;
                     BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceName, _operation];
                     {
-                        [_x, true, true] call KPLIB_fnc_taskReset;
-                        _x setVariable ["BATTLESPACE_DEFENDER_RETURNING", true];
+                        if (local _x) then {[_x, false, true] call BATTLESPACE_RESERVE_SET_GROUP_MODE} else {[_x, false, true] remoteExecCall ["BATTLESPACE_RESERVE_SET_GROUP_MODE", groupOwner _x]};
                     } forEach _activeGroups;
                     [_taskForceName, _currentLocation, _destination] call QUEUE_PATHFIND_REQUEST;
                     [format ["Mobile reserve %1 returning to %2 because %3", _taskForceName, _homeSector, _reason]] call BATTLESPACE_STRATEGIC_LOG;
@@ -84,6 +83,21 @@
                     _operation set ["pressureSector", ""];
                     BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceName, _operation];
                     false
+                };
+
+                if (_phase == "FIELD_HUNT") then {
+                    private _target = _operation getOrDefault ["fieldContact", []];
+                    if (_target isEqualTo [] || {CBA_missionTime >= (_operation getOrDefault ["contactGraceUntil", 0])} || {CBA_missionTime >= (_operation getOrDefault ["expiresAt", 0])}) then {
+                        ["its field contact went stale or its hunt time expired"] call _beginReturn;
+                        _phase = "RETURNING";
+                    } else {
+                        private _destination = _taskForce param [2, []];
+                        if (_destination isEqualTo [] || {_destination distance2D _target >= 100}) then {
+                            _taskForce set [2, +_target];
+                            BATTLESPACE_TASK_FORCE_PATHS deleteAt _taskForceName;
+                            [_taskForceName, _currentLocation, _target] call QUEUE_PATHFIND_REQUEST;
+                        };
+                    };
                 };
 
                 if (_phase == "RESPONDING") then {
@@ -150,6 +164,7 @@
                             _operation deleteAt "returnSector";
                             _operation deleteAt "holdUntil";
                             _operation deleteAt "demobilizeOnReturn";
+                            {_operation deleteAt _x} forEach ["fieldIncident", "fieldPosition", "fieldContact", "contactGraceUntil", "expiresAt"];
                             _taskForce set [2, []];
                             BATTLESPACE_TASK_FORCE_PATHS deleteAt _taskForceName;
                             BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceName, _operation];
@@ -169,7 +184,7 @@
                     }
                 };
 
-                if (_phase == "RESPONDING") then {
+                if (_phase in ["RESPONDING", "FIELD_HUNT"]) then {
                     if (_activeGroups isEqualTo []) then {
                         [_taskForceName, _taskForce] call BATTLESPACE_TASK_FORCE_MOVE_SIMULATED_GROUP;
                     };

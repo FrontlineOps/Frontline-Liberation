@@ -18,6 +18,7 @@ if (hasInterface) then {
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\logistics\index.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\ground_offensives\index.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\tactical\index.sqf";
+[] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\zen\coverageServer.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\airborne_reinforcement\index.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\air_response\index.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\fortifications\index.sqf";

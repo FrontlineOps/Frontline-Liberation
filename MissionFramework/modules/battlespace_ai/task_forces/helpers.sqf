@@ -172,20 +172,23 @@ BATTLESPACE_TASK_FORCE_ADD_WAYPOINTS = {
 			_hold setWaypointType "HOLD";
 		};
 		if (_waypointRoute isEqualTo []) then {_waypointRoute = [+_destination]};
+		private _fieldHunt = _group getVariable ["BATTLESPACE_RESERVE_FIELD_HUNT", false];
 
 		{
 			private _isFinal = _forEachIndex == count _waypointRoute - 1;
 			private _waypoint = _group addWaypoint [_x, [20, 10] select _isFinal];
-			_waypoint setWaypointType "MOVE";
-			_waypoint setWaypointSpeed _speed;
-			_waypoint setWaypointBehaviour (["SAFE", ["SAFE", "COMBAT"] select _isVehicle] select _isFinal);
+			_waypoint setWaypointType (["MOVE", "SAD"] select (_isFinal && {_fieldHunt}));
+			_waypoint setWaypointSpeed ([_speed, "FULL"] select _fieldHunt);
+			_waypoint setWaypointBehaviour ([(["SAFE", ["SAFE", "COMBAT"] select _isVehicle] select _isFinal), "AWARE"] select _fieldHunt);
 			_waypoint setWaypointCombatMode "YELLOW";
 			_waypoint setWaypointCompletionRadius ([60, 30] select _isFinal);
 		} forEach _waypointRoute;
 
-		private _hold = _group addWaypoint [_destination, 30];
-		_hold setWaypointType "HOLD";
-		_hold setWaypointBehaviour (["SAFE", "COMBAT"] select _isVehicle);
+		if (!_fieldHunt) then {
+			private _hold = _group addWaypoint [_destination, 30];
+			_hold setWaypointType "HOLD";
+			_hold setWaypointBehaviour (["SAFE", "COMBAT"] select _isVehicle);
+		};
 	} else {
 		private _pos = getPos (leader _group);
 		private _waypoint = _group addWaypoint [_pos, 0];
@@ -206,6 +209,18 @@ BATTLESPACE_TASK_FORCE_APPLY_ROUTE_TO_ACTIVE = {
 	private _destination = _taskForce param [2, []];
 	private _speed = ["LIMITED", "FULL"] select (_type in ["Battlegroup", "Mobile Reserve", "Deep Reconnaissance Patrol", "Convoy", "Air Response", "Airborne Transport"]);
 	{
+		if (_type in ["Garrison", "Defensive Patrol", "Reconnaissance Patrol", "Ambush Patrol"] && {!isNull _x}) then {
+			private _operation = BATTLESPACE_STRATEGIC_OPERATIONS getOrDefault [_taskForceName, createHashMap];
+			private _args = [_x, _destination, _route, _operation getOrDefault ["defenseRole", ""], (_operation getOrDefault ["phase", ""]) == "RETURNING"];
+			if (local _x) then {_args call BATTLESPACE_DEFENSE_APPLY_ROUTE} else {_args remoteExecCall ["BATTLESPACE_DEFENSE_APPLY_ROUTE", groupOwner _x]};
+			continue;
+		};
+		if (_type == "Mobile Reserve" && {!isNull _x}) then {
+			private _phase = (BATTLESPACE_STRATEGIC_OPERATIONS getOrDefault [_taskForceName, createHashMap]) getOrDefault ["phase", "READY"];
+			private _args = [_x, _destination, _route, _phase == "FIELD_HUNT", _phase == "RETURNING"];
+			if (local _x) then {_args call BATTLESPACE_RESERVE_APPLY_ROUTE} else {_args remoteExecCall ["BATTLESPACE_RESERVE_APPLY_ROUTE", groupOwner _x]};
+			continue;
+		};
 		if (isNull _x || {!local _x}) then {continue};
 		private _parentTransport = _x getVariable ["BATTLESPACE_TRANSPORT_PARENT_GROUP", grpNull];
 		if (!isNull _parentTransport) then {continue};

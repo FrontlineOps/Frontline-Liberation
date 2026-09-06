@@ -15,6 +15,9 @@ BATTLESPACE_TASK_FORCE_RECON_BUILD_ASSIGNMENT = {
 
 BATTLESPACE_TASK_FORCE_RECON_SELECT_LEG = {
     params ["_taskForceName", "_taskForce", ["_operation", createHashMap]];
+    if ((_operation getOrDefault ["coveragePosition", []]) isNotEqualTo []) exitWith {
+        [_taskForceName, _taskForce, _operation] call BATTLESPACE_DEFENSE_FIELD_LEG
+    };
     private _sector = _operation getOrDefault ["assignedSector", _taskForce param [12, ""]];
     if (_sector == "") then {
         _sector = [sectors_allSectors, _taskForce param [10, _taskForce param [1, []]]] call BIS_fnc_nearestPosition;
@@ -61,10 +64,13 @@ BATTLESPACE_TASK_FORCE_RECON_SELECT_LEG = {
             }
         ],
         ["isAlive", BATTLESPACE_TASK_FORCE_DEFENSE_MODEL_IS_ALIVE],
+        ["onPathFailed", BATTLESPACE_DEFENSE_PATH_FAILED],
         [
             "onDecisionTick",
             {
                 params ["_taskForceName", "_taskForce"];
+                private _retryAt = (BATTLESPACE_STRATEGIC_OPERATIONS getOrDefault [_taskForceName, createHashMap]) getOrDefault ["nextManeuverAt", 0];
+                if (CBA_missionTime < _retryAt) exitWith {false};
                 private _operation = BATTLESPACE_STRATEGIC_OPERATIONS get _taskForceName;
                 private _assigned = !isNil "_operation"
                     && {(_operation getOrDefault ["kind", ""]) == "DEFENDER"}
@@ -111,8 +117,6 @@ BATTLESPACE_TASK_FORCE_RECON_SELECT_LEG = {
                     private _arrivalRadius = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DEFENDER_ARRIVAL_RADIUS", 100];
                     if (_currentLocation distance2D _targetPosition <= _arrivalRadius) then {
                         _operation set ["phase", "ON_STATION"];
-                        private _tourDuration = _operation getOrDefault ["tourDuration", 0];
-                        if (_tourDuration > 0) then {_operation set ["expiresAt", CBA_missionTime + _tourDuration]};
                         BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceName, _operation];
                         BATTLESPACE_TASK_FORCE_PATHS deleteAt _taskForceName;
                         [_taskForceName, _taskForce, _operation] call BATTLESPACE_TASK_FORCE_RECON_SELECT_LEG;
@@ -126,14 +130,6 @@ BATTLESPACE_TASK_FORCE_RECON_SELECT_LEG = {
                 };
 
                 if (_phase == "ON_STATION") exitWith {
-                    private _expiresAt = _operation getOrDefault ["expiresAt", -1];
-                    if (
-                        _expiresAt >= 0
-                        && {CBA_missionTime >= _expiresAt}
-                        && {!(_assignedSector in (missionNamespace getVariable ["active_sectors", []]))}
-                    ) exitWith {
-                        !([_taskForceName, _taskForce, _operation, "its reconnaissance screen completed"] call BATTLESPACE_TASK_FORCE_DEFENSE_BEGIN_RETURN)
-                    };
                     private _destination = _taskForce param [2, []];
                     if (_destination isEqualTo [] || {_currentLocation distance2D _destination <= 40}) then {
                         [_taskForceName, _taskForce, _operation] call BATTLESPACE_TASK_FORCE_RECON_SELECT_LEG;
