@@ -30,28 +30,18 @@ KC_DEBUG_ROLE_PFH = {
 
 			private _GearToAdd = [_role] call RoleArsenal_DetermineGear;
 			
-			private _itemsNotInRA = _items select {
-				private _exists = false;
-						if(!("TFAR" in _x)) then {
-							if(!(_x in KC_DEBUG_SKIP_ITEMS)) then {
-
-								private _item = _x;
-
-								{
-									if((toLowerANSI _x) == (toLowerANSI _item)) exitWith {
-										_exists = true;
-									};
-									
-								} forEach _GearToAdd;
-				} else {
-					_exists = true;
-				};
-				} else {
-					_exists = true;
-				};
-
-				_exists == false
-			};
+            private _allowedItems = _GearToAdd apply {toLower _x};
+            private _itemsNotInRA = _items select {
+                private _itemKey = toLower _x;
+                private _cfg = configFile >> "CfgWeapons" >> _x;
+                private _acreBase = getText (_cfg >> "acre_baseClass");
+                if (getNumber (_cfg >> "acre_isRadio") == 1 && {_acreBase != ""}) then {
+                    _itemKey = toLower _acreBase;
+                };
+                !("TFAR" in _x) &&
+                {!(_x in KC_DEBUG_SKIP_ITEMS)} &&
+                {!(_itemKey in _allowedItems)}
+            };
 
 			_itemsNotInRA = _itemsNotInRA arrayIntersect _itemsNotInRA;
 

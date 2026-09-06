@@ -1,6 +1,6 @@
 /*
     Builds a restricted arsenal from faction unit loadouts and faction crates.
-    ACE, ACM and TFAR are optional and detected from loaded config metadata.
+    ACE, ACM, TFAR and ACRE are optional and detected from loaded config metadata.
 */
 
 params [
@@ -194,6 +194,7 @@ if (isNil "KPLIB_autoFactionCompatibilityItems") then {
     private _aceMedical = [];
     private _aceTools = [];
     private _tfarRadios = [];
+    private _acreRadios = [];
 
     if (isClass (configFile >> "CfgPatches" >> "ace_common")) then {
         {
@@ -235,10 +236,25 @@ if (isNil "KPLIB_autoFactionCompatibilityItems") then {
         } forEach ("isClass _x" configClasses (configFile >> "CfgVehicles"));
     };
 
+    if (isClass (configFile >> "CfgPatches" >> "acre_main")) then {
+        {
+            // Only public base radios belong in an Arsenal, not allocated IDs.
+            if (
+                getNumber (_x >> "acre_isRadio") == 1 &&
+                {getNumber (_x >> "acre_hasUnique") == 1} &&
+                {getNumber (_x >> "acre_uniqueId") == 0} &&
+                {[_x] call _isArsenalVisible}
+            ) then {
+                _acreRadios pushBackUnique (configName _x);
+            };
+        } forEach ("isClass _x" configClasses (configFile >> "CfgWeapons"));
+    };
+
     KPLIB_autoFactionCompatibilityItems = createHashMapFromArray [
         ["aceMedical", _aceMedical],
         ["aceTools", _aceTools],
-        ["tfarRadios", _tfarRadios]
+        ["tfarRadios", _tfarRadios],
+        ["acreRadios", _acreRadios]
     ];
 };
 
@@ -262,6 +278,10 @@ if (missionNamespace getVariable ["KP_liberation_autoFaction_includeTfarRadios",
         "TFAR_defaultRadio_Backpack_",
         "TFAR_defaultRadio_Airborne_"
     ];
+};
+
+if (missionNamespace getVariable ["KP_liberation_autoFaction_includeAcreRadios", true]) then {
+    {[_x] call _addClass} forEach (_compatibility get "acreRadios");
 };
 
 {

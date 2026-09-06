@@ -29,6 +29,9 @@ KP_liberation_autoFaction_civiliansExtras = [];
 KP_liberation_autoFaction_includeAceMedical = true;
 KP_liberation_autoFaction_includeAceTools = true;
 KP_liberation_autoFaction_includeTfarRadios = true;
+KP_liberation_autoFaction_includeAcreRadios = true;
+// ACRE starter/fallback radio. Use a base classname, never a numbered radio ID.
+KP_liberation_acre_defaultRadio = "ACRE_PRC343";
 // Additional weapons, magazines, uniforms, equipment and backpacks for the Arsenal.
 KP_liberation_autoFaction_arsenalExtraItems = [];
 KP_liberation_autoFaction_arsenalBlacklist = [];

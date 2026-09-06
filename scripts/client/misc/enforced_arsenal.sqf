@@ -71,22 +71,19 @@ _fnc_enforceArsenal = {
 	{_allowed_loadout_lower pushBack toLower(_x)} forEach _allowed_loadout;	
 
 	// Find prohibited items in player's loadout.
-	private _has_sr_radio = false;
 	private _prohibited = [];
 	{
-		// Check if this is a SR radio, ignore if so TFAR_rf7800
-		if ((toLower _x) find "tfar_anprc" > -1) then {
-			_has_sr_radio = true;
-		} else {
-			// Check if the item is a valid item from our config, if not, ignore it.
-			if ((toLower _x) in _fullArsenal) then {
-				// If the item is in the player's loadout, but not in the allowed loadout, then its prohibited.
-				if !((toLower _x) in _allowed_loadout_lower) then {
-					// Add To Prohibited items
-					_prohibited pushBack _x;	
-				};
-			};
-		};
+        private _itemKey = toLower _x;
+        // Preserve the existing TFAR exemption; compare ACRE IDs by base type.
+        if ((_itemKey find "tfar_anprc") >= 0) then {continue};
+        private _cfg = configFile >> "CfgWeapons" >> _x;
+        private _acreBase = getText (_cfg >> "acre_baseClass");
+        if (getNumber (_cfg >> "acre_isRadio") == 1 && {_acreBase != ""}) then {
+            _itemKey = toLower _acreBase;
+        };
+        if (_itemKey in _fullArsenal && {!(_itemKey in _allowed_loadout_lower)}) then {
+            _prohibited pushBackUnique _x;
+        };
 	} forEach _loadout;
 
 	// Remove prohibited items from the player's loadout and replenish to the weapon holder.
@@ -184,10 +181,8 @@ _fnc_enforceArsenal = {
 		};
 	};
 
-	// SR Radio Check & Addition
-	if !(_has_sr_radio) then {
-		_unit linkItem "TFAR_anprc152";//TFAR_anprc152
-	};
+    // Add a radio only when missing, using the loaded radio mod's inventory type.
+    [_unit] call KPLIB_fnc_ensurePlayerRadio;
 
 	// Map Check Check & Addition
 	if !("ItemMap" in (assigneditems _unit)) then {

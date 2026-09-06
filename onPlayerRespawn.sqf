@@ -15,13 +15,31 @@ player unassignItem "";
 player removeItem "";
 
 // Starter gear is generated from the selected faction during preset initialization.
+private _acreLoaded = isClass (configFile >> "CfgPatches" >> "acre_main");
+private _giveStartingItem = {
+    params ["_item"];
+    private _cfg = configFile >> "CfgWeapons" >> _item;
+    if (_acreLoaded && {
+        toLower _item == "itemradio" ||
+        {getNumber (_cfg >> "tf_radio") > 0} ||
+        {getText (_cfg >> "tf_dialog") != ""} ||
+        {getText (_cfg >> "tf_subtype") != ""}
+    }) exitWith {};
+    if (_acreLoaded && {getNumber (_cfg >> "acre_isRadio") == 1}) exitWith {
+        private _base = getText (_cfg >> "acre_baseClass");
+        if (_base == "") then {_base = _item};
+        if (player canAdd _base) then {player addItem _base};
+    };
+    player linkItem _item;
+};
+
 if (side player == GRLIB_side_friendly) then {
 
     if (RA_StartingHeadwear isNotEqualTo []) then {player addHeadgear selectRandom RA_StartingHeadwear};
     if (RA_StartingGoggles isNotEqualTo []) then {player addGoggles selectRandom RA_StartingGoggles};
     if (RA_StartingUniforms isNotEqualTo []) then {player forceAddUniform selectRandom RA_StartingUniforms};
     {
-        player linkItem _x;
+        [_x] call _giveStartingItem;
     } forEach RA_StartingItems;
 };
 
@@ -29,9 +47,11 @@ if (side player == GRLIB_side_enemy) then {
 
     if (OpForStartingUniform != "") then {player forceAddUniform OpForStartingUniform};
     {
-        player linkItem _x;
+        [_x] call _giveStartingItem;
     } forEach Op_StartingItems;
 };
+
+if (_acreLoaded) then {[player] call KPLIB_fnc_ensurePlayerRadio};
 
 [] call KPLIB_fnc_addActionsPlayer; 
 

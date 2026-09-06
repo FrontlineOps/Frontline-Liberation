@@ -45,6 +45,7 @@ class KPLIB {
         class getLocalCap       {};
         class getNearbyPlayers  {};
         class getPlayerCount    {};
+        class ensurePlayerRadio {};
     };
     class functions_resources {
         file = "functions\resources";
