@@ -410,8 +410,11 @@ KPLIB_surrender_escort_break_distance = 150;			// Distance at which an abandoned
 
 GRLIB_cleanup_delay = 250;                   			// Corpse cleanup time (sec)
 
-GRLIB_blufor_cap = 171;                      			// Cap for BLUFOR
-GRLIB_sector_cap = 480;     			// Cap for sector defenders
+GRLIB_blufor_cap = 171; // Recruitment ceiling, scaled by GRLIB_unitcap; campaign infantry availability can be lower.
+// Existing OPFOR count at which new sector activation pauses. Activation range
+// starts shrinking at half this count. Scaled by GRLIB_unitcap; this does not
+// set defender strength or replace BATTLESPACE_UNIT_CAP for physical spawning.
+KPLIB_sector_activation_opfor_threshold = 480;
 
 KP_liberation_cr_kill_penalty = 25;          			// Civrep civilian kill penalty
 KP_liberation_cr_building_penalty = 15;      			// Civrep destroy/damage penatly
@@ -809,6 +812,6 @@ KP_liberation_small_storage_positions = [
 // DO NOT CHANGE (unless you know what you are doing)
 GRLIB_endgame = 0;
 // KP_liberation_production_interval = ceil (KP_liberation_production_interval / GRLIB_resources_multiplier);
-GRLIB_blufor_cap = (GRLIB_blufor_cap * GRLIB_unitcap) min 100;
-GRLIB_sector_cap = GRLIB_sector_cap * GRLIB_unitcap;
+GRLIB_blufor_cap = GRLIB_blufor_cap * GRLIB_unitcap;
+KPLIB_sector_activation_opfor_threshold = KPLIB_sector_activation_opfor_threshold * GRLIB_unitcap;
 GRLIB_kog_trucks = ["UK3CB_ARD_O_GAZ_Vodnik"];//"vn_o_wheeled_z157_01_vcmf"rhs_ka60_grey

@@ -112,7 +112,7 @@ while {true} do {
             _currentFob         // area title
         ] call KPLIB_fnc_overlayUpdateResources;
 
-            // if (!isNil "active_sectors" && ([] call KPLIB_fnc_getOpforCap >= GRLIB_sector_cap)) then {
+            // if (!isNil "active_sectors" && ([] call KPLIB_fnc_getOpforCap >= KPLIB_sector_activation_opfor_threshold)) then {
 
             //     (_overlay displayCtrl (517)) ctrlShow true;
 

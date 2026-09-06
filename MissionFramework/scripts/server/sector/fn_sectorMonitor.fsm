@@ -197,7 +197,7 @@ class FSM
                                         to="Get_adjusted_sector";
                                         precondition = /*%FSM<CONDPRECONDITION""">*/""/*%FSM</CONDPRECONDITION""">*/;
                                         condition=/*%FSM<CONDITION""">*/"diag_tickTime >= _nextSectorAt"/*%FSM</CONDITION""">*/;
-                                        action=/*%FSM<ACTION""">*/"if (_opforCount < GRLIB_sector_cap) then {" \n
+                                        action=/*%FSM<ACTION""">*/"if (_opforCount < KPLIB_sector_activation_opfor_threshold) then {" \n
                                          "    _sector = _allSectors deleteAt (floor random (count _allSectors));" \n
                                          "} else {" \n
                                          "    _allSectors = [];" \n
@@ -223,7 +223,7 @@ class FSM
                                         priority = 1.000000;
                                         to="Activate_sector";
                                         precondition = /*%FSM<CONDPRECONDITION""">*/""/*%FSM</CONDPRECONDITION""">*/;
-                                        condition=/*%FSM<CONDITION""">*/"_opforCount < GRLIB_sector_cap" \n
+                                        condition=/*%FSM<CONDITION""">*/"_opforCount < KPLIB_sector_activation_opfor_threshold" \n
                                          "&& {" \n
                                          "    (_friendlyPositions findIf {(_x distance2D _sectorPosition) <= (_range + 500)}) >= 0" \n
                                          "}" \n

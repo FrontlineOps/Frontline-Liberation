@@ -6,7 +6,8 @@
     License: MIT License - http://www.opensource.org/licenses/MIT
 
     Description:
-        Gets the sector size with taking the given amount of units into account.
+        Adjusts sector activation distance for the existing OPFOR count.
+        The activation threshold is a load guard, not a defender strength target.
 
     Parameter(s):
         _unitCount - Number of units to take into account [NUMBER, defaults to 0]
@@ -20,6 +21,6 @@ params [
 ];
 
 
-if (_unitCount < (GRLIB_sector_cap / 2)) exitWith {GRLIB_sector_size};
-if (_unitCount <= GRLIB_sector_cap) exitWith {GRLIB_sector_size - (GRLIB_sector_size * 0.5 * ((_unitCount / GRLIB_sector_cap) - 0.5))};
+if (_unitCount < (KPLIB_sector_activation_opfor_threshold / 2)) exitWith {GRLIB_sector_size};
+if (_unitCount <= KPLIB_sector_activation_opfor_threshold) exitWith {GRLIB_sector_size - (GRLIB_sector_size * 0.5 * ((_unitCount / KPLIB_sector_activation_opfor_threshold) - 0.5))};
 GRLIB_sector_size * 0.75
