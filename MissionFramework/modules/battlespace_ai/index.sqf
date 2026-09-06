@@ -85,7 +85,7 @@ if (!isNil { BATTLESPACE_LOCAL_TESTING }) then {
 // - Every current sector has a finite server-owned resource stockpile.
 // - Threshold-driven transfers use interceptable Convoy task forces.
 // - Stock stranded above a lower front-depth cap evacuates through the same finite convoys.
-// - Opportunity-led ground offensives stage and maneuver using paid task forces.
+// - Paid battlegroups pursue known contacts, or capture objectives after a quiet period.
 // - Defensive task forces are formed from rear stock for explicit frontline assignments.
 // - Pre-formed mobile reserves answer casualty pressure without creating emergency forces.
 // - OPFOR objectives spend construction stock on persistent defensive sites.

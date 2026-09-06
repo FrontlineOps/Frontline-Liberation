@@ -1,4 +1,4 @@
-/* A persistent maneuver model using the established Battlegroup save identity. */
+/* Direct combat and quiet-period objective attacks retain the Battlegroup identity. */
 BATTLESPACE_OFFENSIVE_CANCEL_ORDERS = {
     params ["_id", "_taskForce"];
     BATTLESPACE_TASK_FORCE_PATHS deleteAt _id;
@@ -17,10 +17,11 @@ BATTLESPACE_OFFENSIVE_CANCEL_ORDERS = {
 BATTLESPACE_OFFENSIVE_SET_LEG = {
     params ["_id", "_taskForce", "_operation", "_phase", "_destination", "_reason"];
     _operation set ["phase", _phase];
+    _operation deleteAt "captureStartedAt";
     _operation set ["targetPosition", +_destination];
     _operation set ["legDeadline", CBA_missionTime + BATTLESPACE_OFFENSIVE_LEG_TIMEOUT];
     _operation set ["lastProgressPosition", +(_taskForce select 1)];
-    _operation set ["nextManeuverAt", CBA_missionTime + 60];
+    _operation set ["nextManeuverAt", CBA_missionTime + BATTLESPACE_OFFENSIVE_RETARGET_INTERVAL];
     _taskForce set [2, +_destination];
     [_id, _taskForce] call BATTLESPACE_OFFENSIVE_CANCEL_ORDERS;
     [_id, _taskForce select 1, _destination] call QUEUE_PATHFIND_REQUEST;
@@ -40,24 +41,24 @@ BATTLESPACE_OFFENSIVE_BEGIN_RETURN = {
 };
 
 BATTLESPACE_OFFENSIVE_HOLD = {
-    params ["_id", "_taskForce", "_operation", ["_phase", "OBSERVING"]];
+    params ["_id", "_taskForce", "_operation", ["_phase", "STAGING"]];
     _operation set ["phase", _phase];
     _operation set ["targetPosition", +(_taskForce select 1)];
-    _operation set ["holdStrength", [_taskForce, _operation] call BATTLESPACE_STRATEGIC_GET_SURVIVAL_RATIO];
-    private _duration = BATTLESPACE_OFFENSIVE_OBSERVE_DURATION;
-    _operation set ["nextManeuverAt", CBA_missionTime + (_duration select 0) + random ((_duration select 1) - (_duration select 0))];
+    _operation set ["nextManeuverAt", CBA_missionTime];
     _taskForce set [2, []];
     [_id, _taskForce] call BATTLESPACE_OFFENSIVE_CANCEL_ORDERS;
     [_taskForce, _operation] call BATTLESPACE_OFFENSIVE_APPLY_POSTURE;
-    [format ["Ground offensive %1 %2 on the %3-%4 approach", _id, toLower _phase, _operation getOrDefault ["approachSector", ""], _operation getOrDefault ["targetSector", ""]]] call BATTLESPACE_STRATEGIC_LOG;
+    [format ["Battlegroup %1 %2 at %3", _id, toLower _phase, _taskForce select 1]] call BATTLESPACE_STRATEGIC_LOG;
 };
 
 BATTLESPACE_OFFENSIVE_APPLY_POSTURE = {
     params ["_taskForce", "_operation"];
     private _phase = _operation getOrDefault ["phase", ""];
-    if !(_phase in ["OBSERVING", "SECURING"]) exitWith {};
+    if !(_phase in ["STAGING", "SECURING"]) exitWith {};
+    if ((_taskForce param [2, []]) isNotEqualTo []) exitWith {};
     private _center = _operation getOrDefault ["targetPosition", _taskForce select 1];
-    private _facing = getMarkerPos (_operation getOrDefault ["targetSector", ""]);
+    private _target = _operation getOrDefault ["targetSector", ""];
+    private _facing = if (_target == "") then {_center getPos [100, 0]} else {getMarkerPos _target};
     private _direction = _center getDir _facing;
     private _stamp = str [_phase, _center];
     {
@@ -91,131 +92,113 @@ BATTLESPACE_OFFENSIVE_APPLY_POSTURE = {
 
 BATTLESPACE_OFFENSIVE_ON_DECISION_TICK = {
     params ["_id", "_taskForce"];
-    if (!isServer) exitWith {false};
-    // Do not change a spawn's destination/phase before its physical groups publish.
-    if (_taskForce param [11, false]) exitWith {false};
+    if (!isServer || {_taskForce param [11, false]}) exitWith {false};
     private _operation = BATTLESPACE_STRATEGIC_OPERATIONS get _id;
     if (isNil "_operation") exitWith {false};
     private _groups = (_taskForce param [4, []]) select {!isNull _x && {(units _x) findIf {alive _x} >= 0}};
     _taskForce set [4, _groups];
     if (_groups isNotEqualTo []) then {_taskForce set [1, getPos leader (_groups select 0)]};
     private _position = _taskForce select 1;
-    private _phase = _operation getOrDefault ["phase", ""];
-    private _target = _operation getOrDefault ["targetSector", ""];
-    private _anchor = _operation getOrDefault ["approachSector", ""];
-    private _targetPosition = getMarkerPos _target;
-    private _ratio = [_taskForce, _operation] call BATTLESPACE_STRATEGIC_GET_SURVIVAL_RATIO;
+    private _phase = _operation getOrDefault ["phase", "STAGING"];
     private _arrive = BATTLESPACE_OFFENSIVE_ARRIVAL_RADIUS;
     private _return = {params ["_reason"]; [_id, _taskForce, _operation, _reason] call BATTLESPACE_OFFENSIVE_BEGIN_RETURN};
-    if (_phase in ["STAGING", "PROBING", "SHIFTING", "PRESSING", "ASSAULTING", "RETURNING"]
-        && {CBA_missionTime < (_operation getOrDefault ["legDeadline", 0])}
-        && {_position distance2D (_operation getOrDefault ["lastProgressPosition", _position]) >= _arrive}) then {
-        // A long but progressing march is not a failed path.
+    if (_position distance2D (_operation getOrDefault ["lastProgressPosition", _position]) >= _arrive) then {
         _operation set ["lastProgressPosition", +_position];
         _operation set ["legDeadline", CBA_missionTime + BATTLESPACE_OFFENSIVE_LEG_TIMEOUT];
     };
-
+    private _move = {
+        if (_groups isEqualTo [] && {(_taskForce param [2, []]) isNotEqualTo []}
+            && {(BATTLESPACE_TASK_FORCE_PATHS getOrDefault [_id, []]) isNotEqualTo [] || {CBA_missionTime >= (_operation getOrDefault ["nextManeuverAt", 0])}}) then {
+            [_id, _taskForce] call BATTLESPACE_TASK_FORCE_MOVE_SIMULATED_GROUP;
+        };
+        false
+    };
     if (_phase == "RETURNING") exitWith {
         private _home = _operation getOrDefault ["returnSector", _operation getOrDefault ["originSector", ""]];
         if (((BATTLESPACE_SECTOR_STATES getOrDefault [_home, createHashMap]) getOrDefault ["owner", ""]) != "OPFOR") exitWith {["return objective lost"] call _return};
         private _arrived = _position distance2D getMarkerPos _home <= _arrive;
-        private _safe = !(_home in active_sectors) && {[_position, BATTLESPACE_UNIT_PROC_RANGE, GRLIB_side_friendly] call KPLIB_fnc_getUnitsCount == 0};
-        if (_arrived && {_safe}) then {
+        if (_arrived && {!(_home in active_sectors)} && {[_position, BATTLESPACE_UNIT_PROC_RANGE, GRLIB_side_friendly] call KPLIB_fnc_getUnitsCount == 0}) exitWith {
             _operation set ["outcome", "RETURNED"];
             true
-        } else {
-            if (!_arrived && {CBA_missionTime >= (_operation getOrDefault ["legDeadline", 0])}) then {
-                [_id, _taskForce, _operation, "RETURNING", getMarkerPos _home, "retrying the return route; retaining surviving assets"] call BATTLESPACE_OFFENSIVE_SET_LEG;
-            };
-            private _routeReady = (BATTLESPACE_TASK_FORCE_PATHS getOrDefault [_id, []]) isNotEqualTo [];
-            if (_groups isEqualTo [] && {!_arrived} && {_routeReady || {CBA_missionTime >= (_operation getOrDefault ["nextManeuverAt", 0])}}) then {[_id, _taskForce] call BATTLESPACE_TASK_FORCE_MOVE_SIMULATED_GROUP};
-            false
-        }
+        };
+        if (!_arrived && {CBA_missionTime >= (_operation getOrDefault ["legDeadline", 0])}) then {
+            [_id, _taskForce, _operation, "RETURNING", getMarkerPos _home, "retrying return with surviving paid assets"] call BATTLESPACE_OFFENSIVE_SET_LEG;
+        };
+        call _move
     };
-    // Invalid plans (including already-paid forces with no approach assignment)
-    // return through their existing identity; never convert or recreate a save.
-    if (_anchor == "" || {_target == ""} || {(_operation getOrDefault ["stagePosition", []]) isEqualTo []}) exitWith {["no usable approach assignment"] call _return};
-    if (((BATTLESPACE_SECTOR_STATES getOrDefault [_anchor, createHashMap]) getOrDefault ["owner", ""]) != "OPFOR") exitWith {["approach anchor lost"] call _return};
-    if (_ratio < (_operation getOrDefault ["retreatRatio", 0.5])) exitWith {["combat losses exceed the force's withdrawal threshold"] call _return};
-    if !(_target in blufor_sectors) then {
-        if (_phase != "SECURING") then {
-            if (_phase == "ASSAULTING" && {_position distance2D _targetPosition <= GRLIB_capture_size + _arrive}) then {
-                [_id, _taskForce, _operation, "SECURING"] call BATTLESPACE_OFFENSIVE_HOLD;
-                _operation set ["holdUntil", CBA_missionTime + BATTLESPACE_OFFENSIVE_SECURE_DURATION];
-                _phase = "SECURING";
-            } else {_phase = "RETURNING"};
+    private _ratio = [_taskForce, _operation] call BATTLESPACE_STRATEGIC_GET_SURVIVAL_RATIO;
+    if (_ratio < (_operation getOrDefault ["retreatRatio", 0.5])) exitWith {["combat losses exceed withdrawal threshold"] call _return};
+
+    // Combat interrupts staging, old maneuver phases and objective security.
+    // Retarget only to fresh reported positions, never to the live target object.
+    private _contact = [_position] call BATTLESPACE_OFFENSIVE_GET_CONTACT;
+    if (_contact isNotEqualTo []) exitWith {
+        private _known = _contact select 0;
+        private _destination = _taskForce param [2, []];
+        private _moved = _destination isEqualTo [] || {_destination distance2D _known >= BATTLESPACE_OFFENSIVE_RETARGET_DISTANCE};
+        private _retry = CBA_missionTime >= (_operation getOrDefault ["legDeadline", 0]) && {_position distance2D _known > _arrive};
+        if (_phase != "ENGAGING" || {(_moved || {_retry}) && {CBA_missionTime >= (_operation getOrDefault ["nextManeuverAt", 0])}}) then {
+            _operation set ["targetSector", ""];
+            _operation deleteAt "captureStartedAt";
+            [_id, _taskForce, _operation, "ENGAGING", _known, "pursuing reported contact"] call BATTLESPACE_OFFENSIVE_SET_LEG;
+        };
+        call _move
+    };
+    if (_phase == "ENGAGING") then {
+        [_id, _taskForce, _operation] call BATTLESPACE_OFFENSIVE_HOLD;
+        _phase = "STAGING";
+    };
+
+    private _target = _operation getOrDefault ["targetSector", ""];
+    private _capturable = blufor_sectors arrayIntersect sectors_allSectors;
+    if (_phase == "ASSAULTING" && {!(_target in _capturable)}) then {
+        if (_target != "" && {_position distance2D getMarkerPos _target <= GRLIB_capture_size + _arrive}
+            && {((BATTLESPACE_SECTOR_STATES getOrDefault [_target, createHashMap]) getOrDefault ["owner", ""]) == "OPFOR"}) then {
+            [_id, _taskForce, _operation, "SECURING"] call BATTLESPACE_OFFENSIVE_HOLD;
+            _operation set ["holdUntil", CBA_missionTime + BATTLESPACE_OFFENSIVE_SECURE_DURATION];
+            _phase = "SECURING";
+        } else {
+            _operation set ["targetSector", ""];
+            _target = "";
+            [_id, _taskForce, _operation] call BATTLESPACE_OFFENSIVE_HOLD;
+            _phase = "STAGING";
         };
     };
-    if (_phase == "RETURNING") exitWith {["objective already secured by another force"] call _return};
-    if (_phase == "SECURING") exitWith {
-        if (_target in blufor_sectors) exitWith {["secured objective was lost again"] call _return};
-        if (CBA_missionTime >= (_operation getOrDefault ["holdUntil", 0])) exitWith {["survivors completed their security hold"] call _return};
+    if (_phase == "SECURING" && {CBA_missionTime < (_operation getOrDefault ["holdUntil", 0])} && {!(_target in _capturable)}) exitWith {
         [_taskForce, _operation] call BATTLESPACE_OFFENSIVE_APPLY_POSTURE;
         false
     };
-    private _forward = (getMarkerPos _anchor) vectorFromTo _targetPosition;
-    private _contact = [_position, _forward] call BATTLESPACE_OFFENSIVE_GET_CONTACT;
-    _contact params ["_knownPosition", "_threat", "_reportedAt", "_receding"];
-    private _composition = _taskForce select 3;
-    private _strength = (_composition getOrDefault ["manpower", 0]) + 4 * count (_composition getOrDefault ["vehicles", []]);
-    private _strongOpposition = _threat >= _strength;
-    private _shift = {
-        private _flank = -(_operation getOrDefault ["flank", 1]);
-        private _point = [_anchor, _target, _position, "SHIFT", _flank] call BATTLESPACE_OFFENSIVE_PICK_POSITION;
-        if (_point isEqualTo []) exitWith {["no reachable terrain candidate for disengagement"] call _return};
-        _operation set ["shifts", 1 + (_operation getOrDefault ["shifts", 0])];
-        _operation set ["flank", _flank];
-        [_id, _taskForce, _operation, "SHIFTING", _point, "giving ground and changing the angle"] call BATTLESPACE_OFFENSIVE_SET_LEG;
-        false
-    };
-    if (_phase in ["PROBING", "PRESSING", "ASSAULTING"] && {_strongOpposition} && {CBA_missionTime >= (_operation getOrDefault ["nextManeuverAt", 0])}) exitWith {call _shift};
-    if (_phase in ["STAGING", "PROBING", "SHIFTING", "PRESSING"]) exitWith {
-        private _destination = _taskForce param [2, []];
-        if (_destination isEqualTo []) exitWith {["maneuver destination missing"] call _return};
-        if (_position distance2D _destination <= _arrive) exitWith {
-            [_id, _taskForce, _operation] call BATTLESPACE_OFFENSIVE_HOLD;
+    if ([] call BATTLESPACE_OFFENSIVE_QUIET) exitWith {
+        if !(_target in _capturable) then {_target = [_position, _id] call BATTLESPACE_OFFENSIVE_PICK_OBJECTIVE};
+        if (_target == "") exitWith {
+            if (_phase != "STAGING") then {[_id, _taskForce, _operation] call BATTLESPACE_OFFENSIVE_HOLD};
             false
         };
-        if (CBA_missionTime >= (_operation getOrDefault ["legDeadline", 0])) exitWith {["maneuver stalled"] call _return};
-        if (_groups isEqualTo []) then {[_id, _taskForce] call BATTLESPACE_TASK_FORCE_MOVE_SIMULATED_GROUP};
-        false
-    };
-    if (_phase == "ASSAULTING") exitWith {
-        // The common sector monitor alone owns confirmation, capture time and flip.
-        if (_position distance2D _targetPosition <= _arrive) exitWith {false};
-        if (CBA_missionTime >= (_operation getOrDefault ["legDeadline", 0])) exitWith {["objective approach stalled"] call _return};
-        if (_groups isEqualTo []) then {[_id, _taskForce] call BATTLESPACE_TASK_FORCE_MOVE_SIMULATED_GROUP};
-        false
-    };
-    if (_phase != "OBSERVING") exitWith {["unsupported maneuver state"] call _return};
-    [_taskForce, _operation] call BATTLESPACE_OFFENSIVE_APPLY_POSTURE;
-    if (CBA_missionTime < (_operation getOrDefault ["nextManeuverAt", CBA_missionTime])) exitWith {false};
-    if (_strongOpposition || {_ratio < (_operation getOrDefault ["holdStrength", _ratio]) - 0.1}) exitWith {call _shift};
-    private _probes = _operation getOrDefault ["probes", 0];
-    private _capturedAt = (missionNamespace getVariable ["blufor_sectors_cap_times", createHashMap]) getOrDefault [_target, -1e9];
-    private _recentCapture = CBA_missionTime - _capturedAt <= BATTLESPACE_OFFENSIVE_RECENT_CAPTURE_WINDOW;
-    private _opening = _probes > 0 && {(_threat > 0 && {_threat < _strength * ([0.45, 0.80] select _receding)}) || {_recentCapture && {_threat == 0}}};
-    if (_opening) exitWith {
-        if (_position distance2D _targetPosition <= BATTLESPACE_OFFENSIVE_TARGET_STANDOFF + BATTLESPACE_OFFENSIVE_STEP_DISTANCE) exitWith {
-            [_id, _taskForce, _operation, "ASSAULTING", _targetPosition, "exploiting the controlled approach toward the objective"] call BATTLESPACE_OFFENSIVE_SET_LEG;
-            false
+        _operation set ["targetSector", _target];
+        if ((_operation getOrDefault ["stagePosition", []]) isEqualTo []) then {_operation set ["stagePosition", +_position]};
+        if (_phase != "ASSAULTING") then {
+            [_id, _taskForce, _operation, "ASSAULTING", getMarkerPos _target, "30 minutes without player sightings; capture objective"] call BATTLESPACE_OFFENSIVE_SET_LEG;
         };
-        private _point = [_anchor, _target, _position, "PRESS"] call BATTLESPACE_OFFENSIVE_PICK_POSITION;
-        if (_point isEqualTo []) exitWith {call _shift};
-        [_id, _taskForce, _operation, "PRESSING", _point, "limited advance against a reported opening"] call BATTLESPACE_OFFENSIVE_SET_LEG;
+        // The common capture monitor owns control, timing and the actual flip.
+        if (_position distance2D getMarkerPos _target <= _arrive) exitWith {false};
+        if (CBA_missionTime >= (_operation getOrDefault ["legDeadline", 0])) exitWith {["objective route stalled"] call _return};
+        call _move
+    };
+    // Normalize older saved probe/shift plans in place, retaining their paid identity.
+    if (_phase != "STAGING") then {
+        [_id, _taskForce, _operation] call BATTLESPACE_OFFENSIVE_HOLD;
+    };
+    private _destination = _taskForce param [2, []];
+    if (_destination isEqualTo []) exitWith {
+        [_taskForce, _operation] call BATTLESPACE_OFFENSIVE_APPLY_POSTURE;
         false
     };
-    if (_threat > 0 || {_recentCapture}) exitWith {
-        private _point = [_anchor, _target, _position, "PROBE"] call BATTLESPACE_OFFENSIVE_PICK_POSITION;
-        if (_point isEqualTo []) exitWith {call _shift};
-        _operation set ["probes", _probes + 1];
-        [_id, _taskForce, _operation, "PROBING", _point, "testing ground before committing to an assault"] call BATTLESPACE_OFFENSIVE_SET_LEG;
+    if (_position distance2D _destination <= _arrive) exitWith {
+        [_id, _taskForce, _operation] call BATTLESPACE_OFFENSIVE_HOLD;
         false
     };
-    // Retain this approach while waiting for new evidence. An absent contact
-    // does not justify endless repositioning or retiring a healthy formation.
-    [_id, _taskForce, _operation] call BATTLESPACE_OFFENSIVE_HOLD;
-    false
+    if (CBA_missionTime >= (_operation getOrDefault ["legDeadline", 0])) exitWith {["staging route stalled"] call _return};
+    call _move
 };
 
 [
@@ -236,7 +219,7 @@ BATTLESPACE_OFFENSIVE_ON_DECISION_TICK = {
             [_id, _taskForce] spawn {
                 params ["_id", "_taskForce"];
                 private _operation = BATTLESPACE_STRATEGIC_OPERATIONS getOrDefault [_id, createHashMap];
-                private _holding = (_operation getOrDefault ["phase", ""]) in ["OBSERVING", "SECURING"];
+                private _holding = (_taskForce param [2, []]) isEqualTo [];
                 private _success = [_id, _taskForce, false, false, false, false, "NORMAL", [], !_holding] call BATTLESPACE_TASK_FORCE_DEFAULT_TRY_SPAWN;
                 if ([_id, _taskForce, _success] call BATTLESPACE_TASK_FORCE_DEFAULT_FINISH_SPAWN) then {
                     [BATTLESPACE_TASK_FORCES get _id, _operation] call BATTLESPACE_OFFENSIVE_APPLY_POSTURE;
@@ -248,9 +231,9 @@ BATTLESPACE_OFFENSIVE_ON_DECISION_TICK = {
             BATTLESPACE_TASK_FORCE_PATHS deleteAt _id;
             private _operation = BATTLESPACE_STRATEGIC_OPERATIONS getOrDefault [_id, createHashMap];
             private _phase = _operation getOrDefault ["phase", ""];
-            if (_phase in ["OBSERVING", "SECURING"]) exitWith {};
+            if ((_taskForce param [2, []]) isEqualTo []) exitWith {};
             // The model owns disengagement; failed routes cannot teleport/delete it.
-            private _retryAt = CBA_missionTime + ([0, BATTLESPACE_OFFENSIVE_RETURN_RETRY_INTERVAL] select (_phase == "RETURNING"));
+            private _retryAt = CBA_missionTime + BATTLESPACE_OFFENSIVE_RETURN_RETRY_INTERVAL;
             _operation set ["legDeadline", _retryAt];
             _operation set ["nextManeuverAt", _retryAt];
             [format ["Ground offensive %1 route failed during %2; retaining its force for withdrawal/retry", _id, toLower _phase]] call BATTLESPACE_STRATEGIC_LOG;

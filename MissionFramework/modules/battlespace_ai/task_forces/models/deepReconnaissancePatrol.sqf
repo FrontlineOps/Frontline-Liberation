@@ -1,13 +1,55 @@
 /*
-    Finite strategic reconnaissance force: infiltrate, interdict, and return.
+    Finite strategic reconnaissance force: infiltrate, observe, and return.
 
-    TODO: Minic Russian DRG Tactics, as DRGs get behind the first frontline sectors of BLUFOR.
-    They can also begin attempting to capture undefended sectors if there's 2+ DRGs nearby.
-    They also seperate throughout the backlines using the exist arc type pattern we have.
-    This will expand into a zone control mechanic for OPFOR in which DRGs will try to capture influence over in-between zones
-    That will be between every connection of sectors. This basically means that if BLUFOR doesn't secure the sectors behind them,
-    OPFOR can begin to capture the sectors behind BLUFOR, creating a dynamic frontline and potentially cutting off BLUFOR forces and collapsing fronts.
 */
+
+BATTLESPACE_DEEP_RECON_GET_COMBAT_MODE = {
+    params ["_group"];
+    ["BLUE", "GREEN"] select (CBA_missionTime < (_group getVariable ["BATTLESPACE_RECON_UNDER_FIRE_UNTIL", -1]))
+};
+
+BATTLESPACE_DEEP_RECON_APPLY_ROE = {
+    params ["_group"];
+    if (!([] call BATTLESPACE_STRATEGIC_SERVER_CALL_ALLOWED) || {isNull _group} || {!local _group}) exitWith {};
+    private _mode = [_group] call BATTLESPACE_DEEP_RECON_GET_COMBAT_MODE;
+    if (combatMode _group != _mode) then {_group setCombatMode _mode};
+    {
+        if (!isPlayer _x && {unitCombatMode _x != _mode}) then {_x setUnitCombatMode _mode};
+    } forEach units _group;
+    {
+        if (waypointCombatMode _x != _mode) then {_x setWaypointCombatMode _mode};
+    } forEach waypoints _group;
+};
+
+BATTLESPACE_DEEP_RECON_UNDER_FIRE = {
+    params ["_unit", "_attacker"];
+    if (!([] call BATTLESPACE_STRATEGIC_SERVER_CALL_ALLOWED) || {isNull _unit} || {!local _unit} || {isPlayer _unit} || {isNull _attacker}) exitWith {};
+    private _group = group _unit;
+    if ((side _group) getFriend (side group _attacker) >= 0.6) exitWith {};
+    private _force = BATTLESPACE_TASK_FORCES getOrDefault [_group getVariable ["TASKFORCEID", ""], []];
+    if ((_force param [0, ""]) != "Deep Reconnaissance Patrol") exitWith {};
+    private _released = ([_group] call BATTLESPACE_DEEP_RECON_GET_COMBAT_MODE) == "GREEN";
+    _group setVariable ["BATTLESPACE_RECON_UNDER_FIRE_UNTIL", CBA_missionTime + BATTLESPACE_STRATEGIC_DEEP_RECON_RETURN_FIRE_DURATION];
+    if (!_released) then {[_group] call BATTLESPACE_DEEP_RECON_APPLY_ROE};
+};
+
+BATTLESPACE_DEEP_RECON_INIT_UNIT = {
+    params ["_unit"];
+    if (!([] call BATTLESPACE_STRATEGIC_SERVER_CALL_ALLOWED) || {isNull _unit} || {!local _unit} || {isPlayer _unit}) exitWith {};
+    if (_unit getVariable ["BATTLESPACE_RECON_ROE_INITIALIZED", false]) exitWith {};
+    _unit setVariable ["BATTLESPACE_RECON_ROE_INITIALIZED", true];
+    _unit setUnitCombatMode ([group _unit] call BATTLESPACE_DEEP_RECON_GET_COMBAT_MODE);
+    // Incoming projectiles or actual hits release self-defense. Merely seeing
+    // an armed enemy must not let Arma's GREEN mode initiate the firefight.
+    _unit addEventHandler ["Suppressed", {
+        params ["_unit", "_distance", "_shooter", "_instigator"];
+        [_unit, [ _instigator, _shooter ] select isNull _instigator] call BATTLESPACE_DEEP_RECON_UNDER_FIRE;
+    }];
+    _unit addEventHandler ["Hit", {
+        params ["_unit", "_source", "_damage", "_instigator"];
+        [_unit, [ _instigator, _source ] select isNull _instigator] call BATTLESPACE_DEEP_RECON_UNDER_FIRE;
+    }];
+};
 
 BATTLESPACE_DEEP_RECON_BEGIN_RETURN = {
     params ["_taskForceId", "_taskForce", "_operation", ["_reason", "mission complete"]];
@@ -38,7 +80,13 @@ BATTLESPACE_DEEP_RECON_BEGIN_RETURN = {
 
 BATTLESPACE_DEEP_RECON_ON_DECISION_TICK = {
     params ["_taskForceId", "_taskForce"];
+    if (!isServer || {_taskForce param [11, false]}) exitWith {false};
     private _activeGroups = _taskForce param [4, []];
+    {
+        if (isNull _x || {!local _x}) then {continue};
+        {[_x] call BATTLESPACE_DEEP_RECON_INIT_UNIT} forEach units _x;
+        [_x] call BATTLESPACE_DEEP_RECON_APPLY_ROE;
+    } forEach _activeGroups;
     private _currentLocation = _taskForce param [1, []];
 
     if (_activeGroups isNotEqualTo []) then {
@@ -124,7 +172,7 @@ BATTLESPACE_DEEP_RECON_ON_DECISION_TICK = {
                 _operation set ["phase", _phase];
                 _operation set ["expiresAt", CBA_missionTime + _duration];
                 BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceId, _operation];
-                [format ["Deep Reconnaissance Patrol %1 began interdicting %2 for %3 minutes", _taskForceId, _targetSector, round (_duration / 60)]] call BATTLESPACE_STRATEGIC_LOG;
+                [format ["Deep Reconnaissance Patrol %1 began observing %2 for %3 minutes", _taskForceId, _targetSector, round (_duration / 60)]] call BATTLESPACE_STRATEGIC_LOG;
             };
             if (
                 _phase == "OBSERVING"

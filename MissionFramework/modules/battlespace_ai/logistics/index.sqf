@@ -1801,7 +1801,7 @@ if (isServer) then {
         private _nextAirResponse = CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_AIR_RESPONSE_INITIAL_DELAY", 600]);
         private _nextSave = CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_SAVE_INTERVAL", 300]);
         [format [
-            "Defender and offensive allocation scheduled: first pass in %1 seconds, then every %2 seconds; shared ground allowance and opportunity gates apply",
+            "Defender and offensive allocation scheduled: first pass in %1 seconds, then every %2 seconds; contacts take priority; combat, reconnaissance and defenders share the ground allowance",
             _strategicInitialDelay,
             _defenderDecisionInterval
         ]] call BATTLESPACE_STRATEGIC_LOG;
@@ -1820,9 +1820,6 @@ if (isServer) then {
             };
 
             if (CBA_missionTime >= _nextDecision) then {
-                if (!isNil "BATTLESPACE_DEEP_RECON_DECISION_TICK") then {
-                    [] call BATTLESPACE_DEEP_RECON_DECISION_TICK;
-                };
                 if (!isNil "BATTLESPACE_FORTIFICATION_DECISION_TICK") then {
                     [] call BATTLESPACE_FORTIFICATION_DECISION_TICK;
                 };
@@ -1833,10 +1830,12 @@ if (isServer) then {
             };
 
             if (CBA_missionTime >= _nextDefenseDecision) then {
+                // Bounded combat and scouting allocations precede open-ended defense filling.
+                [] call BATTLESPACE_BATTLEGROUP_DECISION_TICK;
+                [] call BATTLESPACE_DEEP_RECON_DECISION_TICK;
                 if (!isNil "BATTLESPACE_DEFENSE_DECISION_TICK") then {
                     [] call BATTLESPACE_DEFENSE_DECISION_TICK;
                 };
-                [] call BATTLESPACE_BATTLEGROUP_DECISION_TICK;
                 _nextDefenseDecision = CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DEFENDER_DECISION_INTERVAL", 600]);
             };
 

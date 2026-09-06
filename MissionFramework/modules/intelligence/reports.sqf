@@ -91,7 +91,7 @@ KPLIB_INTEL_SERVER_COLLECT_RAW_REPORTS = {
             case "FORTIFICATION": {55};
             default {35};
         };
-        if (_phase in ["PRESSING", "ASSAULTING", "ENGAGED", "SECURING"]) then {_priority = _priority + 10};
+        if (_phase in ["ENGAGING", "ASSAULTING", "ENGAGED", "SECURING"]) then {_priority = _priority + 10};
         if (_phase == "RETURNING") then {_priority = _priority - 20};
         private _cargo = createHashMap;
         if (_kind == "CONVOY") then {
@@ -290,7 +290,14 @@ KPLIB_INTEL_SERVER_BUILD_OBSERVATION = {
                 ["Reserve available locally; could respond to fighting.", "Reserve committed away from its staging area."] select (_phase in ["RESPONDING", "DEPLOYING", "HOLDING", "ENGAGED"])
             }
         };
-            case "BATTLEGROUP": {"Offensive force maneuvering against the front. Its phase describes observed orders, not a guaranteed attack."};
+            case "BATTLEGROUP": {
+                switch (_phase) do {
+                    case "ENGAGING": {"Offensive force pursuing a reported enemy contact."};
+                    case "ASSAULTING": {"Offensive force advancing to capture an objective."};
+                    case "STAGING": {"Offensive force staging while awaiting contact reports."};
+                    default {"Offensive force; phase describes its observed orders."};
+                }
+            };
             case "DEFENDER": {format ["Defensive role: %1.", _raw get "role"]};
             default {"Confirm disposition by reconnaissance before committing."};
         });

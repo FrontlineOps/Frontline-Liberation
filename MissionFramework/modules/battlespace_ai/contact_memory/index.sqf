@@ -4,6 +4,8 @@
 BATTLESPACE_CONTACT_MEMORY = createHashMap;
 BATTLESPACE_CONTACT_REQUESTS = createHashMap;
 BATTLESPACE_CONTACT_CURSOR = 0;
+// Session grace starts here; expiring a short-lived report must not reset quiet time.
+BATTLESPACE_CONTACT_LAST_PLAYER_SEEN = CBA_missionTime;
 
 // Local observation only. Records: target, perceived position, seen time, weight, player, class.
 BATTLESPACE_CONTACT_COLLECT = {
@@ -37,6 +39,9 @@ BATTLESPACE_CONTACT_RECEIVE = {
         _x params ["_target", "_position", "_seenAt", "_weight", "_player", "_class"];
         if !(_target isEqualType objNull && {!isNull _target} && {_position isEqualType []} && {count _position == 3} && {_position findIf {!(_x isEqualType 0)} < 0} && {_seenAt isEqualType 0} && {_weight isEqualType 0} && {_player isEqualType true} && {_class isEqualType ""}) then {continue};
         if (_seenAt > CBA_missionTime || {CBA_missionTime - _seenAt > BATTLESPACE_CONTACT_MEMORY_MAX_AGE}) then {continue};
+        if (_player) then {
+            BATTLESPACE_CONTACT_LAST_PLAYER_SEEN = BATTLESPACE_CONTACT_LAST_PLAYER_SEEN max _seenAt;
+        };
         private _key = str _target;
         // Position, seen time, strength, prior position, player, target, class, observer evidence.
         private _record = BATTLESPACE_CONTACT_MEMORY getOrDefault [_key, [[], -1e9, 0, [], false, _target, _class, createHashMap, -1e9]];

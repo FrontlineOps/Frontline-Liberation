@@ -1,54 +1,64 @@
-/* Opportunity-led offensives. Battlegroup remains the stable operation/model
-   save identity; this module owns planning/funding and the model owns movement.
-   Observations and all authoritative writes stay on the server. */
+/* Paid battlegroups use shared perceived contacts. Planning and funding remain
+   server-owned; the persistent Battlegroup model owns movement and capture. */
 BATTLESPACE_OFFENSIVE_GET_CONTACT = {
-    params ["_position", "_forward", ["_radius", BATTLESPACE_OFFENSIVE_CONTACT_RADIUS]];
-    private _weight = 0;
-    private _sum = [0, 0, 0];
-    private _latest = -1e9;
-    private _receding = false;
+    params ["_position"];
+    private _contacts = [[], 1e9, BATTLESPACE_OFFENSIVE_CONTACT_MAX_AGE] call BATTLESPACE_CONTACT_QUERY;
+    private _players = _contacts select {_x select 4};
+    if (_players isNotEqualTo []) then {_contacts = _players};
+    private _best = [];
+    private _distance = 1e10;
     {
-        _x params ["_known", "_seenAt", "_strength", "_previous"];
-        _sum = _sum vectorAdd (_known vectorMultiply _strength);
-        _weight = _weight + _strength;
-        _latest = _latest max _seenAt;
-        if (_previous isNotEqualTo [] && {((_known vectorDiff _previous) vectorDotProduct _forward) > 100}) then {_receding = true};
-    } forEach ([_position, _radius, BATTLESPACE_OFFENSIVE_CONTACT_MAX_AGE] call BATTLESPACE_CONTACT_QUERY);
-    [if (_weight > 0) then {_sum vectorMultiply (1 / _weight)} else {[]}, _weight, _latest, _receding]
+        private _point = _x select 0;
+        if (surfaceIsWater _point) then {continue};
+        private _candidateDistance = _position distance2D _point;
+        if (_candidateDistance < _distance) then {
+            _distance = _candidateDistance;
+            _best = _x;
+        };
+    } forEach _contacts;
+    _best
+};
+
+BATTLESPACE_OFFENSIVE_QUIET = {
+    CBA_missionTime - BATTLESPACE_CONTACT_LAST_PLAYER_SEEN >= BATTLESPACE_OFFENSIVE_QUIET_ATTACK_DELAY
+};
+
+BATTLESPACE_OFFENSIVE_PICK_OBJECTIVE = {
+    params ["_position", ["_excludeId", ""]];
+    private _candidates = [];
+    {
+        private _target = _x;
+        private _assigned = false;
+        {
+            if (_x != _excludeId && {(_y getOrDefault ["kind", ""]) == "BATTLEGROUP"}
+                && {(_y getOrDefault ["phase", ""]) != "RETURNING"}
+                && {(_y getOrDefault ["targetSector", ""]) == _target}) exitWith {_assigned = true};
+        } forEach BATTLESPACE_STRATEGIC_OPERATIONS;
+        if (!_assigned) then {_candidates pushBack [_position distance2D getMarkerPos _target, _target]};
+    } forEach (blufor_sectors arrayIntersect sectors_allSectors);
+    _candidates sort true;
+    if (_candidates isEqualTo []) then {""} else {(_candidates select 0) select 1}
 };
 
 BATTLESPACE_OFFENSIVE_PICK_POSITION = {
-    params ["_anchor", "_target", "_current", ["_mode", "STAGE"], ["_flank", 1]];
+    params ["_anchor", "_target"];
     private _from = getMarkerPos _anchor;
     private _to = getMarkerPos _target;
     private _length = _from distance2D _to;
     private _standoff = BATTLESPACE_OFFENSIVE_TARGET_STANDOFF max (GRLIB_capture_size + 100);
-    if (_length < _standoff + 250) exitWith {[]};
-    private _direction = _from getDir _to;
-    private _forward = _from vectorFromTo _to;
-    private _along = ((_current vectorDiff _from) vectorDotProduct _forward) max 100;
-    private _center = switch (_mode) do {
-        case "STAGE": {_from getPos [(_length * 0.30) max 150 min (_length - _standoff), _direction]};
-        case "SHIFT": {(_current getPos [100, _direction + 180]) getPos [BATTLESPACE_OFFENSIVE_LATERAL_DISTANCE, _direction + 90 * _flank]};
-        default {_from getPos [(_along + BATTLESPACE_OFFENSIVE_STEP_DISTANCE) min (_length - _standoff), _direction]};
-    };
-    // Six coarse terrain candidates per maneuver; never scan the whole map.
+    if (_length < _standoff + 250) exitWith {+_from};
+    private _center = _from getPos [(_length * 0.30) max 150 min (_length - _standoff), _from getDir _to];
     private _places = selectBestPlaces [_center, 160, "(2*forest + trees + houses + hills) * (1-sea)", 40, 6];
-    if (_places isEqualTo []) then {_places = [[_center, 0]]};
     private _candidates = [];
     {
         private _point = +(_x select 0);
         _point set [2, 0];
-        private _projection = (_point vectorDiff _from) vectorDotProduct _forward;
-        private _axisPoint = _from vectorAdd (_forward vectorMultiply _projection);
         if ((_point select 0) < 0 || {(_point select 1) < 0} || {(_point select 0) > worldSize} || {(_point select 1) > worldSize}) then {continue};
-        if (surfaceIsWater _point || {(surfaceNormal _point select 2) < 0.85}) then {continue};
-        if (_projection < 50 || {_projection > _length - _standoff} || {_point distance2D _axisPoint > 700}) then {continue};
-        if (_mode != "STAGE" && {_point distance2D _current < 100}) then {continue};
-        _candidates pushBack [(_x select 1) - (_point distance2D _center) / 400, _point];
+        if (surfaceIsWater _point || {(surfaceNormal _point select 2) < 0.85} || {_point distance2D _to < _standoff}) then {continue};
+        _candidates pushBack [_x select 1, _point];
     } forEach _places;
     _candidates sort false;
-    if (_candidates isEqualTo []) then {[]} else {(_candidates select 0) select 1}
+    if (_candidates isEqualTo []) then {+_from} else {(_candidates select 0) select 1}
 };
 
 BATTLESPACE_BATTLEGROUP_BUILD_DEFINITION = {
@@ -87,40 +97,61 @@ BATTLESPACE_BATTLEGROUP_BUILD_DEFINITION = {
 };
 
 BATTLESPACE_BATTLEGROUP_DISPATCH = {
-    params ["_originSector", "_targetSector", ["_anchorSector", ""]];
+    params ["_originSector", ["_targetSector", ""], ["_anchorSector", ""]];
     if !([] call BATTLESPACE_STRATEGIC_SERVER_CALL_ALLOWED) exitWith {false};
     if ([] call BATTLESPACE_GROUND_ALLOCATION_BLOCK != "") exitWith {false};
-    if !(_targetSector in blufor_sectors) exitWith {false};
-    if (["BATTLEGROUP", _targetSector] call BATTLESPACE_STRATEGIC_HAS_OPERATION_FOR_TARGET) exitWith {false};
     private _source = BATTLESPACE_SECTOR_STATES getOrDefault [_originSector, createHashMap];
     if !([_originSector, _source] call BATTLESPACE_DEFENSE_SOURCE_IS_AVAILABLE) exitWith {false};
-    private _anchors = ((NETWORKED_SECTORS getOrDefault [_targetSector, createHashMap]) getOrDefault ["Links", []]) select {
-        ((BATTLESPACE_SECTOR_STATES getOrDefault [_x, createHashMap]) getOrDefault ["owner", ""]) == "OPFOR"
-        && {[_originSector, _x, 12] call BATTLESPACE_DEFENSE_GRAPH_DISTANCE >= 0}
+    private _origin = getMarkerPos _originSector;
+    private _contact = [_origin] call BATTLESPACE_OFFENSIVE_GET_CONTACT;
+    private _phase = "STAGING";
+    private _position = +_origin;
+    if (_contact isNotEqualTo []) then {
+        _phase = "ENGAGING";
+        _position = +(_contact select 0);
+        _targetSector = "";
+    } else {
+        if !(_targetSector in (blufor_sectors arrayIntersect sectors_allSectors)) then {
+            _targetSector = [_origin] call BATTLESPACE_OFFENSIVE_PICK_OBJECTIVE;
+        };
+        if (_targetSector != "") then {
+            if ([] call BATTLESPACE_OFFENSIVE_QUIET) then {
+                _phase = "ASSAULTING";
+                _position = getMarkerPos _targetSector;
+            } else {
+                private _anchors = ((NETWORKED_SECTORS getOrDefault [_targetSector, createHashMap]) getOrDefault ["Links", []]) select {
+                    ((BATTLESPACE_SECTOR_STATES getOrDefault [_x, createHashMap]) getOrDefault ["owner", ""]) == "OPFOR"
+                    && {[_originSector, _x, 12] call BATTLESPACE_DEFENSE_GRAPH_DISTANCE >= 0}
+                };
+                if !(_anchorSector in _anchors) then {_anchorSector = _anchors param [0, _originSector]};
+                _position = [_anchorSector, _targetSector] call BATTLESPACE_OFFENSIVE_PICK_POSITION;
+            };
+        };
     };
-    if (_anchors isEqualTo []) exitWith {false};
-    if !(_anchorSector in _anchors) then {_anchorSector = _anchors select 0};
-    private _forward = (getMarkerPos _anchorSector) vectorFromTo (getMarkerPos _targetSector);
-    private _contact = [getMarkerPos _targetSector, _forward] call BATTLESPACE_OFFENSIVE_GET_CONTACT;
-    private _capturedAt = (missionNamespace getVariable ["blufor_sectors_cap_times", createHashMap]) getOrDefault [_targetSector, -1e9];
-    if ((_contact select 1) <= 0 && {CBA_missionTime - _capturedAt > BATTLESPACE_OFFENSIVE_RECENT_CAPTURE_WINDOW}) exitWith {false};
-    private _position = [_anchorSector, _targetSector, getMarkerPos _anchorSector] call BATTLESPACE_OFFENSIVE_PICK_POSITION;
-    if (_position isEqualTo []) exitWith {false};
-    private _overlap = false;
+    if (_contact isEqualTo [] && {_targetSector == ""}) exitWith {false};
+    // One new commitment per reported contact area or objective. Existing forces
+    // may converge in combat; this only prevents repeatedly buying the same response.
+    private _covered = false;
     {
-        if ((_y getOrDefault ["kind", ""]) != "BATTLEGROUP") then {continue};
-        if ((_y getOrDefault ["approachSector", ""]) == _anchorSector || {(_y getOrDefault ["stagePosition", getMarkerPos (_y getOrDefault ["targetSector", ""])]) distance2D _position < 1000}) exitWith {_overlap = true};
+        if ((_y getOrDefault ["kind", ""]) != "BATTLEGROUP" || {(_y getOrDefault ["phase", ""]) == "RETURNING"}) then {continue};
+        if (_targetSector != "" && {(_y getOrDefault ["targetSector", ""]) == _targetSector}) exitWith {_covered = true};
+        if (_phase == "ENGAGING" && {(_y getOrDefault ["targetPosition", [0, 0, 0]]) distance2D _position < BATTLESPACE_OFFENSIVE_CONTACT_RADIUS}) exitWith {_covered = true};
     } forEach BATTLESPACE_STRATEGIC_OPERATIONS;
-    if (_overlap) exitWith {false};
+    if (_covered) exitWith {false};
     private _definition = [_originSector, _targetSector] call BATTLESPACE_BATTLEGROUP_BUILD_DEFINITION;
     if (count _definition == 0) exitWith {false};
     private _range = BATTLESPACE_OFFENSIVE_RETREAT_RATIO;
-    private _id = ["Battlegroup", _definition get "composition", getMarkerPos _originSector, _position, getMarkerPos _originSector, _originSector, "BATTLEGROUP",
-        createHashMapFromArray [["phase", "STAGING"], ["targetSector", _targetSector], ["approachSector", _anchorSector], ["stagePosition", _position], ["targetPosition", _position], ["lastProgressPosition", getMarkerPos _originSector], ["probes", 0], ["shifts", 0], ["flank", selectRandom [-1, 1]], ["retreatRatio", (_range select 0) + random ((_range select 1) - (_range select 0))], ["legDeadline", CBA_missionTime + BATTLESPACE_OFFENSIVE_LEG_TIMEOUT], ["outcome", ""]]
+    private _id = ["Battlegroup", _definition get "composition", _origin, _position, _origin, _originSector, "BATTLEGROUP",
+        createHashMapFromArray [
+            ["phase", _phase], ["targetSector", _targetSector], ["approachSector", _anchorSector],
+            ["stagePosition", +_position], ["targetPosition", +_position], ["lastProgressPosition", +_origin],
+            ["retreatRatio", (_range select 0) + random ((_range select 1) - (_range select 0))],
+            ["legDeadline", CBA_missionTime + BATTLESPACE_OFFENSIVE_LEG_TIMEOUT], ["outcome", ""]
+        ]
     ] call BATTLESPACE_STRATEGIC_CREATE_FUNDED_TASK_FORCE;
     if (_id == "") exitWith {false};
     stats_hostile_battlegroups = (missionNamespace getVariable ["stats_hostile_battlegroups", 0]) + 1;
-    [format ["Ground offensive %1 formed %2 at %3, staging on the %4-%5 approach; opportunity=%6", _id, _definition get "formation", _originSector, _anchorSector, _targetSector, ["recent capture", "reported contact"] select ((_contact select 1) > 0)]] call BATTLESPACE_STRATEGIC_LOG;
+    [format ["Battlegroup %1 formed %2 at %3: %4 toward %5", _id, _definition get "formation", _originSector, toLower _phase, _position]] call BATTLESPACE_STRATEGIC_LOG;
     [] call BATTLESPACE_LOGISTICS_SAVE;
     true
 };
@@ -128,21 +159,26 @@ BATTLESPACE_BATTLEGROUP_DISPATCH = {
 BATTLESPACE_BATTLEGROUP_DECISION_TICK = {
     if !([] call BATTLESPACE_STRATEGIC_SERVER_CALL_ALLOWED) exitWith {};
     if ([] call BATTLESPACE_GROUND_ALLOCATION_BLOCK != "") exitWith {};
-    private _remaining = BATTLESPACE_STRATEGIC_GROUND_FORMATIONS_PER_TICK - (missionNamespace getVariable ["BATTLESPACE_GROUND_FORMATIONS_CREATED", 0]);
-    if (_remaining <= 0) exitWith {};
-    private _targets = (blufor_sectors arrayIntersect sectors_allSectors) call BIS_fnc_arrayShuffle;
+    private _remaining = BATTLESPACE_OFFENSIVE_FORMATIONS_PER_TICK;
+    private _sources = [];
     {
-        if (_remaining <= 0) exitWith {};
-        private _target = _x;
-        private _sources = [];
-        {
-            if ((_y getOrDefault ["owner", ""]) != "OPFOR" || {[_x] call BATTLESPACE_DEFENSE_GET_FRONT_DEPTH < 1}) then {continue};
-            if !([_x, _y] call BATTLESPACE_DEFENSE_SOURCE_IS_AVAILABLE) then {continue};
-            _sources pushBack [(getMarkerPos _x) distance2D getMarkerPos _target, _x];
-        } forEach BATTLESPACE_SECTOR_STATES;
-        _sources sort true;
-        {if ([_x select 1, _target] call BATTLESPACE_BATTLEGROUP_DISPATCH) exitWith {_remaining = _remaining - 1}} forEach _sources;
-    } forEach _targets;
+        if ((_y getOrDefault ["owner", ""]) != "OPFOR" || {[_x] call BATTLESPACE_DEFENSE_GET_FRONT_DEPTH < 1}) then {continue};
+        if ([_x, _y] call BATTLESPACE_DEFENSE_SOURCE_IS_AVAILABLE) then {_sources pushBack _x};
+    } forEach BATTLESPACE_SECTOR_STATES;
+    // Nearest funded source first for each known area; quiet sources prepare the
+    // nearest unassigned objective. No contact must be near a sector marker.
+    private _ranked = [];
+    {
+        private _position = getMarkerPos _x;
+        private _contact = [_position] call BATTLESPACE_OFFENSIVE_GET_CONTACT;
+        private _distance = if (_contact isEqualTo []) then {0} else {_position distance2D (_contact select 0)};
+        _ranked pushBack [_distance, _x];
+    } forEach _sources;
+    _ranked sort true;
+    {
+        if (_remaining <= 0 || {[] call BATTLESPACE_GROUND_ALLOCATION_BLOCK != ""}) exitWith {};
+        if ([_x select 1] call BATTLESPACE_BATTLEGROUP_DISPATCH) then {_remaining = _remaining - 1};
+    } forEach _ranked;
 };
 
 BATTLESPACE_BATTLEGROUP_SETTLE = {
@@ -156,5 +192,5 @@ BATTLESPACE_BATTLEGROUP_SETTLE = {
 };
 
 if (isServer) then {
-    [format ["Ground offensives use opportunity-led staging/probing/shifting; allocation shares the %1-second defender evaluation", BATTLESPACE_STRATEGIC_DEFENDER_DECISION_INTERVAL]] call BATTLESPACE_STRATEGIC_LOG;
+    ["Battlegroups prioritize reported contacts; objective attacks follow 30 minutes without player sightings"] call BATTLESPACE_STRATEGIC_LOG;
 };

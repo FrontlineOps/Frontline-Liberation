@@ -490,8 +490,11 @@ BATTLESPACE_TASK_FORCE_DEFAULT_TRY_SPAWN = {
 		private _infantrySquadCount = ceil (_remainingManpower / _maxSquadSize);
 		for "_i" from 1 to _infantrySquadCount do {
 			private _infGrp = createGroup [_side, true];
-			_infGrp setVariable ["TASKFORCEID", _taskForceName];
-        	private _squadSize = _maxSquadSize min (_remainingManpower);
+            _infGrp setVariable ["TASKFORCEID", _taskForceName];
+            if (_type == "Deep Reconnaissance Patrol") then {
+                _infGrp setCombatMode "BLUE";
+            };
+            private _squadSize = _maxSquadSize min (_remainingManpower);
 			private _housePos = [];
 			private _garrisoned = false;
 			if(_garrisonedInfantry && (count _nearbyHouses) > 0) then {
@@ -512,6 +515,9 @@ BATTLESPACE_TASK_FORCE_DEFAULT_TRY_SPAWN = {
 			private _start_pos = (_currentLoc getPos [random 200, random 360]) findEmptyPosition [0, 300];
 			{
 				private _unit = [_x, _start_pos, _infGrp, "PRIVATE", 0.5] call BATTLESPACE_TASK_FORCE_SPAWN_INFANTRY;
+                if (_type == "Deep Reconnaissance Patrol") then {
+                    [_unit] call BATTLESPACE_DEEP_RECON_INIT_UNIT;
+                };
 				// _unit setVariable ["lambs_danger_enableGroupReinforce", true, true];
 				_activeObjects pushBack _unit;
 				_unit setVariable ["TASKFORCEID", _taskForceName];

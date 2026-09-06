@@ -311,6 +311,8 @@ BATTLESPACE_DEEP_RECON_BUILD_OBSERVATION_POSITION = {
 
 BATTLESPACE_DEEP_RECON_DISPATCH = {
     params ["_originSector", "_routeKey"];
+    if !([] call BATTLESPACE_STRATEGIC_SERVER_CALL_ALLOWED) exitWith {false};
+    if (["DEEP RECONNAISSANCE PATROL"] call BATTLESPACE_STRATEGIC_COUNT_OPERATIONS >= BATTLESPACE_STRATEGIC_DEEP_RECON_TARGET) exitWith {false};
     if ([] call BATTLESPACE_GROUND_ALLOCATION_BLOCK != "") exitWith {false};
     if ([_routeKey] call BATTLESPACE_DEEP_RECON_HAS_ACTIVE_ROUTE) exitWith {false};
     private _routes = [_originSector] call BATTLESPACE_DEEP_RECON_GET_ROUTES;
@@ -354,6 +356,8 @@ BATTLESPACE_DEEP_RECON_DISPATCH = {
 
 BATTLESPACE_DEEP_RECON_DECISION_TICK = {
     if !([] call BATTLESPACE_STRATEGIC_SERVER_CALL_ALLOWED) exitWith {};
+    private _remaining = BATTLESPACE_STRATEGIC_DEEP_RECON_PER_TICK min (BATTLESPACE_STRATEGIC_DEEP_RECON_TARGET - (["DEEP RECONNAISSANCE PATROL"] call BATTLESPACE_STRATEGIC_COUNT_OPERATIONS));
+    if (_remaining <= 0 || {[] call BATTLESPACE_GROUND_ALLOCATION_BLOCK != ""}) exitWith {};
     private _candidates = [];
     {
         if ((_y getOrDefault ["owner", ""]) != "OPFOR" || {CBA_missionTime < (_y getOrDefault ["nextDeepReconAt", 0])}) then {continue};
@@ -368,8 +372,10 @@ BATTLESPACE_DEEP_RECON_DECISION_TICK = {
     } forEach BATTLESPACE_SECTOR_STATES;
     _candidates = [_candidates, [], {_x param [0, 0]}, "DESCEND"] call BIS_fnc_sortBy;
     {
-        if ([] call BATTLESPACE_GROUND_ALLOCATION_BLOCK != "") exitWith {};
-        [_x param [1, ""], _x param [2, ""]] call BATTLESPACE_DEEP_RECON_DISPATCH;
+        if (_remaining <= 0 || {[] call BATTLESPACE_GROUND_ALLOCATION_BLOCK != ""}) exitWith {};
+        if ([_x param [1, ""], _x param [2, ""]] call BATTLESPACE_DEEP_RECON_DISPATCH) then {
+            _remaining = _remaining - 1;
+        };
     } forEach _candidates;
 };
 

@@ -167,12 +167,26 @@ BATTLESPACE_TASK_FORCE_ADD_WAYPOINTS = {
 	if(!_ambush) then {
 		private _routeData = [_group, _destination, _route] call BATTLESPACE_TASK_FORCE_GET_WAYPOINT_ROUTE;
 		_routeData params ["_waypointRoute", "_taskForceName"];
+        private _force = BATTLESPACE_TASK_FORCES getOrDefault [_taskForceName, []];
+        private _type = _force param [0, ""];
+        private _phase = (BATTLESPACE_STRATEGIC_OPERATIONS getOrDefault [_taskForceName, createHashMap]) getOrDefault ["phase", ""];
+        private _fieldHunt = (_group getVariable ["BATTLESPACE_RESERVE_FIELD_HUNT", false])
+            || {_type == "Battlegroup" && {_phase in ["ENGAGING", "ASSAULTING"]}};
+        private _combatMode = "YELLOW";
+        if (_type == "Deep Reconnaissance Patrol") then {
+            _combatMode = [_group] call BATTLESPACE_DEEP_RECON_GET_COMBAT_MODE;
+            [_group] call BATTLESPACE_DEEP_RECON_APPLY_ROE;
+        };
+        if (_type == "Battlegroup") then {
+            _group setCombatMode _combatMode;
+            {_x setUnitCombatMode _combatMode} forEach units _group;
+        };
 		if (_waypointRoute isEqualTo [] && {_taskForceName != ""}) exitWith {
 			private _hold = _group addWaypoint [getPos (leader _group), 0];
-			_hold setWaypointType "HOLD";
+            _hold setWaypointType "HOLD";
+            _hold setWaypointCombatMode _combatMode;
 		};
 		if (_waypointRoute isEqualTo []) then {_waypointRoute = [+_destination]};
-		private _fieldHunt = _group getVariable ["BATTLESPACE_RESERVE_FIELD_HUNT", false];
 
 		{
 			private _isFinal = _forEachIndex == count _waypointRoute - 1;
@@ -180,13 +194,14 @@ BATTLESPACE_TASK_FORCE_ADD_WAYPOINTS = {
 			_waypoint setWaypointType (["MOVE", "SAD"] select (_isFinal && {_fieldHunt}));
 			_waypoint setWaypointSpeed ([_speed, "FULL"] select _fieldHunt);
 			_waypoint setWaypointBehaviour ([(["SAFE", ["SAFE", "COMBAT"] select _isVehicle] select _isFinal), "AWARE"] select _fieldHunt);
-			_waypoint setWaypointCombatMode "YELLOW";
+            _waypoint setWaypointCombatMode _combatMode;
 			_waypoint setWaypointCompletionRadius ([60, 30] select _isFinal);
 		} forEach _waypointRoute;
 
 		if (!_fieldHunt) then {
 			private _hold = _group addWaypoint [_destination, 30];
-			_hold setWaypointType "HOLD";
+            _hold setWaypointType "HOLD";
+            _hold setWaypointCombatMode _combatMode;
 			_hold setWaypointBehaviour (["SAFE", "COMBAT"] select _isVehicle);
 		};
 	} else {
