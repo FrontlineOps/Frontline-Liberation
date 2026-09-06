@@ -9,6 +9,7 @@ if (hasInterface) then {
 };
 
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\config.sqf";
+[] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\contact_memory\index.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\networked_sectors\index.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\sams\index.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\defenders\index.sqf";

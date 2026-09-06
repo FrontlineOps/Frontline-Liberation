@@ -3,7 +3,6 @@
 if (isServer) then {
     localNamespace setVariable ["BSA_TRPS", createHashMap];
     localNamespace setVariable ["BSA_TRP_RETIRED", []];
-    localNamespace setVariable ["BSA_TRP_CONTACTS", createHashMap];
     localNamespace setVariable ["BSA_TRP_NEXT_PLAN", 0];
     localNamespace setVariable ["BSA_TRP_SEQUENCE", 0];
 };
@@ -151,11 +150,6 @@ BATTLESPACE_TRP_PLAN = {
     } forEach keys _registry;
     if (count _history > 12) then {_history deleteRange [0, count _history - 12]};
     localNamespace setVariable ["BSA_TRP_RETIRED", _history];
-    private _contacts = localNamespace getVariable "BSA_TRP_CONTACTS";
-    {
-        private _entry = _contacts get _x;
-        if (isNull (_entry # 0) || {CBA_missionTime - (_entry # 2) > 45}) then {_contacts deleteAt _x};
-    } forEach keys _contacts;
     if (!BATTLESPACE_ARTILLERY_TRP_ENABLED || {BATTLESPACE_DISABLE_ARTILLERY}) exitWith {};
     _sources = [_sources, [], {str _x}, "ASCEND"] call BIS_fnc_sortBy;
     private _cursor = localNamespace getVariable ["BSA_TRP_SOURCE_CURSOR", 0];
@@ -237,16 +231,11 @@ BATTLESPACE_TRP_PREPARE_REQUEST = {
         || {!(_observer isEqualType objNull)} || {isNull _observer} || {!alive _observer}
         || {side _observer != GRLIB_side_enemy} || {_observer getVariable ["ACE_isUnconscious", false]}
         || {_at > CBA_missionTime} || {CBA_missionTime - _at > 45}) exitWith {_copy};
-    private _knownPositions = [];
-    if (local _observer) then {
-        _knownPositions = ((_observer targets [true, 0, [GRLIB_side_friendly], 45]) select {
-            alive _x && {!(_x isKindOf "Air")} && {!(_x getVariable ["ACE_isUnconscious", false])}
-        }) apply {getPosATL _x};
-    } else {
-        private _evidence = (localNamespace getVariable "BSA_TRP_CONTACTS") getOrDefault [str _observer, []];
-        if (count _evidence == 4 && {(_evidence # 0) isEqualTo _observer}
-            && {(_evidence # 3) == owner _observer} && {CBA_missionTime - (_evidence # 2) <= 45}) then {_knownPositions = _evidence # 1};
-    };
+    [group _observer] call BATTLESPACE_CONTACT_SAMPLE_GROUP;
+    private _knownPositions = (([[], 1e9, 45, false, group _observer] call BATTLESPACE_CONTACT_QUERY) select {
+        private _target = _x select 5;
+        !isNull _target && {alive _target} && {side _target == GRLIB_side_friendly} && {!(_target getVariable ["ACE_isUnconscious", false])}
+    }) apply {_x select 0};
     if (_knownPositions findIf {_x distance2D _position < 75} < 0) exitWith {_copy};
     private _matches = (values (localNamespace getVariable "BSA_TRPS")) select {
         (_x get "battery") isEqualTo _battery && {CBA_missionTime >= (_x get "readyAt")}

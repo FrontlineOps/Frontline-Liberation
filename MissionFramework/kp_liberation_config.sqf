@@ -167,7 +167,8 @@ BATTLESPACE_STRATEGIC_RETREAT_STRENGTH_RATIO = 0.35;
 // opportunity-led maneuver forces, not periodic marker-directed attack waves.
 // Creation shares BATTLESPACE_STRATEGIC_DEFENDER_DECISION_INTERVAL below.
 BATTLESPACE_OFFENSIVE_RETURN_RETRY_INTERVAL = 120;
-BATTLESPACE_OFFENSIVE_OBSERVERS_PER_TICK = 8;
+BATTLESPACE_CONTACT_GROUPS_PER_TICK = 8; // Shared OPFOR observations, sampled every five seconds.
+BATTLESPACE_CONTACT_MEMORY_MAX_AGE = 180; // Shared sighting memory; individual responses may require fresher evidence.
 BATTLESPACE_OFFENSIVE_CONTACT_MAX_AGE = 180;
 BATTLESPACE_OFFENSIVE_RECENT_CAPTURE_WINDOW = 1800;
 BATTLESPACE_OFFENSIVE_SOURCE_RESERVE_RATIO = 0.5;
@@ -300,7 +301,7 @@ BATTLESPACE_ARTILLERY_MAXIMUM_CYCLES_TO_SWAP = 8; // Exclusive: produces 5-7 cyc
 BATTLESPACE_ARTILLERY_COOLDOWN_PER_SHELL = 30;
 BATTLESPACE_ARTILLERY_MIN_COOLDOWN = 60;
 BATTLESPACE_ARTILLERY_MAX_COOLDOWN = 120;
-BATTLESPACE_ARTILLERY_SMOKE_CHANCE = 0.15; // Probability per observer update; 0 disables smoke requests, 1 always requests smoke.
+BATTLESPACE_ARTILLERY_SMOKE_CHANCE = 0.15; // Opening smoke chance per engagement; at most one accepted smoke mission, then HE. 0 disables observer smoke.
 BATTLESPACE_ARTILLERY_FIRE_ORDER_TIMEOUT = 90; // Seconds allowed for each salvo/ripple to fire before aborting and refunding unfired rounds.
 BATTLESPACE_ARTILLERY_TARGET_MOVEMENT_ACCURACY_LOSS_BAND_DISTANCE = 90; // Target movement before 10% of accumulated observer accuracy is lost (m)
 BATTLESPACE_ARTILLERY_TARGET_MOVEMENT_ACCURACY_LOSS_DISTANCE = 175; // Target movement before 40% of accumulated observer accuracy is lost (m)

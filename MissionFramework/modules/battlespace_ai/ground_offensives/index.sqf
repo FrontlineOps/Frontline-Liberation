@@ -1,41 +1,6 @@
 /* Opportunity-led offensives. Battlegroup remains the stable operation/model
    save identity; this module owns planning/funding and the model owns movement.
    Observations and all authoritative writes stay on the server. */
-BATTLESPACE_OFFENSIVE_CONTACTS = createHashMap;
-BATTLESPACE_OFFENSIVE_OBSERVER_CURSOR = 0;
-
-BATTLESPACE_OFFENSIVE_SAMPLE_CONTACTS = {
-    if (!isServer) exitWith {};
-    private _now = CBA_missionTime;
-    {if (_now - (_y select 1) > BATTLESPACE_OFFENSIVE_CONTACT_MAX_AGE) then {BATTLESPACE_OFFENSIVE_CONTACTS deleteAt _x}} forEach BATTLESPACE_OFFENSIVE_CONTACTS;
-    private _observers = [];
-    {{private _leader = leader _x; if (local _x && {side _x == GRLIB_side_enemy} && {!isNull _leader} && {alive _leader}) then {_observers pushBackUnique _leader}} forEach (_y param [4, []])} forEach BATTLESPACE_TASK_FORCES;
-    if (_observers isEqualTo []) exitWith {};
-    for "_i" from 1 to (BATTLESPACE_OFFENSIVE_OBSERVERS_PER_TICK min count _observers) do {
-        BATTLESPACE_OFFENSIVE_OBSERVER_CURSOR = BATTLESPACE_OFFENSIVE_OBSERVER_CURSOR mod count _observers;
-        private _observer = _observers select BATTLESPACE_OFFENSIVE_OBSERVER_CURSOR;
-        BATTLESPACE_OFFENSIVE_OBSERVER_CURSOR = BATTLESPACE_OFFENSIVE_OBSERVER_CURSOR + 1;
-        // Perceived position and age, never a tracked object's live coordinates.
-        private _reports = _observer targetsQuery [objNull, GRLIB_side_friendly, "", [], 45];
-        {
-            _x params ["_accuracy", "_target", "_side", "_class", "_position", "_age"];
-            if (_side != GRLIB_side_friendly || {_class isKindOf "Air"} || {isNull _target} || {_accuracy <= 0} || {count _position < 2}) then {continue};
-            private _key = str _target;
-            private _seenAt = _now - (0 max _age);
-            private _previous = BATTLESPACE_OFFENSIVE_CONTACTS getOrDefault [_key, [[], -1e9, 0, []]];
-            if (_seenAt <= (_previous select 1) + 1) then {continue};
-            private _weight = if (_class isKindOf "Tank") then {8} else {if (_class isKindOf "Car") then {3} else {1}};
-            BATTLESPACE_OFFENSIVE_CONTACTS set [_key, [[_position select 0, _position select 1, 0], _seenAt, _weight, _previous select 0]];
-        } forEach (_reports select [0, 12]);
-    };
-    if (count BATTLESPACE_OFFENSIVE_CONTACTS > 256) then {
-        private _oldest = [];
-        {_oldest pushBack [_y select 1, _x]} forEach BATTLESPACE_OFFENSIVE_CONTACTS;
-        _oldest sort true;
-        {BATTLESPACE_OFFENSIVE_CONTACTS deleteAt (_x select 1)} forEach (_oldest select [0, count _oldest - 256]);
-    };
-};
-
 BATTLESPACE_OFFENSIVE_GET_CONTACT = {
     params ["_position", "_forward", ["_radius", BATTLESPACE_OFFENSIVE_CONTACT_RADIUS]];
     private _weight = 0;
@@ -43,13 +8,12 @@ BATTLESPACE_OFFENSIVE_GET_CONTACT = {
     private _latest = -1e9;
     private _receding = false;
     {
-        _y params ["_known", "_seenAt", "_strength", "_previous"];
-        if (CBA_missionTime - _seenAt > BATTLESPACE_OFFENSIVE_CONTACT_MAX_AGE || {_known distance2D _position > _radius}) then {continue};
+        _x params ["_known", "_seenAt", "_strength", "_previous"];
         _sum = _sum vectorAdd (_known vectorMultiply _strength);
         _weight = _weight + _strength;
         _latest = _latest max _seenAt;
         if (_previous isNotEqualTo [] && {((_known vectorDiff _previous) vectorDotProduct _forward) > 100}) then {_receding = true};
-    } forEach BATTLESPACE_OFFENSIVE_CONTACTS;
+    } forEach ([_position, _radius, BATTLESPACE_OFFENSIVE_CONTACT_MAX_AGE] call BATTLESPACE_CONTACT_QUERY);
     [if (_weight > 0) then {_sum vectorMultiply (1 / _weight)} else {[]}, _weight, _latest, _receding]
 };
 

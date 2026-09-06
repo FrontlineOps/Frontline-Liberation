@@ -280,15 +280,9 @@ BATTLESPACE_TASK_FORCE_TRANSPORT_AI = {
 		// Check for threats. If there are threats, should dismount.
 		if(alive (driver _vehicle)) then {
 
-			if(!(local (driver _vehicle))) then {
-				[driver _vehicle] remoteExec ["BATTLESPACE_ARTILLERY_OBSERVER_REPORT_REMOTE", (driver _vehicle)];
-
-				_targets = (driver _vehicle) getVariable ["BSA_Targets", []];
-			} else {
-				_targets = (driver _vehicle) targets [true, 0, [GRLIB_side_friendly], 45];
-			};
-
-			_targets = _targets select { !(_x isKindOf "Air") && alive _x };
+            _targets = ([_transportGroup] call BATTLESPACE_CONTACT_COLLECT) select {
+                !((_x select 5) isKindOf "Air") && {CBA_missionTime - (_x select 2) <= 45}
+            };
 
 
 			if((count _targets) > 0) then {

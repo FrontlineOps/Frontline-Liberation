@@ -1807,7 +1807,6 @@ if (isServer) then {
         while {GRLIB_endgame == 0} do {
             [] call BATTLESPACE_SECTOR_SYNC_OWNERS;
             [] call BATTLESPACE_STRATEGIC_RECONCILE_OPERATIONS;
-            [] call BATTLESPACE_OFFENSIVE_SAMPLE_CONTACTS;
             if (!isNil "BATTLESPACE_TACTICAL_MAINTENANCE_TICK") then {
                 [] call BATTLESPACE_TACTICAL_MAINTENANCE_TICK;
             };

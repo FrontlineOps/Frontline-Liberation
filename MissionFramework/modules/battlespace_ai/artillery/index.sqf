@@ -908,6 +908,7 @@ BATTLESPACE_ARTILLERY_FULFILL_REQUEST = {
     if !([_battery, _req] call BATTLESPACE_TRP_MISSION_VALID) exitWith {};
 	
 	(_req) params [["_observer", objNull], ["_target", nil], ["_accuracy", 0], ["_systemTargeted", false], ["_targetedAt", CBA_missionTime], ["_wp", false]];
+    private _openingSmokeRequested = _wp;
 
 	private _state = _battery getVariable ["BSAState", []];
 	
@@ -986,6 +987,12 @@ BATTLESPACE_ARTILLERY_FULFILL_REQUEST = {
 
 	private _fireControlChecks = _readyVehicles apply {
 		[typeOf _x, local _x, round (_target distance2D _x), [_x, _target getPos [0,0], _shellType] call BATTLESPACE_ARTILLERY_CAN_REACH_AREA, unitCombatMode (gunner _x)]
+	};
+	// Consume the observer's opening smoke request only after a paid mission is accepted.
+	if (_openingSmokeRequested && {!_systemTargeted} && {_observer isEqualType objNull} && {!isNull _observer}) then {
+		_observer setVariable ["BSAObserverSmokeConsumedAt", CBA_missionTime, true];
+		private _queued = BATTLESPACE_ARTILLERY_OBSERVER_TARGETS getOrDefault [_obsKey, []];
+		if (count _queued >= 6) then {_queued set [5, false]};
 	};
 	[format ["Artillery mission accepted (group=%1, sector=%2, type=%3, shell=%4, pieces=%5, rounds=%6, checks[class,local,distance,inRange,gunnerMode]=%7)", _battery, _battery getVariable ["BSAFundingSector", ""], ["HE", "WP/SMOKE"] select _wp, _shellType, count _readyVehicles, _usableReservation, _fireControlChecks], "BATTLESPACE"] call KPLIB_fnc_log;
 	[_battery, _req, _obsKey] spawn BATTLESPACE_ARTILLERY_DO_REQUEST;
@@ -1237,30 +1244,6 @@ BATTLESPACE_ARTILLERY_DO_REQUEST = {
 	_curState set [9, 0];
 	_battery setVariable ["BSAState", _curState, true];
 };
-BATTLESPACE_ARTILLERY_OBSERVER_REPORT_REMOTE = {
-	params ["_observer"];
-
-
-	private _targets = _observer targets [true, 0, [GRLIB_side_friendly], 45];
-
-
-	[_observer, _targets] remoteExec ["BATTLESPACE_ARTILLERY_OBSERVER_REPORT_REMOTE_REPLY", remoteExecutedOwner];
-
-};
-
-BATTLESPACE_ARTILLERY_OBSERVER_REPORT_REMOTE_REPLY = {
-    params [["_observer", objNull, [objNull]], ["_targets", [], [[]]]];
-    // Accept evidence only from the machine that owns this observer (including HC).
-    if (!isRemoteExecuted || {isNull _observer} || {remoteExecutedOwner != owner _observer}) exitWith {};
-    _targets = (_targets select {_x isEqualType objNull && {!isNull _x}}) select [0, 64];
-    _observer setVariable ["BSA_Targets", _targets, true];
-    if (isServer) then {
-        private _contacts = localNamespace getVariable "BSA_TRP_CONTACTS";
-        _contacts set [str _observer, [_observer, (_targets select {alive _x && {side _x == GRLIB_side_friendly} && {!(_x isKindOf "Air")} && {!(_x getVariable ["ACE_isUnconscious", false])}}) apply {getPosATL _x}, CBA_missionTime, remoteExecutedOwner]];
-        if (count _contacts > 128) then {_contacts deleteAt ((keys _contacts) # 0)};
-    };
-};
-
 BATTLESPACE_ARTILLERY_BROADCAST_TARGET = {
 	params ["_target", "_observer", "_timeInCombat", ["_systemTargeted", false], ["_targetedAt", CBA_missionTime], ["_wp", false]];
 
@@ -1295,25 +1278,22 @@ BATTLESPACE_ARTILLERY_OBSERVER_COROUTINE = {
 	_state params [
 		["_timeInCombat", 0],
 		["_inCombat", false],
-		["_callInWp", false]
+		["_callInWp", false],
+		["_shellChosen", false],
+		["_engagementStartedAt", -1]
 	];
 	
 
-	_callInWp = (random 1) < (0 max BATTLESPACE_ARTILLERY_SMOKE_CHANCE min 1);
-	_state set [2, _callInWp];
+	if (_callInWp && {BATTLESPACE_ARTILLERY_SMOKE_CHANCE <= 0 || {
+		(_observer getVariable ["BSAObserverSmokeConsumedAt", -2]) >= _engagementStartedAt
+	}}) then {_callInWp = false};
 
 	
 
 
 	private _shouldUpdateToBeInCombat = false;
-	private _targets = [];
-
-	if(!(local _observer)) then {
-		[_observer] remoteExec ["BATTLESPACE_ARTILLERY_OBSERVER_REPORT_REMOTE", _observer];
-		_targets = _observer getVariable ["BSA_Targets", []];
-	} else {
-		_targets = _observer targets [true, 0, [GRLIB_side_friendly], 45];
-	};
+    [group _observer] call BATTLESPACE_CONTACT_SAMPLE_GROUP;
+    private _targets = [[], 1e9, 45, false, group _observer] call BATTLESPACE_CONTACT_QUERY;
 
 	private _lowPop = ([] call KPLIB_fnc_getPlayerCount) <= 35;
 	if((count _targets) > 0) then {
@@ -1321,14 +1301,11 @@ BATTLESPACE_ARTILLERY_OBSERVER_COROUTINE = {
 
 		private _sortedTargets = [];
 		{
-			if(_x isKindOf "Air") then { continue };
-			if((side _x) != GRLIB_side_friendly) then { continue };
-			if((_x getVariable ["ACE_isUnconscious", false])) then { continue };
-
-			private _nearEntities = ((getPos _x) nearEntities [["Man"], 300]) select { (alive _x) && ((side _x) == GRLIB_side_enemy) };
-			if((count _nearEntities) > 2) then { continue };
-
-			_sortedTargets pushBack [(getPos _x) distance2D (getPos _observer), _x];
+            _x params ["_position", "_seenAt", "_weight", "_previous", "_player", "_target"];
+            if (isNull _target || {!alive _target} || {side _target != GRLIB_side_friendly} || {_target getVariable ["ACE_isUnconscious", false]}) then {continue};
+            private _nearEntities = (_position nearEntities [["Man"], 300]) select {alive _x && {side _x == GRLIB_side_enemy}};
+            if (count _nearEntities > 2) then {continue};
+            _sortedTargets pushBack [_position distance2D getPosATL _observer, +_position];
 		} forEach _targets;
 
 		if (BATTLESPACE_ARTILLERY_DEBUG) then {systemChat format ["Obs sees %1", _sortedTargets];};
@@ -1340,7 +1317,12 @@ BATTLESPACE_ARTILLERY_OBSERVER_COROUTINE = {
 		private _retainMultiplier = 1;
 		private _newTime = _timeInCombat;
 		if((count _sortedTargets) > 0) then {
-			private _tLoc = (((_sortedTargets select 0) select 1) getPos [0,0]);
+			if (!_shellChosen) then {
+				_callInWp = (random 1) < (0 max BATTLESPACE_ARTILLERY_SMOKE_CHANCE min 1);
+				_shellChosen = true;
+				_engagementStartedAt = CBA_missionTime;
+			};
+			private _tLoc = +((_sortedTargets select 0) select 1);
 
 			private _curReq = BATTLESPACE_ARTILLERY_OBSERVER_TARGETS getOrDefault [(str _observer), []];
 
@@ -1384,6 +1366,13 @@ BATTLESPACE_ARTILLERY_OBSERVER_COROUTINE = {
 
 
 	_state set [1, _shouldUpdateToBeInCombat];
+	if ((_state select 0) <= 0) then {
+		_shellChosen = false;
+		_callInWp = false;
+	};
+	_state set [2, _callInWp];
+	_state set [3, _shellChosen];
+	_state set [4, _engagementStartedAt];
 
 	(_this select 0) set [1, _state];
 	
@@ -1464,7 +1453,7 @@ BATTLESPACE_ARTILLERY_RENDER_REQUEST = {
 
 if (isServer) then {
 	["Compact Battlespace artillery curator-render snapshot service initialized", "BATTLESPACE"] call KPLIB_fnc_log;
-	[format ["Artillery observer smoke chance configured (%1 percent per update)", 100 * (0 max BATTLESPACE_ARTILLERY_SMOKE_CHANCE min 1)], "BATTLESPACE"] call KPLIB_fnc_log;
+	[format ["Artillery observer opening smoke chance configured (%1 percent per engagement, one mission maximum)", 100 * (0 max BATTLESPACE_ARTILLERY_SMOKE_CHANCE min 1)], "BATTLESPACE"] call KPLIB_fnc_log;
 	[format ["Artillery observer movement accuracy bands configured (mild=%1m, severe=%2m)", BATTLESPACE_ARTILLERY_TARGET_MOVEMENT_ACCURACY_LOSS_BAND_DISTANCE, BATTLESPACE_ARTILLERY_TARGET_MOVEMENT_ACCURACY_LOSS_DISTANCE], "BATTLESPACE"] call KPLIB_fnc_log;
 };
 
