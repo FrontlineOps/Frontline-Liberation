@@ -36,7 +36,11 @@ private _groupsByFaction = createHashMap;
 
 {
     private _cfg = _x;
-    if (getNumber (_cfg >> "scope") < 2) then {continue};
+    // TTU's equipped variants are hidden in Eden but available in Zeus squads.
+    private _ttuEquipped = getNumber (_cfg >> "TTU_FE_isArmed") > 0
+        && {getNumber (_cfg >> "scopeCurator") >= 2}
+        && {(configName _cfg) isKindOf "Man"};
+    if (getNumber (_cfg >> "scope") < 2 && {!_ttuEquipped}) then {continue};
 
     private _faction = toLower (getText (_cfg >> "faction"));
     if (_faction isEqualTo "" || {!(_faction in _factionMeta)}) then {continue};

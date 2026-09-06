@@ -7,8 +7,20 @@ params [
 ];
 
 private _cfg = configFile >> "CfgVehicles" >> _class;
-if (_class isEqualTo "" || {!isClass _cfg} || {getNumber (_cfg >> "scope") < 2}) exitWith {[]};
-if (_class isKindOf "Man") exitWith {["infantry"]};
+if (_class isEqualTo "" || {!isClass _cfg}) exitWith {[]};
+private _isMan = _class isKindOf "Man";
+private _ttuEquipped = _isMan
+    && {getNumber (_cfg >> "TTU_FE_isArmed") > 0}
+    && {getNumber (_cfg >> "scopeCurator") >= 2};
+if (getNumber (_cfg >> "scope") < 2 && {!_ttuEquipped}) exitWith {[]};
+if (_isMan) exitWith {
+    // TTU exposes unarmed role templates as well as equipped/randomized soldiers.
+    // Do not infer equipment from weapons[]: randomized soldiers equip in postInit.
+    if (isNumber (_cfg >> "TTU_FE_isArmed")
+        && {getNumber (_cfg >> "TTU_FE_isArmed") == 0}
+        && {getNumber (_cfg >> "side") != 3}) exitWith {[]};
+    ["infantry"]
+};
 
 private _classLower = toLower _class;
 private _displayLower = toLower (getText (_cfg >> "displayName"));
