@@ -3,7 +3,70 @@
     One CBA class casualty event plus three resolved-battle events feed this module.
 */
 
+// ACE's AnimChanged handler is local and can survive a group/locality change.
+// Remove that handler on every machine before asking the current owner to move.
+KPLIB_SURRENDER_CLEAR_ANIMATION_HANDLER = {
+    params ["_unit"];
+    if (isRemoteExecuted && {remoteExecutedOwner != 2}) exitWith {};
+    if (!isRemoteExecuted && {!isServer}) exitWith {};
+    if (isNull _unit || {!(_unit getVariable ["KPLIB_intelligencePrisoner", false])}) exitWith {};
+    private _handler = _unit getVariable ["ace_captives_surrenderAnimEHID", -1];
+    if (_handler >= 0) then {
+        _unit removeEventHandler ["AnimChanged", _handler];
+        _unit setVariable ["ace_captives_surrenderAnimEHID", -1];
+    };
+};
+
+KPLIB_SURRENDER_LOCAL_FOLLOW_ESCORT = {
+    params ["_unit", "_caller", "_token"];
+    if (isRemoteExecuted && {remoteExecutedOwner != 2}) exitWith {};
+    if (!isRemoteExecuted && {!isServer}) exitWith {};
+    if (isNull _unit || {!local _unit} || {!alive _unit} || {isNull _caller}) exitWith {};
+    if ((_unit getVariable ["KPLIB_surrenderEscortToken", -1]) != _token || {(_unit getVariable ["KPLIB_intelligenceEscort", objNull]) isNotEqualTo _caller}) exitWith {};
+    if (isNull objectParent _unit && {_unit distance _caller > 3} && {currentCommand _unit != "GET IN"}) then {
+        _unit doMove getPosATL _caller;
+    };
+};
+
+KPLIB_SURRENDER_LOCAL_PREPARE_ESCORT = {
+    params ["_unit", "_caller", "_token"];
+    if (isRemoteExecuted && {remoteExecutedOwner != 2}) exitWith {};
+    if (!isRemoteExecuted && {!isServer}) exitWith {};
+    if (isNull _unit || {!local _unit} || {!alive _unit}) exitWith {};
+    if ((_unit getVariable ["KPLIB_surrenderEscortToken", -1]) != _token) exitWith {};
+    if ((_unit getVariable ["KPLIB_intelligenceEscort", objNull]) isNotEqualTo _caller) exitWith {};
+    if (!isNil "ace_captives_fnc_setSurrendered") then {
+        // Synchronous on the current owner: an event queued before joinSilent can miss it.
+        [_unit, false] call ace_captives_fnc_setSurrendered;
+    };
+    if (_unit getVariable ["ace_captives_isSurrendering", false]) exitWith {};
+    [_unit] call KPLIB_SURRENDER_CLEAR_ANIMATION_HANDLER;
+    {_unit enableAI _x} forEach ["ANIM", "MOVE", "PATH"];
+    _unit forceSpeed -1;
+    _unit setCaptive (!isNull _caller);
+    _unit setUnitPos "AUTO";
+    if (isNull objectParent _unit && {lifeState _unit != "INCAPACITATED"} && {!(_unit getVariable ["ACE_isUnconscious", false])}) then {
+        [_unit, "AmovPercMstpSnonWnonDnon", 2] call KPLIB_fnc_doAnimation;
+        if (!isNull _caller && {currentCommand _unit != "GET IN"}) then {_unit doFollow _caller; _unit doMove getPosATL _caller};
+    };
+    [_unit, _caller, _token] remoteExecCall ["KPLIB_SURRENDER_SERVER_ESCORT_READY", 2];
+};
+
 if (!isServer) exitWith {};
+
+KPLIB_SURRENDER_SERVER_ESCORT_READY = {
+    params ["_unit", "_caller", "_token"];
+    if (!isServer || {!isRemoteExecuted} || {isNull _unit} || {remoteExecutedOwner != owner _unit}) exitWith {};
+    if ((_unit getVariable ["KPLIB_surrenderEscortToken", -1]) != _token || {(_unit getVariable ["KPLIB_intelligenceEscort", objNull]) isNotEqualTo _caller}) exitWith {};
+    _unit setVariable ["KPLIB_surrenderEscortOwner", remoteExecutedOwner];
+};
+
+KPLIB_SURRENDER_SERVER_PREPARE_ESCORT = {
+    params ["_unit", "_caller", "_token"];
+    if (!isServer || {isRemoteExecuted} || {isNull _unit}) exitWith {};
+    [_unit] remoteExecCall ["KPLIB_SURRENDER_CLEAR_ANIMATION_HANDLER", 0];
+    [_unit, _caller, _token] remoteExecCall ["KPLIB_SURRENDER_LOCAL_PREPARE_ESCORT", owner _unit];
+};
 
 KPLIB_SURRENDER_SERVER_IS_ELIGIBLE = {
     params [["_unit", objNull, [objNull]]];
@@ -203,19 +266,12 @@ KPLIB_SURRENDER_SERVER_RELEASE_ESCORT = {
     ];
     if (isRemoteExecuted || {isNull _unit} || {!alive _unit} || {!(_unit getVariable ["KPLIB_intelligencePrisoner", false])}) exitWith {false};
 
-    _unit setVariable ["KPLIB_intelligenceEscort", objNull];
-    _unit setVariable ["KPLIB_surrenderEscortActive", nil];
-    if (KP_liberation_ace) then {
-        ["ace_captives_setSurrendered", [_unit, false], _unit] call CBA_fnc_targetEvent;
-    } else {
-        _unit enableAI "ANIM";
-        _unit enableAI "MOVE";
-    };
-    _unit setCaptive false;
-    _unit setUnitPos "AUTO";
+    _unit setVariable ["KPLIB_intelligenceEscort", objNull, true];
+    _unit setVariable ["KPLIB_surrenderEscortActive", nil, true];
 
     private _escapeGroup = createGroup [GRLIB_side_enemy, true];
     [_unit] joinSilent _escapeGroup;
+    [_unit, objNull, _unit getVariable ["KPLIB_surrenderEscortToken", -1]] call KPLIB_SURRENDER_SERVER_PREPARE_ESCORT;
     private _destinationSector = [worldSize * 2, getPos _unit] call KPLIB_fnc_getNearestOpforSector;
     if (_destinationSector isNotEqualTo "") then {
         private _waypoint = _escapeGroup addWaypoint [markerPos _destinationSector, 300];
@@ -233,7 +289,8 @@ KPLIB_SURRENDER_SERVER_RELEASE_ESCORT = {
 KPLIB_SURRENDER_SERVER_MONITOR_ESCORT = {
     params [
         ["_unit", objNull, [objNull]],
-        ["_caller", objNull, [objNull]]
+        ["_caller", objNull, [objNull]],
+        ["_token", -1, [0]]
     ];
 
     private _finished = false;
@@ -245,7 +302,7 @@ KPLIB_SURRENDER_SERVER_MONITOR_ESCORT = {
         };
 
         private _currentEscort = _unit getVariable ["KPLIB_intelligenceEscort", objNull];
-        if (_currentEscort isNotEqualTo _caller) exitWith {
+        if (_currentEscort isNotEqualTo _caller || {(_unit getVariable ["KPLIB_surrenderEscortToken", -1]) != _token}) exitWith {
             _finished = true;
         };
         if (isNull _caller || {!alive _caller} || {!isPlayer _caller} || {_unit distance _caller > _breakDistance}) exitWith {
@@ -253,26 +310,28 @@ KPLIB_SURRENDER_SERVER_MONITOR_ESCORT = {
             _finished = true;
         };
 
-        if (vehicle _unit isEqualTo _unit && {_unit distance _caller > 3}) then {
-            // Joining a player's squad can move the prisoner's locality off the server.
-            [_unit, getPosATL _caller] remoteExecCall ["doMove", _unit];
-        };
-
         private _deliveryDistance = missionNamespace getVariable ["KPLIB_intelligence_delivery_distance", 40];
         if (
-            vehicle _unit isEqualTo _unit
-            && {_unit distance _caller <= _deliveryDistance}
+            _unit distance _caller <= _deliveryDistance
             && {!isNil "KPLIB_INTEL_SERVER_IS_NEAR_TERMINAL"}
             && {[_caller] call KPLIB_INTEL_SERVER_IS_NEAR_TERMINAL}
             && {!isNil "KPLIB_INTEL_SERVER_COMMIT_PRISONER"}
         ) then {
-            [_unit, _caller, "surrender escort"] call KPLIB_INTEL_SERVER_COMMIT_PRISONER;
-            _finished = true;
+            _finished = [_unit, _caller, "surrender escort"] call KPLIB_INTEL_SERVER_COMMIT_PRISONER;
         };
+        if (_finished) then {continue};
+        if ((_unit getVariable ["KPLIB_surrenderEscortOwner", -1]) != owner _unit
+            || {_unit getVariable ["ace_captives_isSurrendering", false]}
+            || {(toLower animationState _unit) find "ssur" >= 0}) then {
+            [_unit, _caller, _token] call KPLIB_SURRENDER_SERVER_PREPARE_ESCORT;
+        };
+        // Check boarding commands on the owner so follow updates do not cancel Get In.
+        [_unit, _caller, _token] remoteExecCall ["KPLIB_SURRENDER_LOCAL_FOLLOW_ESCORT", owner _unit];
     };
 
-    if (!isNull _unit && {(_unit getVariable ["KPLIB_intelligenceEscort", objNull]) isEqualTo _caller}) then {
-        _unit setVariable ["KPLIB_surrenderEscortActive", nil];
+    if (!isNull _unit && {(_unit getVariable ["KPLIB_intelligenceEscort", objNull]) isEqualTo _caller}
+        && {(_unit getVariable ["KPLIB_surrenderEscortToken", -1]) == _token}) then {
+        _unit setVariable ["KPLIB_surrenderEscortActive", nil, true];
     };
 };
 
@@ -287,7 +346,6 @@ KPLIB_SURRENDER_SERVER_BEGIN_ESCORT = {
     if (
         isNull _unit
         || {isNull _caller}
-        || {!local _unit}
         || {!alive _unit}
         || {!alive _caller}
         || {!isPlayer _caller}
@@ -302,23 +360,16 @@ KPLIB_SURRENDER_SERVER_BEGIN_ESCORT = {
     if (_currentEscort isEqualTo _caller && {_unit getVariable ["KPLIB_surrenderEscortActive", false]}) exitWith {true};
     if (!isNull _currentEscort && {_unit getVariable ["KPLIB_surrenderEscortActive", false]}) exitWith {false};
 
-    _unit setVariable ["KPLIB_intelligenceEscort", _caller];
-    _unit setVariable ["KPLIB_surrenderEscortActive", true];
-    // Former garrisons and surrender poses can leave these disabled, including with ACE.
-    {
-        _unit enableAI _x;
-    } forEach ["ANIM", "MOVE", "PATH"];
-    _unit forceSpeed -1;
-    if (KP_liberation_ace) then {
-        ["ace_captives_setSurrendered", [_unit, false], _unit] call CBA_fnc_targetEvent;
-    };
-    _unit setCaptive true;
-    _unit setUnitPos "AUTO";
+    private _token = (_unit getVariable ["KPLIB_surrenderEscortToken", 0]) + 1;
+    _unit setVariable ["KPLIB_surrenderEscortToken", _token, true];
+    _unit setVariable ["KPLIB_intelligenceEscort", _caller, true];
+    _unit setVariable ["KPLIB_surrenderEscortActive", true, true];
+    _unit setVariable ["KPLIB_surrenderEscortOwner", -1];
     private _escortGroup = group _caller;
     [_unit] joinSilent _escortGroup;
     if (group _unit isNotEqualTo _escortGroup) exitWith {
-        _unit setVariable ["KPLIB_intelligenceEscort", objNull];
-        _unit setVariable ["KPLIB_surrenderEscortActive", nil];
+        _unit setVariable ["KPLIB_intelligenceEscort", objNull, true];
+        _unit setVariable ["KPLIB_surrenderEscortActive", nil, true];
         if (KP_liberation_ace) then {
             ["ace_captives_setSurrendered", [_unit, true], _unit] call CBA_fnc_targetEvent;
         } else {
@@ -328,18 +379,12 @@ KPLIB_SURRENDER_SERVER_BEGIN_ESCORT = {
         [format ["Prisoner escort rejected (unit=%1, reason=failed to join player group)", netId _unit], "SURRENDER"] call KPLIB_fnc_log;
         false
     };
-    // Clearing ACE's state alone does not clear a lingering vanilla/replicated pose.
-    // The existing animation helper targets the owner and synchronizes its fallback.
-    if (vehicle _unit isEqualTo _unit
-        && {lifeState _unit != "INCAPACITATED"}
-        && {!(_unit getVariable ["ACE_isUnconscious", false])}) then {
-        [_unit, "AmovPercMstpSnonWnonDnon", 2] call KPLIB_fnc_doAnimation;
-    };
-    [_unit, getPosATL _caller] remoteExecCall ["doMove", _unit];
-
     [format ["Prisoner escort started (unit=%1, playerOwner=%2, group=%3)", netId _unit, owner _caller, groupId _escortGroup], "SURRENDER"] call KPLIB_fnc_log;
     // Leave the client request context so the server-only abandonment path can run.
-    [{_this spawn KPLIB_SURRENDER_SERVER_MONITOR_ESCORT}, [_unit, _caller]] call CBA_fnc_execNextFrame;
+    [{
+        _this call KPLIB_SURRENDER_SERVER_PREPARE_ESCORT;
+        _this spawn KPLIB_SURRENDER_SERVER_MONITOR_ESCORT;
+    }, [_unit, _caller, _token]] call CBA_fnc_execNextFrame;
     true
 };
 
