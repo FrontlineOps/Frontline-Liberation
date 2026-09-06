@@ -225,7 +225,7 @@ while {dialog && {alive player} && {dobuild isEqualTo 0 || {buildtype isEqualTo 
     ];
 
     if (_hasUnlockRequirements) then {
-        private _linkColor = if (_unlockRequirementsMet) then {"#0040e0"} else {"#e00000"};
+        private _linkColor = (["#e00000", "#0040e0"] select (_unlockRequirementsMet));
         _unlockControl ctrlSetStructuredText parseText format [
             "<t color='%1' align='center'>(%2/%3) MILITARY SECTORS</t>",
             _linkColor,

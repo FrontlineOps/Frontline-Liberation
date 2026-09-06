@@ -139,8 +139,8 @@ KPLIB_fnc_commitBuild = {
             if ((nearestObjects [_fob, [KP_liberation_air_vehicle_building], GRLIB_fob_range]) findIf {alive _x} == -1) exitWith {_class = ""};
         };
         if (_air) then {
-            private _kind = if (_class isKindOf "Helicopter") then {"Helicopter"} else {"Plane"};
-            private _slots = if (_kind == "Helicopter") then {KP_liberation_heli_slots} else {KP_liberation_plane_slots};
+            private _kind = (["Plane", "Helicopter"] select (_class isKindOf "Helicopter"));
+            private _slots = ([KP_liberation_plane_slots, KP_liberation_heli_slots] select (_kind == "Helicopter"));
             private _count = {alive _x && {_x isKindOf _kind} && {toLower typeOf _x in KPLIB_b_air_classes} && {!unitIsUAV _x} && {!(_x getVariable ["KP_liberation_preplaced", false])}} count vehicles;
             if (_count >= _slots) then {_class = ""};
         };

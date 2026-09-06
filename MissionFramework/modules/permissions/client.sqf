@@ -41,7 +41,7 @@ KPLIB_fnc_receivePermissions = {
         private _index = _rows findIf {(_x select 0) == _selected};
         _list lbSetCurSel (_index max 0);
         [] call KPLIB_fnc_selectPermissionPlayer;
-        (_display displayCtrl 105) ctrlSetText (if (_message == "") then {"Select a player, choose permissions, then Apply."} else {_message});
+        (_display displayCtrl 105) ctrlSetText (([_message, "Select a player, choose permissions, then Apply."] select (_message == "")));
     } else {
         if (_message != "") then {systemChat _message};
     };

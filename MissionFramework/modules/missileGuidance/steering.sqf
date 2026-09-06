@@ -6,7 +6,7 @@ IADS_MissileSteering = {
 		
 		_targetState params ["_lastVelocity", "_oldTargetPos", "_target", "_lastAcceleration", "_targetPos", "_targetVelocity"];
 	_flightParams params ["_pitchRate", "_yawRate", "_isBangBangGuidance", "_stabilityCoefficient"];
-	if(IADS_SAM_DEBUG == true) then {
+    if(IADS_SAM_DEBUG) then {
 		private _missilePosAGL = ASLToAGL (getPosASLVisual _missile);
 		private _cmdAccelLocal = _missile vectorWorldToModelVisual _commandedAcceleration;
 		drawIcon3D ["", [1,0,0,1], _missilePosAGL vectorAdd [0, 0, 1], 0.75, 0.75, 0, format ["cmdPitch: %1 cmdYaw %2", _cmdAccelLocal#2, _cmdAccelLocal#0], 1, 0.025, "TahomaB"];
@@ -127,7 +127,7 @@ IADS_MissileSteering = {
         private _dir = [_quaternion, [0, 1, 0]] call _multiplyVector;
         private _up = [_quaternion, [0, 0, 1]] call _multiplyVector;
 
-		if(_accumulator < 0.5 && IADS_SAM_DEBUG == true) then {
+        if(_accumulator < 0.5 && IADS_SAM_DEBUG) then {
 			diag_log format ["_missileID %9: YawChange %1 | PitchChange %2 | NewYaw %3 | NewPitch %4 | ForceYaw %5 | ForcePitch %6 | OldYaw %7 | OldPitch %8 | VelocityLocal %10 | VelocityAngleYaw %11 | VelocityAnglePitch %12", _yawChange, _pitchChange, _yaw, _pitch, _forceYaw, _forcePitch, _guidanceState#0, _guidanceState#2, _missileID, _localVelocity, _velocityAngleYaw, _velocityAnglePitch];
 		};
         _missile setVectorDirAndUp [_dir, _up];

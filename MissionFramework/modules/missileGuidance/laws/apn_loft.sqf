@@ -42,7 +42,7 @@
 
 		private _newTargetPos = _targetPos;
 		private _newOldTargetPos = _oldTargetPos;
-		if(_atMinRotationAngle == false) then {
+        if(!_atMinRotationAngle) then {
 			(_missile call BIS_fnc_getPitchBank) params ["_pitch", "_bank"];
 		
 			if(_pitch < _desiredLoftAngle) then {
@@ -69,7 +69,7 @@
 
 		if(_atMinRotationAngle || (_targetPos distance2D _missilePos) <= _stopAtDistance || _timeToGo < _stopAtTime) then {
 		
-			if(IADS_SAM_DEBUG == true) then {
+            if(IADS_SAM_DEBUG) then {
 				systemChat format ["%1 | %2 | %3", _atMinRotationAngle, (_targetPos distance2D _missilePos) <= _stopAtDistance, _timeToGo < _stopAtTime];
 			};
 			_done = true;

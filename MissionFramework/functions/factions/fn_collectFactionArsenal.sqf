@@ -82,7 +82,7 @@ private _resolveArsenalClass = {
         if (isClass _candidate) then {
             _cfg = _candidate;
             _root = "CfgWeapons";
-            _bucket = if (getNumber (_candidate >> "type") in [1, 2, 4, 4096]) then {"weapons"} else {"items"};
+            _bucket = (["items", "weapons"] select (getNumber (_candidate >> "type") in [1, 2, 4, 4096]));
         };
     };
 

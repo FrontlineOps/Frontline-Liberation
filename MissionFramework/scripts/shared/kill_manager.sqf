@@ -84,7 +84,7 @@ if (isServer) then {
         // Disconnect UAV from player on death
         _unit connectTerminalToUAV objNull;
         // Eject Player from vehicle
-        if (vehicle _unit != _unit) then {moveOut _unit;};
+        if (!isNull objectParent _unit) then {moveOut _unit;};
 
         if (isPlayer _killer && _killer != _unit) then {
             [_killer, _unit] remoteExec ["KPLIB_fnc_bluforKillWarning", _killer];

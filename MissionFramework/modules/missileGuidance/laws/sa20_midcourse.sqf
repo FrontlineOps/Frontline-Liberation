@@ -30,8 +30,8 @@
 		if(!(isNull _target)) then {
 
 			private _type = typeOf _target;
-			private _isMissile = (_type find "missile") > -1;
-			_isMissile = (_isMissile || (_type find "shell") > -1);
+            private _isMissile = ("missile" in _type);
+            _isMissile = (_isMissile || ("shell" in _type));
 
 			if(_isMissile) then {
 				_angle = 0;

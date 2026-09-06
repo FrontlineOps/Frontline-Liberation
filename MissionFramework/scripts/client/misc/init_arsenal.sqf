@@ -1,5 +1,5 @@
 if (missionNamespace getVariable ["KPLIB_autoFactionActive", false]) exitWith {
-    private _faction = toLower getText (configFile >> "CfgVehicles" >> (typeOf player) >> "faction");
+    private _faction = toLower getText (configOf player >> "faction");
     private _opforFactions = ((missionNamespace getVariable ["KPLIB_autoFactionCatalogs", createHashMap]) getOrDefault ["opfor", createHashMap]) getOrDefault ["factions", []];
     private _data = if (_faction in (_opforFactions apply {toLower _x})) then {
         missionNamespace getVariable ["KPLIB_autoFactionOpforArsenalData", createHashMap]

@@ -10,7 +10,7 @@ BATTLESPACE_ZEN_BUILD_COVERAGE = {
         private _target = _y get "target";
         private _field = (_y get "kind") == "FIELD";
         private _enough = if (_field) then {_present >= BATTLESPACE_STRATEGIC_DEFENDER_RETREAT_MANPOWER} else {_present >= _target};
-        private _status = if (_enough) then {"COVERED"} else {if (_incoming > 0) then {"RELIEF INCOMING"} else {if (_present > 0) then {"UNDER STRENGTH"} else {"GAP"}}};
+        private _status = if (_enough) then {"COVERED"} else {if (_incoming > 0) then {"RELIEF INCOMING"} else {(["GAP", "UNDER STRENGTH"] select (_present > 0))}};
         private _reason = _y getOrDefault ["reason", "Awaiting allocation evaluation"];
         if (_enough) then {_reason = "Assigned troops operating here"};
         if (!_enough && {_incoming > 0}) then {_reason = "Relief has an assignment; it has not reached the area yet"};

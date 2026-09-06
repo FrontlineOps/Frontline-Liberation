@@ -15,7 +15,7 @@
 
 		if(diag_tickTime < _nextSeekerTick) exitWith {
 
-			if (IADS_SAM_DEBUG == true) then {
+            if (IADS_SAM_DEBUG) then {
 				{
 
 					if((isNull _x)) then {
@@ -179,7 +179,7 @@
 				};
 
 
-				if (IADS_SAM_DEBUG == true) then {
+                if (IADS_SAM_DEBUG) then {
 					private _flarePos = ASLToAGL getPosASLVisual _x;
 					private _color = [0,0,1,1];
 

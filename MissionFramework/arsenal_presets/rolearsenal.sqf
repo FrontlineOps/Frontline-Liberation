@@ -37,7 +37,7 @@ roleArsenal = {
 
 	private _role = [_player] call RoleArsenal_DetermineRole;
 	private _GearToAdd = [_role] call RoleArsenal_DetermineGear;
-	private _faction = toLower getText (configFile >> "CfgVehicles" >> (typeOf _player) >> "faction");
+	private _faction = toLower getText (configOf _player >> "faction");
 	private _arsenals = missionNamespace getVariable ["KPLIB_autoFactionArsenalByFaction", createHashMap];
 	_GearToAdd = +(_arsenals getOrDefault [_faction, missionNamespace getVariable ["KPLIB_autoFactionPlayerArsenal", []]]);
 

@@ -23,9 +23,9 @@ for "_i" from 1 to _count do {
     if (KP_liberation_ace) then {[_civ] remoteExec ["KPLIB_fnc_crAddAceAction"];};
     _civs pushBack _civ;
     private _marker = createMarker ["wounded_marker_" + str _i, [((_pos select 0) - 20 + (random 40)),((_pos select 1) - 20 + (random 40))]];
-    _marker setMarkerShape "ELLIPSE";
-    _marker setMarkerSize [25,25];
-    _marker setMarkerColor "ColorCIV";
+    _marker setMarkerShapeLocal "ELLIPSE";
+    _marker setMarkerSizeLocal [25,25];
+    _marker setMarkerColorLocal "ColorCIV";
     _marker setMarkerAlpha 0.35;
     _markers pushBack _marker;
 };

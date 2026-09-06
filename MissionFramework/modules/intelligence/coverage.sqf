@@ -86,7 +86,7 @@ KPLIB_INTEL_SERVER_RECONCILE = {
                 private _trend = "First assessment; no earlier comparison available.";
                 if (_previous >= 0) then {
                     _trend = if (_activity > _previous) then {"Defensive strength increasing since the previous assessment."} else {
-                        if (_activity < _previous) then {"Defensive strength reduced since the previous assessment."} else {"No change in reported defensive strength since the previous assessment."}
+                        (["No change in reported defensive strength since the previous assessment.", "Defensive strength reduced since the previous assessment."] select (_activity < _previous))
                     };
                 };
                 ((_report # 12) get "details") pushBack _trend;

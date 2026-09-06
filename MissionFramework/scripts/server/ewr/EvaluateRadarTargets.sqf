@@ -102,9 +102,9 @@ EvaluateRadarTargets = {
 	private _canStillPlaySound = _canPlaySound;
 
 	
-	if (_hasAirTargets == true) then { 
+    if (_hasAirTargets) then {
 		if (!isNil { DEBUG_AIR_RAID }) then {
-			diag_log format ["AIR TARGETS TRUE %1, CAN PLAY?", _airTargets, _canPlaySound];
+			diag_log format ["AIR TARGETS TRUE %1, CAN PLAY? %2", _airTargets, _canPlaySound];
 		};
 		if(_canPlaySound) then {
 			// PLAY SOUND

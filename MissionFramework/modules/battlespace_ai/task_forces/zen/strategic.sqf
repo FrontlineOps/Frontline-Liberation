@@ -17,7 +17,7 @@ BATTLESPACE_ZEN_SHOW_SECTOR_SNAPSHOT = {
 	{
 		_x params ["_resource", "_amount", "_capacity", ["_shortage", false]];
 		private _ratio = if (_capacity > 0) then {round (100 * _amount / _capacity)} else {0};
-		_lines pushBack format ["%1%2: %3 / %4 (%5%%)<br/>", if (_shortage) then {"<t color='#ff9c75'>SHORT </t>"} else {""}, _resource, _amount, _capacity, _ratio];
+        _lines pushBack format ["%1%2: %3 / %4 (%5%%)<br/>", (["", "<t color='#ff9c75'>SHORT </t>"] select (_shortage)), _resource, _amount, _capacity, _ratio];
 	} forEach _stock;
 	_cooldowns params ["_resupply", "_emergency", "_reinforcement", "_deepRecon", ["_airResponse", 0], ["_fortification", 0], ["_minefield", 0]];
 	_lines pushBack format ["<br/>Cooldowns — supply %1, emergency %2, reinforcement %3, deep recon %4, air %5, construction %6, mines %7<br/>",

@@ -544,7 +544,7 @@ BATTLESPACE_TASK_FORCE_PATH_FAILED = {
 	diag_log format ["Task Force %1 failed to find a path, failure count now at %2", _taskForceName, _failureCounts];
 
 	if (_failureCounts > 10) exitWith {
-		diag_log format ["Task Force %1 failed too much, removing..."];
+		diag_log format ["Task Force %1 failed too much, removing...", _taskForceName];
 		BATTLESPACE_TASK_FORCES deleteAt _taskForceName;
 		[_taskForceName] call BATTLESPACE_TASK_FORCE_CANCEL_SPAWN_ADMISSION;
 	};

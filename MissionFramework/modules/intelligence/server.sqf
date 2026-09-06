@@ -93,7 +93,7 @@ KPLIB_INTEL_SERVER_NEAREST_SECTOR = {
     params ["_position", ["_fallback", ""]];
     if !(_position isEqualType [] && {count _position >= 2}) exitWith {_fallback};
     private _sector = [GRLIB_sector_size * 1.5, _position] call KPLIB_fnc_getNearestSector;
-    if (_sector == "") then {_fallback} else {_sector}
+    ([_sector, _fallback] select (_sector == ""))
 };
 
 KPLIB_INTEL_SERVER_TRIM_ROUTE = {

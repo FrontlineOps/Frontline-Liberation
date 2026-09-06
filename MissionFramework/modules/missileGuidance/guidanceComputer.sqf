@@ -223,7 +223,7 @@ private _overrideYawPitchChange = _result param [3, []];
 [_deltaTime, _aCmd, _missile, _flightParams, _guidanceState, _accumulator, _missileID, format ["%1 - %2 - %3", _missileID, (IADS_ActiveMissiles get _missileID) get "type", _guidanceLawName ], _overrideYawPitchChange] call IADS_MissileSteering;
 
 
-if(IADS_SAM_DEBUG == true) then {
+if(IADS_SAM_DEBUG) then {
 
 	hintSilent (_debugText + format ["\nPhase: %1\nT Velocity: %2\nC: %3\n%4", _currentPhase, _targetVelocity, _aCmd, _likeness]);
 };

@@ -56,7 +56,7 @@
 
 		private _debug = "";
 
-		if (IADS_SAM_DEBUG == true) then {
+        if (IADS_SAM_DEBUG) then {
 			_debug = format ["%1", _targetState];
 
 			drawIcon3D ["\a3\ui_f\data\IGUI\Cfg\Cursors\selectover_ca.paa", [0,1,0,1], ASLToAGL _targetPos, 0.75, 0.75, 0, "Target Position", 1, 0.025, "TahomaB"];

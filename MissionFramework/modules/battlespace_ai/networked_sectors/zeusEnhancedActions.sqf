@@ -7,7 +7,7 @@ private _toggleRoadRendering = {
 	params ["_position", "_objects", "_groups", "_waypoints", "_markers", "_hoveredEntity", "_args"];
 	ROAD_RENDER = !ROAD_RENDER;
 
-	if(ROAD_RENDER == true) then {
+    if(ROAD_RENDER) then {
 
 		[
 			{ _this call RENDER_ROADS_PFH },
@@ -28,7 +28,7 @@ private _toggleNetworkRendering = {
 	params ["_position", "_objects", "_groups", "_waypoints", "_markers", "_hoveredEntity", "_args"];
 	RENDER_NETWORK = !RENDER_NETWORK;
 
-	if(RENDER_NETWORK == true) then {
+    if(RENDER_NETWORK) then {
 
 		[
 			{ _this call RENDER_NETWORK_PFH },

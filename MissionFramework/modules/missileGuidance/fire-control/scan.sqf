@@ -11,7 +11,7 @@ IADS_Sweep = {
 	
 	if(accTime <= 0 || isGamePaused) exitWith {};
 	if(_nextSweep > CBA_missionTime) exitWith {
-		if(((IADS_SAM_DEBUG == true) || (IADS_FCR_DEBUG == true))) then {
+        if(((IADS_SAM_DEBUG) || (IADS_FCR_DEBUG))) then {
 
 			{
 				private _track = nil;
@@ -396,13 +396,13 @@ IADS_Sweep = {
 		private _canLaunch = false;
 		
 		if(_inDistance) then {
-			_canLaunch = ((_isRAM == true) && (_trackCount >= 1)) || (_trackCount >= 5) || (_isOrdinance && _trackCount >= 2);
+            _canLaunch = ((_isRAM) && (_trackCount >= 1)) || (_trackCount >= 5) || (_isOrdinance && _trackCount >= 2);
 		};
 
 
 
 		
-		if(_canLaunch == true) then {
+        if(_canLaunch) then {
 
 			_queuedFire = true;
 			[_x] call IADS_QueueFire;		
@@ -426,7 +426,7 @@ IADS_Sweep = {
 
 
 	
-	if(IADS_SAM_DEBUG == true) then {
+    if(IADS_SAM_DEBUG) then {
 
 			{
 			private _track = _x;

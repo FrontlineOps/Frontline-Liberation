@@ -186,7 +186,7 @@ IADS_HandleFiredEvent = {
 	params ["_unit", "_weapon", "_muzzle", "_mode", "_ammo", "_magazine", "_projectile", "_vehicle"];
 
 	if(!isNull _projectile && local _projectile) then {
-		if(IADS_SAM_DEBUG == true) then {
+        if(IADS_SAM_DEBUG) then {
 
 			diag_log format ["IADS_HandleFiredEvent %1", _this];
 		};

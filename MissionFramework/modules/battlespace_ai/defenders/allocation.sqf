@@ -19,7 +19,7 @@ BATTLESPACE_DEFENSE_FIND_SOURCE_RESULT = {
     } forEach BATTLESPACE_SECTOR_STATES;
     _candidates sort true;
     if (_candidates isNotEqualTo []) exitWith {[(_candidates select 0) select 1, ""]};
-    ["", if (!_reachable) then {"No reachable rear supplier"} else {if (!_quiet) then {"Reachable suppliers are active or recovering from combat"} else {"Rear suppliers cannot spare the required manpower"}}]
+    ["", if (!_reachable) then {"No reachable rear supplier"} else {(["Rear suppliers cannot spare the required manpower", "Reachable suppliers are active or recovering from combat"] select (!_quiet))}]
 };
 
 BATTLESPACE_DEFENSE_RESET_GROUP = {

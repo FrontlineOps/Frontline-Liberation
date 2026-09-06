@@ -37,46 +37,46 @@ if(isServer) then {
 
     // Mission Options
     ["--- Mission Options ---", "PARAM"] call KPLIB_fnc_log;
-    GET_PARAM(GRLIB_unitcap, "Unitcap", 2);
-    GET_PARAM(GRLIB_difficulty_modifier, "Difficulty", 2);
-    GET_PARAM(GRLIB_csat_aggressivity, "Aggressivity", 2);
-    GET_PARAM(GRLIB_civilian_activity, "Civilians", 1);
-    GET_PARAM(GRLIB_maximum_fobs, "MaximumFobs", 26);
-    GET_PARAM(GRLIB_max_squad_size, "MaxSquadSize", 10);
-    GET_PARAM_BOOL(GRLIB_blufor_defenders, "BluforDefenders", 1);
-    GET_PARAM_BOOL(GRLIB_autodanger, "Autodanger", 0);
-    GET_PARAM(GRLIB_time_factor, "DayDuration", 12);
-    GET_PARAM_BOOL(GRLIB_shorter_nights, "ShorterNights", 0);
-    GET_PARAM(GRLIB_weather_param, "Weather", 3);
-    GET_PARAM_BOOL(KP_liberation_fog_param, "VanillaFog", 1);
-    GET_PARAM(GRLIB_resources_multiplier, "ResourcesMultiplier", 3);
-    GET_PARAM_BOOL(KP_liberation_arsenal_type, "ArsenalType", 0);
-    GET_PARAM(KP_liberation_victoryCondition, "VictoryCondition", 0);
+    GET_PARAM(GRLIB_unitcap,"Unitcap",2);
+    GET_PARAM(GRLIB_difficulty_modifier,"Difficulty",2);
+    GET_PARAM(GRLIB_csat_aggressivity,"Aggressivity",2);
+    GET_PARAM(GRLIB_civilian_activity,"Civilians",1);
+    GET_PARAM(GRLIB_maximum_fobs,"MaximumFobs",26);
+    GET_PARAM(GRLIB_max_squad_size,"MaxSquadSize",10);
+    GET_PARAM_BOOL(GRLIB_blufor_defenders,"BluforDefenders",1);
+    GET_PARAM_BOOL(GRLIB_autodanger,"Autodanger",0);
+    GET_PARAM(GRLIB_time_factor,"DayDuration",12);
+    GET_PARAM_BOOL(GRLIB_shorter_nights,"ShorterNights",0);
+    GET_PARAM(GRLIB_weather_param,"Weather",3);
+    GET_PARAM_BOOL(KP_liberation_fog_param,"VanillaFog",1);
+    GET_PARAM(GRLIB_resources_multiplier,"ResourcesMultiplier",3);
+    GET_PARAM_BOOL(KP_liberation_arsenal_type,"ArsenalType",0);
+    GET_PARAM(KP_liberation_victoryCondition,"VictoryCondition",0);
 
     // Gameplay Options
     ["--- Gameplay Options ---", "PARAM"] call KPLIB_fnc_log;
-    GET_PARAM_BOOL(GRLIB_fatigue, "Fatigue", 1);
-    GET_PARAM_BOOL(KPLIB_sway, "WeaponSway", 1);
-    GET_PARAM_BOOL(KP_liberation_mapmarkers, "MapMarkers", 1);
-    GET_PARAM_BOOL(KP_liberation_mobilerespawn, "MobileRespawn", 1);
-    GET_PARAM(KP_liberation_respawn_cooldown, "RespawnCooldown", 900);
-    GET_PARAM_BOOL(KP_liberation_mobilearsenal, "MobileArsenal", 1);
-    GET_PARAM_BOOL(KPLIB_respawnOnAttackedSectors, "AttackedSectorRespawn", 0);
-    GET_PARAM_BOOL(KP_liberation_cr_param_buildings, "CR_Building", 0);
-    GET_PARAM_BOOL(KP_liberation_clear_cargo, "ClearCargo", 1);
-    GET_PARAM(KP_liberation_delayDespawnMax, "DelayDespawnMax", 5);
-    GET_PARAM_BOOL(KP_liberation_limited_zeus, "LimitedZeus", 1);
-    GET_PARAM_BOOL(KP_liberation_commander_zeus, "CommanderZeus", 1);
-    GET_PARAM_BOOL(KP_liberation_enemies_zeus, "ZeusAddEnemies", 1);
-    GET_PARAM_BOOL(KP_liberation_high_command, "HighCommand", 1);
-    GET_PARAM(KP_liberation_suppMod, "SuppMod", 1);
+    GET_PARAM_BOOL(GRLIB_fatigue,"Fatigue",1);
+    GET_PARAM_BOOL(KPLIB_sway,"WeaponSway",1);
+    GET_PARAM_BOOL(KP_liberation_mapmarkers,"MapMarkers",1);
+    GET_PARAM_BOOL(KP_liberation_mobilerespawn,"MobileRespawn",1);
+    GET_PARAM(KP_liberation_respawn_cooldown,"RespawnCooldown",900);
+    GET_PARAM_BOOL(KP_liberation_mobilearsenal,"MobileArsenal",1);
+    GET_PARAM_BOOL(KPLIB_respawnOnAttackedSectors,"AttackedSectorRespawn",0);
+    GET_PARAM_BOOL(KP_liberation_cr_param_buildings,"CR_Building",0);
+    GET_PARAM_BOOL(KP_liberation_clear_cargo,"ClearCargo",1);
+    GET_PARAM(KP_liberation_delayDespawnMax,"DelayDespawnMax",5);
+    GET_PARAM_BOOL(KP_liberation_limited_zeus,"LimitedZeus",1);
+    GET_PARAM_BOOL(KP_liberation_commander_zeus,"CommanderZeus",1);
+    GET_PARAM_BOOL(KP_liberation_enemies_zeus,"ZeusAddEnemies",1);
+    GET_PARAM_BOOL(KP_liberation_high_command,"HighCommand",1);
+    GET_PARAM(KP_liberation_suppMod,"SuppMod",1);
 
     // Technical Options
     ["--- Technical Options ---", "PARAM"] call KPLIB_fnc_log;
-    GET_PARAM(GRLIB_cleanup_vehicles, "CleanupVehicles", 2);
-    GET_PARAM_BOOL(GRLIB_introduction, "Introduction", 1);
-    GET_PARAM_BOOL(GRLIB_deployment_cinematic, "DeploymentCinematic", 1);
-    GET_PARAM(KP_liberation_restart, "ServerRestart", 0);
+    GET_PARAM(GRLIB_cleanup_vehicles,"CleanupVehicles",2);
+    GET_PARAM_BOOL(GRLIB_introduction,"Introduction",1);
+    GET_PARAM_BOOL(GRLIB_deployment_cinematic,"DeploymentCinematic",1);
+    GET_PARAM(KP_liberation_restart,"ServerRestart",0);
 
     GREUH_allow_mapmarkers = KP_liberation_mapmarkers; publicVariable "GREUH_allow_mapmarkers";
     GREUH_allow_platoonview = KP_liberation_mapmarkers; publicVariable "GREUH_allow_platoonview";

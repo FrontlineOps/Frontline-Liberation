@@ -58,7 +58,7 @@ if (!isNil { BATTLESPACE_LOCAL_TESTING }) then {
 		"UK3CB_TKC_C_WORKER"
 	];
 
-	civilians_lower = civilian apply {toLower _x};
+	civilians_lower = civilians apply {toLower _x};
 
 
 	{

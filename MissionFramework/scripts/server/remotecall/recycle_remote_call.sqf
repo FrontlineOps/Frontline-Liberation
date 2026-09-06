@@ -27,7 +27,7 @@ if ((_price_s + _price_a + _price_f) > 0
 private _storage_areas = ([_fob, GRLIB_fob_range * 1.2] call KPLIB_fnc_buildStorage) - [_object_recycled];
 private _space = 0;
 {
-    private _capacity = count (if (typeOf _x == KP_liberation_large_storage_building) then {KP_liberation_large_storage_positions} else {KP_liberation_small_storage_positions});
+    private _capacity = count (([KP_liberation_small_storage_positions, KP_liberation_large_storage_positions] select (typeOf _x == KP_liberation_large_storage_building)));
     _space = _space + ((_capacity - count attachedObjects _x) max 0);
 } forEach _storage_areas;
 if (_space < ceil (_price_s / 100) + ceil (_price_a / 100) + ceil (_price_f / 100)) exitWith {

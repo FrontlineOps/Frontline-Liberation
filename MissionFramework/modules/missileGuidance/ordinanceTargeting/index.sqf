@@ -47,13 +47,13 @@ IADS_SmokeRounds = [
 IADS_IsOrdinance = {
 	params ["_type"];
 
-	((_type find "missile_target" > -1) || (_type find "shell_target" > -1) || (_type find "rocket_target" > -1))
+    ("missile_target" in _type) || ("shell_target" in _type) || ("rocket_target" in _type)
 };
 
 IADS_IsArtilleryOrdinance = {
 	params ["_type"];
 
-	((_type find "shell_target" > -1) || (_type find "rocket_target" > -1))
+    ("shell_target" in _type) || ("rocket_target" in _type)
 };
 
 IADS_OrdinanceTargetCreate = {

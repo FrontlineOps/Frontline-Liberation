@@ -73,7 +73,7 @@ BATTLESPACE_OFFENSIVE_APPLY_POSTURE = {
             _parent setVariable ["BATTLESPACE_TRANSPORT_CARGO_GROUP", nil];
             _parent setVariable ["BATTLESPACE_TRANSPORT_VEHICLE", nil];
         };
-        private _mounted = isNull _parent && {units _x findIf {vehicle _x != _x} >= 0};
+        private _mounted = isNull _parent && {units _x findIf {!isNull objectParent _x} >= 0};
         private _point = _center getPos [[70, 120] select _mounted, _direction + ([[-90, 90] select (_forEachIndex mod 2), 180] select _mounted)];
         if (surfaceIsWater _point || {(surfaceNormal _point select 2) < 0.85}) then {_point = _center};
         if (!_mounted) then {{unassignVehicle _x; [_x] allowGetIn false} forEach units _x};

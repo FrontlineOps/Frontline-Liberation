@@ -16,7 +16,7 @@ BATTLESPACE_RESERVE_RECORD_FIELD_LOSS = {
     private _taskForce = BATTLESPACE_TASK_FORCES getOrDefault [_taskForceId, []];
     if ((_taskForce param [6, sideUnknown]) != GRLIB_side_enemy || {_unit isKindOf "Air"} || {(vehicle _unit) isKindOf "Air"}) exitWith {};
     private _position = getPosATL _unit;
-    private _weight = if (_lossType == "MANPOWER") then {1} else {4};
+    private _weight = ([4, 1] select (_lossType == "MANPOWER"));
     // A casualty belongs to its physical location, not the patrol's assigned objective.
     private _sector = [_position] call BATTLESPACE_STRATEGIC_FIND_NEAREST_OPFOR_SECTOR;
     if (_sector != "" && {_position distance2D getMarkerPos _sector <= GRLIB_capture_size}) exitWith {

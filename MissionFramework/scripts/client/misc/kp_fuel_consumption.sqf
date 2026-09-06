@@ -38,7 +38,7 @@ if (!((_this select 0) in kp_fuel_consumption_vehicles)) then {
     while {local (_this select 0)} do {
         if (isEngineOn (_this select 0)) then {
             if (speed (_this select 0) > 5) then {
-                if (speed (_this select 0) > (getNumber (configFile >> "CfgVehicles" >> typeOf (_this select 0) >> "maxSpeed") * 0.9)) then {
+                if (speed (_this select 0) > (getNumber (configOf (_this select 0) >> "maxSpeed") * 0.9)) then {
                     (_this select 0) setFuel (fuel (_this select 0) - (1 / (_kp_max_consumption * 60)));
                 } else {
                     (_this select 0) setFuel (fuel (_this select 0) - (1 / (_kp_normal_consumption * 60)));

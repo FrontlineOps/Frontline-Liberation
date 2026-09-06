@@ -15,7 +15,7 @@ BATTLESPACE_CONTACT_COLLECT = {
     {
         _x params ["_accuracy", "_target", "_side", "_class", "_position", "_age"];
         if (_accuracy <= 0 || {isNull _target} || {_side != GRLIB_side_friendly} || {count _position < 2}) then {continue};
-        private _weight = if (_class isKindOf "Tank") then {8} else {if (_class isKindOf "Car") then {3} else {1}};
+        private _weight = if (_class isKindOf "Tank") then {8} else {([1, 3] select (_class isKindOf "Car"))};
         private _player = isPlayer _target || {(crew _target) findIf {alive _x && {isPlayer _x}} >= 0};
         _reports pushBack [_target, [_position select 0, _position select 1, 0], CBA_missionTime - (0 max _age), _weight, _player, _class];
         if (count _reports >= 12) exitWith {};

@@ -31,7 +31,7 @@ BATTLESPACE_TASK_FORCES_GET_SQUAD_COMPOSITION = {
 		private _rtoChance = (random 100);
 		private _willHaveRto = false;
 		_willHaveRto = _rtoChance <= 12;
-		if(_willHaveRto == true) then {
+        if(_willHaveRto) then {
 			_baseSquad pushBack opfor_rto;
 		};
 	};

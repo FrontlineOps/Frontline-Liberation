@@ -83,7 +83,7 @@ BATTLESPACE_BATTLEGROUP_BUILD_DEFINITION = {
         _used set [_resource, 1 + (_used getOrDefault [_resource, 0])];
         _vehicles pushBack _class;
     } forEach _categories;
-    createHashMapFromArray [["formation", if (_vehicles isEqualTo []) then {"INFANTRY"} else {_name}], ["composition", createHashMapFromArray [["manpower", _manpower], ["vehicles", _vehicles], ["structures", []]]]]
+    createHashMapFromArray [["formation", ([_name, "INFANTRY"] select (_vehicles isEqualTo []))], ["composition", createHashMapFromArray [["manpower", _manpower], ["vehicles", _vehicles], ["structures", []]]]]
 };
 
 BATTLESPACE_BATTLEGROUP_DISPATCH = {

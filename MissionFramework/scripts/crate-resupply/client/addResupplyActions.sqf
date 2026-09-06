@@ -115,7 +115,7 @@ addResupplyActions = {
 
 					private _currentAllocations = missionNamespace getVariable [_crateSquadOwner, createHashMap];
 
-					if(_isSpecialCrate == true && _currentAllocations getOrDefault ["SpecialtyResources", 0] <= 0) then {
+                    if(_isSpecialCrate && _currentAllocations getOrDefault ["SpecialtyResources", 0] <= 0) then {
 						private _currentMissionTime = CBA_missionTime;
 
 						private _resetTime = _currentAllocations get "ResetTime";
@@ -176,7 +176,7 @@ addResupplyActions = {
 
 				private _currentAllocations = missionNamespace getVariable [_crateSquadOwner, createHashMap];
 
-				if(_isSpecialCrate == true && _currentAllocations getOrDefault ["SpecialtyResources", 0] <= 0) exitWith {
+                if(_isSpecialCrate && _currentAllocations getOrDefault ["SpecialtyResources", 0] <= 0) exitWith {
 					_allowed = false;
 					false
 				};

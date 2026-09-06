@@ -42,7 +42,7 @@
 				_detonate = true;
 			};
 
-			if(!isNull _target && _forceDetonate == false && _detonate) then {
+            if(!isNull _target && !_forceDetonate && _detonate) then {
 
 				_target setDamage 1;
 			};

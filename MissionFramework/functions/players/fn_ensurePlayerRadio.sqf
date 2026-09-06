@@ -41,7 +41,7 @@ private _hasRadio = _carried findIf {
 } >= 0;
 if (_hasRadio) exitWith {true};
 
-private _radio = if (_tfarLoaded) then {"TFAR_anprc152"} else {"ItemRadio"};
+private _radio = (["ItemRadio", "TFAR_anprc152"] select (_tfarLoaded));
 if !(isClass (configFile >> "CfgWeapons" >> _radio)) exitWith {false};
 _unit linkItem _radio;
 true

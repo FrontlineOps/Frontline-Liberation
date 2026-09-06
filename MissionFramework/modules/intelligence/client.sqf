@@ -64,7 +64,7 @@ KPLIB_INTEL_CLIENT_RENDER_MARKERS = {
         _x params ["_id", "_kind", "_phase", "_region", "_position", "_uncertainty", "_observedAt", "_destinationSector", "_destinationPosition", "_strength", "_route", "_tier", "_meta"];
         private _status = _meta get "status";
         private _current = _status == "CURRENT";
-        private _color = if (_current) then {"ColorOPFOR"} else {"ColorOrange"};
+        private _color = (["ColorOrange", "ColorOPFOR"] select (_current));
         private _selected = _id == KPLIB_INTEL_CLIENT_SELECTED_REPORT;
         private _zone = [_position] call KPLIB_INTEL_CLIENT_CREATE_MARKER;
         _zone setMarkerShapeLocal "ELLIPSE";
@@ -139,7 +139,7 @@ KPLIB_INTEL_CLIENT_RECEIVE_SNAPSHOT = {
     private _oldIds = KPLIB_INTEL_CLIENT_REPORTS apply {_x # 0};
     private _newReportCount = 0;
     if (KPLIB_INTEL_CLIENT_HAS_SNAPSHOT) then {
-        {_newReportCount = _newReportCount + ([0, 1] select !((_x # 0) in _oldIds))} forEach _reports;
+        {_newReportCount = _newReportCount + (parseNumber !((_x # 0) in _oldIds))} forEach _reports;
     };
 
     KPLIB_INTEL_CLIENT_REVISION = _revision;

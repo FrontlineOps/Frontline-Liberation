@@ -697,7 +697,7 @@ BATTLESPACE_ARTILLERY_POLL_REQUESTS = {
 			private _mostRecentFiringData = [];
 			private _left = ((count BATTLESPACE_ARTILLERY_FIRING_LOCATIONS) - 2);
 			private _valid = false;
-			while { _right >= 3 && _valid == false && _left > 0 } do {
+            while { _right >= 3 && !_valid && _left > 0 } do {
 				_mostRecentFiringData = (BATTLESPACE_ARTILLERY_FIRING_LOCATIONS select _right);
 				_mostRecentFiringData params ["_location", "_time"];
 

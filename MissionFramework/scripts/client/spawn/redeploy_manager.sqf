@@ -44,7 +44,7 @@ while {true} do {
         sleep 0.2;
         (
             GRLIB_force_redeploy ||  ((player distance (markerPos GRLIB_respawn_marker) < 50 || (player distance [0, 0, 0] < 50)  ))
-        ) && vehicle player == player && alive player && !dialog && howtoplay == 0
+        ) && isNull objectParent player && alive player && !dialog && howtoplay == 0
     };
 
     private _backpack = backpack player;

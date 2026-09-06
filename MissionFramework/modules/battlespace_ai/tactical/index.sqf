@@ -26,16 +26,16 @@ BATTLESPACE_STRATEGIC_GET_RESOURCE_FOR_CLASS = {
     if (_class isKindOf "Air") exitWith {"aircraft"};
     if ("artillery" in _categories) exitWith {
         if ((_text find "mortar") >= 0) then {"mortars"} else {
-            if ((_text find "rocket") >= 0 || {(_text find "mlrs") >= 0} || {(_text find "grad") >= 0}) then {"rocket_artillery"} else {"howitzers"}
+            (["howitzers", "rocket_artillery"] select ((_text find "rocket") >= 0 || {(_text find "mlrs") >= 0} || {(_text find "grad") >= 0}))
         }
     };
     if ("samTel" in _categories || {"samRadar" in _categories}) exitWith {"strategic_sam"};
     if ("samShorad" in _categories) exitWith {"tactical_sam"};
     if ("aaGun" in _categories) exitWith {"spaag"};
     if (_class isKindOf "StaticWeapon") exitWith {"car"};
-    if (_class isKindOf "Tank") exitWith {if (getNumber (configFile >> "CfgVehicles" >> _class >> "transportSoldier") > 0) then {"ifv"} else {"tanks"}};
+    if (_class isKindOf "Tank") exitWith {(["tanks", "ifv"] select (getNumber (configFile >> "CfgVehicles" >> _class >> "transportSoldier") > 0))};
     if ("groundLogistics" in _categories) exitWith {"truck"};
-    if (_class isKindOf "Car") exitWith {if (getNumber (configFile >> "CfgVehicles" >> _class >> "transportSoldier") >= 6) then {"apc"} else {"car"}};
+    if (_class isKindOf "Car") exitWith {(["car", "apc"] select (getNumber (configFile >> "CfgVehicles" >> _class >> "transportSoldier") >= 6))};
     ""
 };
 
@@ -196,7 +196,7 @@ BATTLESPACE_STRATEGIC_RECORD_CASUALTY = {
     if !((_operation getOrDefault ["kind", ""]) in ["DEFENDER", "RESERVE", "DEEP RECONNAISSANCE PATROL", "REINFORCEMENT", "AIRBORNE_REINFORCEMENT"]) exitWith {};
     [
         _operation getOrDefault ["pressureSector", ""],
-        if (_lossType == "MANPOWER") then {1} else {4}
+        ([4, 1] select (_lossType == "MANPOWER"))
     ] call BATTLESPACE_STRATEGIC_ADD_SECTOR_PRESSURE;
 };
 

@@ -5,7 +5,7 @@
 KPLIB_INTEL_SERVER_LABEL = {
     params ["_sector"];
     private _label = markerText _sector;
-    if (_label == "") then {_sector} else {_label}
+    ([_label, _sector] select (_label == ""))
 };
 
 KPLIB_INTEL_SERVER_STRENGTH = {
@@ -14,7 +14,7 @@ KPLIB_INTEL_SERVER_STRENGTH = {
     private _bands = KPLIB_intelligence_strength_bands;
     if (_weight >= (_bands # 1)) exitWith {"HEAVY"};
     if (_weight >= (_bands # 0)) exitWith {"MODERATE"};
-    if (_weight > 0) then {"LIGHT"} else {"No force confirmed"}
+    (["No force confirmed", "LIGHT"] select (_weight > 0))
 };
 
 KPLIB_INTEL_SERVER_COLLECT_RAW_REPORTS = {

@@ -799,7 +799,7 @@ BATTLESPACE_LOGISTICS_UPDATE_REFILL_STATE = {
     private _refilling = [];
     // Ledger updates only close existing cycles; ordinary evaluation starts
     // them. Completion is recorded immediately, before stock can be spent again.
-    private _toCheck = if (_startNew) then {BATTLESPACE_RESOURCE_TYPES} else {_previous};
+    private _toCheck = ([_previous, BATTLESPACE_RESOURCE_TYPES] select (_startNew));
     {
         private _threshold = _thresholds getOrDefault [_x, -1];
         private _capacity = [_sector, _x, _sectorType] call BATTLESPACE_SECTOR_GET_EFFECTIVE_CAPACITY;
@@ -900,7 +900,7 @@ BATTLESPACE_LOGISTICS_FIND_SECTOR_SOURCES = {
             // Keep the existing neighbour-first policy and largest useful
             // load preference. Distance breaks ties within each tier.
             _candidates pushBack [
-                [1, 0] select (_source in _directLinks),
+                parseNumber !(_source in _directLinks),
                 -_total,
                 _targetPosition distance2D (getMarkerPos _source),
                 _source,

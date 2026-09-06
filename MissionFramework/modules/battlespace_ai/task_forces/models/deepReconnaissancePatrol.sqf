@@ -90,7 +90,7 @@ BATTLESPACE_DEEP_RECON_ON_DECISION_TICK = {
     };
 
     if (_phase != "RETURNING" && {_routeInvalid || {_strengthLow}}) then {
-        private _returnReason = if (_routeInvalid) then {"route invalid"} else {"combat losses"};
+        private _returnReason = (["combat losses", "route invalid"] select (_routeInvalid));
         if ([_taskForceId, _taskForce, _operation, _returnReason] call BATTLESPACE_DEEP_RECON_BEGIN_RETURN) then {
             _operation = BATTLESPACE_STRATEGIC_OPERATIONS get _taskForceId;
             _phase = "RETURNING";

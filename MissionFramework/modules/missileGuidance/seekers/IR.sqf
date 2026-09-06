@@ -14,7 +14,7 @@ IADS_FLARE_SEARCH_DIST = 1000;
 
 		if(diag_tickTime < _nextSeekerTick) exitWith {
 
-			if (IADS_SAM_DEBUG == true) then {
+            if (IADS_SAM_DEBUG) then {
 				{
 
 					if((isNull _x)) then {
@@ -88,7 +88,7 @@ IADS_FLARE_SEARCH_DIST = 1000;
 
 		private _newTarget = _target;
 		if(_occluded || !_withinGimbalLimit) then {
-			if (IADS_SAM_DEBUG == true) then {
+            if (IADS_SAM_DEBUG) then {
 				systemChat format ["Target is not in gimbal limit or occluded. Gimbaled: %1, Occluded: %2", str _withinGimbalLimit, str _occluded];
 			};
 			_newTarget = objNull;
@@ -153,7 +153,7 @@ IADS_FLARE_SEARCH_DIST = 1000;
 		_targetVelocityInModelSpace set [1, 0];
 		{
 			if(isNull _newTarget) then {
-				if (IADS_SAM_DEBUG == true) then {
+                if (IADS_SAM_DEBUG) then {
 					systemChat format ["Selecting new target due to no target"];
 				};
 				_newTarget = _x;
@@ -182,7 +182,7 @@ IADS_FLARE_SEARCH_DIST = 1000;
 				
 
 				if(_chance > _irCMResistance) then {
-					if (IADS_SAM_DEBUG == true) then {
+                    if (IADS_SAM_DEBUG) then {
 						systemChat format ["Selected new target in vicinity"];
 					};
 					_newTarget = _x;
@@ -190,7 +190,7 @@ IADS_FLARE_SEARCH_DIST = 1000;
 			};
 
 
-			if (IADS_SAM_DEBUG == true) then {
+            if (IADS_SAM_DEBUG) then {
 				private _flarePos = ASLToAGL getPosASLVisual _x;
 				private _color = [0,0,1,1];
 
