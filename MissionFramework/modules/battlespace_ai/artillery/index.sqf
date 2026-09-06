@@ -1023,6 +1023,11 @@ BATTLESPACE_ARTILLERY_DO_REQUEST = {
 	} forEach (units _battery);
 
 	_vehs = _vehs arrayIntersect _vehs;
+
+    private _crewModes = [];
+    {
+        _crewModes append ((crew _x) apply {[_x, unitCombatMode _x]});
+    } forEach _vehs;
 	private _fireProgress = [];
 	{
 		// Server-local pieces retain one hook across missions; only the active magazine is counted.
@@ -1142,6 +1147,12 @@ BATTLESPACE_ARTILLERY_DO_REQUEST = {
 				private _progress = _x getVariable "BSAFireProgress";
 				_progress set [1, (_progress select 1) + _roundsThisOrder];
 				_x setVariable ["BSAFireProgress", _progress];
+                // BLUE permits aiming but prevents even an explicit artillery order from firing.
+                // Include the vehicle commander after this paid order passes the fire-point checks.
+                {_x setUnitCombatMode "YELLOW"} forEach crew _x;
+                if (_roundsOrdered == _roundsThisOrder) then {
+                    [format ["Artillery fire control released (group=%1, crew=%2, previousModes=%3, missionMode=YELLOW)", _battery, count _crewModes, _crewModes apply {_x select 1}], "BATTLESPACE"] call KPLIB_fnc_log;
+                };
                 _x commandArtilleryFire [_tLoc, _shellType, _roundsThisOrder];
 
 			} else {
@@ -1161,7 +1172,16 @@ BATTLESPACE_ARTILLERY_DO_REQUEST = {
 			_timedOut = _pending != -1 && {CBA_missionTime >= _deadline};
 			_pending == -1 || _timedOut
 		};
-		if (_timedOut) exitWith {};
+        if (_timedOut) exitWith {
+            private _pendingPieces = _vehs select {
+                private _progress = _x getVariable ["BSAFireProgress", ["", 0, 0]];
+                (_progress select 2) < (_progress select 1)
+            };
+            private _checks = _pendingPieces apply {
+                [typeOf _x, local _x, local (gunner _x), unitCombatMode (gunner _x), canFire _x, _x getVariable ["BSAFireProgress", []]]
+            };
+            [format ["Artillery fire order timed out (group=%1, shell=%2, checks[class,pieceLocal,gunnerLocal,gunnerMode,canFire,progress]=%3)", _battery, _shellType, _checks], "BATTLESPACE"] call KPLIB_fnc_log;
+        };
 	};
 	sleep 2;
 
@@ -1176,6 +1196,13 @@ BATTLESPACE_ARTILLERY_DO_REQUEST = {
 		_shellsFired = _shellsFired + ((_fireProgress select _forEachIndex) select 2);
 		_x setVariable ["BSAFireProgress", []];
 	} forEach _vehs;
+    // Cancel and unload every piece before restoring the pre-mission engagement rules.
+    {
+        _x params ["_unit", "_mode"];
+        if (!isNull _unit) then {
+            _unit setUnitCombatMode _mode;
+        };
+    } forEach _crewModes;
 	private _unusedRounds = (_reservedRounds - _shellsFired) max 0;
 	if (_unusedRounds > 0) then {
 		private _fundingSector = _battery getVariable ["BSAFundingSector", ""];
