@@ -367,24 +367,59 @@ KPLIB_SURRENDER_SERVER_BEGIN_ESCORT = {
     _unit setVariable ["KPLIB_surrenderEscortOwner", -1];
     private _escortGroup = group _caller;
     [_unit] joinSilent _escortGroup;
-    if (group _unit isNotEqualTo _escortGroup) exitWith {
-        _unit setVariable ["KPLIB_intelligenceEscort", objNull, true];
-        _unit setVariable ["KPLIB_surrenderEscortActive", nil, true];
-        if (KP_liberation_ace) then {
-            ["ace_captives_setSurrendered", [_unit, true], _unit] call CBA_fnc_targetEvent;
-        } else {
-            _unit disableAI "ANIM";
-            _unit disableAI "MOVE";
+
+    // joinSilent can return before the server observes a transfer to a client/HC group.
+    // CBA runs completion outside the client request context, including the timeout.
+    // Revalidate the caller after that transfer settles so an escape join cannot race it.
+    private _completeJoin = {
+        params ["_unit", "_caller", "_token", "_escortGroup"];
+        if (isNull _unit
+            || {(_unit getVariable ["KPLIB_surrenderEscortToken", -1]) != _token}
+            || {(_unit getVariable ["KPLIB_intelligenceEscort", objNull]) isNotEqualTo _caller}
+            || {!(_unit getVariable ["KPLIB_surrenderEscortActive", false])}) exitWith {};
+
+        if (!alive _unit || {_unit getVariable ["KPLIB_intelligenceDelivered", false]}
+            || {!(_unit getVariable ["KPLIB_intelligencePrisoner", false])}) exitWith {
+            _unit setVariable ["KPLIB_intelligenceEscort", objNull, true];
+            _unit setVariable ["KPLIB_surrenderEscortActive", nil, true];
         };
-        [format ["Prisoner escort rejected (unit=%1, reason=failed to join player group)", netId _unit], "SURRENDER"] call KPLIB_fnc_log;
-        false
+
+        private _breakDistance = missionNamespace getVariable ["KPLIB_surrender_escort_break_distance", 150];
+        if (isNull _caller || {!alive _caller} || {!isPlayer _caller}
+            || {side group _caller != GRLIB_side_friendly}
+            || {group _caller isNotEqualTo _escortGroup}
+            || {_unit distance _caller > _breakDistance}) exitWith {
+            [_unit, "escort unavailable during group transfer"] call KPLIB_SURRENDER_SERVER_RELEASE_ESCORT;
+        };
+
+        if (group _unit isNotEqualTo _escortGroup) exitWith {
+            // Preparation has not run, so the prisoner is still surrendered.
+            _unit setVariable ["KPLIB_intelligenceEscort", objNull, true];
+            _unit setVariable ["KPLIB_surrenderEscortActive", nil, true];
+            [format ["Prisoner escort rejected (unit=%1, reason=player group transfer timed out)", netId _unit], "SURRENDER"] call KPLIB_fnc_log;
+        };
+
+        [format ["Prisoner escort started (unit=%1, playerOwner=%2, group=%3)", netId _unit, owner _caller, groupId _escortGroup], "SURRENDER"] call KPLIB_fnc_log;
+        [_unit, _caller, _token] call KPLIB_SURRENDER_SERVER_PREPARE_ESCORT;
+        [_unit, _caller, _token] spawn KPLIB_SURRENDER_SERVER_MONITOR_ESCORT;
     };
-    [format ["Prisoner escort started (unit=%1, playerOwner=%2, group=%3)", netId _unit, owner _caller, groupId _escortGroup], "SURRENDER"] call KPLIB_fnc_log;
-    // Leave the client request context so the server-only abandonment path can run.
-    [{
-        _this call KPLIB_SURRENDER_SERVER_PREPARE_ESCORT;
-        _this spawn KPLIB_SURRENDER_SERVER_MONITOR_ESCORT;
-    }, [_unit, _caller, _token]] call CBA_fnc_execNextFrame;
+    [
+        {
+            params ["_unit", "_caller", "_token", "_escortGroup"];
+            isNull _unit
+                || {!alive _unit}
+                || {_unit getVariable ["KPLIB_intelligenceDelivered", false]}
+                || {(_unit getVariable ["KPLIB_surrenderEscortToken", -1]) != _token}
+                || {(_unit getVariable ["KPLIB_intelligenceEscort", objNull]) isNotEqualTo _caller}
+                || {!(_unit getVariable ["KPLIB_surrenderEscortActive", false])}
+                || {group _unit isEqualTo _escortGroup}
+        },
+        _completeJoin,
+        [_unit, _caller, _token, _escortGroup],
+        5,
+        _completeJoin
+    ] call CBA_fnc_waitUntilAndExecute;
+    // True means the validated request was accepted; completion confirms the join.
     true
 };
 
