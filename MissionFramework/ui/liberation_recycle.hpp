@@ -5,7 +5,7 @@ class liberation_recycle {
     controls[] = { "Header", "ButtonClose",
         "ManpowerImageShadow","AmmoImageShadow","FuelImageShadow",
         "ManpowerImage","AmmoImage","FuelImage",
-        "Infotext","LabelManpower","LabelAmmo","LabelFuel",
+        "Infotext","DeliveryText","LabelManpower","LabelAmmo","LabelFuel",
         "RecycleButton","CancelButton"
     };
     objects[] = {};
@@ -37,6 +37,7 @@ class liberation_recycle {
         style = ST_FRAME;
     };
     class Header: StdHeader {
+        idc = 125;
         x = 0.35 * safezoneW + safezoneX - (BORDERSIZE);
         y = 0.39 * safezoneH + safezoneY;
         w = 0.3 * safezoneW + ( 2 * BORDERSIZE);
@@ -109,6 +110,13 @@ class liberation_recycle {
         h = (0.03 * safezoneH);
         y = (0.45 * safezoneH + safezoneY);
         colorText[] = {0.9, 0.9, 0.9, 1};
+    };
+    class DeliveryText: Infotext {
+        idc = 135;
+        y = (0.53 * safezoneH + safezoneY);
+        h = (0.02 * safezoneH);
+        sizeEx = 0.016 * safezoneH;
+        text = "";
     };
     class LabelNumber: StdText {
         y = (0.5 * safezoneH + safezoneY) - (0.5 * BORDERSIZE);

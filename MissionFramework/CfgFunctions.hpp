@@ -51,12 +51,14 @@ class KPLIB {
         file = "functions\resources";
 
         class checkCrateValue     {};
+        class canRecycle          {};
         class clearCargo          {};
         class crateFromStorage    {};
         class crateToStorage      {};
         class createCrate         {};
         class fillStorage         {};
         class getCrateHeight      {};
+        class getRecycleDepot     {};
         class getStoragePositions {};
         class sortStorage         {};
     };

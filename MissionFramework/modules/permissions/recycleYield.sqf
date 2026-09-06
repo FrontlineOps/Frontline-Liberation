@@ -1,66 +1,40 @@
 KPLIB_fnc_recycleYield = {
-    params ["_vehToRecycle"];
+    params ["_vehToRecycle", ["_field", false]];
+    if (isNull _vehToRecycle) exitWith {[0, 0, 0]};
     private _type = typeOf _vehToRecycle;
-    private _suppMulti = 0.5;
-    private _ammoMulti = 0.5;
-    private _fuelMulti = 0.5;
+    private _catalog = [];
+    {_catalog append _x} forEach (KPLIB_buildList select [2, 6]);
+    private _entry = (_catalog select {toLower _type == toLower (_x select 0)}) param [0, []];
+    private _percentage = GRLIB_recycling_percentage max 0 min 1;
 
-    if !(
-        ((toLower _type) in KPLIB_b_buildings_classes) ||
-        ((toLower _type) in KPLIB_storageBuildings) ||
-        ((toLower _type) in KPLIB_upgradeBuildings) ||
-        (_type == "B_Slingload_01_Repair_F") ||
-        (_type == "B_Slingload_01_Fuel_F") ||
-        (_type == "B_Slingload_01_Ammo_F")
-    ) then {
-        private _currentAmmo = 0;
-        private _allAmmo = 0;
-        if (count (magazinesAmmo _vehToRecycle) > 0) then {
-            {
-                _currentAmmo = _currentAmmo + (_x select 1);
-                _allAmmo = _allAmmo + (getNumber(configFile >> "CfgMagazines" >> (_x select 0) >> "count"));
-            } forEach (magazinesAmmo _vehToRecycle);
-        } else {
-            _allAmmo = 1;
-        };
-
-        _suppMulti = (((_vehToRecycle getHitPointDamage "HitEngine") - 1) * -1) * (((_vehToRecycle getHitPointDamage "HitHull") - 1) * -1);
-        _ammoMulti = _currentAmmo / (_allAmmo max 1);
-        _fuelMulti = fuel _vehToRecycle;
-
-        if (_type in boats_names) then {
-            _suppMulti = (((_vehToRecycle getHitPointDamage "HitEngine") - 1) * -1);
-        };
+    if !(_vehToRecycle isKindOf "LandVehicle" || {_vehToRecycle isKindOf "Air"} || {_vehToRecycle isKindOf "Ship"}) exitWith {
+        if (_entry isEqualTo []) exitWith {[0, 0, 0]};
+        (_entry select [1, 3]) apply {round (_x * _percentage * 0.5) max 0}
     };
 
-    private _price_s = 0;
-    private _price_a = 0;
-    private _price_f = 0;
-
-    if ((toLower _type) in KPLIB_o_allVeh_classes) then {
-        if (_vehToRecycle isKindOf "Car") then {
-            _price_s = round (60 * _suppMulti);
-            _price_a = round (25 * _ammoMulti);
-            _price_f = round (40 * _fuelMulti);
-        };
-        if (_vehToRecycle isKindOf "Tank") then {
-            _price_s = round (150 * _suppMulti);
-            _price_a = round (120 * _ammoMulti);
-            _price_f = round (100 * _fuelMulti);
-        };
-        if (_vehToRecycle isKindOf "Air") then {
-            _price_s = round (250 * _suppMulti);
-            _price_a = round (200 * _ammoMulti);
-            _price_f = round (150 * _fuelMulti);
-        };
+    // Captured vehicles use the same valuation as a generated BLUFOR vehicle.
+    // Catalog prices take precedence so custom build costs cannot be farmed.
+    private _price = if (_entry isEqualTo []) then {
+        [_type] call KPLIB_fnc_getAutomaticFactionPrice
     } else {
-        private _catalog = [];
-        {_catalog append _x} forEach (KPLIB_buildList select [2, 6]);
-        private _objectinfo = (_catalog select {_type == (_x select 0)}) param [0, ["", 0, 0, 0]];
-        _price_s = round ((_objectinfo select 1) * GRLIB_recycling_percentage * _suppMulti);
-        _price_a = round ((_objectinfo select 2) * GRLIB_recycling_percentage * _ammoMulti);
-        _price_f = round ((_objectinfo select 3) * GRLIB_recycling_percentage * _fuelMulti);
+        _entry select [1, 3]
     };
-
-    [_price_s max 0, _price_a max 0, _price_f max 0]
+    private _profile = [_type] call KPLIB_fnc_getVehicleResourceProfile;
+    private _scrap = KPLIB_salvage_wreck_supply_fraction max 0 min 1;
+    private _condition = (1 - damage _vehToRecycle) max 0 min 1;
+    private _supplyFraction = _scrap + (1 - _scrap) * _condition;
+    private _ammoFraction = 0;
+    private _fuelFraction = 0;
+    if (alive _vehToRecycle) then {
+        private _remaining = 0;
+        {
+            _remaining = _remaining + (([_x select 0] call KPLIB_fnc_getMagazineResourceValue) * ((_x select 2) max 0));
+        } forEach magazinesAllTurrets [_vehToRecycle, true];
+        private _full = _profile get "ammunition";
+        if (_full > 0) then {_ammoFraction = (_remaining / _full) min 1};
+        _fuelFraction = if (_vehToRecycle isKindOf "StaticWeapon") then {0} else {fuel _vehToRecycle max 0 min 1};
+    };
+    if (_field) then {_percentage = _percentage * (KPLIB_salvage_field_multiplier max 0 min 1)};
+    private _fractions = [_supplyFraction, _ammoFraction, _fuelFraction];
+    [0, 1, 2] apply {floor ((_price select _x) * _percentage * (_fractions select _x)) max 0}
 };
