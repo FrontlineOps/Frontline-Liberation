@@ -1149,9 +1149,9 @@ BATTLESPACE_ARTILLERY_DO_REQUEST = {
 				_x setVariable ["BSAFireProgress", _progress];
                 // BLUE permits aiming but prevents even an explicit artillery order from firing.
                 // Include the vehicle commander after this paid order passes the fire-point checks.
-                {_x setUnitCombatMode "YELLOW"} forEach crew _x;
+                {_x setUnitCombatMode "RED"} forEach crew _x;
                 if (_roundsOrdered == _roundsThisOrder) then {
-                    [format ["Artillery fire control released (group=%1, crew=%2, previousModes=%3, missionMode=YELLOW)", _battery, count _crewModes, _crewModes apply {_x select 1}], "BATTLESPACE"] call KPLIB_fnc_log;
+                    [format ["Artillery fire control released (group=%1, crew=%2, previousModes=%3, missionMode=RED)", _battery, count _crewModes, _crewModes apply {_x select 1}], "BATTLESPACE"] call KPLIB_fnc_log;
                 };
                 _x commandArtilleryFire [_tLoc, _shellType, _roundsThisOrder];
 
