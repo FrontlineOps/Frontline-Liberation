@@ -1,4 +1,4 @@
-/* A finite maneuver model using the established Battlegroup save identity. */
+/* A persistent maneuver model using the established Battlegroup save identity. */
 BATTLESPACE_OFFENSIVE_CANCEL_ORDERS = {
     params ["_id", "_taskForce"];
     BATTLESPACE_TASK_FORCE_PATHS deleteAt _id;
@@ -110,7 +110,7 @@ BATTLESPACE_OFFENSIVE_ON_DECISION_TICK = {
     if (_phase in ["STAGING", "PROBING", "SHIFTING", "PRESSING", "ASSAULTING", "RETURNING"]
         && {CBA_missionTime < (_operation getOrDefault ["legDeadline", 0])}
         && {_position distance2D (_operation getOrDefault ["lastProgressPosition", _position]) >= _arrive}) then {
-        // A long but progressing march is not a failed path. The tour still expires.
+        // A long but progressing march is not a failed path.
         _operation set ["lastProgressPosition", +_position];
         _operation set ["legDeadline", CBA_missionTime + BATTLESPACE_OFFENSIVE_LEG_TIMEOUT];
     };
@@ -137,7 +137,6 @@ BATTLESPACE_OFFENSIVE_ON_DECISION_TICK = {
     if (_anchor == "" || {_target == ""} || {(_operation getOrDefault ["stagePosition", []]) isEqualTo []}) exitWith {["no usable approach assignment"] call _return};
     if (((BATTLESPACE_SECTOR_STATES getOrDefault [_anchor, createHashMap]) getOrDefault ["owner", ""]) != "OPFOR") exitWith {["approach anchor lost"] call _return};
     if (_ratio < (_operation getOrDefault ["retreatRatio", 0.5])) exitWith {["combat losses exceed the force's withdrawal threshold"] call _return};
-    if (CBA_missionTime >= (_operation getOrDefault ["expiresAt", CBA_missionTime])) exitWith {["operation window ended"] call _return};
     if !(_target in blufor_sectors) then {
         if (_phase != "SECURING") then {
             if (_phase == "ASSAULTING" && {_position distance2D _targetPosition <= GRLIB_capture_size + _arrive}) then {
@@ -161,7 +160,6 @@ BATTLESPACE_OFFENSIVE_ON_DECISION_TICK = {
     private _strength = (_composition getOrDefault ["manpower", 0]) + 4 * count (_composition getOrDefault ["vehicles", []]);
     private _strongOpposition = _threat >= _strength;
     private _shift = {
-        if ((_operation getOrDefault ["shifts", 0]) >= BATTLESPACE_OFFENSIVE_MAX_SHIFTS) exitWith {["no useful opening after bounded repositioning"] call _return};
         private _flank = -(_operation getOrDefault ["flank", 1]);
         private _point = [_anchor, _target, _position, "SHIFT", _flank] call BATTLESPACE_OFFENSIVE_PICK_POSITION;
         if (_point isEqualTo []) exitWith {["no reachable terrain candidate for disengagement"] call _return};
@@ -207,14 +205,17 @@ BATTLESPACE_OFFENSIVE_ON_DECISION_TICK = {
         [_id, _taskForce, _operation, "PRESSING", _point, "limited advance against a reported opening"] call BATTLESPACE_OFFENSIVE_SET_LEG;
         false
     };
-    if (_probes < BATTLESPACE_OFFENSIVE_MAX_PROBES && {_threat > 0 || {_recentCapture}}) exitWith {
+    if (_threat > 0 || {_recentCapture}) exitWith {
         private _point = [_anchor, _target, _position, "PROBE"] call BATTLESPACE_OFFENSIVE_PICK_POSITION;
         if (_point isEqualTo []) exitWith {call _shift};
         _operation set ["probes", _probes + 1];
         [_id, _taskForce, _operation, "PROBING", _point, "testing ground before committing to an assault"] call BATTLESPACE_OFFENSIVE_SET_LEG;
         false
     };
-    call _shift
+    // Retain this approach while waiting for new evidence. An absent contact
+    // does not justify endless repositioning or retiring a healthy formation.
+    [_id, _taskForce, _operation] call BATTLESPACE_OFFENSIVE_HOLD;
+    false
 };
 
 [

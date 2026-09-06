@@ -145,8 +145,6 @@ BATTLESPACE_SECTOR_CREATE_STATE = {
         ["refillingResources", []],
         ["lastOwnerChange", CBA_missionTime],
         ["nextResupplyAt", 0],
-        ["nextBattlegroupAt", 0],
-        ["nextBattlegroupTargetAt", 0],
         ["nextEmergencyAt", 0],
         ["nextReinforcementAt", 0],
         ["nextDeepReconAt", 0],
@@ -179,10 +177,6 @@ BATTLESPACE_SECTOR_SET_OWNER = {
     _state set [
         "nextResupplyAt",
         CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_RESUPPLY_COOLDOWN", 1800])
-    ];
-    _state set [
-        "nextBattlegroupAt",
-        CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_BATTLEGROUP_COOLDOWN", 3600])
     ];
     _state set ["nextEmergencyAt", CBA_missionTime];
     _state set ["nextReinforcementAt", CBA_missionTime];
@@ -316,6 +310,10 @@ BATTLESPACE_STRATEGIC_SERIALIZE_OPERATION = {
     params ["_operation"];
     private _saved = [_operation] call BATTLESPACE_COPY_RESOURCE_MAP;
     _saved deleteAt "arrivalReservation";
+    if ((_saved getOrDefault ["kind", ""]) == "BATTLEGROUP") then {
+        _saved deleteAt "expiresAt";
+        _saved deleteAt "expiresAtRemaining";
+    };
     if ("captureStartedAt" in _saved) then {
         _saved set ["captureAge", (CBA_missionTime - (_saved getOrDefault ["captureStartedAt", CBA_missionTime])) max 0];
         _saved deleteAt "captureStartedAt";
@@ -333,6 +331,12 @@ BATTLESPACE_STRATEGIC_DESERIALIZE_OPERATION = {
     params ["_savedOperation"];
     private _operation = [_savedOperation] call BATTLESPACE_COPY_RESOURCE_MAP;
     _operation deleteAt "arrivalReservation";
+    // Older campaigns may contain offensive tour timers. Other operation
+    // lifetimes, including deep reconnaissance, retain their saved duration.
+    if ((_operation getOrDefault ["kind", ""]) == "BATTLEGROUP") then {
+        _operation deleteAt "expiresAt";
+        _operation deleteAt "expiresAtRemaining";
+    };
     if ("captureAge" in _operation) then {
         _operation set ["captureStartedAt", CBA_missionTime - (_operation getOrDefault ["captureAge", 0])];
         _operation deleteAt "captureAge";
@@ -366,8 +370,6 @@ BATTLESPACE_LOGISTICS_SAVE = {
             ["refillingResources", +(_state getOrDefault ["refillingResources", []])],
             ["ownerAge", (CBA_missionTime - (_state getOrDefault ["lastOwnerChange", CBA_missionTime])) max 0],
             ["resupplyCooldown", ((_state getOrDefault ["nextResupplyAt", 0]) - CBA_missionTime) max 0],
-            ["battlegroupCooldown", ((_state getOrDefault ["nextBattlegroupAt", 0]) - CBA_missionTime) max 0],
-            ["battlegroupTargetCooldown", ((_state getOrDefault ["nextBattlegroupTargetAt", 0]) - CBA_missionTime) max 0],
             ["emergencyCooldown", ((_state getOrDefault ["nextEmergencyAt", 0]) - CBA_missionTime) max 0],
             ["reinforcementCooldown", ((_state getOrDefault ["nextReinforcementAt", 0]) - CBA_missionTime) max 0],
             ["deepReconCooldown", ((_state getOrDefault ["nextDeepReconAt", 0]) - CBA_missionTime) max 0],
@@ -450,8 +452,6 @@ BATTLESPACE_LOGISTICS_LOAD = {
             if (_savedOwner == _currentOwner) then {
                 _state set ["lastOwnerChange", CBA_missionTime - (_savedState getOrDefault ["ownerAge", 0])];
                 _state set ["nextResupplyAt", CBA_missionTime + (_savedState getOrDefault ["resupplyCooldown", 0])];
-                _state set ["nextBattlegroupAt", CBA_missionTime + (_savedState getOrDefault ["battlegroupCooldown", 0])];
-                _state set ["nextBattlegroupTargetAt", CBA_missionTime + (_savedState getOrDefault ["battlegroupTargetCooldown", 0])];
                 _state set ["nextEmergencyAt", CBA_missionTime + (_savedState getOrDefault ["emergencyCooldown", 0])];
                 _state set ["nextReinforcementAt", CBA_missionTime + (_savedState getOrDefault ["reinforcementCooldown", 0])];
                 _state set ["nextDeepReconAt", CBA_missionTime + (_savedState getOrDefault ["deepReconCooldown", 0])];

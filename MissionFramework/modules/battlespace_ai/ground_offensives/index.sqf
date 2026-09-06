@@ -93,8 +93,6 @@ BATTLESPACE_BATTLEGROUP_DISPATCH = {
     if !(_targetSector in blufor_sectors) exitWith {false};
     if (["BATTLEGROUP", _targetSector] call BATTLESPACE_STRATEGIC_HAS_OPERATION_FOR_TARGET) exitWith {false};
     private _source = BATTLESPACE_SECTOR_STATES getOrDefault [_originSector, createHashMap];
-    private _target = BATTLESPACE_SECTOR_STATES getOrDefault [_targetSector, createHashMap];
-    if (CBA_missionTime < (_source getOrDefault ["nextBattlegroupAt", 0]) || {CBA_missionTime < (_target getOrDefault ["nextBattlegroupTargetAt", 0])}) exitWith {false};
     if !([_originSector, _source] call BATTLESPACE_DEFENSE_SOURCE_IS_AVAILABLE) exitWith {false};
     private _anchors = ((NETWORKED_SECTORS getOrDefault [_targetSector, createHashMap]) getOrDefault ["Links", []]) select {
         ((BATTLESPACE_SECTOR_STATES getOrDefault [_x, createHashMap]) getOrDefault ["owner", ""]) == "OPFOR"
@@ -118,12 +116,9 @@ BATTLESPACE_BATTLEGROUP_DISPATCH = {
     if (count _definition == 0) exitWith {false};
     private _range = BATTLESPACE_OFFENSIVE_RETREAT_RATIO;
     private _id = ["Battlegroup", _definition get "composition", getMarkerPos _originSector, _position, getMarkerPos _originSector, _originSector, "BATTLEGROUP",
-        createHashMapFromArray [["phase", "STAGING"], ["targetSector", _targetSector], ["approachSector", _anchorSector], ["stagePosition", _position], ["targetPosition", _position], ["lastProgressPosition", getMarkerPos _originSector], ["probes", 0], ["shifts", 0], ["flank", selectRandom [-1, 1]], ["retreatRatio", (_range select 0) + random ((_range select 1) - (_range select 0))], ["expiresAt", CBA_missionTime + BATTLESPACE_OFFENSIVE_TOUR_DURATION], ["legDeadline", CBA_missionTime + BATTLESPACE_OFFENSIVE_LEG_TIMEOUT], ["outcome", ""]]
+        createHashMapFromArray [["phase", "STAGING"], ["targetSector", _targetSector], ["approachSector", _anchorSector], ["stagePosition", _position], ["targetPosition", _position], ["lastProgressPosition", getMarkerPos _originSector], ["probes", 0], ["shifts", 0], ["flank", selectRandom [-1, 1]], ["retreatRatio", (_range select 0) + random ((_range select 1) - (_range select 0))], ["legDeadline", CBA_missionTime + BATTLESPACE_OFFENSIVE_LEG_TIMEOUT], ["outcome", ""]]
     ] call BATTLESPACE_STRATEGIC_CREATE_FUNDED_TASK_FORCE;
     if (_id == "") exitWith {false};
-    _source set ["nextBattlegroupAt", CBA_missionTime + BATTLESPACE_STRATEGIC_BATTLEGROUP_COOLDOWN];
-    private _cooldown = BATTLESPACE_STRATEGIC_BATTLEGROUP_TARGET_COOLDOWN;
-    _target set ["nextBattlegroupTargetAt", CBA_missionTime + (_cooldown select 0) + random ((_cooldown select 1) - (_cooldown select 0))];
     stats_hostile_battlegroups = (missionNamespace getVariable ["stats_hostile_battlegroups", 0]) + 1;
     [format ["Ground offensive %1 formed %2 at %3, staging on the %4-%5 approach; opportunity=%6", _id, _definition get "formation", _originSector, _anchorSector, _targetSector, ["recent capture", "reported contact"] select ((_contact select 1) > 0)]] call BATTLESPACE_STRATEGIC_LOG;
     [] call BATTLESPACE_LOGISTICS_SAVE;
@@ -135,8 +130,7 @@ BATTLESPACE_BATTLEGROUP_DECISION_TICK = {
     if ([] call BATTLESPACE_GROUND_ALLOCATION_BLOCK != "") exitWith {};
     private _remaining = BATTLESPACE_STRATEGIC_GROUND_FORMATIONS_PER_TICK - (missionNamespace getVariable ["BATTLESPACE_GROUND_FORMATIONS_CREATED", 0]);
     if (_remaining <= 0) exitWith {};
-    private _targets = blufor_sectors arrayIntersect sectors_allSectors;
-    _targets = [_targets, [], {(BATTLESPACE_SECTOR_STATES getOrDefault [_x, createHashMap]) getOrDefault ["nextBattlegroupTargetAt", 0]}, "ASCEND"] call BIS_fnc_sortBy;
+    private _targets = (blufor_sectors arrayIntersect sectors_allSectors) call BIS_fnc_arrayShuffle;
     {
         if (_remaining <= 0) exitWith {};
         private _target = _x;

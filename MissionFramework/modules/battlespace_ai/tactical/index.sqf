@@ -504,7 +504,6 @@ BATTLESPACE_STRATEGIC_BUILD_SECTOR_SNAPSHOT = {
             ((_state getOrDefault ["nextEmergencyAt", 0]) - CBA_missionTime) max 0,
             ((_state getOrDefault ["nextReinforcementAt", 0]) - CBA_missionTime) max 0,
             ((_state getOrDefault ["nextDeepReconAt", 0]) - CBA_missionTime) max 0,
-            ((_state getOrDefault ["nextBattlegroupAt", 0]) - CBA_missionTime) max 0,
             ((_state getOrDefault ["nextAirResponseAt", 0]) - CBA_missionTime) max 0,
             ((_state getOrDefault ["nextFortificationAt", 0]) - CBA_missionTime) max 0,
             ((_state getOrDefault ["nextMinefieldAt", 0]) - CBA_missionTime) max 0
