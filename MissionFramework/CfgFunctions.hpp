@@ -124,6 +124,8 @@ class KPLIB {
         class getVehicleAirDefense         {};
         class collectFactionArsenal        {};
         class getAutomaticFactionPrice     {};
+        class getMagazineResourceValue     {};
+        class getVehicleResourceProfile    {};
         class getConfigCargo               {};
         class pickFactionUnit              {};
     };

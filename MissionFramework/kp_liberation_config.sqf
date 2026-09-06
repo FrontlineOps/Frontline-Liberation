@@ -40,8 +40,12 @@ KP_liberation_autoFaction_arsenalBlacklist = [];
 // below 1 disables the cap.
 KP_liberation_autoFaction_resupplyCrateLimit = 16;
 
-// Baseline build costs [supplies, ammunition, fuel]. Vehicle config cost and
-// threat apply a bounded multiplier; all results are rounded to steps of 25.
+// Category defaults for infantry/non-vehicles and missing vehicle fuel configs.
+// Vehicles use chassis size, armor, engine power, seats, cargo/support equipment,
+// damaging turret/pylon ammunition and fuel capacity instead of these baselines.
+// ACE refuelling litres take priority over engine fuelCapacity when provided.
+// Prices round to 25; unarmed vehicles cost no ammo and statics cost no fuel.
+KP_liberation_autoFaction_vehiclePriceMultipliers = [1, 1, 1]; // Supplies, ammunition, fuel
 KP_liberation_autoFaction_priceDefaults = createHashMapFromArray [
     ["infantry",       [25,   0,   0]],
     ["light",          [75,  25,  50]],
