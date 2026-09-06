@@ -3,10 +3,10 @@
 <Project name="Liberation">
     <Package name="Liberation">
         <Key ID="STR_MISSION_TITLE">
-            <Original>KC LIBERATION v1.3.2</Original>
+            <Original>FL LIBERATION v2.0.8</Original>
         </Key>
         <Key ID="STR_MISSION_VERSION">
-            <Original>v1.3.2</Original>
+            <Original>v2.0.8</Original>
         </Key>
         <Key ID="STR_Deploy_OnPoint">
             <Original>Deploy</Original>

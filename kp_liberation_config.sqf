@@ -8,10 +8,10 @@
     All four selections are mandatory. Invalid, wrong-side, empty, or sparse
     selections stop preset initialization instead of loading legacy faction data.
 */
-KP_liberation_autoFaction_blufor = ["CUP_B_US_Army"];
-KP_liberation_autoFaction_opfor = ["CUP_O_RU"];
-KP_liberation_autoFaction_resistance = ["CUP_I_NAPA"];
-KP_liberation_autoFaction_civilians = ["CUP_C_RU"];
+KP_liberation_autoFaction_blufor = ["TTU_FE_CUP_Fac_USMC_09_DST"];
+KP_liberation_autoFaction_opfor = ["TTU_FE_CUP_Fac_TKA_12", "TTU_FE_CUP_Fac_TKASF_12"];
+KP_liberation_autoFaction_resistance = ["TTU_FE_CUP_Fac_TKL_12"];
+KP_liberation_autoFaction_civilians = ["CUP_C_TK"];
 
 /* Optional individual additions to each generated side.
     Use CfgVehicles classnames for vehicles, soldiers, static weapons or supply
