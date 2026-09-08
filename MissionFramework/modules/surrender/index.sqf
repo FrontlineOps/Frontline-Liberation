@@ -23,8 +23,10 @@ KPLIB_SURRENDER_LOCAL_FOLLOW_ESCORT = {
     if (!isRemoteExecuted && {!isServer}) exitWith {};
     if (isNull _unit || {!local _unit} || {!alive _unit} || {isNull _caller}) exitWith {};
     if ((_unit getVariable ["KPLIB_surrenderEscortToken", -1]) != _token || {(_unit getVariable ["KPLIB_intelligenceEscort", objNull]) isNotEqualTo _caller}) exitWith {};
-    if (isNull objectParent _unit && {_unit distance _caller > 3} && {currentCommand _unit != "GET IN"}) then {
-        _unit doMove getPosATL _caller;
+    // Preparation may be retried after a locality change. Only resume formation
+    // when no explicit order is active; Move, Stop and Get In belong to the leader.
+    if (group _unit isEqualTo group _caller && {isNull objectParent _unit} && {currentCommand _unit in ["", "FOLLOW"]}) then {
+        _unit doFollow leader group _unit;
     };
 };
 
@@ -47,7 +49,9 @@ KPLIB_SURRENDER_LOCAL_PREPARE_ESCORT = {
     _unit setUnitPos "AUTO";
     if (isNull objectParent _unit && {lifeState _unit != "INCAPACITATED"} && {!(_unit getVariable ["ACE_isUnconscious", false])}) then {
         [_unit, "AmovPercMstpSnonWnonDnon", 2] call KPLIB_fnc_doAnimation;
-        if (!isNull _caller && {currentCommand _unit != "GET IN"}) then {_unit doFollow _caller; _unit doMove getPosATL _caller};
+        if (!isNull _caller) then {
+            [_unit, _caller, _token] call KPLIB_SURRENDER_LOCAL_FOLLOW_ESCORT;
+        };
     };
     [_unit, _caller, _token] remoteExecCall ["KPLIB_SURRENDER_SERVER_ESCORT_READY", 2];
 };
@@ -287,6 +291,7 @@ KPLIB_SURRENDER_SERVER_RELEASE_ESCORT = {
 };
 
 KPLIB_SURRENDER_SERVER_MONITOR_ESCORT = {
+    if (!isServer || {isRemoteExecuted}) exitWith {};
     params [
         ["_unit", objNull, [objNull]],
         ["_caller", objNull, [objNull]],
@@ -305,28 +310,43 @@ KPLIB_SURRENDER_SERVER_MONITOR_ESCORT = {
         if (_currentEscort isNotEqualTo _caller || {(_unit getVariable ["KPLIB_surrenderEscortToken", -1]) != _token}) exitWith {
             _finished = true;
         };
-        if (isNull _caller || {!alive _caller} || {!isPlayer _caller} || {_unit distance _caller > _breakDistance}) exitWith {
-            [_unit, "escort unavailable or beyond range"] call KPLIB_SURRENDER_SERVER_RELEASE_ESCORT;
+        // The prisoner belongs to the squad, not permanently to the action-clicker.
+        // Search only that squad; unrelated nearby players cannot retain custody.
+        private _escorts = (units group _unit) select {
+            isPlayer _x && {alive _x} && {side group _x == GRLIB_side_friendly}
+                && {_unit distance _x <= _breakDistance}
+        };
+        if (_escorts isEqualTo []) exitWith {
+            [_unit, "squad escorts unavailable or beyond range"] call KPLIB_SURRENDER_SERVER_RELEASE_ESCORT;
             _finished = true;
+        };
+        if !(_caller in _escorts) then {
+            private _leader = leader group _unit;
+            _caller = if (_leader in _escorts) then {_leader} else {_escorts # 0};
+            _unit setVariable ["KPLIB_intelligenceEscort", _caller, true];
+            _unit setVariable ["KPLIB_surrenderEscortOwner", -1];
+            [format ["Prisoner escort transferred within squad (unit=%1, playerOwner=%2, group=%3)", netId _unit, owner _caller, groupId group _unit], "SURRENDER"] call KPLIB_fnc_log;
         };
 
         private _deliveryDistance = missionNamespace getVariable ["KPLIB_intelligence_delivery_distance", 40];
-        if (
-            _unit distance _caller <= _deliveryDistance
-            && {!isNil "KPLIB_INTEL_SERVER_IS_NEAR_TERMINAL"}
-            && {[_caller] call KPLIB_INTEL_SERVER_IS_NEAR_TERMINAL}
-            && {!isNil "KPLIB_INTEL_SERVER_COMMIT_PRISONER"}
-        ) then {
-            _finished = [_unit, _caller, "surrender escort"] call KPLIB_INTEL_SERVER_COMMIT_PRISONER;
-        };
+        {
+            if (
+                _unit distance _x <= _deliveryDistance
+                && {!isNil "KPLIB_INTEL_SERVER_IS_NEAR_TERMINAL"}
+                && {[_x] call KPLIB_INTEL_SERVER_IS_NEAR_TERMINAL}
+                && {!isNil "KPLIB_INTEL_SERVER_COMMIT_PRISONER"}
+            ) then {
+                _finished = [_unit, _x, "surrender escort"] call KPLIB_INTEL_SERVER_COMMIT_PRISONER;
+            };
+            if (_finished) exitWith {};
+        } forEach _escorts;
         if (_finished) then {continue};
         if ((_unit getVariable ["KPLIB_surrenderEscortOwner", -1]) != owner _unit
             || {_unit getVariable ["ace_captives_isSurrendering", false]}
             || {(toLower animationState _unit) find "ssur" >= 0}) then {
             [_unit, _caller, _token] call KPLIB_SURRENDER_SERVER_PREPARE_ESCORT;
         };
-        // Check boarding commands on the owner so follow updates do not cancel Get In.
-        [_unit, _caller, _token] remoteExecCall ["KPLIB_SURRENDER_LOCAL_FOLLOW_ESCORT", owner _unit];
+        // Native squad orders control movement; do not issue periodic doMove here.
     };
 
     if (!isNull _unit && {(_unit getVariable ["KPLIB_intelligenceEscort", objNull]) isEqualTo _caller}

@@ -36,5 +36,17 @@ KPLIB_fnc_recycleYield = {
     };
     if (_field) then {_percentage = _percentage * (KPLIB_salvage_field_multiplier max 0 min 1)};
     private _fractions = [_supplyFraction, _ammoFraction, _fuelFraction];
-    [0, 1, 2] apply {floor ((_price select _x) * _percentage * (_fractions select _x)) max 0}
+    private _yield = [0, 1, 2] apply {floor ((_price select _x) * _percentage * (_fractions select _x)) max 0};
+
+    // Empty/captured/wrecked objects lose their enemy side, so use the generated
+    // OPFOR catalog, including configured extras and static weapons. A class also
+    // available to build keeps its normal refund to prevent buy/salvage profit.
+    private _catalogs = missionNamespace getVariable ["KPLIB_autoFactionCatalogs", createHashMap];
+    private _enemyVehicles = (_catalogs getOrDefault ["opfor", createHashMap]) getOrDefault ["allVehicles", []];
+    if (_entry isEqualTo [] && {_enemyVehicles findIf {toLower _x == toLower _type} >= 0}) then {
+        private _multiplier = (missionNamespace getVariable ["KPLIB_salvage_enemy_multiplier", 2]) max 0;
+        // Apply after the existing rounding: 2 means exactly twice each old payout.
+        _yield = _yield apply {floor (_x * _multiplier)};
+    };
+    _yield
 };

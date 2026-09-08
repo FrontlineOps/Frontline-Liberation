@@ -362,7 +362,8 @@ GRLIB_color_enemy = "ColorOPFOR";            			// Enemy sector color
 GRLIB_color_enemy_bright = "ColorRED";       			// Enemy active sector color
 
 GRLIB_fob_range = 300;                       			// FOB building range
-GRLIB_recycling_percentage = 0.6;                        // Maximum return at a Salvage Depot
+GRLIB_recycling_percentage = 0.6;                        // Base vehicle return at a Salvage Depot, before the enemy multiplier
+KPLIB_salvage_enemy_multiplier = 2;                      // Multiply enemy-only vehicle payouts; build-catalog refunds stay unchanged
 KPLIB_salvage_field_enabled = true;                      // Salvage vehicles into loose resource crates
 KPLIB_salvage_field_multiplier = 0.5;                    // Field yield relative to depot yield
 KPLIB_salvage_wreck_supply_fraction = 0.25;               // Wreck retains this fraction of its supply value; no ammo/fuel
