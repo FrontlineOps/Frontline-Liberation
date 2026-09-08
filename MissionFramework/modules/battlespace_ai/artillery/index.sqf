@@ -2,6 +2,7 @@ BATTLESPACE_DISABLE_ARTILLERY = false;
 BATTLESPACE_ARTILLERY_DEBUG = false;
 BATTLESPACE_ARTILLERY_SECTIONS = [];
 BATTLESPACE_ARTILLERY_OBSERVER_TARGETS = createHashMap;
+BATTLESPACE_ARTILLERY_NETWORK_ENABLED = true;
 if (isNil "BATTLESPACE_ARTILLERY_RENDER_DATA") then {
 	BATTLESPACE_ARTILLERY_RENDER_DATA = [[], [], [true, 0, 0]];
 };
@@ -623,43 +624,51 @@ BATTLESPACE_ARTILLERY_GET_READY_BATTERIES = {
 };
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\artillery\trp.sqf";
 
+BATTLESPACE_ARTILLERY_ACTIVE_FIRE_AREAS = {
+    if (!isServer || {isRemoteExecuted}) exitWith {[]};
+    private _flights = (localNamespace getVariable ["BSA_ARTILLERY_FLIGHTS", []]) select {
+        CBA_missionTime < (_x select 1)
+    };
+    localNamespace setVariable ["BSA_ARTILLERY_FLIGHTS", _flights];
+    private _areas = [];
+    {_areas pushBackUnique (_x select 0)} forEach _flights;
+    _areas
+};
+
+BATTLESPACE_ARTILLERY_RECORD_FLIGHT = {
+    if (!isServer || {isRemoteExecuted}) exitWith {};
+    params ["_piece"];
+    private _flight = _piece getVariable ["BSAFireFlight", []];
+    if (_flight isEqualTo []) exitWith {};
+    _flight params ["_area", "_eta"];
+    // ETA is captured with the loaded magazine and actual fire point. Start the
+    // window on Fired, not on the order; aiming/retries must not consume flight time.
+    // Allow ten seconds of ballistic margin, or three minutes if the engine has no ETA.
+    private _duration = if (_eta > 0) then {20 max (_eta + 10) min 600} else {180};
+    private _flights = localNamespace getVariable ["BSA_ARTILLERY_FLIGHTS", []];
+    private _existing = _flights findIf {(_x select 0) isEqualTo _area};
+    private _until = CBA_missionTime + _duration;
+    if (_existing < 0) then {
+        _flights pushBack [+_area, _until];
+    } else {
+        private _entry = _flights select _existing;
+        _entry set [1, (_entry select 1) max _until];
+    };
+    // Independent of the battery/group: destroying a gun cannot recall its rounds.
+    localNamespace setVariable ["BSA_ARTILLERY_FLIGHTS", _flights];
+};
+
 BATTLESPACE_ARTILLERY_POLL_REQUESTS = {
     if (!isServer || {isRemoteExecuted}) exitWith {};
     call BATTLESPACE_TRP_PLAN;
-	(_this select 0) params [["_nextTick", 0], ["_counter", 0], ["_cycleCount", 0], ["_nextCycleSwap", 0], ["_networkEnabled", true]];
+    (_this select 0) params [["_nextTick", 0], ["_counter", 0]];
 
 
     private _commandTime = call KPLIB_RADIO_SERVER_COMMAND_TIME;
     if (_commandTime < _nextTick) exitWith {};
-	if (_nextCycleSwap <= 0) then {
-		_nextCycleSwap = BATTLESPACE_ARTILLERY_MINIMUM_CYCLES_TO_SWAP + floor (random (BATTLESPACE_ARTILLERY_MAXIMUM_CYCLES_TO_SWAP - BATTLESPACE_ARTILLERY_MINIMUM_CYCLES_TO_SWAP));
-		_cycleCount = -1;
-		(_this select 0) set [3, _nextCycleSwap];
-		(_this select 0) set [4, _networkEnabled];
-		BATTLESPACE_ARTILLERY_CYCLES_REQUIRED = _nextCycleSwap;
-		BATTLESPACE_ARTILLERY_NETWORK_ENABLED = _networkEnabled;
-        [format ["Artillery observer network initialized (enabled=%1, window=%2 seconds)", _networkEnabled, [_nextCycleSwap * BATTLESPACE_ARTILLERY_POLL_COOLDOWN] call KPLIB_RADIO_SERVER_COMMAND_DELAY], "BATTLESPACE"] call KPLIB_fnc_log;
-	};
-
-	
-
-	private _newNetworkEnabled = _networkEnabled;
-	BATTLESPACE_ARTILLERY_CURRENT_CYCLE = _cycleCount + 1;
-
-	(_this select 0) set [2, BATTLESPACE_ARTILLERY_CURRENT_CYCLE];
-	if(BATTLESPACE_ARTILLERY_CURRENT_CYCLE >= _nextCycleSwap) then {
-		_newNetworkEnabled = !_networkEnabled;
-		private _nextSwap = BATTLESPACE_ARTILLERY_MINIMUM_CYCLES_TO_SWAP + floor (random (BATTLESPACE_ARTILLERY_MAXIMUM_CYCLES_TO_SWAP - BATTLESPACE_ARTILLERY_MINIMUM_CYCLES_TO_SWAP));
-		(_this select 0) set [2, 0];
-		(_this select 0) set [3, _nextSwap];
-		(_this select 0) set [4, _newNetworkEnabled];
-		BATTLESPACE_ARTILLERY_CURRENT_CYCLE = 0;
-		BATTLESPACE_ARTILLERY_CYCLES_REQUIRED = _nextSwap;
-		BATTLESPACE_ARTILLERY_NETWORK_ENABLED = _newNetworkEnabled;
-		if ((count BATTLESPACE_ARTILLERY_OBSERVER_TARGETS) > 0) then {
-            [format ["Artillery observer network toggled (enabled=%1, nextWindow=%2 seconds, activeTargets=%3)", _newNetworkEnabled, [_nextSwap * BATTLESPACE_ARTILLERY_POLL_COOLDOWN] call KPLIB_RADIO_SERVER_COMMAND_DELAY, count BATTLESPACE_ARTILLERY_OBSERVER_TARGETS], "BATTLESPACE"] call KPLIB_fnc_log;
-		};
-	};
+    // Observation stays continuous; the command clock retains actual tower disruption.
+    // Prune even when no battery is ready, including flights from destroyed batteries.
+    private _currentSelectedTargets = call BATTLESPACE_ARTILLERY_ACTIVE_FIRE_AREAS;
 
 	
 
@@ -762,7 +771,7 @@ BATTLESPACE_ARTILLERY_POLL_REQUESTS = {
 	};
 	private _readyBatteries = [] call BATTLESPACE_ARTILLERY_GET_READY_BATTERIES;
 
-	if((count _readyBatteries) <= 0 || !BATTLESPACE_ARTILLERY_NETWORK_ENABLED) exitWith {   
+    if (count _readyBatteries <= 0) exitWith {
 		private _targetToFire = nil;
 		{
 			_y params ["_observer", "_target", "_timeInCombat", ["_systemTargeted", false], ["_targetedAt", CBA_missionTime]];
@@ -794,7 +803,6 @@ BATTLESPACE_ARTILLERY_POLL_REQUESTS = {
 			[_targetToFire] spawn BATTLESPACE_SPAWN_BATTERY;
 		};
 	};
-	if(!BATTLESPACE_ARTILLERY_NETWORK_ENABLED) exitWith {};
 	
 	
 	// Loop through current observer - targets
@@ -802,14 +810,13 @@ BATTLESPACE_ARTILLERY_POLL_REQUESTS = {
 
 	
 
-	private _currentSelectedTargets = [];
-
 	{
 		private _state = _x getVariable ["BSAState", []];
 		_state params [["_status", "NOT READY"], ["_initialSetupTime", 0], ["_loc", []], ["_target", objNull], ["_accuracy", 0], ["_observer", objNull], ["_tLocs", []], ["_tLoc", []], ["_systemTargeted", false], ["_cooldownExpiresAt", 0], ["_suppressedUntil", 0]];
 		
 
-		if(!(_tLoc isEqualTo [])) then {
+        if ((_status == "IN MISSION" || {_x getVariable ["BSAFireMissionActive", false]})
+            && {!(_tLoc isEqualTo [])}) then {
 			_currentSelectedTargets pushBack _tLoc;
 		};
 	} forEach BATTLESPACE_ARTILLERY_SECTIONS;
@@ -1005,6 +1012,8 @@ BATTLESPACE_ARTILLERY_FULFILL_REQUEST = {
 BATTLESPACE_ARTILLERY_DO_REQUEST = {
     if (!isServer || {isRemoteExecuted}) exitWith {};
 	params ["_battery", "_req", "_obsKey"];
+    // Suppression can change BSAState while an already ordered salvo is completing.
+    _battery setVariable ["BSAFireMissionActive", true];
 
 	(_req) params [["_observer", objNull], ["_target", nil], ["_accuracy", 0], ["_systemTargeted", false], ["_targetedAt", CBA_missionTime], ["_wp", false], ["_reservedRounds", 0], ["_shellType", ""], ["_plannedSalvos", -1]];
 
@@ -1042,6 +1051,7 @@ BATTLESPACE_ARTILLERY_DO_REQUEST = {
 				if (count _progress == 3 && {_magazine == (_progress select 0)}) then {
 					_progress set [2, (_progress select 2) + 1];
                     _piece setVariable ["BSAFireProgress", _progress];
+                    [_piece] call BATTLESPACE_ARTILLERY_RECORD_FLIGHT;
                     private _trpId = _piece getVariable ["BSAFireTRP", ""];
                     private _trp = (localNamespace getVariable ["BSA_TRPS", createHashMap]) getOrDefault [_trpId, createHashMap];
                     if (count _trp > 0) then {_trp set ["lastFiredAt", CBA_missionTime]};
@@ -1159,6 +1169,7 @@ BATTLESPACE_ARTILLERY_DO_REQUEST = {
                     [format ["Artillery fire control released (group=%1, crew=%2, previousModes=%3, missionMode=RED)", _battery, count _crewModes, _crewModes apply {_x select 1}], "BATTLESPACE"] call KPLIB_fnc_log;
                 };
                 _activeOrders pushBack [_x, +_tLoc, gunner _x, crew _x, CBA_missionTime, -1, 0];
+                _x setVariable ["BSAFireFlight", [_target getPos [0, 0], _x getArtilleryETA [_tLoc, _shellType]]];
                 _x commandArtilleryFire [_tLoc, _shellType, _roundsThisOrder];
 
 			} else {
@@ -1255,6 +1266,7 @@ BATTLESPACE_ARTILLERY_DO_REQUEST = {
 		// Keep the mission's counter even if a piece was deleted after firing.
 		_shellsFired = _shellsFired + ((_fireProgress select _forEachIndex) select 2);
 		_x setVariable ["BSAFireProgress", []];
+        _x setVariable ["BSAFireFlight", nil];
 	} forEach _vehs;
     // Cancel and unload every piece before restoring the pre-mission engagement rules.
     {
@@ -1263,6 +1275,7 @@ BATTLESPACE_ARTILLERY_DO_REQUEST = {
             _unit setUnitCombatMode _mode;
         };
     } forEach _crewModes;
+    _battery setVariable ["BSAFireMissionActive", false];
 	private _unusedRounds = (_reservedRounds - _shellsFired) max 0;
 	if (_unusedRounds > 0) then {
 		private _fundingSector = _battery getVariable ["BSAFundingSector", ""];
@@ -1349,122 +1362,98 @@ BATTLESPACE_ARTILLERY_BROADCAST_CLEAR_TARGET = {
 	};
 };
 BATTLESPACE_ARTILLERY_OBSERVER_COROUTINE = {
+    (_this select 0) params ["_observer", ["_state", []]];
+    if (isNull _observer || {!alive _observer} || {isNull group _observer}) exitWith {
+        [_this select 1] call CBA_fnc_removePerFrameHandler;
+    };
 
-	(_this select 0) params [
-		"_observer",
-		["_state", []]
-	];
+    // Tracking belongs to the observer, independently of queued/consumed fire requests.
+    _state params [
+        ["_accuracy", 0],
+        ["_inCombat", false],
+        ["_callInWp", false],
+        ["_shellChosen", false],
+        ["_engagementStartedAt", -1],
+        ["_trackedTarget", objNull],
+        ["_previousPosition", []]
+    ];
+    if (_callInWp && {BATTLESPACE_ARTILLERY_SMOKE_CHANCE <= 0 || {
+        (_observer getVariable ["BSAObserverSmokeConsumedAt", -2]) >= _engagementStartedAt
+    }}) then {_callInWp = false};
 
-	
-
-	if(isNull _observer || !(alive _observer) || isNull (group _observer)) exitWith {
-		[_this select 1] call CBA_fnc_removePerFrameHandler;
-	};
-
-
-	
-	_state params [
-		["_timeInCombat", 0],
-		["_inCombat", false],
-		["_callInWp", false],
-		["_shellChosen", false],
-		["_engagementStartedAt", -1]
-	];
-	
-
-	if (_callInWp && {BATTLESPACE_ARTILLERY_SMOKE_CHANCE <= 0 || {
-		(_observer getVariable ["BSAObserverSmokeConsumedAt", -2]) >= _engagementStartedAt
-	}}) then {_callInWp = false};
-
-	
-
-
-	private _shouldUpdateToBeInCombat = false;
     [group _observer] call BATTLESPACE_CONTACT_SAMPLE_GROUP;
     private _targets = [[], 1e9, 45, false, group _observer] call BATTLESPACE_CONTACT_QUERY;
+    private _eligible = [];
+    {
+        _x params ["_position", "_seenAt", "_weight", "_previous", "_player", "_target"];
+        if (isNull _target || {!alive _target} || {side _target != GRLIB_side_friendly}
+            || {_target getVariable ["ACE_isUnconscious", false]}) then {continue};
+        private _nearEntities = (_position nearEntities [["Man"], 300]) select {
+            alive _x && {side _x == GRLIB_side_enemy}
+        };
+        if (count _nearEntities > 2) then {continue};
+        _eligible pushBack [_position distance2D getPosATL _observer, +_position, _target];
+    } forEach _targets;
+    _eligible sort true;
+    _observer setVariable ["BSASortedTargets", _eligible apply {[_x select 0, _x select 1]}, true];
 
-	private _lowPop = ([] call KPLIB_fnc_getPlayerCount) <= 35;
-	if((count _targets) > 0) then {
-		_shouldUpdateToBeInCombat = true;
+    private _buildup = BATTLESPACE_ARTILLERY_BASE_ACCURACY_BUILDUP
+        * ([1, 0.33] select (([] call KPLIB_fnc_getPlayerCount) <= 35));
+    if (_eligible isNotEqualTo []) then {
+        // Keep the same eligible contact when another player becomes slightly nearer.
+        private _selected = _eligible findIf {(_x select 2) isEqualTo _trackedTarget};
+        private _contact = _eligible select (_selected max 0);
+        private _position = _contact select 1;
+        private _target = _contact select 2;
+        if (_target isNotEqualTo _trackedTarget) then {
+            // A new target does not inherit corrections learned against the old one.
+            _accuracy = 0;
+            _previousPosition = [];
+        };
+        if (!_shellChosen) then {
+            _callInWp = (random 1) < (0 max BATTLESPACE_ARTILLERY_SMOKE_CHANCE min 1);
+            _shellChosen = true;
+            _engagementStartedAt = CBA_missionTime;
+        };
 
-		private _sortedTargets = [];
-		{
-            _x params ["_position", "_seenAt", "_weight", "_previous", "_player", "_target"];
-            if (isNull _target || {!alive _target} || {side _target != GRLIB_side_friendly} || {_target getVariable ["ACE_isUnconscious", false]}) then {continue};
-            private _nearEntities = (_position nearEntities [["Man"], 300]) select {alive _x && {side _x == GRLIB_side_enemy}};
-            if (count _nearEntities > 2) then {continue};
-            _sortedTargets pushBack [_position distance2D getPosATL _observer, +_position];
-		} forEach _targets;
+        private _multiplier = 1;
+        private _retained = 1;
+        if (_previousPosition isNotEqualTo []) then {
+            private _movement = _previousPosition distance2D _position;
+            if (_movement <= 5) then {
+                _multiplier = 4;
+            } else {
+                if (_movement >= BATTLESPACE_ARTILLERY_TARGET_MOVEMENT_ACCURACY_LOSS_DISTANCE) then {
+                    _retained = 0.6;
+                } else {
+                    if (_movement >= BATTLESPACE_ARTILLERY_TARGET_MOVEMENT_ACCURACY_LOSS_BAND_DISTANCE) then {
+                        _retained = 0.9;
+                    };
+                };
+            };
+        };
+        // Full accuracy is 300; excess time must not make later movement penalties meaningless.
+        _accuracy = 300 min ((_accuracy * _retained) + _buildup * _multiplier);
+        _trackedTarget = _target;
+        _previousPosition = +_position;
+        [_position, _observer, _accuracy, false, CBA_missionTime, _callInWp] remoteExec ["BATTLESPACE_ARTILLERY_BROADCAST_TARGET", 2];
+    } else {
+        _accuracy = 0 max (_accuracy - _buildup * 6);
+        [_observer] remoteExec ["BATTLESPACE_ARTILLERY_BROADCAST_CLEAR_TARGET", 2];
+    };
 
-		if (BATTLESPACE_ARTILLERY_DEBUG) then {systemChat format ["Obs sees %1", _sortedTargets];};
-
-		_observer setVariable ["BSASortedTargets", _sortedTargets, true];
-
-		_sortedTargets sort true;
-		private _multiplier = 1;
-		private _retainMultiplier = 1;
-		private _newTime = _timeInCombat;
-		if((count _sortedTargets) > 0) then {
-			if (!_shellChosen) then {
-				_callInWp = (random 1) < (0 max BATTLESPACE_ARTILLERY_SMOKE_CHANCE min 1);
-				_shellChosen = true;
-				_engagementStartedAt = CBA_missionTime;
-			};
-			private _tLoc = +((_sortedTargets select 0) select 1);
-
-			private _curReq = BATTLESPACE_ARTILLERY_OBSERVER_TARGETS getOrDefault [(str _observer), []];
-
-			_curReq params ["", ["_prevLoc", []]];
-			
-			
-
-			if(!(_prevLoc isEqualTo [])) then {
-				private _targetMovement = _prevLoc distance2D _tLoc;
-				if(_targetMovement <= 5) then {
-					_multiplier = 4;
-				} else {
-					if(_targetMovement >= BATTLESPACE_ARTILLERY_TARGET_MOVEMENT_ACCURACY_LOSS_DISTANCE) then {
-						_retainMultiplier = 0.6;
-					} else {
-						if(_targetMovement >= BATTLESPACE_ARTILLERY_TARGET_MOVEMENT_ACCURACY_LOSS_BAND_DISTANCE) then {
-							_retainMultiplier = 0.9;
-						};
-					};
-				};
-			};
-
-			_newTime = (_timeInCombat * _retainMultiplier) + BATTLESPACE_ARTILLERY_BASE_ACCURACY_BUILDUP * ([1, 0.33] select _lowPop) * _multiplier;
-			[_tLoc, _observer, _newTime, false, CBA_missionTime, _callInWp] remoteExec ["BATTLESPACE_ARTILLERY_BROADCAST_TARGET", 2]; 
-		} else {
-			[_observer] remoteExec ["BATTLESPACE_ARTILLERY_BROADCAST_CLEAR_TARGET", 2];
-		};
-
-		if(!BATTLESPACE_ARTILLERY_NETWORK_ENABLED) then {
-			_newTime = 0;
-		};
-		_state set [0, _newTime];
-	} else {
-
-		_state set [0, 0 max (_timeInCombat - (BATTLESPACE_ARTILLERY_BASE_ACCURACY_BUILDUP * 6 * ([1, 0.33] select _lowPop)))];
-		if(!BATTLESPACE_ARTILLERY_NETWORK_ENABLED) then {
-			_state set [0, 0];
-		};
-		[_observer] remoteExec ["BATTLESPACE_ARTILLERY_BROADCAST_CLEAR_TARGET", 2];
-	};
-
-
-	_state set [1, _shouldUpdateToBeInCombat];
-	if ((_state select 0) <= 0) then {
-		_shellChosen = false;
-		_callInWp = false;
-	};
-	_state set [2, _callInWp];
-	_state set [3, _shellChosen];
-	_state set [4, _engagementStartedAt];
-
-	(_this select 0) set [1, _state];
-	
+    if (_accuracy <= 0) then {
+        _shellChosen = false;
+        _callInWp = false;
+        _trackedTarget = objNull;
+        _previousPosition = [];
+    };
+    (_this select 0) set [1, [
+        _accuracy, _eligible isNotEqualTo [], _callInWp, _shellChosen,
+        _engagementStartedAt, _trackedTarget, _previousPosition
+    ]];
 };
+
 BATTLESPACE_ARTILLERY_BUILD_RENDER_SNAPSHOT = {
 	if (!isServer) exitWith {[[], [], [true, 0, 0]]};
 
@@ -1516,11 +1505,7 @@ BATTLESPACE_ARTILLERY_BUILD_RENDER_SNAPSHOT = {
 	[
 		_observers,
 		_batteries,
-		[
-			missionNamespace getVariable ["BATTLESPACE_ARTILLERY_NETWORK_ENABLED", true],
-			missionNamespace getVariable ["BATTLESPACE_ARTILLERY_CURRENT_CYCLE", 0],
-            missionNamespace getVariable ["BATTLESPACE_ARTILLERY_CYCLES_REQUIRED", 0]
-        ],
+        [true, 0, 0],
         call BATTLESPACE_TRP_SNAPSHOT
     ]
 };
@@ -1578,11 +1563,7 @@ RENDER_BATTLESPACE_ARTILLERY_PFH = {
         ["_renderTRPs", []]
     ];
     if (RENDER_BATTLESPACE_ARTILLERY_TRPS && {!isNil "BATTLESPACE_TRP_DRAW"}) then {[_renderTRPs] call BATTLESPACE_TRP_DRAW};
-	_renderNetwork params ["_networkEnabled", "_currentCycle", "_cyclesRequired"];
-	private _networkStr = [
-		format ["NETWORK OFF (%1/%2)", _currentCycle, _cyclesRequired],
-		format ["NETWORK ON (%1/%2)", _currentCycle, _cyclesRequired]
-	] select _networkEnabled;
+    private _networkStr = "NETWORK ON";
 
 	{
 		_x params ["_observerPosition", "_targetPosition", "_timeInCombat", "_systemTargeted", "_wp"];
@@ -1639,7 +1620,7 @@ RENDER_BATTLESPACE_ARTILLERY_PFH = {
 					if(_rem < 10) then {_rem = format ["0%1", _rem]};
 					_statusStr = format ["COOLING DOWN (%1:%2)", _mins, _rem];
 				} else {
-					_statusStr = "AWAITING NETWORK CYCLE";
+                    _statusStr = "AWAITING FIRE CONTROL";
 				};
 			} else {
 				private _mins = floor (_timeRemaining / 60);

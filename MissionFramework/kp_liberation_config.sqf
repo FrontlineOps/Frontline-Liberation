@@ -306,13 +306,12 @@ BATTLESPACE_STRATEGIC_MINEFIELD_MAX_FRONT_DEPTH = 1;
 BATTLESPACE_STRATEGIC_MINEFIELD_QUIET_TIME = 600;
 BATTLESPACE_STRATEGIC_MINEFIELD_PLAYER_EXCLUSION_RADIUS = 2500;
 BATTLESPACE_ARTILLERY_CREW_PER_PIECE = 3;
-// Artillery observer-network and post-mission timing.
+// Continuous observer network; actual tower disruption still slows command timing.
 BATTLESPACE_ARTILLERY_POLL_COOLDOWN = 10;
-BATTLESPACE_ARTILLERY_MINIMUM_CYCLES_TO_SWAP = 5;
-BATTLESPACE_ARTILLERY_MAXIMUM_CYCLES_TO_SWAP = 8; // Exclusive: produces 5-7 cycles.
-BATTLESPACE_ARTILLERY_COOLDOWN_PER_SHELL = 30;
-BATTLESPACE_ARTILLERY_MIN_COOLDOWN = 60;
-BATTLESPACE_ARTILLERY_MAX_COOLDOWN = 120;
+// Post-mission seconds per planned round per gun, before readiness/tower multipliers.
+BATTLESPACE_ARTILLERY_COOLDOWN_PER_SHELL = 15;
+BATTLESPACE_ARTILLERY_MIN_COOLDOWN = 30;
+BATTLESPACE_ARTILLERY_MAX_COOLDOWN = 60;
 BATTLESPACE_ARTILLERY_SMOKE_CHANCE = 0.15; // Opening smoke chance per engagement; at most one accepted smoke mission, then HE. 0 disables observer smoke.
 BATTLESPACE_ARTILLERY_FIRE_ORDER_TIMEOUT = 90; // Seconds allowed for each salvo/ripple to fire before aborting and refunding unfired rounds.
 BATTLESPACE_ARTILLERY_TARGET_MOVEMENT_ACCURACY_LOSS_BAND_DISTANCE = 90; // Target movement before 10% of accumulated observer accuracy is lost (m)
