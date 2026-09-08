@@ -2,7 +2,7 @@
    Strength units match contact memory: infantry 1, cars 3, tracked armor 8. */
 BATTLESPACE_OFFENSIVE_COMPOSITION_STRENGTH = {
     params ["_composition"];
-    private _strength = (_composition getOrDefault ["manpower", 0]) max 0;
+    private _strength = ((_composition getOrDefault ["manpower", 0]) - (_composition getOrDefault ["aircrew", 0])) max 0;
     {
         _strength = _strength + (if (_x isKindOf "Tank") then {8} else {if (_x isKindOf "Car") then {3} else {0}});
     } forEach (_composition getOrDefault ["vehicles", []]);
@@ -33,9 +33,8 @@ BATTLESPACE_OFFENSIVE_COMMITTED_STRENGTH = {
     {
         if (_x == _excludeId) then {continue};
         private _kind = _y getOrDefault ["kind", ""];
-        if !(_kind in ["BATTLEGROUP", "DEFENDER", "RESERVE", "REINFORCEMENT", "AIRBORNE_TRANSPORT", "AIRBORNE_REINFORCEMENT", "DEEP RECONNAISSANCE PATROL"]) then {continue};
+        if !(_kind in ["BATTLEGROUP", "DEFENDER", "RESERVE", "REINFORCEMENT", "DEEP RECONNAISSANCE PATROL"]) then {continue};
         if ((_y getOrDefault ["phase", ""]) in ["RETURNING", "LOST"] || {(_y getOrDefault ["outcome", ""]) != ""}) then {continue};
-        if (_kind == "AIRBORNE_TRANSPORT" && {(_y getOrDefault ["childTaskForce", ""]) != ""}) then {continue};
         private _force = BATTLESPACE_TASK_FORCES getOrDefault [_x, []];
         if (_force isEqualTo []) then {continue};
         private _current = _force param [1, []];

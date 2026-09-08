@@ -1,14 +1,11 @@
 // One allowance for paid ground combat formations, including troops in transit.
 // Reassignment never debits resources or consumes a formation slot.
-BATTLESPACE_GROUND_OPERATION_KINDS = ["DEFENDER", "RESERVE", "BATTLEGROUP", "DEEP RECONNAISSANCE PATROL", "AIRBORNE_TRANSPORT", "AIRBORNE_REINFORCEMENT"];
+BATTLESPACE_GROUND_OPERATION_KINDS = ["DEFENDER", "RESERVE", "BATTLEGROUP", "DEEP RECONNAISSANCE PATROL"];
 
 BATTLESPACE_GROUND_FORCE_COUNT = {
     private _count = 0;
     {
         private _kind = _y getOrDefault ["kind", ""];
-        // Cargo reserves its ground slot at dispatch. After the drop only the
-        // infantry child owns that slot; the empty carrier uses its air allowance.
-        if (_kind == "AIRBORNE_TRANSPORT" && {(_y getOrDefault ["childTaskForce", ""]) != ""}) then {continue};
         if (_kind in BATTLESPACE_GROUND_OPERATION_KINDS) then {
             _count = _count + 1;
         };

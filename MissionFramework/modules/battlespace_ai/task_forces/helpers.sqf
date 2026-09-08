@@ -221,6 +221,8 @@ BATTLESPACE_TASK_FORCE_APPLY_ROUTE_TO_ACTIVE = {
 	params ["_taskForceName", "_taskForce", "_route"];
 	if (_route isEqualTo []) exitWith {};
 	private _type = _taskForce param [0, ""];
+    // The airlift controller owns landing; generic route workers must not replace it.
+    if (_type == "Airborne Transport") exitWith {};
 	private _destination = _taskForce param [2, []];
 	private _speed = ["LIMITED", "FULL"] select (_type in ["Battlegroup", "Mobile Reserve", "Deep Reconnaissance Patrol", "Convoy", "Air Response", "Airborne Transport"]);
 	{
@@ -239,16 +241,6 @@ BATTLESPACE_TASK_FORCE_APPLY_ROUTE_TO_ACTIVE = {
 		if (isNull _x || {!local _x}) then {continue};
 		private _parentTransport = _x getVariable ["BATTLESPACE_TRANSPORT_PARENT_GROUP", grpNull];
 		if (!isNull _parentTransport) then {continue};
-		if (_type == "Airborne Transport") then {
-			private _hasAirVehicle = units _x findIf {
-				private _vehicle = vehicle _x;
-				!(_vehicle isEqualTo _x) && {_vehicle isKindOf "Air"}
-			} >= 0;
-			if (_hasAirVehicle) then {
-				[_x, _destination, "FULL", false, true, _route] spawn BATTLESPACE_TASK_FORCE_ADD_WAYPOINTS;
-			};
-			continue;
-		};
 		private _transportVehicle = _x getVariable ["BATTLESPACE_TRANSPORT_VEHICLE", objNull];
 		private _cargoGroup = _x getVariable ["BATTLESPACE_TRANSPORT_CARGO_GROUP", grpNull];
 		if (!isNull _transportVehicle && {!isNull _cargoGroup}) then {

@@ -87,6 +87,13 @@ BATTLESPACE_STRATEGIC_CREATE_FUNDED_TASK_FORCE = {
     private _fundingState = BATTLESPACE_SECTOR_STATES get _fundingSector;
     if (isNil "_fundingState" || {(_fundingState getOrDefault ["owner", ""]) != "OPFOR"}) exitWith {""};
 
+    if (_composition getOrDefault ["airlift", false]) then {
+        _type = "Airborne Transport";
+        _metadata set ["airliftVersion", 1];
+        _metadata set ["airliftPhase", "ENROUTE"];
+        _metadata set ["airliftInitialPayload", (_composition getOrDefault ["manpower", 0]) - (_composition getOrDefault ["aircrew", 0])];
+    };
+    if (_type == "Airborne Transport" && {[] call BATTLESPACE_AIRLIFT_COUNT >= BATTLESPACE_STRATEGIC_MAX_ACTIVE_AIRBORNE_TRANSPORTS}) exitWith {""};
     private _manifest = [_composition] call BATTLESPACE_STRATEGIC_BUILD_COMPOSITION_MANIFEST;
     if !(_manifest getOrDefault ["valid", false]) exitWith {
         [format ["Rejected funded %1 at %2 because its vehicle manifest was not classifiable", _type, _fundingSector], "WARNING"] call BATTLESPACE_STRATEGIC_LOG;
@@ -194,7 +201,7 @@ BATTLESPACE_STRATEGIC_RECORD_CASUALTY = {
     if (!isNull _unit) exitWith {[_taskForceId, _lossType, _unit] call BATTLESPACE_RESERVE_RECORD_FIELD_LOSS};
     private _operation = BATTLESPACE_STRATEGIC_OPERATIONS get _taskForceId;
     if (isNil "_operation") exitWith {};
-    if !((_operation getOrDefault ["kind", ""]) in ["DEFENDER", "RESERVE", "DEEP RECONNAISSANCE PATROL", "REINFORCEMENT", "AIRBORNE_REINFORCEMENT"]) exitWith {};
+    if !((_operation getOrDefault ["kind", ""]) in ["DEFENDER", "RESERVE", "DEEP RECONNAISSANCE PATROL", "REINFORCEMENT"]) exitWith {};
     [
         _operation getOrDefault ["pressureSector", ""],
         ([4, 1] select (_lossType == "MANPOWER"))
@@ -432,9 +439,6 @@ BATTLESPACE_TACTICAL_MAINTENANCE_TICK = {
             if (!isNil "BATTLESPACE_RESERVE_DISPATCH") then {
                 _handled = [_x] call BATTLESPACE_RESERVE_DISPATCH;
             };
-            if (!_handled && {!isNil "BATTLESPACE_AIRBORNE_DISPATCH"}) then {
-                _handled = [_x] call BATTLESPACE_AIRBORNE_DISPATCH;
-            };
             if (_handled) then {
                 // Consume one request's losses only when troops actually commit.
                 // A failed request or a supply shipment does not satisfy this need.
@@ -626,23 +630,11 @@ BATTLESPACE_STRATEGIC_BUILD_INTEGRITY_AUDIT = {
             if ((_taskForce param [0, ""]) != "Airborne Transport") then {
                 _errors pushBack format ["Airborne transport operation %1 uses the wrong task-force model", _x];
             };
-            if !(_phase in ["ENROUTE", "DEPLOYING", "RETURNING"]) then {
+            if !(_phase in ["RETURNING"]) then {
                 _errors pushBack format ["Airborne transport operation %1 has invalid phase %2", _x, _phase];
             };
             if (count _vehicles != 1 || {_vehicles findIf {!(_x isKindOf "Air")} >= 0}) then {
                 _errors pushBack format ["Airborne transport operation %1 does not own exactly one aircraft", _x];
-            };
-        };
-        if ((_y getOrDefault ["kind", ""]) == "AIRBORNE_REINFORCEMENT" && {!isNil "_taskForce"}) then {
-            private _composition = _taskForce param [3, createHashMap];
-            if ((_taskForce param [0, ""]) != "Airborne Infantry") then {
-                _errors pushBack format ["Airborne infantry operation %1 uses the wrong task-force model", _x];
-            };
-            if ((_y getOrDefault ["phase", ""]) != "DEPLOYED") then {
-                _errors pushBack format ["Airborne infantry operation %1 is not deployed", _x];
-            };
-            if ((_composition getOrDefault ["vehicles", []]) isNotEqualTo []) then {
-                _errors pushBack format ["Airborne infantry operation %1 still owns a vehicle", _x];
             };
         };
         if ((_y getOrDefault ["kind", ""]) == "FORTIFICATION") then {
@@ -698,7 +690,7 @@ BATTLESPACE_STRATEGIC_BUILD_INTEGRITY_AUDIT = {
         };
         if ((_y getOrDefault ["kind", ""]) == "RESERVE" && {!isNil "_taskForce"}) then {
             private _phase = _y getOrDefault ["phase", ""];
-            if ((_taskForce param [0, ""]) != "Mobile Reserve") then {_errors pushBack format ["Reserve operation %1 uses the wrong task-force model", _x]};
+            if !((_taskForce param [0, ""]) in ["Mobile Reserve", "Airborne Transport"]) then {_errors pushBack format ["Reserve operation %1 uses the wrong task-force model", _x]};
             if ((_y getOrDefault ["defenseRole", ""]) != "MOBILE_RESERVE") then {_errors pushBack format ["Reserve operation %1 has no mobile-reserve purpose", _x]};
             if !(_phase in ["READY", "STAGING", "RESPONDING", "FIELD_HUNT", "HOLDING", "RETURNING"]) then {_errors pushBack format ["Reserve operation %1 has invalid phase %2", _x, _phase]};
             private _composition = _taskForce param [3, createHashMap];
@@ -784,7 +776,7 @@ BATTLESPACE_STRATEGIC_BUILD_INTEGRITY_AUDIT = {
         _errors pushBack format ["Global air-response operation count exceeds %1", _globalAirResponseCap];
     };
     private _globalAirborneCap = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_ACTIVE_AIRBORNE_TRANSPORTS", 2];
-    if (["AIRBORNE_TRANSPORT"] call BATTLESPACE_STRATEGIC_COUNT_OPERATIONS > _globalAirborneCap) then {
+    if ([] call BATTLESPACE_AIRLIFT_COUNT > _globalAirborneCap) then {
         _errors pushBack format ["Global airborne-transport operation count exceeds %1", _globalAirborneCap];
     };
     if ([] call BATTLESPACE_GROUND_FORCE_COUNT > BATTLESPACE_STRATEGIC_GROUND_FORCE_CAP) then {
@@ -796,7 +788,7 @@ BATTLESPACE_STRATEGIC_BUILD_INTEGRITY_AUDIT = {
     };
     {
         private _type = _y param [0, ""];
-        if (_type in ["Battlegroup", "Deep Reconnaissance Patrol", "Convoy", "Air Response", "Airborne Transport", "Airborne Infantry", "Minefield", "Mobile Reserve"] && {isNil {BATTLESPACE_STRATEGIC_OPERATIONS get _x}}) then {
+        if (_type in ["Battlegroup", "Deep Reconnaissance Patrol", "Convoy", "Air Response", "Airborne Transport", "Minefield", "Mobile Reserve"] && {isNil {BATTLESPACE_STRATEGIC_OPERATIONS get _x}}) then {
             _warnings pushBack format ["Task force %1 (%2) has no operation", _x, _type];
         };
     } forEach BATTLESPACE_TASK_FORCES;
@@ -835,13 +827,13 @@ BATTLESPACE_STRATEGIC_BUILD_BALANCE_REPORT = {
     private _operationRows = [["GROUND TOTAL (shared)", [] call BATTLESPACE_GROUND_FORCE_COUNT, BATTLESPACE_STRATEGIC_GROUND_FORCE_CAP]];
     {
         _x params ["_kind", "_cap"];
-        _operationRows pushBack [_kind, [_kind] call BATTLESPACE_STRATEGIC_COUNT_OPERATIONS, _cap];
+        private _count = if (_kind == "AIRBORNE_TRANSPORT") then {[] call BATTLESPACE_AIRLIFT_COUNT} else {[_kind] call BATTLESPACE_STRATEGIC_COUNT_OPERATIONS};
+        _operationRows pushBack [_kind, _count, _cap];
     } forEach [
         ["CONVOY", missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_ACTIVE_CONVOYS", 3]],
         ["BATTLEGROUP", -1],
         ["RESERVE", -1],
         ["AIRBORNE_TRANSPORT", missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_ACTIVE_AIRBORNE_TRANSPORTS", 2]],
-        ["AIRBORNE_REINFORCEMENT", -1],
         ["DEEP RECONNAISSANCE PATROL", -1],
         ["AIR_RESPONSE", missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_ACTIVE_AIR_RESPONSES", 2]],
         ["FORTIFICATION", missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_ACTIVE_FORTIFICATIONS", 48]],
@@ -888,7 +880,7 @@ BATTLESPACE_ZEN_SERVER_REQUEST = {
     } else {
         if (_action == "OVERVIEW") then {
             private _counts = [];
-            {_counts pushBack [_x, [_x] call BATTLESPACE_STRATEGIC_COUNT_OPERATIONS]} forEach ["CONVOY", "BATTLEGROUP", "DEFENDER", "RESERVE", "AIRBORNE_TRANSPORT", "AIRBORNE_REINFORCEMENT", "DEEP RECONNAISSANCE PATROL", "AIR_RESPONSE", "FORTIFICATION", "MINEFIELD"];
+            {_counts pushBack [_x, [_x] call BATTLESPACE_STRATEGIC_COUNT_OPERATIONS]} forEach ["CONVOY", "BATTLEGROUP", "DEFENDER", "RESERVE", "AIRBORNE_TRANSPORT", "DEEP RECONNAISSANCE PATROL", "AIR_RESPONSE", "FORTIFICATION", "MINEFIELD"];
             _payload = [count BATTLESPACE_SECTOR_STATES, count BATTLESPACE_TASK_FORCES, _counts];
         } else {
             if (_action == "OVERLAY") then {

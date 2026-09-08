@@ -100,6 +100,11 @@ BATTLESPACE_RESERVE_BUILD_DEFINITION = {
     private _manpowerCapacity = [_sourceSector, "manpower"] call BATTLESPACE_SECTOR_GET_EFFECTIVE_CAPACITY;
     if ((_resources getOrDefault ["manpower", 0]) - _manpower < ceil (_manpowerCapacity * _ratio)) exitWith {_empty};
 
+    private _airborne = createHashMap;
+    if (random 1 < BATTLESPACE_AIRLIFT_CHANCE) then {
+        _airborne = [_sourceSector, _manpower, BATTLESPACE_STRATEGIC_RESERVE_MINIMUM_MANPOWER, _ratio] call BATTLESPACE_AIRLIFT_BUILD_DEFINITION;
+    };
+    if (count _airborne > 0) exitWith {_airborne};
     private _vehicles = [];
     {
         private _class = [_x] call BATTLESPACE_STRATEGIC_GET_CLASS_FOR_RESOURCE;
@@ -121,6 +126,7 @@ BATTLESPACE_RESERVE_BUILD_DEFINITION = {
 
 BATTLESPACE_RESERVE_GET_STAGING_CANDIDATES = {
     params [["_excludeId", ""], ["_fromSector", ""]];
+    private _airborne = ((BATTLESPACE_TASK_FORCES getOrDefault [_excludeId, []]) param [0, ""]) == "Airborne Transport";
     private _minimumDepth = BATTLESPACE_STRATEGIC_RESERVE_MIN_FRONT_DEPTH max 1;
     private _maximumDepth = BATTLESPACE_STRATEGIC_RESERVE_MAX_FRONT_DEPTH max _minimumDepth;
     private _candidates = [];
@@ -130,7 +136,14 @@ BATTLESPACE_RESERVE_GET_STAGING_CANDIDATES = {
         private _depth = [_x] call BATTLESPACE_DEFENSE_GET_FRONT_DEPTH;
         if (_depth < _minimumDepth || {_depth > _maximumDepth}) then {continue};
         private _stagingSector = _x;
-        if (_fromSector != "" && {[_fromSector, _stagingSector, 99] call BATTLESPACE_DEFENSE_GRAPH_DISTANCE < 0}) then {continue};
+        if (_fromSector != "") then {
+            private _reachable = if (_airborne) then {
+                (getMarkerPos _fromSector) distance2D (getMarkerPos _stagingSector) <= BATTLESPACE_AIRLIFT_MAX_RANGE
+            } else {
+                [_fromSector, _stagingSector, 99] call BATTLESPACE_DEFENSE_GRAPH_DISTANCE >= 0
+            };
+            if (!_reachable) then {continue};
+        };
         private _alreadyStaged = false;
         private _nearbyReserves = 0;
         {
@@ -162,6 +175,10 @@ BATTLESPACE_RESERVE_FORM = {
         private _fundingCandidates = [];
         {
             private _distance = [_x select 0, _stagingSector, 12] call BATTLESPACE_DEFENSE_GRAPH_DISTANCE;
+            if ((_x select 1) getOrDefault ["airlift", false]) then {
+                private _range = (getMarkerPos (_x select 0)) distance2D (getMarkerPos _stagingSector);
+                _distance = if (_range <= BATTLESPACE_AIRLIFT_MAX_RANGE) then {_range / 1000} else {-1};
+            };
             if (_distance >= 0) then {_fundingCandidates pushBack [_distance, _x]};
         } forEach _sources;
         _fundingCandidates = [_fundingCandidates, [], {_x select 0}, "ASCEND"] call BIS_fnc_sortBy;
@@ -202,6 +219,11 @@ BATTLESPACE_RESERVE_RESTAGE_READY = {
         if (_candidates isEqualTo []) then {continue};
         private _stagingSector = (_candidates select 0) select 1;
         private _destination = getMarkerPos _stagingSector;
+        if ((_taskForce select 0) == "Airborne Transport") then {
+            {_operation deleteAt _x} forEach ["airliftLZ", "airliftDeadline", "airliftAttempts"];
+            _operation set ["airliftPhase", "ENROUTE"];
+            [_x] call BATTLESPACE_AIRLIFT_CLEANUP;
+        };
         _operation set ["phase", "STAGING"];
         _operation set ["assignedSector", _stagingSector];
         _operation set ["targetSector", ""];
@@ -212,6 +234,7 @@ BATTLESPACE_RESERVE_RESTAGE_READY = {
         _taskForce set [12, _stagingSector];
         BATTLESPACE_TASK_FORCE_PATHS deleteAt _x;
         {
+            if ((_taskForce select 0) == "Airborne Transport") then {continue};
             [_x, true, true] call KPLIB_fnc_taskReset;
             _x setVariable ["BATTLESPACE_DEFENDER_RETURNING", false];
         } forEach (_taskForce param [4, []]);
@@ -233,7 +256,7 @@ BATTLESPACE_RESERVE_DISPATCH = {
     if (isNil "_targetState" || {(_targetState getOrDefault ["owner", ""]) != "OPFOR"}) exitWith {false};
     // Keep current-format responses exclusive while also respecting a legacy
     // ground reinforcement that may still be present in an unversioned save.
-    private _blockedKinds = ["REINFORCEMENT", "AIRBORNE_TRANSPORT", "AIRBORNE_REINFORCEMENT", "BATTLEGROUP"];
+    private _blockedKinds = ["REINFORCEMENT", "BATTLEGROUP"];
     if (!_field && {_blockedKinds findIf {[_x, _targetSector] call BATTLESPACE_STRATEGIC_HAS_OPERATION_FOR_TARGET} >= 0}) exitWith {false};
     private _destination = if (_field) then {+(_contact select 0)} else {getMarkerPos _targetSector};
     private _alreadyResponding = false;
@@ -271,6 +294,10 @@ BATTLESPACE_RESERVE_DISPATCH = {
         private _homeState = BATTLESPACE_SECTOR_STATES get _homeSector;
         if (_homeSector == "" || {isNil "_homeState"} || {(_homeState getOrDefault ["owner", ""]) != "OPFOR"}) then {continue};
         private _distance = [_homeSector, _targetSector, _maximumHops] call BATTLESPACE_DEFENSE_GRAPH_DISTANCE;
+        if ((_taskForce select 0) == "Airborne Transport") then {
+            private _range = (_taskForce select 1) distance2D _destination;
+            _distance = if (_range <= BATTLESPACE_AIRLIFT_MAX_RANGE) then {(_range / BATTLESPACE_AIRLIFT_MAX_RANGE) * _maximumHops} else {-1};
+        };
         if (_distance < 0 || {_distance > _maximumHops}) then {continue};
         _candidates pushBack [_distance, (_taskForce param [1, []]) distance2D _destination, _x];
     } forEach BATTLESPACE_STRATEGIC_OPERATIONS;
@@ -292,12 +319,17 @@ BATTLESPACE_RESERVE_DISPATCH = {
         _operation set ["expiresAt", CBA_missionTime + BATTLESPACE_STRATEGIC_RESERVE_HOLD_DURATION];
     };
     _operation deleteAt "holdUntil";
+    if ((_taskForce select 0) == "Airborne Transport") then {
+        {_operation deleteAt _x} forEach ["airliftLZ", "airliftDeadline", "airliftAttempts"];
+        _operation set ["airliftPhase", "ENROUTE"];
+        [_taskForceId] call BATTLESPACE_AIRLIFT_CLEANUP;
+    };
     _taskForce set [2, _destination];
     BATTLESPACE_TASK_FORCE_PATHS deleteAt _taskForceId;
     BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceId, _operation];
     BATTLESPACE_TASK_FORCES set [_taskForceId, _taskForce];
     {
-        if (isNull _x) then {continue};
+        if (isNull _x || {(_taskForce select 0) == "Airborne Transport"}) then {continue};
         if (local _x) then {[_x, _field] call BATTLESPACE_RESERVE_SET_GROUP_MODE} else {[_x, _field] remoteExecCall ["BATTLESPACE_RESERVE_SET_GROUP_MODE", groupOwner _x]};
     } forEach (_taskForce param [4, []]);
     [_taskForceId, _taskForce param [1, []], _destination] call QUEUE_PATHFIND_REQUEST;

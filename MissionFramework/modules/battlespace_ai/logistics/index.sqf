@@ -325,7 +325,7 @@ BATTLESPACE_STRATEGIC_SERIALIZE_OPERATION = {
             _saved set [_x + "Remaining", ((_saved getOrDefault [_x, CBA_missionTime]) - CBA_missionTime) max 0];
             _saved deleteAt _x;
         };
-    } forEach ["expiresAt", "loiterUntil", "contactGraceUntil", "holdUntil", "nextManeuverAt", "legDeadline"];
+    } forEach ["expiresAt", "loiterUntil", "contactGraceUntil", "holdUntil", "nextManeuverAt", "legDeadline", "airliftDeadline"];
     _saved
 };
 
@@ -349,7 +349,7 @@ BATTLESPACE_STRATEGIC_DESERIALIZE_OPERATION = {
             _operation set [_x, CBA_missionTime + (_operation getOrDefault [_remainingKey, 0])];
             _operation deleteAt _remainingKey;
         };
-    } forEach ["expiresAt", "loiterUntil", "contactGraceUntil", "holdUntil", "nextManeuverAt", "legDeadline"];
+    } forEach ["expiresAt", "loiterUntil", "contactGraceUntil", "holdUntil", "nextManeuverAt", "legDeadline", "airliftDeadline"];
     _operation
 };
 
@@ -492,6 +492,8 @@ BATTLESPACE_LOGISTICS_LOAD = {
             };
         } forEach _savedOperations;
     };
+
+    [] call BATTLESPACE_AIRLIFT_MIGRATE;
 
     [format [
         "Strategic sector state %1: %2 current sectors",
@@ -1694,6 +1696,7 @@ BATTLESPACE_LOGISTICS_DECISION_TICK = {
 BATTLESPACE_STRATEGIC_HANDLE_TASK_FORCE_EVENT = {
     params ["_eventType", "_eventData"];
     _eventData params ["_taskForceId", "_taskForce"];
+    [_taskForceId] call BATTLESPACE_AIRLIFT_CLEANUP;
     private _operation = BATTLESPACE_STRATEGIC_OPERATIONS get _taskForceId;
     if (isNil "_operation") exitWith {};
 
@@ -1761,7 +1764,6 @@ BATTLESPACE_STRATEGIC_HANDLE_TASK_FORCE_EVENT = {
         case "RESERVE";
         case "REINFORCEMENT";
         case "AIRBORNE_TRANSPORT";
-        case "AIRBORNE_REINFORCEMENT";
         case "DEEP RECONNAISSANCE PATROL";
         case "AIR_RESPONSE": {
             private _destinationSector = switch (_operation getOrDefault ["outcome", ""]) do {
@@ -1771,7 +1773,7 @@ BATTLESPACE_STRATEGIC_HANDLE_TASK_FORCE_EVENT = {
             };
             if (_destinationSector != "") then {
                 private _survivors = [_taskForce, _operation] call BATTLESPACE_STRATEGIC_GET_SURVIVING_FORCE_RESOURCES;
-                private _returningFundedDefense = _kind in ["DEFENDER", "RESERVE"]
+                private _returningFundedDefense = _kind in ["DEFENDER", "RESERVE", "AIRBORNE_TRANSPORT"]
                     && {(_operation getOrDefault ["outcome", ""]) == "RETURNED"};
                 private _accepted = if (_returningFundedDefense) then {
                     [_destinationSector, _survivors] call BATTLESPACE_RESOURCE_RESTORE_TRANSFER

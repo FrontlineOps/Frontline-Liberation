@@ -50,14 +50,16 @@
                 private _composition = _taskForce param [3, createHashMap];
                 private _minimumManpower = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_RESERVE_MINIMUM_MANPOWER", 8];
                 private _mustDemobilize = (_composition getOrDefault ["manpower", 0]) < _minimumManpower
-                    || {(_composition getOrDefault ["vehicles", []]) isEqualTo []};
+                    || {(_composition getOrDefault ["vehicles", []]) isEqualTo [] && {
+                        !(_operation getOrDefault ["airInserted", false]) || {_phase in ["READY", "STAGING"]}
+                    }};
                 private _homeQuiet = !(_homeSector in (missionNamespace getVariable ["active_sectors", []]));
                 private _beginReturn = {
                     params ["_reason"];
                     private _destination = getMarkerPos _homeSector;
                     _operation set ["phase", "RETURNING"];
                     _operation set ["returnSector", _homeSector];
-                    _operation set ["demobilizeOnReturn", _mustDemobilize];
+                    _operation set ["demobilizeOnReturn", _mustDemobilize || {_operation getOrDefault ["airInserted", false]}];
                     _taskForce set [2, _destination];
                     BATTLESPACE_TASK_FORCE_PATHS deleteAt _taskForceName;
                     BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceName, _operation];

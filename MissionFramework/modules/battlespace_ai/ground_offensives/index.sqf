@@ -73,12 +73,17 @@ BATTLESPACE_OFFENSIVE_PICK_POSITION = {
 };
 
 BATTLESPACE_BATTLEGROUP_BUILD_DEFINITION = {
-    params ["_sourceSector", "_targetSector", ["_strengthBudget", 1e9]];
+    params ["_sourceSector", "_targetSector", ["_strengthBudget", 1e9], ["_allowAirlift", true]];
     private _state = BATTLESPACE_SECTOR_STATES getOrDefault [_sourceSector, createHashMap];
     if ((_state getOrDefault ["owner", ""]) != "OPFOR") exitWith {createHashMap};
     private _stock = _state getOrDefault ["resources", createHashMap];
     private _minimum = BATTLESPACE_OFFENSIVE_MIN_RESPONSE_MANPOWER;
     if (_strengthBudget < _minimum) exitWith {createHashMap};
+    private _airborne = createHashMap;
+    if (_allowAirlift && {random 1 < BATTLESPACE_AIRLIFT_CHANCE}) then {
+        _airborne = [_sourceSector, 14, _minimum, BATTLESPACE_OFFENSIVE_SOURCE_RESERVE_RATIO, _strengthBudget] call BATTLESPACE_AIRLIFT_BUILD_DEFINITION;
+    };
+    if (count _airborne > 0) exitWith {createHashMapFromArray [["formation", "AIRBORNE"], ["composition", _airborne]]};
     private _weighted = [];
     {_weighted append [_x, BATTLESPACE_OFFENSIVE_FORMATION_WEIGHTS param [_forEachIndex, 0]]} forEach BATTLESPACE_STRATEGIC_BATTLEGROUP_FORMATIONS;
     private _formation = selectRandomWeighted _weighted;
@@ -164,7 +169,7 @@ BATTLESPACE_BATTLEGROUP_DISPATCH = {
     } forEach BATTLESPACE_STRATEGIC_OPERATIONS;
     if (_covered) exitWith {false};
     private _budget = if (_phase == "ENGAGING") then {[_position, _originSector] call BATTLESPACE_OFFENSIVE_RESPONSE_BUDGET} else {1e9};
-    private _definition = [_originSector, _targetSector, _budget] call BATTLESPACE_BATTLEGROUP_BUILD_DEFINITION;
+    private _definition = [_originSector, _targetSector, _budget, _origin distance2D _position <= BATTLESPACE_AIRLIFT_MAX_RANGE] call BATTLESPACE_BATTLEGROUP_BUILD_DEFINITION;
     if (count _definition == 0) exitWith {false};
     private _range = BATTLESPACE_OFFENSIVE_RETREAT_RATIO;
     private _id = ["Battlegroup", _definition get "composition", _origin, _position, _origin, _originSector, "BATTLEGROUP",

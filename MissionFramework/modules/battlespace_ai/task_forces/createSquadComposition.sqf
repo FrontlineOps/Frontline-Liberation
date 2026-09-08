@@ -37,7 +37,7 @@ BATTLESPACE_TASK_FORCES_GET_SQUAD_COMPOSITION = {
 	};
 
 
-	while {(count _baseSquad < _squadSize)} do {
+    while {count _baseSquad < _size} do {
 		_baseSquad pushBack selectRandom _squadAdditions;
 	};
 	_baseSquad

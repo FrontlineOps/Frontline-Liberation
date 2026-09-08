@@ -334,6 +334,7 @@ BATTLESPACE_TASK_FORCES_SAVE = {
 
 	{
 		[_x, _y] call BATTLESPACE_TASK_FORCE_RELEASE_ABANDONED_VEHICLES;
+        if (!isNil "BATTLESPACE_AIRLIFT_SYNC") then {[_x, _y] call BATTLESPACE_AIRLIFT_SYNC};
 		_y params [
 			"_taskForceType", // 0
 			"_currentLoc", // 1
@@ -1186,7 +1187,6 @@ RENDER_BATTLESPACE_AI_PFH = {
 			case "Civilians": { _targetMarker = "\A3\ui_f\data\map\markers\nato\n_inf.paa"; };
 			case "Air Response": { _targetMarker = "\A3\ui_f\data\map\markers\nato\o_air.paa"; };
 			case "Airborne Transport": { _targetMarker = "\A3\ui_f\data\map\markers\nato\o_air.paa"; };
-			case "Airborne Infantry": { _targetMarker = "\A3\ui_f\data\map\markers\nato\o_inf.paa"; };
 			case "Anti-Air": { _targetMarker = "\A3\ui_f\data\map\markers\nato\o_antiair.paa"; };
 		};
 

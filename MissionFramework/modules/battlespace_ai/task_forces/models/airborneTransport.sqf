@@ -1,75 +1,25 @@
 [
     "Airborne Transport",
     createHashMapFromArray [
-        [
-            "canProc",
-            {
-                params ["_taskForceName", "_taskForce"];
-                private _currentLocation = _taskForce param [1, []];
-                private _requiredPlayers = [] call BATTLESPACE_TASK_FORCE_GET_NEEDED_PLAYERCOUNT_FOR_PROC;
-                private _procRange = ["Airborne Transport"] call BATTLESPACE_TASK_FORCE_GET_PROC_RANGE;
-                private _canProc = false;
-                {
-                    if (
-                        count (_x getOrDefault ["Players", []]) >= _requiredPlayers
-                        && {(_x getOrDefault ["Position", []]) distance2D _currentLocation <= _procRange}
-                    ) exitWith {_canProc = true};
-                } forEach BATTLESPACE_TASK_FORCES_BLUFOR_CLUSTERS;
-                _canProc
-            }
-        ],
-        [
-            "doSpawn",
-            {
-                params ["_taskForceName", "_taskForce"];
-                if (_taskForce param [11, false]) exitWith {};
-                _taskForce set [11, true];
-                [_taskForceName, _taskForce] spawn {
-                    params ["_taskForceName", "_taskForce"];
-                    private _success = [
-                        _taskForceName, _taskForce, false, false, false, false, "FULL", [opfor_paratrooper]
-                    ] call BATTLESPACE_TASK_FORCE_DEFAULT_TRY_SPAWN;
-                    if (_success) then {
-                        private _height = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_AIRBORNE_FLIGHT_HEIGHT", 300];
-                        {
-                            if (!isNull _x && {!(_x isKindOf "Man")} && {_x isKindOf "Air"}) then {
-                                private _position = getPosATL _x;
-                                _position set [2, _height];
-                                _x setPosATL _position;
-                                _x flyInHeight _height;
-                                _x engineOn true;
-                            };
-                        } forEach (_taskForce param [8, []]);
-                    };
-                    [_taskForceName, _taskForce, _success] call BATTLESPACE_TASK_FORCE_DEFAULT_FINISH_SPAWN;
-                };
-            }
-        ],
-        [
-            "isAlive",
-            {
-                params ["_taskForceName", "_taskForce"];
-                private _composition = _taskForce param [3, createHashMap];
-                private _activeObjects = _taskForce param [8, []];
-                if (_activeObjects isNotEqualTo []) exitWith {
-                    _activeObjects findIf {
-                        !isNull _x
-                        && {!(_x isKindOf "Man")}
-                        && {_x isKindOf "Air"}
-                        && {_x getVariable ["KPLIB_captured", false]}
-                    } < 0
-                };
-                (_composition getOrDefault ["vehicles", []]) isNotEqualTo []
-            }
-        ],
-        [
-            "onDecisionTick",
-            {
-                params ["_taskForceName", "_taskForce"];
-                if ([_taskForceName, _taskForce] call BATTLESPACE_TASK_FORCE_RELEASE_DISABLED_AIRCRAFT) exitWith {true};
-                if (isNil "BATTLESPACE_AIRBORNE_TRANSPORT_ON_DECISION_TICK") exitWith {false};
-                [_taskForceName, _taskForce] call BATTLESPACE_AIRBORNE_TRANSPORT_ON_DECISION_TICK
-            }
-        ]
+        ["canProc", { _this call BATTLESPACE_AIRLIFT_CAN_PROC }],
+        ["doSpawn", {
+            params ["_id", "_force"];
+            if (_force param [11, false]) exitWith {};
+            _force set [11, true];
+            [_id, _force] spawn {
+                params ["_id", "_force"];
+                private _success = [_id, _force] call BATTLESPACE_AIRLIFT_SPAWN;
+                [_id, _force, _success] call BATTLESPACE_TASK_FORCE_DEFAULT_FINISH_SPAWN;
+            };
+        }],
+        // Physical losses are handled by the controller, preserving wrecks and
+        // dismounted survivors instead of deleting them through generic cleanup.
+        ["isAlive", {
+            params ["_id", "_force"];
+            (_force param [8, []]) isNotEqualTo []
+                || {((_force select 3) getOrDefault ["manpower", 0]) > 0}
+                || {((_force select 3) getOrDefault ["vehicles", []]) isNotEqualTo []}
+        }],
+        ["onDecisionTick", { _this call BATTLESPACE_AIRLIFT_TICK }]
     ]
 ] call BATTLESPACE_TASK_FORCE_REGISTER_MODEL;
