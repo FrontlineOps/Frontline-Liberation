@@ -1,5 +1,5 @@
 /* Permission decisions live on the server; client copies only control presentation. */
-KPLIB_PERMISSION_KEYS = ["BUILD", "RECYCLE", "PRODUCTION", "INTELLIGENCE"];
+KPLIB_PERMISSION_KEYS = ["BUILD", "RECYCLE", "PRODUCTION"];
 
 KPLIB_fnc_isPermissionAdmin = {
     params [["_unit", objNull, [objNull]]];

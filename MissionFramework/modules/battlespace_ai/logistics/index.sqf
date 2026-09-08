@@ -352,7 +352,8 @@ BATTLESPACE_STRATEGIC_DESERIALIZE_OPERATION = {
 };
 
 BATTLESPACE_LOGISTICS_SAVE = {
-    if (!isServer || {missionNamespace getVariable ["BATTLESPACE_LOGISTICS_SAVING", false]}) exitWith { false };
+    params [["_flush", true, [false]]];
+    if (!isServer || {isRemoteExecuted} || {missionNamespace getVariable ["BATTLESPACE_LOGISTICS_SAVING", false]}) exitWith {false};
     BATTLESPACE_LOGISTICS_SAVING = true;
     if (missionNamespace getVariable ["BATTLESPACE_TASK_FORCES_PERSISTENT", false]) then {
         [false] call BATTLESPACE_TASK_FORCES_SAVE;
@@ -388,9 +389,14 @@ BATTLESPACE_LOGISTICS_SAVE = {
 
     profileNamespace setVariable [BATTLESPACE_LOGISTICS_SAVE_KEY, createHashMapFromArray [
         ["sectors", _savedSectors],
-        ["operations", _savedOperations]
+        ["operations", _savedOperations],
+        ["intelligence", if (missionNamespace getVariable ["KPLIB_INTEL_SERVER_INITIALIZED", false]) then {
+            call KPLIB_INTEL_SERVER_EXPORT
+        } else {
+            missionNamespace getVariable ["KPLIB_INTEL_PENDING_SAVE", []]
+        }]
     ]];
-    saveProfileNamespace;
+    if (_flush) then {saveProfileNamespace};
     BATTLESPACE_LOGISTICS_SAVING = false;
     true
 };
@@ -410,6 +416,7 @@ BATTLESPACE_LOGISTICS_LOAD = {
     private _saveValid = typeName _save == "HASHMAP"
         && {typeName (_save getOrDefault ["sectors", objNull]) == "HASHMAP"}
         && {typeName (_save getOrDefault ["operations", objNull]) == "HASHMAP"};
+    KPLIB_INTEL_PENDING_SAVE = if (_saveValid) then {_save getOrDefault ["intelligence", []]} else {[]};
     private _savedSectors = if (_saveValid) then {_save get "sectors"} else {createHashMap};
     private _initialFill = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_INITIAL_STOCK_RATIO", 0.75];
 

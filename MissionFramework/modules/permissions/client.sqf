@@ -64,5 +64,5 @@ KPLIB_fnc_toggleAllPermissions = {
     params ["_checked"];
     private _display = findDisplay 75820;
     if (isNull _display) exitWith {};
-    {(_display displayCtrl _x) cbSetChecked _checked} forEach [110, 111, 112, 113];
+    {(_display displayCtrl _x) cbSetChecked _checked} forEach [110, 111, 112];
 };

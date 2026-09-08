@@ -83,6 +83,7 @@ BATTLESPACE_STRATEGIC_CREATE_FUNDED_TASK_FORCE = {
     if (!([] call BATTLESPACE_STRATEGIC_SERVER_CALL_ALLOWED)) exitWith {""};
     private _ground = toUpper _kind in BATTLESPACE_GROUND_OPERATION_KINDS;
     if (_ground && {[] call BATTLESPACE_GROUND_ALLOCATION_BLOCK != ""}) exitWith {""};
+    if (_ground && {!isNil "KPLIB_INTEL_SERVER_HAS_EFFECT"} && {[_fundingSector, "COMMAND"] call KPLIB_INTEL_SERVER_HAS_EFFECT}) exitWith {""};
     private _fundingState = BATTLESPACE_SECTOR_STATES get _fundingSector;
     if (isNil "_fundingState" || {(_fundingState getOrDefault ["owner", ""]) != "OPFOR"}) exitWith {""};
 

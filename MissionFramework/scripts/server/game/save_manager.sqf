@@ -94,7 +94,6 @@ KPLIB_sectorTowers = [];
 // Sectors under attack
 KPLIB_sectorsUnderAttack = [];
 // Global Intel resource
-resources_intel = 0;
 // State if the save is fully loaded
 save_is_loaded = false;
 
@@ -187,7 +186,6 @@ if (!isNil "_saveData") then {
         KP_liberation_logistics                     = _saveData select 15;
         KP_liberation_production                    = _saveData select 16;
         KP_liberation_production_markers            = _saveData select 17;
-        resources_intel                             = _saveData select 18;
         _allMines                                   = _saveData param [19, []];
         _allCrates                                  = _saveData param [20, []];
         KPLIB_sectorTowers                          = _saveData param [21, []];
@@ -245,7 +243,6 @@ if (!isNil "_saveData") then {
         _weights                                    = _saveData select  9;
         GRLIB_vehicle_to_military_base_links        = _saveData select 10;
         _aiGroups                                   = _saveData select 12;
-        resources_intel                             = _saveData select 13;
         KP_liberation_civ_rep                       = _saveData select 15;
         KP_liberation_production_markers            = _saveData select 16;
         KP_liberation_guerilla_strength             = _saveData select 17;

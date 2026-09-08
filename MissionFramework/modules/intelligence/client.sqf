@@ -11,7 +11,7 @@ KPLIB_INTEL_CLIENT_CLEAR_INFORMANT_MARKER = {
 
 KPLIB_INTEL_CLIENT_INFORMANT_EVENT = {
     params ["_event", ["_position", [], [[]]], ["_label", "", [""]]];
-    if (!hasInterface) exitWith {};
+    if (!hasInterface || {isRemoteExecuted && {remoteExecutedOwner != 2}}) exitWith {};
 
     switch (_event) do {
         case "SPAWNED": {
@@ -55,13 +55,8 @@ KPLIB_INTEL_CLIENT_RENDER_MARKERS = {
     call KPLIB_INTEL_CLIENT_CLEAR_MARKERS;
     KPLIB_INTEL_CLIENT_MARKER_INDEX = 0;
     {
-        private _marker = [markerPos (_x # 0)] call KPLIB_INTEL_CLIENT_CREATE_MARKER;
-        _marker setMarkerTypeLocal "mil_dot";
-        _marker setMarkerColorLocal "ColorBLUFOR";
-        _marker setMarkerTextLocal format ["INTEL COVERAGE T%1", _x # 1];
-    } forEach KPLIB_INTEL_CLIENT_COVERAGE;
-    {
         _x params ["_id", "_kind", "_phase", "_region", "_position", "_uncertainty", "_observedAt", "_destinationSector", "_destinationPosition", "_strength", "_route", "_tier", "_meta"];
+        if !(_meta getOrDefault ["mapVisible", true]) then {continue};
         private _status = _meta get "status";
         private _current = _status == "CURRENT";
         private _color = (["ColorOrange", "ColorOPFOR"] select (_current));
@@ -109,154 +104,186 @@ KPLIB_INTEL_CLIENT_RENDER_MARKERS = {
     } forEach KPLIB_INTEL_CLIENT_REPORTS;
 };
 
+
 KPLIB_INTEL_CLIENT_NOTIFY = {
     params ["_type", ["_value", 0], ["_detail", ""]];
-    if (!hasInterface) exitWith {};
-    switch (_type) do {
-        case "EARNED": {
-            ["lib_admin_notification", ["INTELLIGENCE RECOVERED", format ["+%1 shared intelligence from %2.", _value, toUpper _detail], "res\notif\ui_notif_int.paa"]] call BIS_fnc_showNotification;
-        };
-        case "ACTIVATED": {
-            ["lib_admin_notification", ["INTELLIGENCE COVERAGE", format ["%1 is now covered at analysis tier %2.", _detail, _value], "res\notif\ui_notif_int.paa"]] call BIS_fnc_showNotification;
-        };
-        case "REPORTS": {
-            ["lib_admin_notification", ["SITREP UPDATED", format ["%1 new Battlespace observations are available on the map.", _value], "res\notif\ui_notif_int.paa"]] call BIS_fnc_showNotification;
-        };
-        case "REJECTED": {
-            hint _detail;
-            if (!isNull (uiNamespace getVariable ["KPLIB_INTEL_CLIENT_DISPLAY", displayNull])) then {[] call KPLIB_INTEL_CLIENT_DIALOG_REFRESH};
-        };
+    if (!hasInterface || {isRemoteExecuted && {remoteExecutedOwner != 2}}) exitWith {};
+    if (_type == "REPORTS") then {_detail = "New source information is available in Intelligence Case Files."};
+    ["lib_admin_notification", ["INTELLIGENCE", _detail, "res\notif\ui_notif_int.paa"]] call BIS_fnc_showNotification;
+};
+
+KPLIB_INTEL_CLIENT_UPDATE_TASKS = {
+    if (isNull player) exitWith {};
+    if (player isNotEqualTo (missionNamespace getVariable ["KPLIB_INTEL_CLIENT_TASK_OWNER", objNull])) then {
+        KPLIB_INTEL_CLIENT_TASKS = createHashMap;
+        KPLIB_INTEL_CLIENT_TASK_OWNER = player;
     };
+    private _seen = [];
+    {
+        _x params ["_id", "_title", "_stage", "_status", "_pos", "_brief", "_effect", "_history", "_deadline"];
+        _seen pushBack _id;
+        private _entry = KPLIB_INTEL_CLIENT_TASKS getOrDefault [_id, []];
+        private _newStage = _entry isEqualTo [] || {(_entry # 1) != _stage};
+        if (_newStage && {_entry isNotEqualTo []}) then {
+            player removeSimpleTask (_entry # 0);
+            _entry = [];
+        };
+        private _task = if (_entry isEqualTo []) then {
+            player createSimpleTask [format ["%1: %2", _title, ["Recover documents", "Retrieve HVT", "Disrupt support"] # _stage]]
+        } else {_entry # 0};
+        private _description = ([_brief] call KPLIB_INTEL_CLIENT_ESCAPE) + "<br/><br/>" + ([_effect] call KPLIB_INTEL_CLIENT_ESCAPE)
+            + "<br/><br/>" + ((_history apply {[_x] call KPLIB_INTEL_CLIENT_ESCAPE}) joinString "<br/>");
+        if (_status == "QUEUED") then {_description = "Awaiting a confirmed target location.<br/><br/>" + _description};
+        _task setSimpleTaskDescription [_description, _title, ["Documents", "HVT", "Support site"] # _stage];
+        if (_status == "ACTIVE") then {_task setSimpleTaskDestination _pos};
+        private _taskState = switch (_status) do {
+            case "ACTIVE": {"ASSIGNED"};
+            case "QUEUED": {"CREATED"};
+            default {_status};
+        };
+        _task setTaskState _taskState;
+        if (_status == "ACTIVE" && {_newStage || {(_entry param [2, ""]) == "QUEUED"}}) then {
+            player setCurrentTask _task;
+            if (KPLIB_INTEL_CLIENT_HAS_SNAPSHOT) then {
+                ["INFO", 0, format ["New task: %1 — %2", _title, ["recover documents", "retrieve the HVT alive", "disrupt enemy support"] # _stage]] call KPLIB_INTEL_CLIENT_NOTIFY;
+            };
+        };
+        KPLIB_INTEL_CLIENT_TASKS set [_id, [_task, _stage, _status]];
+    } forEach KPLIB_INTEL_CLIENT_CASES;
+    {
+        if !(_x in _seen) then {
+            player removeSimpleTask ((KPLIB_INTEL_CLIENT_TASKS get _x) # 0);
+            KPLIB_INTEL_CLIENT_TASKS deleteAt _x;
+        };
+    } forEach keys KPLIB_INTEL_CLIENT_TASKS;
 };
 
 KPLIB_INTEL_CLIENT_RECEIVE_SNAPSHOT = {
     params [["_snapshot", [], [[]]]];
-    if (!hasInterface || {count _snapshot < 6} || {(_snapshot # 5) != 2}) exitWith {};
+    if (!hasInterface || {count _snapshot != 5} || {(_snapshot # 4) != 3}) exitWith {};
     if (isRemoteExecuted && {remoteExecutedOwner != 2}) exitWith {};
+    if (!(missionNamespace getVariable ["KPLIB_INTEL_CLIENT_INITIALIZED", false])) exitWith {};
     if ((_snapshot # 0) < KPLIB_INTEL_CLIENT_REVISION) exitWith {};
-    _snapshot params ["_revision", "_reserve", "_coverage", "_reports", "_regions"];
-
+    _snapshot params ["_revision", "_reports", "_cases", "_detainees"];
     private _oldIds = KPLIB_INTEL_CLIENT_REPORTS apply {_x # 0};
-    private _newReportCount = 0;
-    if (KPLIB_INTEL_CLIENT_HAS_SNAPSHOT) then {
-        {_newReportCount = _newReportCount + (parseNumber !((_x # 0) in _oldIds))} forEach _reports;
-    };
-
+    private _newReports = _reports findIf {!((_x # 0) in _oldIds)} >= 0;
     KPLIB_INTEL_CLIENT_REVISION = _revision;
-    KPLIB_INTEL_CLIENT_COVERAGE = _coverage;
     KPLIB_INTEL_CLIENT_REPORTS = _reports;
-    KPLIB_INTEL_CLIENT_REGIONS = _regions;
-    KPLIB_INTEL_CLIENT_HAS_SNAPSHOT = true;
-    resources_intel = _reserve;
+    KPLIB_INTEL_CLIENT_CASES = _cases;
+    KPLIB_INTEL_CLIENT_DETAINEES = _detainees;
     call KPLIB_INTEL_CLIENT_RENDER_MARKERS;
-
-    if (_newReportCount > 0) then {["REPORTS", _newReportCount] call KPLIB_INTEL_CLIENT_NOTIFY};
-    if (!isNull (uiNamespace getVariable ["KPLIB_INTEL_CLIENT_DISPLAY", displayNull])) then {[uiNamespace getVariable "KPLIB_INTEL_CLIENT_DISPLAY"] call KPLIB_INTEL_CLIENT_DIALOG_LOAD};
+    call KPLIB_INTEL_CLIENT_UPDATE_TASKS;
+    if (_newReports && {KPLIB_INTEL_CLIENT_HAS_SNAPSHOT}) then {["REPORTS"] call KPLIB_INTEL_CLIENT_NOTIFY};
+    KPLIB_INTEL_CLIENT_HAS_SNAPSHOT = true;
+    call KPLIB_INTEL_CLIENT_DIALOG_REFRESH;
 };
 
-[] call compileFinal preprocessFileLineNumbers "modules\intelligence\dialog.sqf";
-
-KPLIB_INTEL_CLIENT_ACTIVATE_SELECTED = {
-    private _display = uiNamespace getVariable ["KPLIB_INTEL_CLIENT_DISPLAY", displayNull];
-    if (isNull _display) exitWith {};
-    private _regionList = _display displayCtrl 101;
-    private _tierList = _display displayCtrl 108;
-    private _regionIndex = lbCurSel _regionList;
-    private _tierIndex = lbCurSel _tierList;
-    if (_regionIndex < 0 || {_tierIndex < 0}) exitWith {};
-    private _region = _regionList lbData _regionIndex;
-    private _tier = parseNumber (_tierList lbData _tierIndex);
-    (_display displayCtrl 103) ctrlEnable false;
-    [_region, _tier] remoteExecCall ["KPLIB_INTEL_SERVER_ACTIVATE_COVERAGE", 2];
+KPLIB_INTEL_CLIENT_INTERROGATE = {
+    params ["_unit", "_duration"];
+    if (!hasInterface || {!isRemoteExecuted} || {remoteExecutedOwner != 2}) exitWith {};
+    [_duration, [_unit], {}, {
+        params ["_args"];
+        [_args # 0, "CANCEL"] remoteExecCall ["KPLIB_INTEL_SERVER_REQUEST_ACTION", 2];
+    }, "Interrogating prisoner", {
+        params ["_args", "_elapsed"];
+        private _unit = _args # 0;
+        alive player && {alive _unit} && {player distance _unit <= KPLIB_intelligence_interaction_distance}
+            && {vehicle player isEqualTo player} && {!(_unit getVariable ["ACE_isUnconscious", false])}
+            && {_elapsed < 2 || {_unit getVariable ["KPLIB_intelligenceInterrogating", false]}}
+    }] call ace_common_fnc_progressBar;
 };
 
 KPLIB_INTEL_CLIENT_UPDATE_HUD = {
     params ["_display", "_visibleMap"];
     if (isNull _display) exitWith {};
-    private _textControl = _display displayCtrl 516;
-    private _background = _display displayCtrl 517;
-    private _activeCoverage = KPLIB_INTEL_CLIENT_COVERAGE select {(_x # 2) > CBA_missionTime};
-    private _show = _visibleMap && {_activeCoverage isNotEqualTo []};
-    private _hudKey = str [KPLIB_INTEL_CLIENT_REVISION, _show, floor (CBA_missionTime / 60)];
-    if (_hudKey == KPLIB_INTEL_CLIENT_HUD_KEY && {_display isEqualTo (uiNamespace getVariable ["KPLIB_INTEL_CLIENT_HUD_DISPLAY", displayNull])}) exitWith {};
-    uiNamespace setVariable ["KPLIB_INTEL_CLIENT_HUD_DISPLAY", _display];
-    KPLIB_INTEL_CLIENT_HUD_KEY = _hudKey;
-    _background ctrlShow _show;
-    _textControl ctrlShow _show;
-    if (!_show) exitWith {_textControl ctrlSetStructuredText parseText ""};
-
-    private _minimumMinutes = 999;
-    { _minimumMinutes = _minimumMinutes min (ceil ((((_x # 2) - CBA_missionTime) / 60) max 0)) } forEach _activeCoverage;
-    _textControl ctrlSetStructuredText parseText format [
-        "<t align='right' color='#7fc9ff'>INTELLIGENCE NETWORK</t><br/><t align='right'>%1 regions | %2 reports | next expiry %3m</t>",
-        count _activeCoverage,
-        count KPLIB_INTEL_CLIENT_REPORTS,
-        _minimumMinutes
-    ];
+    private _count = {(_x # 3) in ["ACTIVE", "QUEUED"]} count KPLIB_INTEL_CLIENT_CASES;
+    private _show = _visibleMap && {_count > 0 || {KPLIB_INTEL_CLIENT_DETAINEES > 0}};
+    (_display displayCtrl 517) ctrlShow _show;
+    (_display displayCtrl 516) ctrlShow _show;
+    if (_show) then {
+        (_display displayCtrl 516) ctrlSetStructuredText parseText format ["<t align='right' color='#7fc9ff'>INTELLIGENCE CASE FILES</t><br/><t align='right'>%1 operations | %2 prisoners awaiting interrogation</t>", _count, KPLIB_INTEL_CLIENT_DETAINEES];
+    };
 };
+
+[] call compileFinal preprocessFileLineNumbers "modules\intelligence\dialog.sqf";
 
 KPLIB_INTEL_CLIENT_INIT = {
     if (!hasInterface || {missionNamespace getVariable ["KPLIB_INTEL_CLIENT_INITIALIZED", false]}) exitWith {};
     KPLIB_INTEL_CLIENT_INITIALIZED = true;
     KPLIB_INTEL_CLIENT_REVISION = -1;
-    KPLIB_INTEL_CLIENT_COVERAGE = [];
     KPLIB_INTEL_CLIENT_REPORTS = [];
-    KPLIB_INTEL_CLIENT_REGIONS = [];
+    KPLIB_INTEL_CLIENT_CASES = [];
+    KPLIB_INTEL_CLIENT_DETAINEES = 0;
+    KPLIB_INTEL_CLIENT_TASKS = createHashMap;
     KPLIB_INTEL_CLIENT_MARKERS = [];
     KPLIB_INTEL_CLIENT_MARKER_INDEX = 0;
     KPLIB_INTEL_CLIENT_SELECTED_REPORT = "";
     KPLIB_INTEL_CLIENT_INFORMANT_MARKER = "";
     KPLIB_INTEL_CLIENT_HAS_SNAPSHOT = false;
-    KPLIB_INTEL_CLIENT_HUD_KEY = "";
     uiNamespace setVariable ["KPLIB_INTEL_CLIENT_DISPLAY", displayNull];
-
-    if (missionNamespace getVariable ["KPLIB_intelligence_enabled", true]) then {
-        private _escortAction = [
-            "KPLIB_INTEL_ESCORT",
-            "Escort for debrief",
-            "",
-            {
-                params ["_target", "_player"];
-                if (_target getVariable ["KPLIB_intelligencePrisoner", false]) then {
-                    [_target] remoteExecCall ["KPLIB_INTEL_SERVER_REGISTER_PRISONER_ESCORT", 2];
-                } else {
-                    [_target] remoteExecCall ["KPLIB_INTEL_SERVER_BEGIN_INFORMANT_ESCORT", 2];
-                };
-            },
-            {
-                params ["_target", "_player"];
-                alive _target
-                    && {_target isNotEqualTo _player}
-                    && {!isPlayer _target}
-                    && {side group _player == GRLIB_side_friendly}
-                    && {vehicle _player isEqualTo _player}
-                    && {_target distance _player <= (missionNamespace getVariable ["KPLIB_intelligence_interaction_distance", 4])}
-                    && {
-                        _target getVariable ["KPLIB_intelligencePrisoner", false]
-                        || {_target getVariable ["KPLIB_intelligenceInformant", false]}
-                    }
-                    && {side group _target != GRLIB_side_friendly}
-            }
-        ] call ace_interact_menu_fnc_createAction;
-        ["CAManBase", 0, ["ACE_MainActions"], _escortAction, true] call ace_interact_menu_fnc_addActionToClass;
-
-        {
-            private _collectAction = [
-                format ["KPLIB_INTEL_COLLECT_%1", _forEachIndex],
-                "Collect intelligence",
-                "res\notif\ui_notif_int.paa",
-                {params ["_target"]; [_target] remoteExecCall ["KPLIB_INTEL_SERVER_COLLECT_DOCUMENT", 2]},
-                {
-                    params ["_target", "_player"];
-                    !(_target getVariable ["KPLIB_intelligenceCollected", false])
-                        && {side group _player == GRLIB_side_friendly}
-                        && {vehicle _player isEqualTo _player}
-                        && {_target distance _player <= (missionNamespace getVariable ["KPLIB_intelligence_interaction_distance", 4])}
-                }
-            ] call ace_interact_menu_fnc_createAction;
-            [_x, 0, [], _collectAction, true] call ace_interact_menu_fnc_addActionToClass;
-        } forEach KPLIB_intelObjectClasses;
-
-        [] remoteExecCall ["KPLIB_INTEL_SERVER_REQUEST_SYNC", 2];
+    if (!KPLIB_intelligence_enabled) exitWith {};
+    KPLIB_INTEL_CLIENT_CAN_INTERACT = {
+        params ["_target", "_actor"];
+        alive _target && {alive _actor} && {side group _actor == GRLIB_side_friendly}
+            && {vehicle _actor isEqualTo _actor} && {_actor distance _target <= KPLIB_intelligence_interaction_distance}
+            && {!(_actor getVariable ["ACE_isUnconscious", false])}
     };
+    private _escort = ["KPLIB_INTEL_ESCORT", "Escort to FOB / patrol base", "", {
+        params ["_target"];
+        [_target] remoteExecCall [["KPLIB_INTEL_SERVER_BEGIN_INFORMANT_ESCORT", "KPLIB_INTEL_SERVER_REGISTER_PRISONER_ESCORT"] select (_target getVariable ["KPLIB_intelligencePrisoner", false]), 2];
+    }, {
+        params ["_target", "_player"];
+        [_target, _player] call KPLIB_INTEL_CLIENT_CAN_INTERACT && {!isPlayer _target}
+            && {!(_target getVariable ["KPLIB_intelligenceDelivered", false])}
+            && {_target getVariable ["KPLIB_intelligencePrisoner", false] || {_target getVariable ["KPLIB_intelligenceInformant", false]}}
+            && {isNull (_target getVariable ["KPLIB_intelligenceEscort", objNull])}
+    }] call ace_interact_menu_fnc_createAction;
+    ["CAManBase", 0, ["ACE_MainActions"], _escort, true] call ace_interact_menu_fnc_addActionToClass;
+    {
+        _x params ["_id", "_label", "_condition"];
+        private _action = [_id, _label, "", {
+            params ["_target", "_player", "_actionId"];
+            [_target, _actionId] remoteExecCall ["KPLIB_INTEL_SERVER_REQUEST_ACTION", 2];
+        }, _condition, {}, _id] call ace_interact_menu_fnc_createAction;
+        ["CAManBase", 0, ["ACE_MainActions"], _action, true] call ace_interact_menu_fnc_addActionToClass;
+    } forEach [
+        ["INTERROGATE", "Interrogate prisoner", {
+            params ["_target", "_player"];
+            [_target, _player] call KPLIB_INTEL_CLIENT_CAN_INTERACT
+                && {_target getVariable ["KPLIB_intelligenceDetained", false]}
+                && {!(_target getVariable ["KPLIB_intelligenceInterrogating", false])}
+        }],
+        ["HVT", "Detain HVT", {
+            params ["_target", "_player"];
+            [_target, _player] call KPLIB_INTEL_CLIENT_CAN_INTERACT
+                && {(_target getVariable ["KPLIB_intelligenceHVT", ""]) != ""}
+                && {!(_target getVariable ["KPLIB_intelligencePrisoner", false])}
+        }]
+    ];
+    {
+        private _collect = [format ["KPLIB_INTEL_COLLECT_%1", _forEachIndex], "Collect intelligence", "res\notif\ui_notif_int.paa", {
+            params ["_target"];
+            [_target] remoteExecCall ["KPLIB_INTEL_SERVER_COLLECT_DOCUMENT", 2];
+        }, {
+            params ["_target", "_player"];
+            [_target, _player] call KPLIB_INTEL_CLIENT_CAN_INTERACT && {!(_target getVariable ["KPLIB_intelligenceCollected", false])}
+        }] call ace_interact_menu_fnc_createAction;
+        [_x, 0, [], _collect, true] call ace_interact_menu_fnc_addActionToClass;
+    } forEach KPLIB_intelObjectClasses;
+    private _sabotage = ["KPLIB_INTEL_SABOTAGE", "Sabotage support site", "", {
+        params ["_target"];
+        [_target, "SABOTAGE"] remoteExecCall ["KPLIB_INTEL_SERVER_REQUEST_ACTION", 2];
+    }, {
+        params ["_target", "_player"];
+        [_target, _player] call KPLIB_INTEL_CLIENT_CAN_INTERACT && {(_target getVariable ["KPLIB_intelligenceObjective", ""]) != ""}
+    }] call ace_interact_menu_fnc_createAction;
+    ["Land_CargoBox_V1_F", 0, [], _sabotage, true] call ace_interact_menu_fnc_addActionToClass;
+    addMissionEventHandler ["EntityRespawned", {
+        params ["_unit"];
+        if (local _unit && {isPlayer _unit}) then {
+            call KPLIB_INTEL_CLIENT_UPDATE_TASKS;
+            [] remoteExecCall ["KPLIB_INTEL_SERVER_REQUEST_SYNC", 2];
+        };
+    }];
+    [] remoteExecCall ["KPLIB_INTEL_SERVER_REQUEST_SYNC", 2];
 };

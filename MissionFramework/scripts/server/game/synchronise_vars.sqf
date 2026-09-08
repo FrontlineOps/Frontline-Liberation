@@ -11,7 +11,6 @@ waitUntil{!isNil "KP_liberation_heli_count"};
 waitUntil{!isNil "KP_liberation_plane_count"};
 waitUntil{!isNil "KP_liberation_heli_slots"};
 waitUntil{!isNil "KP_liberation_plane_slots"};
-waitUntil{!isNil "resources_intel"};
 waitUntil{!isNil "infantry_cap"};
 waitUntil{!isNil "KP_liberation_civ_rep"};
 waitUntil{!isNil "KP_liberation_guerilla_strength"};
@@ -30,7 +29,6 @@ private _KP_liberation_plane_count_old = -1;
 private _KP_liberation_heli_slots_old = -1;
 private _KP_liberation_plane_slots_old = -1;
 private _combat_readiness_old = -1;
-private _resources_intel_old = -999;
 private _infantry_cap_old = -999;
 private _KP_liberation_civ_rep_old = -999;
 private _KP_liberation_guerilla_strength_old = -999;
@@ -50,7 +48,6 @@ while {true} do {
         || _KP_liberation_heli_slots_old != KP_liberation_heli_slots
         || _KP_liberation_plane_slots_old != KP_liberation_plane_slots
         || _combat_readiness_old != combat_readiness
-        || _resources_intel_old != resources_intel
         || _infantry_cap_old != infantry_cap
         || _KP_liberation_civ_rep_old != KP_liberation_civ_rep
         || _KP_liberation_guerilla_strength_old != KP_liberation_guerilla_strength
@@ -72,7 +69,7 @@ while {true} do {
         KP_liberation_heli_slots,
         KP_liberation_plane_slots,
         combat_readiness,
-        resources_intel,
+        0, // Reserved former intelligence-currency slot
         infantry_cap,
         KP_liberation_civ_rep,
         KP_liberation_guerilla_strength,
@@ -92,7 +89,6 @@ while {true} do {
     _KP_liberation_heli_slots_old = KP_liberation_heli_slots;
     _KP_liberation_plane_slots_old = KP_liberation_plane_slots;
     _combat_readiness_old = combat_readiness;
-    _resources_intel_old = resources_intel;
     _infantry_cap_old = infantry_cap;
     _KP_liberation_civ_rep_old = KP_liberation_civ_rep;
     _KP_liberation_guerilla_strength_old = KP_liberation_guerilla_strength;

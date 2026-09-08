@@ -74,7 +74,6 @@ class liberation_player_permissions {
         };
         class Recycle: Build {idc = 111; y = 0.40 * safezoneH + safezoneY;};
         class Production: Build {idc = 112; y = 0.47 * safezoneH + safezoneY;};
-        class Intelligence: Build {idc = 113; y = 0.54 * safezoneH + safezoneY;};
         class BuildLabel: PlayerName {
             idc = -1;
             text = "Building and FOB construction";
@@ -84,7 +83,6 @@ class liberation_player_permissions {
         };
         class RecycleLabel: BuildLabel {text = "Recycling"; y = 0.40 * safezoneH + safezoneY;};
         class ProductionLabel: BuildLabel {text = "Production management"; y = 0.47 * safezoneH + safezoneY;};
-        class IntelligenceLabel: BuildLabel {text = "Intelligence analysis spending"; y = 0.54 * safezoneH + safezoneY;};
         class All: StdButton {
             idc = 121;
             text = "Select all";

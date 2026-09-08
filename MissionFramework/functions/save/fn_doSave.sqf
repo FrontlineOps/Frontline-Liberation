@@ -38,6 +38,10 @@ profileNamespace setVariable [GRLIB_save_key, str _saveData];
 if (!isNil "KPLIB_COPS_SERVER_SAVE" && {missionNamespace getVariable ["KPLIB_COPS_READY", false]}) then {
     [false] call KPLIB_COPS_SERVER_SAVE;
 };
+// Case rewards and paid guards must share the exact enemy-resource snapshot.
+if (missionNamespace getVariable ["BATTLESPACE_LOGISTICS_READY", false]) then {
+    [false] call BATTLESPACE_LOGISTICS_SAVE;
+};
 saveProfileNamespace;
 
 KPLIB_lastSaveDuration = diag_tickTime - _saveStartedAt;

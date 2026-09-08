@@ -48,7 +48,6 @@ if (_updateValues) then {
     (_overlay displayCtrl IDC_OVERLAY_RSC_LABEL_PLANE) ctrlSetText ([KP_liberation_plane_count, "/", KP_liberation_plane_slots] joinString "");
     (_overlay displayCtrl IDC_OVERLAY_RSC_LABEL_ALERT) ctrlSetText ([round combat_readiness, "%"] joinString "");
     (_overlay displayCtrl IDC_OVERLAY_RSC_LABEL_CIVREP) ctrlSetText ([KP_liberation_civ_rep,"%"] joinString "");
-    (_overlay displayCtrl IDC_OVERLAY_RSC_LABEL_INTEL) ctrlSetText str round resources_intel;
 
     private _color_readiness = [0.8,0.8,0.8,1];
     if (combat_readiness >= 25) then {_color_readiness = [0.8,0.8,0,1]};
@@ -71,5 +70,7 @@ if (_updateValues) then {
 {
     (_overlay displayCtrl _x) ctrlShow true;
 } forEach OVERLAY_RSC_IDCS;
+// The intelligence currency is retired; leave the reserved control IDs intact.
+{(_overlay displayCtrl _x) ctrlShow false} forEach [IDC_OVERLAY_RSC_PIC_INTEL, IDC_OVERLAY_RSC_PIC_INTEL_SHADOW, IDC_OVERLAY_RSC_LABEL_INTEL];
 
 true

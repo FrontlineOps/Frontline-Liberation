@@ -598,7 +598,7 @@ BATTLESPACE_ARTILLERY_GET_READY_BATTERIES = {
 		};
 		_state params [["_status", "NOT READY"], ["_initialSetupTime", 0], ["_loc", []], ["_target", objNull], ["_accuracy", 0], ["_observer", objNull], ["_tLocs", []], ["_tLoc", []], ["_systemTargeted", false], ["_cooldownExpiresAt", 0], ["_suppressedUntil", 0]];
 		// If status is READY
-		if(_status == "READY") then {
+		if (_status == "READY") then {
 			_readyBatteries pushBack _x;
 		};
 
@@ -616,8 +616,10 @@ BATTLESPACE_ARTILLERY_GET_READY_BATTERIES = {
 			};
 		};
 	} forEach BATTLESPACE_ARTILLERY_SECTIONS;
-	BATTLESPACE_ARTILLERY_SECTIONS = BATTLESPACE_ARTILLERY_SECTIONS - _invalids;
-	_readyBatteries;
+    BATTLESPACE_ARTILLERY_SECTIONS = BATTLESPACE_ARTILLERY_SECTIONS - _invalids;
+    _readyBatteries select {
+        isNil "KPLIB_INTEL_SERVER_HAS_EFFECT" || {!([_x getVariable ["BSAFundingSector", ""], "FIRE_SUPPORT"] call KPLIB_INTEL_SERVER_HAS_EFFECT)}
+    };
 };
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\artillery\trp.sqf";
 
@@ -915,7 +917,8 @@ BATTLESPACE_ARTILLERY_FULFILL_REQUEST = {
 
 	_state params [["_status", "NOT READY"], ["_initialSetupTime", 0], ["_loc", []], ["_tgt", objNull], ["_acc", 0], ["_obs", objNull]];
 
-	if(_status != "READY") exitWith { };
+    if (_status != "READY") exitWith {};
+    if (!isNil "KPLIB_INTEL_SERVER_HAS_EFFECT" && {[_battery getVariable ["BSAFundingSector", ""], "FIRE_SUPPORT"] call KPLIB_INTEL_SERVER_HAS_EFFECT}) exitWith {};
 	private _vehicles = [];
 	{
 		private _vehicle = vehicle _x;

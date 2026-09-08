@@ -77,10 +77,10 @@ _player addAction [
     "
 ];
 
-// Shared reports remain readable in the field; the server restricts paid analysis to terminals.
+// Source reports and automatically assigned operations remain readable in the field.
 if (KPLIB_intelligence_enabled) then {
     _player addAction [
-        "<t color='#7FC9FF'>Intelligence Analysis</t>",
+        "<t color='#7FC9FF'>Intelligence Case Files</t>",
         {[] call KPLIB_INTEL_CLIENT_OPEN_DIALOG},
         nil,
         -760,

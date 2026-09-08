@@ -16,7 +16,6 @@ while {true} do {
     KP_liberation_heli_slots = sync_vars select 7;
     KP_liberation_plane_slots = sync_vars select 8;
     combat_readiness = sync_vars select 9;
-    resources_intel = sync_vars select 10;
     infantry_cap = sync_vars select 11;
     KP_liberation_civ_rep = sync_vars select 12;
     KP_liberation_guerilla_strength = sync_vars select 13;

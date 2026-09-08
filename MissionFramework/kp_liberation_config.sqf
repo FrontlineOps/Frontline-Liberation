@@ -364,34 +364,36 @@ KP_liberation_production_interval = 120;      			// Resource production time (mi
 KP_liberation_allow_fob_vehcile_building = false;		// Allow building vehicles at FOBs
 KP_liberation_allow_fixedwing_at_fobs = false;			// Allow fixed wing aircraft to be built at FOBs (Only applicable if KP_liberation_allow_fob_vehcile_building is false)
 
-// Player intelligence network. All observations are generated and sanitized by the server.
+// Ordinary sources always provide information; only some reveal a linked operation.
+KPLIB_intelligence_task_chance = 0.20;
+KPLIB_intelligence_interrogation_duration = 60;
+KPLIB_intelligence_max_detainees = 12;
+KPLIB_intelligence_max_cases = 6;
+KPLIB_intelligence_max_active_cases = 2;
+KPLIB_intelligence_site_guards = [14, 18, 16];            // Documents, HVT, support site; fully sector-funded
+KPLIB_intelligence_site_radius = 900;                    // Search existing buildings around the source objective
+KPLIB_intelligence_site_statics = 2;                     // Crewed weapons from the current faction catalog
+KPLIB_intelligence_spawn_clearance = 300;                // Stage creation waits if players are nearby
+KPLIB_intelligence_stage_duration = 3600;
+KPLIB_intelligence_archive_duration = 1800;
+KPLIB_intelligence_disruption_duration = 1200;
+KPLIB_intelligence_stock_loss = 0.35;                     // Fraction of actual remaining stock lost
 KPLIB_intelligence_enabled = true;
-KPLIB_intelligence_tier_costs = [10, 25, 45];            // Assessment, movement, opportunities
-KPLIB_intelligence_coverage_duration = 1800;             // Seconds per activation or renewal
-KPLIB_intelligence_max_frontline_depth = 2;              // OPFOR regions available for analysis
-KPLIB_intelligence_region_hops = 1;                      // Linked sectors covered around the selected region
-KPLIB_intelligence_reconcile_interval = 15;              // Server observation pass cadence
-KPLIB_intelligence_refresh_intervals = [180, 90, 30];    // Observation age by tier
+KPLIB_intelligence_reconcile_interval = 2;              // Bounded custody and case transitions
 KPLIB_intelligence_uncertainty_radii = [1200, 600, 200]; // Position uncertainty by tier
 KPLIB_intelligence_strength_bands = [12, 30];            // Moderate and heavy weighted-strength thresholds
 KPLIB_intelligence_vehicle_strength_weight = 4;
 KPLIB_intelligence_max_reports = 40;
-KPLIB_intelligence_max_reports_per_region = 10;
 // Consecutive real path points; longer corridors are explicitly marked partial.
 KPLIB_intelligence_route_point_limit = 48;
-KPLIB_intelligence_lost_contact_duration = 300;
-KPLIB_intelligence_lead_duration = 600;
-// Separate bounded pools for lost observations and recovered leads.
+KPLIB_intelligence_lead_duration = 3600;
+// Recovered reports are dated source information, never live tracking.
 KPLIB_intelligence_max_archived_reports = 12;
 KPLIB_intelligence_terminal_distance = 75;
 KPLIB_intelligence_interaction_distance = 4;
 KPLIB_intelligence_delivery_distance = 40;
-KPLIB_intelligence_document_yield = [8, 15];
-KPLIB_intelligence_prisoner_yield_militia = [3, 6];
-KPLIB_intelligence_prisoner_yield_opfor = [6, 12];
 KPLIB_intelligence_informant_interval = [5400, 10800];     // Minimum and maximum seconds between contact attempts
 KPLIB_intelligence_informant_chance = 75;                 // Spawn chance once a contact attempt is eligible
-KPLIB_intelligence_informant_yield = 15;
 KPLIB_intelligence_informant_lifetime = 1200;             // Unattended lifetime; pauses while players are nearby
 KPLIB_intelligence_informant_pause_distance = 150;
 KPLIB_intelligence_informant_min_reputation = 0;          // Neutral or better; current civilian reputation tops out at zero
