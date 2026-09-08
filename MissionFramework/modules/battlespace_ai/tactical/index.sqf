@@ -415,6 +415,7 @@ BATTLESPACE_TACTICAL_MAINTENANCE_TICK = {
     if (_commandTime < (localNamespace getVariable ["KPLIB_RADIO_NEXT_CASUALTY_RESPONSE", 0])) exitWith {};
     localNamespace setVariable ["KPLIB_RADIO_NEXT_CASUALTY_RESPONSE", _commandTime + 30];
     private _threshold = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_CASUALTY_RESPONSE_THRESHOLD", 8];
+    private _responseChanged = false;
     {
         private _pressure = _y getOrDefault ["casualtyPressure", 0];
         if ((_y getOrDefault ["owner", ""]) != "OPFOR" || {_pressure <= 0}) then {continue};
@@ -435,6 +436,9 @@ BATTLESPACE_TACTICAL_MAINTENANCE_TICK = {
                 _handled = [_x] call BATTLESPACE_AIRBORNE_DISPATCH;
             };
             if (_handled) then {
+                // Consume one request's losses only when troops actually commit.
+                // A failed request or a supply shipment does not satisfy this need.
+                _y set ["casualtyPressure", ((_y getOrDefault ["casualtyPressure", 0]) - _threshold) max 0];
                 _y set ["nextReinforcementAt", CBA_missionTime + ([(missionNamespace getVariable ["BATTLESPACE_STRATEGIC_RESERVE_RESPONSE_COOLDOWN", 600])] call KPLIB_RADIO_SERVER_COMMAND_DELAY)];
             };
         };
@@ -448,9 +452,12 @@ BATTLESPACE_TACTICAL_MAINTENANCE_TICK = {
         };
         if (_handled) then {
             BATTLESPACE_SECTOR_STATES set [_x, _y];
-            [format ["Retained casualty pressure %1 at active sector %2 after strategic response dispatch", _pressure, _x]] call BATTLESPACE_STRATEGIC_LOG;
+            _responseChanged = true;
+            [format ["Casualty pressure at %1 after support commitment: %2 -> %3", _x, _pressure, _y getOrDefault ["casualtyPressure", 0]]] call BATTLESPACE_STRATEGIC_LOG;
         };
     } forEach BATTLESPACE_SECTOR_STATES;
+    // Dispatch saves its operation; persist the resulting pressure and cooldown too.
+    if (_responseChanged) then {[] call BATTLESPACE_LOGISTICS_SAVE};
     [] call BATTLESPACE_RESERVE_FIELD_TICK;
 };
 

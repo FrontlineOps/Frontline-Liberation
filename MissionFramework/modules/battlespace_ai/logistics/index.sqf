@@ -65,6 +65,8 @@ BATTLESPACE_COPY_RESOURCE_MAP = {
     _copy
 };
 
+call compile preprocessFileLineNumbers "modules\battlespace_ai\logistics\offmap.sqf";
+
 BATTLESPACE_SECTOR_GET_TYPE = {
     params ["_sector"];
     switch (true) do {
@@ -355,47 +357,52 @@ BATTLESPACE_LOGISTICS_SAVE = {
     params [["_flush", true, [false]]];
     if (!isServer || {isRemoteExecuted} || {missionNamespace getVariable ["BATTLESPACE_LOGISTICS_SAVING", false]}) exitWith {false};
     BATTLESPACE_LOGISTICS_SAVING = true;
-    if (missionNamespace getVariable ["BATTLESPACE_TASK_FORCES_PERSISTENT", false]) then {
-        [false] call BATTLESPACE_TASK_FORCES_SAVE;
-    };
-    private _savedSectors = createHashMap;
-    {
-        private _state = _y;
-        private _persistedResources = [(_state getOrDefault ["resources", createHashMap])] call BATTLESPACE_COPY_RESOURCE_MAP;
-        if (!isNil "BATTLESPACE_STRATEGIC_ADD_DEPLOYED_ASSETS_TO_SNAPSHOT") then {
-            [_x, _state getOrDefault ["type", ""], _persistedResources] call BATTLESPACE_STRATEGIC_ADD_DEPLOYED_ASSETS_TO_SNAPSHOT;
+    // Freeze paid operations, task forces and both stock ledgers in one frame.
+    // Disk flushing remains outside the snapshot transaction.
+    isNil {
+        if (missionNamespace getVariable ["BATTLESPACE_TASK_FORCES_PERSISTENT", false]) then {
+            [false] call BATTLESPACE_TASK_FORCES_SAVE;
         };
-        _savedSectors set [_x, createHashMapFromArray [
-            ["owner", _state getOrDefault ["owner", "BLUFOR"]],
-            ["resources", _persistedResources],
-            ["refillingResources", +(_state getOrDefault ["refillingResources", []])],
-            ["ownerAge", (CBA_missionTime - (_state getOrDefault ["lastOwnerChange", CBA_missionTime])) max 0],
-            ["resupplyCooldown", ((_state getOrDefault ["nextResupplyAt", 0]) - CBA_missionTime) max 0],
-            ["emergencyCooldown", ((_state getOrDefault ["nextEmergencyAt", 0]) - CBA_missionTime) max 0],
-            ["reinforcementCooldown", ((_state getOrDefault ["nextReinforcementAt", 0]) - CBA_missionTime) max 0],
-            ["deepReconCooldown", ((_state getOrDefault ["nextDeepReconAt", 0]) - CBA_missionTime) max 0],
-            ["airResponseCooldown", ((_state getOrDefault ["nextAirResponseAt", 0]) - CBA_missionTime) max 0],
-            ["fortificationCooldown", ((_state getOrDefault ["nextFortificationAt", 0]) - CBA_missionTime) max 0],
-            ["minefieldCooldown", ((_state getOrDefault ["nextMinefieldAt", 0]) - CBA_missionTime) max 0],
-            ["casualtyPressure", (_state getOrDefault ["casualtyPressure", 0]) max 0],
-            ["lastCasualtyAge", if ((_state getOrDefault ["lastCasualtyAt", -1]) < 0) then {-1} else {(CBA_missionTime - (_state get "lastCasualtyAt")) max 0}]
+        private _savedSectors = createHashMap;
+        {
+            private _state = _y;
+            private _persistedResources = [(_state getOrDefault ["resources", createHashMap])] call BATTLESPACE_COPY_RESOURCE_MAP;
+            if (!isNil "BATTLESPACE_STRATEGIC_ADD_DEPLOYED_ASSETS_TO_SNAPSHOT") then {
+                [_x, _state getOrDefault ["type", ""], _persistedResources] call BATTLESPACE_STRATEGIC_ADD_DEPLOYED_ASSETS_TO_SNAPSHOT;
+            };
+            _savedSectors set [_x, createHashMapFromArray [
+                ["owner", _state getOrDefault ["owner", "BLUFOR"]],
+                ["resources", _persistedResources],
+                ["refillingResources", +(_state getOrDefault ["refillingResources", []])],
+                ["ownerAge", (CBA_missionTime - (_state getOrDefault ["lastOwnerChange", CBA_missionTime])) max 0],
+                ["resupplyCooldown", ((_state getOrDefault ["nextResupplyAt", 0]) - CBA_missionTime) max 0],
+                ["emergencyCooldown", ((_state getOrDefault ["nextEmergencyAt", 0]) - CBA_missionTime) max 0],
+                ["reinforcementCooldown", ((_state getOrDefault ["nextReinforcementAt", 0]) - CBA_missionTime) max 0],
+                ["deepReconCooldown", ((_state getOrDefault ["nextDeepReconAt", 0]) - CBA_missionTime) max 0],
+                ["airResponseCooldown", ((_state getOrDefault ["nextAirResponseAt", 0]) - CBA_missionTime) max 0],
+                ["fortificationCooldown", ((_state getOrDefault ["nextFortificationAt", 0]) - CBA_missionTime) max 0],
+                ["minefieldCooldown", ((_state getOrDefault ["nextMinefieldAt", 0]) - CBA_missionTime) max 0],
+                ["casualtyPressure", (_state getOrDefault ["casualtyPressure", 0]) max 0],
+                ["lastCasualtyAge", if ((_state getOrDefault ["lastCasualtyAt", -1]) < 0) then {-1} else {(CBA_missionTime - (_state get "lastCasualtyAt")) max 0}]
+            ]];
+        } forEach BATTLESPACE_SECTOR_STATES;
+
+        private _savedOperations = createHashMap;
+        {
+            _savedOperations set [_x, [_y] call BATTLESPACE_STRATEGIC_SERIALIZE_OPERATION];
+        } forEach BATTLESPACE_STRATEGIC_OPERATIONS;
+
+        profileNamespace setVariable [BATTLESPACE_LOGISTICS_SAVE_KEY, createHashMapFromArray [
+            ["sectors", _savedSectors],
+            ["operations", _savedOperations],
+            ["offmap", [] call BATTLESPACE_OFFMAP_EXPORT],
+            ["intelligence", if (missionNamespace getVariable ["KPLIB_INTEL_SERVER_INITIALIZED", false]) then {
+                call KPLIB_INTEL_SERVER_EXPORT
+            } else {
+                missionNamespace getVariable ["KPLIB_INTEL_PENDING_SAVE", []]
+            }]
         ]];
-    } forEach BATTLESPACE_SECTOR_STATES;
-
-    private _savedOperations = createHashMap;
-    {
-        _savedOperations set [_x, [_y] call BATTLESPACE_STRATEGIC_SERIALIZE_OPERATION];
-    } forEach BATTLESPACE_STRATEGIC_OPERATIONS;
-
-    profileNamespace setVariable [BATTLESPACE_LOGISTICS_SAVE_KEY, createHashMapFromArray [
-        ["sectors", _savedSectors],
-        ["operations", _savedOperations],
-        ["intelligence", if (missionNamespace getVariable ["KPLIB_INTEL_SERVER_INITIALIZED", false]) then {
-            call KPLIB_INTEL_SERVER_EXPORT
-        } else {
-            missionNamespace getVariable ["KPLIB_INTEL_PENDING_SAVE", []]
-        }]
-    ]];
+    };
     if (_flush) then {saveProfileNamespace};
     BATTLESPACE_LOGISTICS_SAVING = false;
     true
@@ -418,6 +425,7 @@ BATTLESPACE_LOGISTICS_LOAD = {
         && {typeName (_save getOrDefault ["operations", objNull]) == "HASHMAP"};
     KPLIB_INTEL_PENDING_SAVE = if (_saveValid) then {_save getOrDefault ["intelligence", []]} else {[]};
     private _savedSectors = if (_saveValid) then {_save get "sectors"} else {createHashMap};
+    [if (_saveValid) then {_save getOrDefault ["offmap", []]} else {[]}] call BATTLESPACE_OFFMAP_LOAD;
     private _initialFill = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_INITIAL_STOCK_RATIO", 0.75];
 
     if (!_saveValid && {missionNamespace getVariable ["BATTLESPACE_TASK_FORCES_PERSISTENT", false]}) then {
@@ -1199,6 +1207,25 @@ BATTLESPACE_LOGISTICS_BUILD_CONVOY_CURRENT_LOAD = {
         _ratio
     ] call BATTLESPACE_STRATEGIC_SCALE_RESOURCES;
     private _survivingForce = [_taskForce, _operation] call BATTLESPACE_STRATEGIC_GET_SURVIVING_FORCE_RESOURCES;
+    if (_operation getOrDefault ["offmapFunded", false]) then {
+        private _objects = _taskForce param [8, []];
+        private _crew = 0;
+        if (_objects isEqualTo []) then {
+            {
+                _crew = _crew + ([_x, false] call BIS_fnc_crewCount);
+            } forEach ((_taskForce param [3, createHashMap]) getOrDefault ["vehicles", []]);
+        } else {
+            // helpers.sqf creates vehicle crew separately; models/index.sqf tags
+            // purchased infantry with TASKFORCEID. Do not count those twice if
+            // they occupy a turret, or lose surviving crew merely for dismounting.
+            _crew = {
+                !isNull _x && {alive _x} && {_x isKindOf "Man"} && {!captive _x}
+                && {side group _x == GRLIB_side_enemy} && {isNil {_x getVariable "TASKFORCEID"}}
+                && {!((vehicle _x) getVariable ["KPLIB_captured", false])}
+            } count _objects;
+        };
+        _survivingForce set ["manpower", (_survivingForce getOrDefault ["manpower", 0]) + _crew];
+    };
     {
         _load set [_x, (_load getOrDefault [_x, 0]) + _y];
     } forEach _survivingForce;
@@ -1362,6 +1389,10 @@ BATTLESPACE_LOGISTICS_CREATE_CONVOY = {
         ""
     };
 
+    // Off-map is charged inside admission below, never by trusting caller debit.
+    if (_sourceSector == "") then {
+        _debit = [_cargo, _convoyDefinition] call BATTLESPACE_OFFMAP_CONVOY_DEBIT;
+    };
     private _origin = getMarkerPos _sourceMarker;
     private _roads = _origin nearRoads 200;
     if (_roads isNotEqualTo []) then {_origin = getPos (selectRandom _roads)};
@@ -1388,6 +1419,8 @@ BATTLESPACE_LOGISTICS_CREATE_CONVOY = {
     // evacuation and emergency producers. Physical spawning happens later.
     isNil {
         if (["CONVOY"] call BATTLESPACE_STRATEGIC_COUNT_OPERATIONS >= (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_ACTIVE_CONVOYS", 3])) exitWith {};
+        if (_sourceSector == "" && {!([_debit] call BATTLESPACE_OFFMAP_DEBIT)}) exitWith {};
+        _operation set ["offmapFunded", _sourceSector == ""];
         _taskForceId = [
             "Convoy",
             _convoyDefinition get "composition",
@@ -1397,11 +1430,13 @@ BATTLESPACE_LOGISTICS_CREATE_CONVOY = {
         ] call BATTLESPACE_TASK_FORCES_INIT;
         if (_taskForceId != "") then {
             BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceId, _operation];
+        } else {
+            if (_sourceSector == "") then {[_debit] call BATTLESPACE_OFFMAP_DEPOSIT};
         };
     };
     if (_taskForceId == "") exitWith {
         [] call _restoreDebit;
-        [format ["Convoy creation for %1 rejected by capacity or constructor; committed sector debit was restored", _targetSector], "WARNING"] call BATTLESPACE_STRATEGIC_LOG;
+        [format ["Convoy creation for %1 rejected by capacity, stock or constructor; any committed debit was restored", _targetSector], "WARNING"] call BATTLESPACE_STRATEGIC_LOG;
         ""
     };
 
@@ -1537,20 +1572,19 @@ BATTLESPACE_LOGISTICS_DISPATCH = {
     if (_selection isEqualTo []) then {
         private _sourceMarker = [_targetSector] call BATTLESPACE_LOGISTICS_FIND_OFFMAP_SOURCE;
         if (_sourceMarker != "") then {
-            _selection = [
-                _convoyOptions select (count _convoyOptions - 1),
-                "",
-                _sourceMarker,
-                [_request] call BATTLESPACE_COPY_RESOURCE_MAP,
-                createHashMap
-            ];
+            {
+                private _cargo = [_request, _x] call BATTLESPACE_OFFMAP_PLAN_CARGO;
+                if (count _cargo > 0) exitWith {
+                    _selection = [_x, "", _sourceMarker, _cargo, [_cargo, _x] call BATTLESPACE_OFFMAP_CONVOY_DEBIT];
+                };
+            } forEach _convoyOptions;
         };
     };
     if (_selection isEqualTo []) exitWith {
         if !(BATTLESPACE_LOGISTICS_MISSING_ENTRY_WARNED getOrDefault [_targetSector, false]) then {
             BATTLESPACE_LOGISTICS_MISSING_ENTRY_WARNED set [_targetSector, true];
             [format [
-                "Convoy for %1 was not dispatched: no reachable OPFOR sector can fund it and no reachable logistics_spawn marker exists",
+                "Convoy for %1 was not dispatched: no reachable sector can fund it, or off-map entry/stock cannot supply cargo and transport",
                 _targetSector
             ], "WARNING"] call BATTLESPACE_STRATEGIC_LOG;
         };
@@ -1688,6 +1722,12 @@ BATTLESPACE_STRATEGIC_HANDLE_TASK_FORCE_EVENT = {
                 default {""};
             };
 
+            if (_outcome == "RETURNED" && {_destinationSector == ""} && {_operation getOrDefault ["offmapFunded", false]}) then {
+                private _survivors = [_taskForce, _operation] call BATTLESPACE_LOGISTICS_BUILD_CONVOY_CURRENT_LOAD;
+                private _accepted = [_survivors] call BATTLESPACE_OFFMAP_DEPOSIT;
+                [format ["Convoy %1 returned surviving paid cargo and force to off-map reserves: %2", _taskForceId, _accepted]] call BATTLESPACE_STRATEGIC_LOG;
+            };
+
             if (_destinationSector != "") then {
                 private _crateCount = (_operation getOrDefault ["cargoCrateCount", 0]) max 0;
                 private _cratesLost = (_operation getOrDefault ["cargoCratesLost", 0]) max 0 min _crateCount;
@@ -1815,6 +1855,8 @@ if (isServer) then {
         ]] call BATTLESPACE_STRATEGIC_LOG;
         while {GRLIB_endgame == 0} do {
             _commandTime = call KPLIB_RADIO_SERVER_COMMAND_TIME;
+            // Production uses real mission time, independently of radio disruption.
+            if ([] call BATTLESPACE_OFFMAP_TICK) then {[] call BATTLESPACE_LOGISTICS_SAVE};
             [] call BATTLESPACE_SECTOR_SYNC_OWNERS;
             [] call BATTLESPACE_STRATEGIC_RECONCILE_OPERATIONS;
             if (!isNil "BATTLESPACE_TACTICAL_MAINTENANCE_TICK") then {

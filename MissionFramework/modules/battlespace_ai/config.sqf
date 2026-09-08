@@ -1,4 +1,15 @@
 // OVERALL BATTLESPACE AI LOGISTICS
+// One shared off-map reserve for every logistics_spawn entry. Fresh campaigns
+// start full; shipments spend cargo AND their transport/escort complement.
+BATTLESPACE_STRATEGIC_OFFMAP_CAPACITY = createHashMapFromArray [
+    ["manpower", 1200], ["construction_supplies", 1200],
+    ["strategic_sam", 12], ["strategic_missiles", 240],
+    ["tactical_sam", 12], ["tactical_missiles", 240],
+    ["aircraft", 12], ["tanks", 32], ["rocket_artillery", 12],
+    ["rockets", 960], ["howitzers", 12], ["mortars", 12],
+    ["spaag", 32], ["ifv", 64], ["apc", 64], ["car", 128], ["truck", 128]
+];
+
 BATTLESPACE_THRESHOLDS = createHashMap;
 
 BATTLESPACE_SET_THRESHOLD = {

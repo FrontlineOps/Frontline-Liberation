@@ -129,9 +129,12 @@ BATTLESPACE_OFFENSIVE_ON_DECISION_TICK = {
     private _ratio = [_taskForce, _operation] call BATTLESPACE_STRATEGIC_GET_SURVIVAL_RATIO;
     if (_ratio < (_operation getOrDefault ["retreatRatio", 0.5])) exitWith {["combat losses exceed withdrawal threshold"] call _return};
 
-    // Combat interrupts staging, old maneuver phases and objective security.
-    // Retarget only to fresh reported positions, never to the live target object.
-    private _contact = [_position] call BATTLESPACE_OFFENSIVE_GET_CONTACT;
+    // Continue the current fight, but don't redirect another full formation to
+    // an already covered report. Paid forces keep their existing staging orders.
+    private _continuing = if (_phase == "ENGAGING") then {_operation getOrDefault ["targetPosition", []]} else {[]};
+    private _strength = [_taskForce param [3, createHashMap]] call BATTLESPACE_OFFENSIVE_COMPOSITION_STRENGTH;
+    private _source = _operation getOrDefault ["fundingSector", _operation getOrDefault ["originSector", ""]];
+    private _contact = [_position, _source, _id, _continuing, _strength] call BATTLESPACE_OFFENSIVE_GET_CONTACT;
     if (_contact isNotEqualTo []) exitWith {
         private _known = _contact select 0;
         private _destination = _taskForce param [2, []];

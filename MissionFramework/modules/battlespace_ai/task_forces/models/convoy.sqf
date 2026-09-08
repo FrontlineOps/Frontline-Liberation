@@ -125,13 +125,15 @@
 
                     if (_phase == "ENROUTE" && {!_targetIsOpfor}) then {
                         private _sourceSector = _operation getOrDefault ["sourceSector", ""];
+                        private _sourceMarker = _operation getOrDefault ["sourceMarker", ""];
+                        private _offmapReturn = _sourceSector == "" && {_operation getOrDefault ["offmapFunded", false]}
+                            && {_sourceMarker in allMapMarkers};
                         if (
-                            _sourceSector != ""
-                            && {!(_sourceSector in blufor_sectors)}
+                            (_sourceSector != "" && {!(_sourceSector in blufor_sectors)}) || {_offmapReturn}
                         ) then {
-                            [_sourceSector, "OPFOR"] call BATTLESPACE_SECTOR_SET_OWNER;
+                            if (!_offmapReturn) then {[_sourceSector, "OPFOR"] call BATTLESPACE_SECTOR_SET_OWNER};
                             _phase = "RETURNING";
-                            _destination = getMarkerPos _sourceSector;
+                            _destination = getMarkerPos ([_sourceSector, _sourceMarker] select _offmapReturn);
                             _operation set ["phase", _phase];
                             _taskForce set [2, _destination];
                             BATTLESPACE_TASK_FORCE_PATHS deleteAt _taskForceName;

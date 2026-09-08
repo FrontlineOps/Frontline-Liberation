@@ -1,21 +1,32 @@
 /* Paid battlegroups use shared perceived contacts. Planning and funding remain
    server-owned; the persistent Battlegroup model owns movement and capture. */
+call compile preprocessFileLineNumbers "modules\battlespace_ai\ground_offensives\response.sqf";
+
 BATTLESPACE_OFFENSIVE_GET_CONTACT = {
-    params ["_position"];
+    params ["_position", ["_sourceSector", ""], ["_excludeId", ""], ["_continuing", []], ["_minimumStrength", 0]];
     private _contacts = [[], 1e9, BATTLESPACE_OFFENSIVE_CONTACT_MAX_AGE] call BATTLESPACE_CONTACT_QUERY;
-    private _players = _contacts select {_x select 4};
-    if (_players isNotEqualTo []) then {_contacts = _players};
-    private _best = [];
-    private _distance = 1e10;
+    private _ranked = [];
     {
-        private _point = _x select 0;
-        if (surfaceIsWater _point) then {continue};
-        private _candidateDistance = _position distance2D _point;
-        if (_candidateDistance < _distance) then {
-            _distance = _candidateDistance;
-            _best = _x;
-        };
+        if (surfaceIsWater (_x select 0)) then {continue};
+        _ranked pushBack [[1, 0] select (_x select 4), _position distance2D (_x select 0), _forEachIndex];
     } forEach _contacts;
+    _ranked sort true;
+    private _best = [];
+    private _evaluatedAreas = [];
+    {
+        private _contact = _contacts select (_x select 2);
+        private _point = _contact select 0;
+        private _sameFight = _continuing isNotEqualTo [] && {_continuing distance2D _point <= BATTLESPACE_OFFENSIVE_CONTACT_RADIUS};
+        if (_sourceSector != "" && {!_sameFight}) then {
+            // This area's budget already includes these nearby reports. Evaluate
+            // each area once, rather than repeating the force scan per soldier.
+            if (_evaluatedAreas findIf {_x distance2D _point <= BATTLESPACE_OFFENSIVE_CONTACT_RADIUS} >= 0) then {continue};
+            _evaluatedAreas pushBack _point;
+            private _budget = [_point, _sourceSector, _excludeId] call BATTLESPACE_OFFENSIVE_RESPONSE_BUDGET;
+            if (_budget < (_minimumStrength max BATTLESPACE_OFFENSIVE_MIN_RESPONSE_MANPOWER)) then {continue};
+        };
+        if (true) exitWith {_best = _contact};
+    } forEach _ranked;
     _best
 };
 
@@ -62,14 +73,17 @@ BATTLESPACE_OFFENSIVE_PICK_POSITION = {
 };
 
 BATTLESPACE_BATTLEGROUP_BUILD_DEFINITION = {
-    params ["_sourceSector", "_targetSector"];
+    params ["_sourceSector", "_targetSector", ["_strengthBudget", 1e9]];
     private _state = BATTLESPACE_SECTOR_STATES getOrDefault [_sourceSector, createHashMap];
     if ((_state getOrDefault ["owner", ""]) != "OPFOR") exitWith {createHashMap};
     private _stock = _state getOrDefault ["resources", createHashMap];
+    private _minimum = BATTLESPACE_OFFENSIVE_MIN_RESPONSE_MANPOWER;
+    if (_strengthBudget < _minimum) exitWith {createHashMap};
     private _weighted = [];
     {_weighted append [_x, BATTLESPACE_OFFENSIVE_FORMATION_WEIGHTS param [_forEachIndex, 0]]} forEach BATTLESPACE_STRATEGIC_BATTLEGROUP_FORMATIONS;
     private _formation = selectRandomWeighted _weighted;
     _formation params ["_name", "_manpower", "_categories"];
+    _manpower = _manpower min floor _strengthBudget;
     private _vehicles = [];
     private _used = createHashMap;
     private _canSpend = {
@@ -77,8 +91,10 @@ BATTLESPACE_BATTLEGROUP_BUILD_DEFINITION = {
         private _capacity = [_sourceSector, _resource] call BATTLESPACE_SECTOR_GET_EFFECTIVE_CAPACITY;
         (_stock getOrDefault [_resource, 0]) - _amount >= ceil (_capacity * BATTLESPACE_OFFENSIVE_SOURCE_RESERVE_RATIO)
     };
-    if !(["manpower", _manpower] call _canSpend) then {_manpower = 14};
-    if !(["manpower", _manpower] call _canSpend) exitWith {createHashMap};
+    private _manpowerCapacity = [_sourceSector, "manpower"] call BATTLESPACE_SECTOR_GET_EFFECTIVE_CAPACITY;
+    private _availableManpower = floor ((_stock getOrDefault ["manpower", 0]) - ceil (_manpowerCapacity * BATTLESPACE_OFFENSIVE_SOURCE_RESERVE_RATIO));
+    _manpower = _manpower min _availableManpower;
+    if (_manpower < _minimum) exitWith {createHashMap};
     {
         private _eligible = (BATTLESPACE_RESOURCE_CLASS_POOLS getOrDefault [_x, []]) select {
             private _resource = [_x] call BATTLESPACE_STRATEGIC_GET_RESOURCE_FOR_CLASS;
@@ -86,6 +102,7 @@ BATTLESPACE_BATTLEGROUP_BUILD_DEFINITION = {
             _resource != "" && {_x isKindOf "LandVehicle"} && {!(_x isKindOf "StaticWeapon")}
             && {(_roles arrayIntersect ["artillery", "aa", "groundLogistics", "medical"]) isEqualTo []}
             && {[_resource, 1 + (_used getOrDefault [_resource, 0])] call _canSpend}
+            && {([createHashMapFromArray [["manpower", _minimum], ["vehicles", _vehicles + [_x]]]] call BATTLESPACE_OFFENSIVE_COMPOSITION_STRENGTH) <= _strengthBudget}
         };
         if (_eligible isEqualTo []) then {continue};
         private _class = selectRandom _eligible;
@@ -93,7 +110,14 @@ BATTLESPACE_BATTLEGROUP_BUILD_DEFINITION = {
         _used set [_resource, 1 + (_used getOrDefault [_resource, 0])];
         _vehicles pushBack _class;
     } forEach _categories;
-    createHashMapFromArray [["formation", ([_name, "INFANTRY"] select (_vehicles isEqualTo []))], ["composition", createHashMapFromArray [["manpower", _manpower], ["vehicles", _vehicles], ["structures", []]]]]
+    private _vehicleStrength = [createHashMapFromArray [["vehicles", _vehicles]]] call BATTLESPACE_OFFENSIVE_COMPOSITION_STRENGTH;
+    _manpower = _manpower min floor (_strengthBudget - _vehicleStrength);
+    createHashMapFromArray [
+        ["formation", [_name, "INFANTRY"] select (_vehicles isEqualTo [])],
+        ["composition", createHashMapFromArray [
+            ["manpower", _manpower], ["vehicles", _vehicles], ["structures", []]
+        ]]
+    ]
 };
 
 BATTLESPACE_BATTLEGROUP_DISPATCH = {
@@ -103,7 +127,10 @@ BATTLESPACE_BATTLEGROUP_DISPATCH = {
     private _source = BATTLESPACE_SECTOR_STATES getOrDefault [_originSector, createHashMap];
     if !([_originSector, _source] call BATTLESPACE_DEFENSE_SOURCE_IS_AVAILABLE) exitWith {false};
     private _origin = getMarkerPos _originSector;
-    private _contact = [_origin] call BATTLESPACE_OFFENSIVE_GET_CONTACT;
+    private _contact = [_origin, _originSector] call BATTLESPACE_OFFENSIVE_GET_CONTACT;
+    // A covered contact is not a quiet period: do not buy an objective force
+    // merely because the nearest reported battle already has enough troops.
+    if (_contact isEqualTo [] && {([_origin] call BATTLESPACE_OFFENSIVE_GET_CONTACT) isNotEqualTo []}) exitWith {false};
     private _phase = "STAGING";
     private _position = +_origin;
     if (_contact isNotEqualTo []) then {
@@ -129,16 +156,15 @@ BATTLESPACE_BATTLEGROUP_DISPATCH = {
         };
     };
     if (_contact isEqualTo [] && {_targetSector == ""}) exitWith {false};
-    // One new commitment per reported contact area or objective. Existing forces
-    // may converge in combat; this only prevents repeatedly buying the same response.
+    // Keep objective exclusivity; contact responses use remaining local strength.
     private _covered = false;
     {
         if ((_y getOrDefault ["kind", ""]) != "BATTLEGROUP" || {(_y getOrDefault ["phase", ""]) == "RETURNING"}) then {continue};
         if (_targetSector != "" && {(_y getOrDefault ["targetSector", ""]) == _targetSector}) exitWith {_covered = true};
-        if (_phase == "ENGAGING" && {(_y getOrDefault ["targetPosition", [0, 0, 0]]) distance2D _position < BATTLESPACE_OFFENSIVE_CONTACT_RADIUS}) exitWith {_covered = true};
     } forEach BATTLESPACE_STRATEGIC_OPERATIONS;
     if (_covered) exitWith {false};
-    private _definition = [_originSector, _targetSector] call BATTLESPACE_BATTLEGROUP_BUILD_DEFINITION;
+    private _budget = if (_phase == "ENGAGING") then {[_position, _originSector] call BATTLESPACE_OFFENSIVE_RESPONSE_BUDGET} else {1e9};
+    private _definition = [_originSector, _targetSector, _budget] call BATTLESPACE_BATTLEGROUP_BUILD_DEFINITION;
     if (count _definition == 0) exitWith {false};
     private _range = BATTLESPACE_OFFENSIVE_RETREAT_RATIO;
     private _id = ["Battlegroup", _definition get "composition", _origin, _position, _origin, _originSector, "BATTLEGROUP",
