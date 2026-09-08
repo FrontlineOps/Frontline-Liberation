@@ -3,11 +3,14 @@ if (!isServer || {_sector == ""}) exitWith {};
 private _position = markerPos _sector;
 private _getOwnership = {[_sector] call BATTLESPACE_CAPTURE_GET_OWNERSHIP};
 private _record = createHashMap;
+private _displayStarted = false;
+private _outcome = "STOPPED";
 // Active offensive capture age already persists in the unversioned operation.
 {
     if ((_y getOrDefault ["kind", ""]) == "BATTLEGROUP" && {(_y getOrDefault ["targetSector", ""]) == _sector} && {(_y getOrDefault ["phase", ""]) == "ASSAULTING"}) exitWith {_record = _y};
 } forEach BATTLESPACE_STRATEGIC_OPERATIONS;
 private _clear = {
+    if (_displayStarted) then {["SECTOR", _sector, _outcome, 0] call KPLIB_fnc_captureStatusSet};
     sectors_under_attack set [_sector, false];
     _record deleteAt "captureStartedAt";
     _record set ["attackNotified", false];
@@ -28,6 +31,14 @@ if !(_record getOrDefault ["attackNotified", false]) then {[_sector, 1] remoteEx
 _record set ["attackNotified", true];
 private _lastUpdate = CBA_missionTime;
 private _requiredTime = 120 + GRLIB_vulnerability_timer;
+private _updateDisplay = {
+    if (_owner in [GRLIB_side_enemy, GRLIB_side_resistance]) then {
+        ["SECTOR", _sector, ["CAPTURING", "CONTESTED"] select (_owner == GRLIB_side_resistance),
+            _requiredTime - (CBA_missionTime - _started)] call KPLIB_fnc_captureStatusSet;
+    };
+};
+_displayStarted = true;
+call _updateDisplay;
 while {_owner in [GRLIB_side_enemy, GRLIB_side_resistance] && {_sector in blufor_sectors} && {GRLIB_endgame == 0}} do {
     if (_owner == GRLIB_side_enemy && {CBA_missionTime - _started >= _requiredTime}) exitWith {};
     sleep 1;
@@ -38,9 +49,11 @@ while {_owner in [GRLIB_side_enemy, GRLIB_side_resistance] && {_sector in blufor
     _record set ["captureStartedAt", _started];
     _lastUpdate = _now;
     _owner = _nextOwner;
+    call _updateDisplay;
 };
 if (GRLIB_endgame == 0 && {_sector in blufor_sectors}) then {
     if (_owner == GRLIB_side_enemy && {CBA_missionTime - _started >= _requiredTime} && {[_sector] call BATTLESPACE_CAPTURE_SECTOR_FOR_OPFOR}) then {
+        _outcome = "CAPTURED";
         [format ["Sector attack succeeded at %1", _sector], "SECTOR"] call KPLIB_fnc_log;
     } else {
         [_sector, 3] remoteExec ["remote_call_sector", 0];

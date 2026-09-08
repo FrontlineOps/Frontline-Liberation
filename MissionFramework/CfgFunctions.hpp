@@ -1,4 +1,14 @@
 class KPLIB {
+    class functions_capture {
+        file = "functions\capture";
+
+        class captureStatusInit    {};
+        class captureStatusSet     {};
+        class captureStatusPublish {};
+        class captureStatusReceive {};
+        class captureStatusRender  {};
+        class captureStatusText    {};
+    };
     class functions_actions {
         file = "functions\actions";
 

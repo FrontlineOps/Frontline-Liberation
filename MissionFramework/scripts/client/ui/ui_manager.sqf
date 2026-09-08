@@ -25,7 +25,6 @@ if (isNil "halojumping") then {halojumping = false;};
 
 private _uiticks = 0;
 private _active_sectors_hint = false;
-private _attacked_string = "";
 private _nearest_active_sector = "";
 private _zone_size = 0;
 private _colorzone = "ColorGrey";
@@ -90,19 +89,11 @@ while {true} do {
         (_overlay displayCtrl (266)) ctrlSetText format [ "%1", GRLIB_ui_notif ];
         (_overlay displayCtrl (267)) ctrlSetText format [ "%1", GRLIB_ui_notif ];
 
-        if ((markerPos "opfor_capture_marker") distance markers_reset > 100 && _visibleMap) then {
-
-            private [ "_attacked_string" ];
-            _attacked_string = [markerpos "opfor_capture_marker"] call KPLIB_fnc_getLocationName;
-
-            (_overlay displayCtrl (401)) ctrlShow true;
-            (_overlay displayCtrl (402)) ctrlSetText _attacked_string;
-            (_overlay displayCtrl (403)) ctrlSetText (markerText "opfor_capture_marker");
-        } else {
-            (_overlay displayCtrl (401)) ctrlShow false;
-            (_overlay displayCtrl (402)) ctrlSetText "";
-            (_overlay displayCtrl (403)) ctrlSetText "";
-        };
+        private _captureHud = uiNamespace getVariable ["KPLIB_captureStatusHud", ""];
+        private _showCapture = _captureHud != "";
+        {(_overlay displayCtrl _x) ctrlShow _showCapture} forEach [401, 402, 403];
+        (_overlay displayCtrl 402) ctrlSetText _captureHud;
+        (_overlay displayCtrl 403) ctrlSetText "OBJECTIVE STATUS";
 
         // Update resources overlay
         [

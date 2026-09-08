@@ -1,19 +1,6 @@
-createMarkerLocal ["opfor_capture_marker", markers_reset];
-"opfor_capture_marker" setMarkerTypeLocal "mil_objective";
-"opfor_capture_marker" setMarkerColorLocal GRLIB_color_enemy_bright;
-
-if ( isNil "sector_timer" ) then { sector_timer = 0 };
-
-while { true } do {
-    sleep 1;
-    if ( sector_timer > 0 ) then {
-        "opfor_capture_marker" setMarkerTextLocal format ["%1",([sector_timer] call KPLIB_fnc_secondsToTimer)];
-        sector_timer = sector_timer - 1;
-    } else {
-        "opfor_capture_marker" setMarkerTextLocal "VULNERABLE";
-        waitUntil{
-            sleep 1;
-            sector_timer > 0
-        };
-    };
-};
+// Idempotent presentation: all capture progress comes from the server snapshot.
+if (!hasInterface || {!isNil {missionNamespace getVariable "KPLIB_captureStatusRenderer"}}) exitWith {};
+[] call KPLIB_fnc_captureStatusRender;
+KPLIB_captureStatusRenderer = [{
+    [] call KPLIB_fnc_captureStatusRender;
+}, 1] call CBA_fnc_addPerFrameHandler;

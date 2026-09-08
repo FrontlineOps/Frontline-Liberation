@@ -1,7 +1,9 @@
 params [["_fobPosition", [], [[]], [2, 3]]];
-if (_fobPosition isEqualTo []) exitWith {};
+if (!isServer || {_fobPosition isEqualTo []}) exitWith {};
 
 private _defenderGroup = grpNull;
+private _displayStarted = false;
+private _outcome = "STOPPED";
 private _getOwnership = {
     [_fobPosition] call KPLIB_fnc_getSectorOwnership
 };
@@ -13,6 +15,7 @@ private _cleanupDefenders = {
     };
 };
 private _clearAttackState = {
+    if (_displayStarted) then {["FOB", _fobPosition, _outcome, 0] call KPLIB_fnc_captureStatusSet};
     sectors_under_attack set [_fobPosition, false];
     KPLIB_sectorsUnderAttack = KPLIB_sectorsUnderAttack - [_fobPosition];
     publicVariable "KPLIB_sectorsUnderAttack";
@@ -45,20 +48,33 @@ if (_ownership == GRLIB_side_friendly) exitWith {
 
 [_fobPosition, 1] remoteExec ["remote_call_fob"];
 private _attackTime = GRLIB_vulnerability_timer;
+private _updateDisplay = {
+    if (_ownership in [GRLIB_side_enemy, GRLIB_side_resistance]) then {
+        ["FOB", _fobPosition, ["CAPTURING", "CONTESTED"] select (_ownership == GRLIB_side_resistance),
+            _attackTime] call KPLIB_fnc_captureStatusSet;
+    };
+};
+_displayStarted = true;
+call _updateDisplay;
 while {_attackTime > 0 && {_ownership in [GRLIB_side_enemy, GRLIB_side_resistance]} && {GRLIB_endgame == 0}} do {
     _ownership = call _getOwnership;
     _attackTime = _attackTime - 1;
+    call _updateDisplay;
     sleep 1;
 };
 
 waitUntil {
     sleep 1;
-    GRLIB_endgame != 0 || {(call _getOwnership) != GRLIB_side_resistance}
+    _ownership = call _getOwnership;
+    call _updateDisplay;
+    GRLIB_endgame != 0 || {_ownership != GRLIB_side_resistance}
 };
 
 if (GRLIB_endgame == 0) then {
     _ownership = call _getOwnership;
     if (_attackTime <= 1 && {_ownership == GRLIB_side_enemy}) then {
+        _outcome = "CAPTURED";
+        ["FOB", _fobPosition, _outcome, 0] call KPLIB_fnc_captureStatusSet;
         [_fobPosition, 2] remoteExec ["remote_call_fob"];
         sleep 3;
         GRLIB_all_fobs = GRLIB_all_fobs - [_fobPosition];
