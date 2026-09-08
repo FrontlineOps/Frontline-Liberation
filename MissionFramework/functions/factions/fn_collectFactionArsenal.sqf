@@ -201,7 +201,16 @@ if (isNil "KPLIB_autoFactionCompatibilityItems") then {
             private _cfg = _x;
             if (getNumber (_cfg >> "scope") < 1) then {continue};
             if (getNumber (_cfg >> "ACE_isMedicalItem") > 0) then {_aceMedical pushBackUnique (configName _cfg)};
-            if (getNumber (_cfg >> "ACE_isTool") > 0) then {_aceTools pushBackUnique (configName _cfg)};
+            // Restraints use captives metadata; ACE earplugs have no discovery tag.
+            // Keep both in the normal tool compatibility path, including its toggle,
+            // public-class resolution and blacklist, rather than user extra items.
+            if (
+                getNumber (_cfg >> "ACE_isTool") > 0 ||
+                {getNumber (_cfg >> "ace_captives_restraint") > 0} ||
+                {toLower (configName _cfg) == "ace_earplugs"}
+            ) then {
+                _aceTools pushBackUnique (configName _cfg);
+            };
         } forEach ("isClass _x" configClasses (configFile >> "CfgWeapons"));
 
         // Medical consumables with remaining doses can be CfgMagazines classes.
