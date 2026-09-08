@@ -162,7 +162,7 @@ BATTLESPACE_EVALUATE_AIRSPACE = {
     if(isNil "blufor_sectors") exitWith {};
     if !(missionNamespace getVariable ["BATTLESPACE_LOGISTICS_READY", false]) exitWith {};
 
-    if((BATTLESPACE_SAM_LAST_SPAWN_TIME + BATTLESPACE_SAM_SPAWN_COOLDOWN) >= CBA_missionTime && BATTLESPACE_SAM_LAST_SPAWN_TIME > 0) exitWith {};
+    if ((BATTLESPACE_SAM_LAST_SPAWN_TIME + BATTLESPACE_SAM_SPAWN_COOLDOWN) >= (call KPLIB_RADIO_SERVER_COMMAND_TIME) && {BATTLESPACE_SAM_LAST_SPAWN_TIME > 0}) exitWith {};
     diag_log format ["Battlespace Evaluating Airspace..."];
     if (BATTLESPACE_SAM_DEBUG) then {systemChat "Battlespace Evaluating Airspace...";};
 
@@ -477,7 +477,7 @@ BATTLESPACE_SAM_SITE_CREATE = {
 
         BATTLESPACE_SAM_EXISTING_SITES pushBack _newSite;
 
-        BATTLESPACE_SAM_LAST_SPAWN_TIME = CBA_missionTime;
+        BATTLESPACE_SAM_LAST_SPAWN_TIME = call KPLIB_RADIO_SERVER_COMMAND_TIME;
         [] call BATTLESPACE_LOGISTICS_SAVE;
     } else {
         BATTLESPACE_SAM_SITE_POOLS deleteAt _siteId;
@@ -549,6 +549,9 @@ if(isServer && BATTLESPACE_ENABLE_SAM_SPAWNS) then {
                     // Existing bounded site list: retry empty launchers when
                     // logistics arrives, independently of new-site chance/cooldown.
                     [] call BATTLESPACE_SAM_RESUPPLY;
+                    private _commandTime = call KPLIB_RADIO_SERVER_COMMAND_TIME;
+                    if (_commandTime < (localNamespace getVariable ["KPLIB_RADIO_NEXT_AIRSPACE_CHECK", 0])) exitWith {};
+                    localNamespace setVariable ["KPLIB_RADIO_NEXT_AIRSPACE_CHECK", _commandTime + 300];
                     // potential expensive computations due to traversing the networked sector graph to build in-depth costs, prevent server from freezing and dying while doing this.
                     if (BATTLESPACE_SAM_SPAWN_CHANCE_VALUE <= BATTLESPACE_SAM_SPAWN_CHANCE) then {
                         [{_this spawn BATTLESPACE_EVALUATE_AIRSPACE}, [], BATTLESPACE_SAM_DELAY] call CBA_fnc_waitAndExecute;

@@ -204,5 +204,5 @@ private _weights = [
     0, // Reserved former intelligence-currency slot
     _allMines,
     _allCrates,
-    KPLIB_sectorTowers
+    call KPLIB_RADIO_SERVER_EXPORT
 ] // return

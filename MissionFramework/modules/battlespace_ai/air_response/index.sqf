@@ -373,7 +373,7 @@ BATTLESPACE_AIR_RESPONSE_DISPATCH = {
     if (_taskForceId == "") exitWith {false};
 
     private _state = BATTLESPACE_SECTOR_STATES get _originSector;
-    _state set ["nextAirResponseAt", CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_AIR_RESPONSE_COOLDOWN", 1800])];
+    _state set ["nextAirResponseAt", CBA_missionTime + ([(missionNamespace getVariable ["BATTLESPACE_STRATEGIC_AIR_RESPONSE_COOLDOWN", 1800])] call KPLIB_RADIO_SERVER_COMMAND_DELAY)];
     BATTLESPACE_SECTOR_STATES set [_originSector, _state];
     [] call BATTLESPACE_LOGISTICS_SAVE;
     [format ["Dispatched air response %1 (%2) from %3 against %4 %5", _taskForceId, _aircraftClass, _originSector, _targetKind, _targetClass]] call BATTLESPACE_STRATEGIC_LOG;

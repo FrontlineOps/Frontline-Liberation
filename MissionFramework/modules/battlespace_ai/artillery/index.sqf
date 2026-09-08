@@ -629,7 +629,8 @@ BATTLESPACE_ARTILLERY_POLL_REQUESTS = {
 	(_this select 0) params [["_nextTick", 0], ["_counter", 0], ["_cycleCount", 0], ["_nextCycleSwap", 0], ["_networkEnabled", true]];
 
 
-	if(CBA_missionTime < _nextTick) exitWith {};
+    private _commandTime = call KPLIB_RADIO_SERVER_COMMAND_TIME;
+    if (_commandTime < _nextTick) exitWith {};
 	if (_nextCycleSwap <= 0) then {
 		_nextCycleSwap = BATTLESPACE_ARTILLERY_MINIMUM_CYCLES_TO_SWAP + floor (random (BATTLESPACE_ARTILLERY_MAXIMUM_CYCLES_TO_SWAP - BATTLESPACE_ARTILLERY_MINIMUM_CYCLES_TO_SWAP));
 		_cycleCount = -1;
@@ -637,7 +638,7 @@ BATTLESPACE_ARTILLERY_POLL_REQUESTS = {
 		(_this select 0) set [4, _networkEnabled];
 		BATTLESPACE_ARTILLERY_CYCLES_REQUIRED = _nextCycleSwap;
 		BATTLESPACE_ARTILLERY_NETWORK_ENABLED = _networkEnabled;
-		[format ["Artillery observer network initialized (enabled=%1, window=%2 seconds)", _networkEnabled, _nextCycleSwap * BATTLESPACE_ARTILLERY_POLL_COOLDOWN], "BATTLESPACE"] call KPLIB_fnc_log;
+        [format ["Artillery observer network initialized (enabled=%1, window=%2 seconds)", _networkEnabled, [_nextCycleSwap * BATTLESPACE_ARTILLERY_POLL_COOLDOWN] call KPLIB_RADIO_SERVER_COMMAND_DELAY], "BATTLESPACE"] call KPLIB_fnc_log;
 	};
 
 	
@@ -656,7 +657,7 @@ BATTLESPACE_ARTILLERY_POLL_REQUESTS = {
 		BATTLESPACE_ARTILLERY_CYCLES_REQUIRED = _nextSwap;
 		BATTLESPACE_ARTILLERY_NETWORK_ENABLED = _newNetworkEnabled;
 		if ((count BATTLESPACE_ARTILLERY_OBSERVER_TARGETS) > 0) then {
-			[format ["Artillery observer network toggled (enabled=%1, nextWindow=%2 seconds, activeTargets=%3)", _newNetworkEnabled, _nextSwap * BATTLESPACE_ARTILLERY_POLL_COOLDOWN, count BATTLESPACE_ARTILLERY_OBSERVER_TARGETS], "BATTLESPACE"] call KPLIB_fnc_log;
+            [format ["Artillery observer network toggled (enabled=%1, nextWindow=%2 seconds, activeTargets=%3)", _newNetworkEnabled, [_nextSwap * BATTLESPACE_ARTILLERY_POLL_COOLDOWN] call KPLIB_RADIO_SERVER_COMMAND_DELAY, count BATTLESPACE_ARTILLERY_OBSERVER_TARGETS], "BATTLESPACE"] call KPLIB_fnc_log;
 		};
 	};
 
@@ -679,8 +680,8 @@ BATTLESPACE_ARTILLERY_POLL_REQUESTS = {
 
 	
 	
-	BATTLESPACE_ARTILLERY_NEXT_TICK_TIME = CBA_missionTime + _pollCooldown;
-	(_this select 0) set [0, BATTLESPACE_ARTILLERY_NEXT_TICK_TIME];
+    BATTLESPACE_ARTILLERY_NEXT_TICK_TIME = CBA_missionTime + ([_pollCooldown] call KPLIB_RADIO_SERVER_COMMAND_DELAY);
+    (_this select 0) set [0, _commandTime + _pollCooldown];
 
 	(_this select 0) set [1, _counter + _pollCooldown * _counterBatteryMultiplier];
 	
@@ -1272,6 +1273,7 @@ BATTLESPACE_ARTILLERY_DO_REQUEST = {
 	if(combat_readiness < 50) then {
 		_cooldown = _cooldown * 1.5;
 	};
+    _cooldown = [_cooldown] call KPLIB_RADIO_SERVER_COMMAND_DELAY;
 
 	_state = _battery getVariable "BSAState";
 	// Because now the battery may get suppressed mid way through the mission, we need to check if the state is same as before setting to the next state

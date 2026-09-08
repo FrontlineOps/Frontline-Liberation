@@ -176,7 +176,7 @@ BATTLESPACE_SECTOR_SET_OWNER = {
     _state set ["lastOwnerChange", CBA_missionTime];
     _state set [
         "nextResupplyAt",
-        CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_RESUPPLY_COOLDOWN", 1800])
+        CBA_missionTime + ([(missionNamespace getVariable ["BATTLESPACE_STRATEGIC_RESUPPLY_COOLDOWN", 1800])] call KPLIB_RADIO_SERVER_COMMAND_DELAY)
     ];
     _state set ["nextEmergencyAt", CBA_missionTime];
     _state set ["nextReinforcementAt", CBA_missionTime];
@@ -1407,7 +1407,7 @@ BATTLESPACE_LOGISTICS_CREATE_CONVOY = {
 
     _targetState set [
         "nextResupplyAt",
-        CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_RESUPPLY_COOLDOWN", 1800])
+        CBA_missionTime + ([(missionNamespace getVariable ["BATTLESPACE_STRATEGIC_RESUPPLY_COOLDOWN", 1800])] call KPLIB_RADIO_SERVER_COMMAND_DELAY)
     ];
     BATTLESPACE_SECTOR_STATES set [_targetSector, _targetState];
     [] call BATTLESPACE_LOGISTICS_SAVE;
@@ -1802,10 +1802,11 @@ if (isServer) then {
 
         private _strategicInitialDelay = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_INITIAL_DELAY", 300];
         private _defenderDecisionInterval = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DEFENDER_DECISION_INTERVAL", 600];
-        private _nextDecision = CBA_missionTime + _strategicInitialDelay;
-        private _nextLogisticsDecision = CBA_missionTime + _strategicInitialDelay;
-        private _nextDefenseDecision = CBA_missionTime + _strategicInitialDelay;
-        private _nextAirResponse = CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_AIR_RESPONSE_INITIAL_DELAY", 600]);
+        private _commandTime = call KPLIB_RADIO_SERVER_COMMAND_TIME;
+        private _nextDecision = _commandTime + _strategicInitialDelay;
+        private _nextLogisticsDecision = _commandTime + _strategicInitialDelay;
+        private _nextDefenseDecision = _commandTime + _strategicInitialDelay;
+        private _nextAirResponse = _commandTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_AIR_RESPONSE_INITIAL_DELAY", 600]);
         private _nextSave = CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_SAVE_INTERVAL", 300]);
         [format [
             "Defender and offensive allocation scheduled: first pass in %1 seconds, then every %2 seconds; contacts take priority; combat, reconnaissance and defenders share the ground allowance",
@@ -1813,44 +1814,45 @@ if (isServer) then {
             _defenderDecisionInterval
         ]] call BATTLESPACE_STRATEGIC_LOG;
         while {GRLIB_endgame == 0} do {
+            _commandTime = call KPLIB_RADIO_SERVER_COMMAND_TIME;
             [] call BATTLESPACE_SECTOR_SYNC_OWNERS;
             [] call BATTLESPACE_STRATEGIC_RECONCILE_OPERATIONS;
             if (!isNil "BATTLESPACE_TACTICAL_MAINTENANCE_TICK") then {
                 [] call BATTLESPACE_TACTICAL_MAINTENANCE_TICK;
             };
 
-            if (CBA_missionTime >= _nextLogisticsDecision) then {
+            if (_commandTime >= _nextLogisticsDecision) then {
                 private _convoyBudget = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_CONVOYS_PER_TICK", 2];
                 private _evacuationConvoys = [_convoyBudget] call BATTLESPACE_LOGISTICS_EVACUATION_DECISION_TICK;
                 [(_convoyBudget - _evacuationConvoys) max 0] call BATTLESPACE_LOGISTICS_DECISION_TICK;
-                _nextLogisticsDecision = CBA_missionTime + (30 max (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_LOGISTICS_DECISION_INTERVAL", 60]));
+                _nextLogisticsDecision = _commandTime + (30 max (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_LOGISTICS_DECISION_INTERVAL", 60]));
             };
 
-            if (CBA_missionTime >= _nextDecision) then {
+            if (_commandTime >= _nextDecision) then {
                 if (!isNil "BATTLESPACE_FORTIFICATION_DECISION_TICK") then {
                     [] call BATTLESPACE_FORTIFICATION_DECISION_TICK;
                 };
                 if (!isNil "BATTLESPACE_MINEFIELDS_DECISION_TICK") then {
                     [] call BATTLESPACE_MINEFIELDS_DECISION_TICK;
                 };
-                _nextDecision = CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DECISION_INTERVAL", 1800]);
+                _nextDecision = _commandTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DECISION_INTERVAL", 1800]);
             };
 
-            if (CBA_missionTime >= _nextDefenseDecision) then {
+            if (_commandTime >= _nextDefenseDecision) then {
                 // Bounded combat and scouting allocations precede open-ended defense filling.
                 [] call BATTLESPACE_BATTLEGROUP_DECISION_TICK;
                 [] call BATTLESPACE_DEEP_RECON_DECISION_TICK;
                 if (!isNil "BATTLESPACE_DEFENSE_DECISION_TICK") then {
                     [] call BATTLESPACE_DEFENSE_DECISION_TICK;
                 };
-                _nextDefenseDecision = CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DEFENDER_DECISION_INTERVAL", 600]);
+                _nextDefenseDecision = _commandTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DEFENDER_DECISION_INTERVAL", 600]);
             };
 
-            if (CBA_missionTime >= _nextAirResponse) then {
+            if (_commandTime >= _nextAirResponse) then {
                 if (!isNil "BATTLESPACE_AIR_RESPONSE_DECISION_TICK") then {
                     [] call BATTLESPACE_AIR_RESPONSE_DECISION_TICK;
                 };
-                _nextAirResponse = CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_AIR_RESPONSE_DECISION_INTERVAL", 60]);
+                _nextAirResponse = _commandTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_AIR_RESPONSE_DECISION_INTERVAL", 60]);
             };
 
             if (CBA_missionTime >= _nextSave) then {

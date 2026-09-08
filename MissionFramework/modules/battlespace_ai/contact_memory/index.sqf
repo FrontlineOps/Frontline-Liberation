@@ -31,7 +31,7 @@ BATTLESPACE_CONTACT_RECEIVE = {
     private _owner = groupOwner _group;
     if (isRemoteExecuted && {remoteExecutedOwner != _owner}) exitWith {};
     private _request = BATTLESPACE_CONTACT_REQUESTS getOrDefault [str _group, []];
-    if (count _request != 4 || {(_request select 0) != _token} || {(_request select 1) != _owner} || {!(_request select 2)} || {(_request select 3) isNotEqualTo _group}) exitWith {};
+    if (count _request != 5 || {(_request select 0) != _token} || {(_request select 1) != _owner} || {!(_request select 2)} || {(_request select 3) isNotEqualTo _group}) exitWith {};
     _request set [2, false];
     if !(_reports isEqualType []) exitWith {};
     {
@@ -74,11 +74,14 @@ BATTLESPACE_CONTACT_REPORT = {
 
 BATTLESPACE_CONTACT_SAMPLE_GROUP = {
     params ["_group"];
-    if (!isServer || {isNull _group} || {side _group != GRLIB_side_enemy}) exitWith {};
-    private _previous = BATTLESPACE_CONTACT_REQUESTS getOrDefault [str _group, [-1e9, -1, false, grpNull]];
+    if (!isServer || {isRemoteExecuted} || {isNull _group} || {side _group != GRLIB_side_enemy}) exitWith {};
+    private _previous = BATTLESPACE_CONTACT_REQUESTS getOrDefault [str _group, [-1e9, -1, false, grpNull, -1e9]];
     if (CBA_missionTime - (_previous select 0) < 5 && {(_previous select 1) == groupOwner _group} && {(_previous select 3) isEqualTo _group}) exitWith {};
+    private _commandTime = call KPLIB_RADIO_SERVER_COMMAND_TIME;
+    if (_commandTime - (_previous select 4) < 5 && {(_previous select 1) == groupOwner _group} && {(_previous select 3) isEqualTo _group}) exitWith {};
     private _token = CBA_missionTime;
-    BATTLESPACE_CONTACT_REQUESTS set [str _group, [_token, groupOwner _group, true, _group]];
+    // Private request metadata: real token, owner, pending, identity, command-clock time.
+    BATTLESPACE_CONTACT_REQUESTS set [str _group, [_token, groupOwner _group, true, _group, _commandTime]];
     if (local _group) then {[_group, _token] call BATTLESPACE_CONTACT_REPORT} else {[_group, _token] remoteExecCall ["BATTLESPACE_CONTACT_REPORT", groupOwner _group]};
 };
 
@@ -102,7 +105,7 @@ BATTLESPACE_CONTACT_QUERY = {
 };
 
 BATTLESPACE_CONTACT_TICK = {
-    if (!isServer || {isNil "GRLIB_side_enemy"}) exitWith {};
+    if (!isServer || {isRemoteExecuted} || {isNil "GRLIB_side_enemy"}) exitWith {};
     {
         if (CBA_missionTime - (_y select 1) > BATTLESPACE_CONTACT_MEMORY_MAX_AGE) then {BATTLESPACE_CONTACT_MEMORY deleteAt _x; continue};
         private _evidence = _y select 7;
@@ -113,6 +116,9 @@ BATTLESPACE_CONTACT_TICK = {
         private _oldest = []; {_oldest pushBack [_y select 1, _x]} forEach BATTLESPACE_CONTACT_MEMORY; _oldest sort true;
         {BATTLESPACE_CONTACT_MEMORY deleteAt (_x select 1)} forEach (_oldest select [0, count _oldest - 256]);
     };
+    private _commandTime = call KPLIB_RADIO_SERVER_COMMAND_TIME;
+    if (_commandTime < (localNamespace getVariable ["KPLIB_RADIO_NEXT_CONTACT_REPORT", 0])) exitWith {};
+    localNamespace setVariable ["KPLIB_RADIO_NEXT_CONTACT_REPORT", _commandTime + 5];
     private _groups = allGroups select {side _x == GRLIB_side_enemy && {units _x findIf {alive _x && {!captive _x}} >= 0}};
     if (_groups isEqualTo []) exitWith {};
     for "_i" from 1 to (BATTLESPACE_CONTACT_GROUPS_PER_TICK min count _groups) do {

@@ -75,3 +75,35 @@ KPLIB_INTEL_SERVER_SOURCE_REPORT = {
     private _record = selectRandom (if (_related isEqualTo []) then {_pool} else {_related});
     [_record, 3, [_record get "sector"], _raw] call KPLIB_INTEL_SERVER_BUILD_OBSERVATION
 };
+
+// Captured towers intercept current traffic; they never create a prisoner mission chain.
+KPLIB_INTEL_SERVER_INTERCEPT = {
+    params ["_towerSector"];
+    if (!(call KPLIB_INTEL_SERVER_MUTATION_ALLOWED) || {!KPLIB_intelligence_enabled}) exitWith {false};
+    private _entry = (localNamespace getVariable ["KPLIB_RADIO_TOWERS", createHashMap]) getOrDefault [_towerSector, createHashMap];
+    if (count _entry == 0 || {!(_towerSector in blufor_sectors)} || {_entry get "destroyed"}
+        || {!alive (_entry get "object")}) exitWith {false};
+    private _raw = call KPLIB_INTEL_SERVER_COLLECT_RAW_REPORTS;
+    if (_raw isEqualTo []) exitWith {
+        [format ["Tower %1 found no actionable enemy traffic this interval", _towerSector], "RADIO"] call KPLIB_fnc_log;
+        false
+    };
+    // Select a category first so numerous ground patrols cannot crowd out other traffic.
+    private _kinds = [];
+    {_kinds pushBackUnique (_x get "kind")} forEach _raw;
+    private _kind = selectRandom _kinds;
+    private _record = selectRandom (_raw select {(_x get "kind") == _kind});
+    private _report = [_record, 2, [_record get "sector"], _raw] call KPLIB_INTEL_SERVER_BUILD_OBSERVATION;
+    private _meta = _report # 12;
+    _meta set ["status", "INTERCEPTED COMMS"];
+    _meta set ["title", "Intercept: " + (_meta get "title")];
+    _meta set ["confidence", "Intercepted enemy traffic; information dates from interception"];
+    _meta set ["window", "Dated communications intercept. Reconnoitre to confirm current activity."];
+    _meta set ["taskEligible", false];
+    (_meta get "details") pushBack format ["Intercepted through %1.", _entry get "label"];
+    private _published = [[objNull, _report, CBA_missionTime, _towerSector, ""], false] call KPLIB_INTEL_SERVER_REVEAL_SOURCE;
+    if (_published) then {
+        [format ["Tower %1 intercepted %2 traffic (report=%3)", _towerSector, _kind, _report # 0], "RADIO"] call KPLIB_fnc_log;
+    };
+    _published
+};

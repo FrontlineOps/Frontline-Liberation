@@ -348,7 +348,7 @@ BATTLESPACE_DEEP_RECON_DISPATCH = {
         ]
     ] call BATTLESPACE_STRATEGIC_CREATE_FUNDED_TASK_FORCE;
     if (_id == "") exitWith {false};
-    _state set ["nextDeepReconAt", CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DEEP_RECON_COOLDOWN", 2400])];
+    _state set ["nextDeepReconAt", CBA_missionTime + ([(missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DEEP_RECON_COOLDOWN", 2400])] call KPLIB_RADIO_SERVER_COMMAND_DELAY)];
     BATTLESPACE_SECTOR_STATES set [_originSector, _state];
     [] call BATTLESPACE_LOGISTICS_SAVE;
     [format ["Dispatched Deep Reconnaissance Patrol %1 from %2 toward %3 on route %4 to rear-arc position %5 (%6 same-target positions already occupied)", _id, _originSector, _targetSector, _validatedRouteKey, _target, count _occupiedPositions]] call BATTLESPACE_STRATEGIC_LOG;
@@ -410,6 +410,10 @@ BATTLESPACE_TACTICAL_MAINTENANCE_TICK = {
     };
     [] call BATTLESPACE_TACTICAL_ABANDON_CAPTURED_DEFENDERS;
     [] call BATTLESPACE_DEFENSE_MAINTAIN;
+    // Keep retirement and ownership maintenance real-time; delay new support orders only.
+    private _commandTime = call KPLIB_RADIO_SERVER_COMMAND_TIME;
+    if (_commandTime < (localNamespace getVariable ["KPLIB_RADIO_NEXT_CASUALTY_RESPONSE", 0])) exitWith {};
+    localNamespace setVariable ["KPLIB_RADIO_NEXT_CASUALTY_RESPONSE", _commandTime + 30];
     private _threshold = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_CASUALTY_RESPONSE_THRESHOLD", 8];
     {
         private _pressure = _y getOrDefault ["casualtyPressure", 0];
@@ -431,7 +435,7 @@ BATTLESPACE_TACTICAL_MAINTENANCE_TICK = {
                 _handled = [_x] call BATTLESPACE_AIRBORNE_DISPATCH;
             };
             if (_handled) then {
-                _y set ["nextReinforcementAt", CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_RESERVE_RESPONSE_COOLDOWN", 600])];
+                _y set ["nextReinforcementAt", CBA_missionTime + ([(missionNamespace getVariable ["BATTLESPACE_STRATEGIC_RESERVE_RESPONSE_COOLDOWN", 600])] call KPLIB_RADIO_SERVER_COMMAND_DELAY)];
             };
         };
         if (!_handled && {CBA_missionTime >= (_y getOrDefault ["nextEmergencyAt", 0])}
@@ -439,7 +443,7 @@ BATTLESPACE_TACTICAL_MAINTENANCE_TICK = {
             private _request = [_x, "EmergencyResupply"] call BATTLESPACE_LOGISTICS_BUILD_REQUEST;
             if (count _request > 0) then {_handled = [_x, _request] call BATTLESPACE_LOGISTICS_DISPATCH};
             if (_handled) then {
-                _y set ["nextEmergencyAt", CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_EMERGENCY_COOLDOWN", 900])];
+                _y set ["nextEmergencyAt", CBA_missionTime + ([(missionNamespace getVariable ["BATTLESPACE_STRATEGIC_EMERGENCY_COOLDOWN", 900])] call KPLIB_RADIO_SERVER_COMMAND_DELAY)];
             };
         };
         if (_handled) then {

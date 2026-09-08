@@ -474,10 +474,12 @@ KPLIB_trashCleanup_classnames = ["GroundWeaponHolder"];
 
 KP_liberation_ace_crates = [];
 
-// Randomly selected radio tower classnames
+// Radio tower objectives. Classes must support destruction (not DestructNo).
+KPLIB_radio_intercept_interval = [600, 900]; // Real seconds per intact captured tower; dated information only.
+KPLIB_radio_disruption_duration = 3600;      // Enemy-held tower destruction; later losses refresh this hour.
+KPLIB_radio_disruption_multiplier = 2;      // Force-wide command intervals; simulation retains normal speed.
 KPLIB_radioTowerClassnames = [
-	"Land_Vysilac_vez",
-	"Land_TTowerBig_2_F"
+    "Land_TTowerBig_2_F"
 ];
 
 /* Vehicle resource loading config

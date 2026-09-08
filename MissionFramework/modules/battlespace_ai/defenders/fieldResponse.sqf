@@ -74,7 +74,7 @@ BATTLESPACE_RESERVE_FIELD_TICK = {
         private _anchor = [_incident get "position"] call BATTLESPACE_STRATEGIC_FIND_NEAREST_OPFOR_SECTOR;
         if (_anchor != "" && {[_anchor, _id, _incident, _contact] call BATTLESPACE_RESERVE_DISPATCH}) then {
             _incident set ["pressure", 0];
-            _incident set ["nextResponseAt", CBA_missionTime + BATTLESPACE_STRATEGIC_RESERVE_RESPONSE_COOLDOWN];
+            _incident set ["nextResponseAt", CBA_missionTime + ([BATTLESPACE_STRATEGIC_RESERVE_RESPONSE_COOLDOWN] call KPLIB_RADIO_SERVER_COMMAND_DELAY)];
         };
     } forEach BATTLESPACE_RESERVE_FIELD_INCIDENTS;
 };
