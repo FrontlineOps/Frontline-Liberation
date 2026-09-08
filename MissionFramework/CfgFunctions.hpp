@@ -1,4 +1,18 @@
 class KPLIB {
+    class module_ai_skills {
+        file = "modules\ai_skills";
+
+        class aiSkillsInit     {};
+        class aiSkillsRegister {};
+        class aiSkillsEligible {};
+        class aiSkillsTick     {};
+        class aiSkillsUpdate   {};
+        class aiSkillsCompose  {};
+        class aiSkillsThreat   {};
+        class aiSkillsFired    {};
+        class aiSkillsInspect  {};
+        class aiSkillsReceive  {};
+    };
     class functions_capture {
         file = "functions\capture";
 

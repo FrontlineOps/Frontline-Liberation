@@ -37,6 +37,7 @@ OPFOR_ARSENAL_CRATES = [];
 
 [] call compileFinal preprocessFileLineNumbers "scripts\shared\fetch_params.sqf";
 [] call compileFinal preprocessFileLineNumbers "kp_liberation_config.sqf";
+[] call KPLIB_fnc_aiSkillsInit;
 [] call KPLIB_fnc_captureStatusInit;
 [] call compileFinal preprocessFileLineNumbers "modules\radio_towers\index.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\index.sqf";

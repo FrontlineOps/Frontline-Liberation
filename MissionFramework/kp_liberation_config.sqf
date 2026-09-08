@@ -62,6 +62,58 @@ KP_liberation_autoFaction_priceDefaults = createHashMapFromArray [
     ["static",        [125, 150,   0]]
 ];
 
+/* Frontline AI skills
+    Server-owned AI skill layer for infantry and vehicle crews, including pilots
+    and static-weapon operators; tactical orders remain with Battlespace.
+    MISSION preserves each unit's original subskills. Other profiles are optional
+    starting points for playtesting, not difficulty guarantees. Server difficulty
+    and addon CfgAISkill curves still affect skillFinal.
+
+    Every row uses this order:
+    general, aimingAccuracy, aimingShake, aimingSpeed, spotDistance, spotTime,
+    courage, reloadSpeed, commanding. Values are 0..1; -1 preserves that subskill.
+    Multipliers are fractions of BASE skill, never percentages subtracted from
+    the last update. A floor of 0.5 retains half of the affected skill.
+*/
+KPLIB_aiSkills_enabled = true;
+KPLIB_aiSkills_sides = [WEST, EAST, RESISTANCE];
+KPLIB_aiSkills_sideProfiles = [[WEST, "VETERAN"], [EAST, "REGULAR"], [RESISTANCE, "MILITIA"]];
+// Optional [CfgFactionClasses name, profile name] overrides take precedence over side.
+KPLIB_aiSkills_factionProfiles = [];
+KPLIB_aiSkills_profiles = [
+    ["MISSION", [-1, -1, -1, -1, -1, -1, -1, -1, -1]],
+    ["MILITIA", [0.40, 0.18, 0.35, 0.40, 0.45, 0.40, 0.45, 0.45, 0.35]],
+    ["REGULAR", [0.60, 0.28, 0.55, 0.60, 0.65, 0.60, 0.65, 0.60, 0.60]],
+    ["VETERAN", [0.75, 0.38, 0.70, 0.75, 0.80, 0.75, 0.80, 0.75, 0.75]],
+    ["ELITE",   [0.90, 0.48, 0.85, 0.90, 0.90, 0.90, 0.90, 0.85, 0.90]]
+];
+KPLIB_aiSkills_variation = 0.08; // Stable +/- fraction; preserved (-1) skills are never randomized.
+KPLIB_aiSkills_tickInterval = 0.25;
+KPLIB_aiSkills_batchSize = 16; // Units examined per callback.
+KPLIB_aiSkills_updateInterval = 2;
+KPLIB_aiSkills_terrainSamplesPerTick = 2;
+KPLIB_aiSkills_terrainInterval = 15;
+KPLIB_aiSkills_terrainRadius = 25;
+KPLIB_aiSkills_terrainSaturation = 30;
+KPLIB_aiSkills_terrainFloor = [1, 0.65, 0.80, 0.85, 0.50, 0.65, 1, 1, 1];
+KPLIB_aiSkills_suppressionEnabled = true;
+KPLIB_aiSkills_suppressionImpact = 0.15;
+KPLIB_aiSkills_suppressionHold = 8;
+KPLIB_aiSkills_suppressionRecovery = 20; // Seconds from full suppression to baseline after hold.
+KPLIB_aiSkills_suppressionFloor = [1, 0.35, 0.50, 0.65, 0.75, 0.65, 0.60, 0.85, 0.75];
+KPLIB_aiSkills_weatherEnabled = true;
+KPLIB_aiSkills_nightFloor = 0.60; // Additional spotting penalty; equipped NVGs bypass darkness only.
+KPLIB_aiSkills_rainFloor = 0.85;
+KPLIB_aiSkills_fogFloor = 0.65;
+KPLIB_aiSkills_boostEnabled = true;
+KPLIB_aiSkills_boostMaximum = 1.10;
+KPLIB_aiSkills_boostShots = 5;
+KPLIB_aiSkills_boostShotInterval = 2;
+KPLIB_aiSkills_boostMinDistance = 150;
+KPLIB_aiSkills_boostTargetMovement = 25;
+KPLIB_aiSkills_boostExpiry = 12;
+KPLIB_aiSkills_debug = false; // Per-unit profile/eligibility transitions only; no tick spam.
+
 // Idle fuel consumption (min)
 KP_liberation_fuel_neutral = 180;
 
