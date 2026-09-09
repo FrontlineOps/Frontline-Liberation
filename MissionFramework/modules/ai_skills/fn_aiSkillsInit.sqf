@@ -6,6 +6,7 @@ if (hasInterface && {isNil "KPLIB_aiSkills_zenReady"}
     && {!isNil "zen_context_menu_fnc_createAction"}) then {
     KPLIB_aiSkills_zenReady = true;
     private _action = ["frontlineAISkills", "Inspect Frontline AI Skills", "", {
+        // ZEN supplies the context position in ASL; preserve it for the server.
         [_this select 0] remoteExecCall ["KPLIB_fnc_aiSkillsInspect", 2];
     }, {true}] call zen_context_menu_fnc_createAction;
     [_action, [], 0] call zen_context_menu_fnc_addAction;

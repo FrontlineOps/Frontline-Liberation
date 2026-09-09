@@ -1,32 +1,52 @@
 /* Read-only server endpoint. The requester must own a living active curator.
    No caller-supplied owner ID, profile, skill or arbitrary code is accepted. */
-params [["_position", [], [[]]]];
+params [["_positionASL", [], [[]]]];
 if (!isServer || {!isRemoteExecuted}) exitWith {};
 private _owner = remoteExecutedOwner;
 private _curator = allCurators findIf {
     private _operator = getAssignedCuratorUnit _x;
     !isNull _operator && {isPlayer _operator} && {alive _operator} && {owner _operator == _owner}
 };
-if (_curator < 0 || {count _position != 3}
-    || {_position findIf {!(_x isEqualType 0) || {!finite _x}} >= 0}) exitWith {};
+if (_curator < 0 || {count _positionASL != 3}
+    || {_positionASL findIf {!(_x isEqualType 0) || {!finite _x}} >= 0}) exitWith {};
 if (CBA_missionTime < (localNamespace getVariable ["KPLIB_aiSkills_nextInspect", -1])) exitWith {};
 localNamespace setVariable ["KPLIB_aiSkills_nextInspect", CBA_missionTime + 0.5];
 private _blocked = localNamespace getVariable ["KPLIB_aiSkills_blocked", "Module not initialized"];
 if (_blocked != "") exitWith {[["FRONTLINE AI", _blocked]] remoteExecCall ["KPLIB_fnc_aiSkillsReceive", _owner]};
-private _units = [_position, 50, 50, 0, false, 50] nearEntities [["CAManBase"], false, true, true];
+// ZEN passes ASL, whereas the area search takes AGL. Compare absolute
+// positions for the final sphere test so terrain elevation is counted once.
+private _positionAGL = ASLToAGL _positionASL;
+private _units = [_positionAGL, 50, 50, 0, false, 50] nearEntities [["CAManBase"], false, true, true];
+private _registry = localNamespace getVariable "KPLIB_aiSkills_registry";
 private _unit = objNull;
 private _distance = 50;
+private _localCount = 0;
+private _remoteCount = 0;
 {
-    private _range = _x distance _position;
-    if (alive _x && {local _x} && {!isPlayer _x} && {_range <= _distance}) then {
+    private _range = (getPosASL _x) vectorDistance _positionASL;
+    if (!alive _x || {isPlayer _x} || {_range > 50}) then {continue};
+    if (!local _x) then {
+        _remoteCount = _remoteCount + 1;
+        continue;
+    };
+    _localCount = _localCount + 1;
+    if (_range <= _distance && {count (_registry getOrDefault [netId _x, createHashMap]) > 0}) then {
         _unit = _x;
         _distance = _range;
     };
 } forEach _units;
-private _state = (localNamespace getVariable "KPLIB_aiSkills_registry") getOrDefault [netId _unit, createHashMap];
+private _state = _registry getOrDefault [netId _unit, createHashMap];
 private _lines = ["FRONTLINE AI  /  SKILL INSPECTOR"];
 if (count _state == 0) then {
-    _lines pushBack "No registered server-owned AI within 50 m of the cursor.";
+    if (_localCount > 0) then {
+        _lines pushBack format ["%1 nearby server-owned AI are not registered with the skill module. Try again after initialization.", _localCount];
+    };
+    if (_remoteCount > 0) then {
+        _lines pushBack format ["%1 nearby AI are owned by a client or headless client. This inspector reports server-owned AI.", _remoteCount];
+    };
+    if (_localCount + _remoteCount == 0) then {
+        _lines pushBack "No living AI within 50 m of the cursor.";
+    };
 } else {
     (_state get "factors") params ["_terrain", "_suppression", "_weather", "_boost"];
     _lines append [
