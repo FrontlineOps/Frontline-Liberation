@@ -1,8 +1,41 @@
-/* Server-owned, once-per-campaign military records. One desk holds a local dossier.
+/* Server-owned, once-per-campaign military records. One desk holds a supply-network dossier.
    Papers survive capture; stocks are frozen before the strategic ledger is cleared.
    Placement is scheduled and bounded. No new defenders or strategic resources. */
 localNamespace setVariable ["KPLIB_INTEL_BASES", createHashMap];
 localNamespace setVariable ["KPLIB_INTEL_BASE_WORKER", scriptNull];
+
+KPLIB_INTEL_SERVER_BASE_STOCK_SECTORS = {
+    params ["_sector", "_related"];
+    private _sectors = [_sector];
+    if (isNil "NETWORKED_SECTORS" || {isNil {NETWORKED_SECTORS get _sector}}) exitWith {_sectors};
+    // Capture may already have updated blufor_sectors when the ownership setter
+    // freezes the dossier. This base still holds its final OPFOR ledger then.
+    private _blocked = (blufor_sectors - [_sector]) + ["startbase_marker"];
+    private _candidates = [];
+    {
+        if ((_y getOrDefault ["owner", ""]) != "OPFOR") then {
+            _blocked pushBackUnique _x;
+        } else {
+            if (_x != _sector) then {_candidates pushBack _x};
+        };
+    } forEach BATTLESPACE_SECTOR_STATES;
+    private _reachable = [_sector, _candidates, _blocked] call NETWORKED_SECTORS_traverseGraphAndFindNodes;
+    private _partners = [];
+    {
+        if ((_x get "kind") != "CONVOY") then {continue};
+        private _endpoints = [_x getOrDefault ["origin", ""], _x getOrDefault ["objective", ""]];
+        if (_sector in _endpoints) then {{_partners pushBackUnique _x} forEach _endpoints};
+    } forEach _related;
+    private _direct = (NETWORKED_SECTORS get _sector) getOrDefault ["Links", []];
+    private _position = markerPos _sector;
+    private _ranked = _reachable apply {
+        private _priority = if (_x in _partners) then {0} else {[2, 1] select (_x in _direct)};
+        [_priority, _position distance2D markerPos _x, _x]
+    };
+    _ranked sort true;
+    {_sectors pushBack (_x # 2)} forEach (_ranked select [0, 4]);
+    _sectors
+};
 
 KPLIB_INTEL_SERVER_BASE_DOSSIER = {
     params ["_sector"];
@@ -17,11 +50,20 @@ KPLIB_INTEL_SERVER_BASE_DOSSIER = {
         [(_x getOrDefault ["priority", 0]) + ([0, 100] select ((_x get "kind") == "CONVOY")), _x get "id", _x]
     };
     _ranked sort false;
-    private _stock = [_sector, false, _raw] call KPLIB_INTEL_SERVER_STOCK_REPORT;
-    private _details = (_stock # 12) get "details";
+    private _stockSectors = [_sector, _related] call KPLIB_INTEL_SERVER_BASE_STOCK_SECTORS;
+    private _reports = _stockSectors apply {
+        private _stock = [_x, false, _raw] call KPLIB_INTEL_SERVER_STOCK_REPORT;
+        ((_stock # 12) get "details") pushBack (if (_x == _sector) then {
+            "This base's own stock ledger."
+        } else {
+            format ["Stock return from %1's connected supply network.", [_sector] call KPLIB_INTEL_SERVER_LABEL]
+        });
+        _stock
+    };
+    private _details = ((_reports # 0) # 12) get "details";
+    _details pushBack format ["Stock ledgers recovered for %1 objectives, including this base.", count _stockSectors];
     _details pushBack format ["Operations connected to this base: %1. Convoys recorded: %2.", count _related, {(_x get "kind") == "CONVOY"} count _related];
     _details pushBack "Manifests describe active shipments, not a guaranteed future convoy schedule.";
-    private _reports = [_stock];
     {
         _reports pushBack ([_x # 2, 3, [_sector], _raw] call KPLIB_INTEL_SERVER_BUILD_OBSERVATION);
     } forEach (_ranked select [0, 6]);
@@ -313,7 +355,7 @@ KPLIB_INTEL_SERVER_BASE_IMPORT = {
         if !(count _x in [7, 8]) then {continue};
         _x params ["_sector", "_status", "_plan", "_frozen", "_reports", "_damage", "_tableDamage", ["_officeDamage", 0]];
         if !(_status in ["PENDING", "AVAILABLE", "CLAIMED", "DESTROYED"] && {_plan isEqualType []}
-            && {_frozen isEqualType true} && {_reports isEqualType []} && {count _reports <= 7}
+            && {_frozen isEqualType true} && {_reports isEqualType []} && {count _reports <= 11}
             && {_reports findIf {!([_x] call KPLIB_INTEL_SERVER_VALID_REPORT)} < 0}
             && {_damage isEqualType 0} && {_tableDamage isEqualType 0} && {_officeDamage isEqualType 0}) then {continue};
         if (_plan isNotEqualTo [] && {!((count _plan in [2, 3]) && {(_plan # 0) isEqualType []} && {count (_plan # 0) in [0, 3]}
