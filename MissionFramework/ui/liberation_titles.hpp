@@ -115,7 +115,7 @@ class RscTitles {
         duration = 999999;
         idd = 6666;
         movingEnable = true;
-        onLoad = "uiNamespace setVariable ['KPLIB_overlay', _this select 0];";
+        onLoad = "uiNamespace setVariable ['KPLIB_overlay', _this select 0]; [_this select 0, false] call KPLIB_fnc_overlayUpdateResources;";
         controls[] = {
             BGPicture,
             PictureFOBShadow, PictureFOB, LabelFOB,

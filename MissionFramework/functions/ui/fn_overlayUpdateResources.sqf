@@ -7,7 +7,7 @@
     License: MIT License - http://www.opensource.org/licenses/MIT
 
     Description:
-        Update resources overlay.
+        Update the map-only resources and status overlay.
 
     Parameter(s):
         _overlay        - Overlay display                               [DISPLAY, defaults to displayNull]
@@ -30,14 +30,15 @@ if (isNull _overlay) exitWith {
     ["Null overlay given"] call BIS_fnc_error;
     false
 };
-if (!_show) exitWith {
+if (!_show || {!visibleMap}) exitWith {
     {
         (_overlay displayCtrl _x) ctrlShow false;
     } forEach OVERLAY_RSC_IDCS;
     false
 };
 
-if (_updateValues) then {
+// Opening the map must show current values before the regular refresh tick.
+if (_updateValues || {!ctrlShown (_overlay displayCtrl IDC_OVERLAY_RSC_LABEL_SUPPLIES)}) then {
 
     (_overlay displayCtrl IDC_OVERLAY_RSC_LABEL_FOB) ctrlSetText toUpper (_resourceArea select [4]);
     (_overlay displayCtrl IDC_OVERLAY_RSC_LABEL_SUPPLIES) ctrlSetText str floor KP_liberation_supplies;
