@@ -499,13 +499,6 @@ BATTLESPACE_TASK_FORCE_DEFAULT_TRY_SPAWN = {
 	// keeps the existing SL-and-medic minimum unless a structure needs crew.
 	private _minimumInfantry = [2, 1] select (_structureCrewFromManpower || {_civilian});
 	if(_remainingManpower >= _minimumInfantry) then {
-		private _nearbyHouses = (_currentLoc) nearObjects ["Building", 200];
-		// NOTE: Yes, for some reason lamps and power lines are considered a house. What the fuck.
-		_nearbyHouses = _nearbyHouses select {
-			private _actualPositions = [_x] call BIS_fnc_buildingPositions;
-
-			(count _actualPositions) > 0
-		};
 		private _maxSquadSize = 9;
 		private _infantrySquadCount = ceil (_remainingManpower / _maxSquadSize);
 		for "_i" from 1 to _infantrySquadCount do {
@@ -515,14 +508,6 @@ BATTLESPACE_TASK_FORCE_DEFAULT_TRY_SPAWN = {
                 _infGrp setCombatMode "BLUE";
             };
             private _squadSize = _maxSquadSize min (_remainingManpower);
-			private _housePos = [];
-			private _garrisoned = false;
-			if(_garrisonedInfantry && (count _nearbyHouses) > 0) then {
-				private _house = selectRandom _nearbyHouses;
-				_housePos = getPos _house;
-				_nearbyHouses = _nearbyHouses - [_house];
-				_garrisoned = true;
-			};
 
 			private _baseSquad = [_squadSize, _overrideSquadAdditions, _ambush, _structureCrewFromManpower] call BATTLESPACE_TASK_FORCES_GET_SQUAD_COMPOSITION;
 			if(_civilian) then {
@@ -546,9 +531,9 @@ BATTLESPACE_TASK_FORCE_DEFAULT_TRY_SPAWN = {
 
 			} foreach _baseSquad;
 
-			if(_garrisoned) then {
-				// Task-force groups are created on the server; issue the order once where local.
-				[_infGrp, _housePos] call KPLIB_fnc_garrison;
+            if (_garrisonedInfantry) then {
+                // Every squad shares the objective's building/floor pool.
+                [_infGrp, _currentLoc, 250] call KPLIB_fnc_garrison;
 			} else {
 				// Attack waypoints
 				if(!(_destination isEqualTo [])) then {

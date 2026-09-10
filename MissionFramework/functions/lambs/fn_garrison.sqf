@@ -6,6 +6,7 @@
  * Upstream commit: 63122df5d9403a52f10bf50198ac75a49f0a3d6b
  * Adapted 2026-08-27: KPLIB namespace, mission-local helpers, and the
  * documented -2 random exit-condition default; LAMBS debug hooks removed.
+ * Adapted 2026-09-10: shared server reservations and cancellable movement.
  * License: see NOTICE.md and LICENSE.LAMBS in this directory.
  *
  * Arguments:
@@ -21,6 +22,8 @@
  *
  * Return Value: success <BOOL>
  */
+
+if (isRemoteExecuted && {remoteExecutedOwner != 2}) exitWith {false};
 
 if (canSuspend) exitWith {[KPLIB_fnc_garrison, _this] call CBA_fnc_directCall};
 
@@ -46,48 +49,15 @@ if (_pos isEqualTo []) then {
 };
 _pos = _pos call CBA_fnc_getPos;
 
-private _weapons = nearestObjects [_pos, ["LandVehicle"], _radius, true];
-_weapons = _weapons select {
-    simulationEnabled _x
-    && {!isObjectHidden _x}
-    && {locked _x != 2}
-    && {(_x emptyPositions "Gunner") > 0}
-};
-
-private _buildingPositions = [_pos, _radius, true, false] call KPLIB_fnc_findBuildings;
-
-if (_area isNotEqualTo []) then {
-    _area params ["_a", "_b", "_angle", "_isRectangle", ["_c", -1]];
-    _buildingPositions = _buildingPositions select {
-        _x inArea [_pos, _a, _b, _angle, _isRectangle, _c]
-    };
-    _weapons = _weapons select {
-        (getPos _x) inArea [_pos, _a, _b, _angle, _isRectangle, _c]
-    };
-};
-
-private _outsidePositions = [];
-{
-    if !(lineIntersects [AGLToASL _x, (AGLToASL _x) vectorAdd [0, 0, 6]]) then {
-        _outsidePositions pushBack _x;
-    };
-} forEach _buildingPositions;
-_buildingPositions = _buildingPositions - _outsidePositions;
-
+// Reset old movement callbacks before publishing this owner's new request.
+[_group, true, true] call KPLIB_fnc_taskReset;
+_group setVariable ["BATTLESPACE_ROUTE_WAYPOINT_TOKEN", 1 + (_group getVariable ["BATTLESPACE_ROUTE_WAYPOINT_TOKEN", 0])];
+_group setVariable ["BATTLESPACE_TRANSPORT_ROUTE_TOKEN", 1 + (_group getVariable ["BATTLESPACE_TRANSPORT_ROUTE_TOKEN", 0])];
+private _serial = 1 + (localNamespace getVariable ["KPLIB_garrisonSerial", 0]);
+localNamespace setVariable ["KPLIB_garrisonSerial", _serial];
+private _token = [clientOwner, _serial];
 private _units = (units _group) select {
-    !isPlayer _x && {isNull objectParent _x}
-};
-
-if (count _units >= count _buildingPositions) then {
-    _buildingPositions append _outsidePositions;
-} else {
-    _buildingPositions append (_outsidePositions select {RND(0.5)});
-};
-
-if (_sortBasedOnHeight) then {
-    _buildingPositions = [_buildingPositions, [], {_x select 2}, "DESCEND"] call BIS_fnc_sortBy;
-} else {
-    [_buildingPositions, true] call CBA_fnc_Shuffle;
+    _x call KPLIB_fnc_isAlive && {!isPlayer _x} && {!captive _x} && {isNull objectParent _x}
 };
 
 _group setBehaviour "SAFE";
@@ -126,24 +96,6 @@ if (_patrol && {_units isNotEqualTo []}) then {
     }];
 };
 
-{
-    if (_weapons isNotEqualTo []) then {
-        private _staticWeapon = _weapons deleteAt 0;
-        if (_teleport) then {
-            _x moveInGunner _staticWeapon;
-        };
-        _x assignAsGunner _staticWeapon;
-        [_x] orderGetIn true;
-        _units set [_forEachIndex, objNull];
-    };
-} forEach _units;
-
-_units = _units - [objNull];
-
-if (count _units > count _buildingPositions) then {
-    _units resize (count _buildingPositions);
-};
-
 private _addReleaseEventHandler = {
     params ["_unit", "_type"];
     if (_type == 0) exitWith {};
@@ -157,6 +109,7 @@ private _addReleaseEventHandler = {
         case 1: {
             private _handle = _unit addEventHandler ["Hit", {
                 params ["_eventUnit"];
+                _eventUnit setVariable ["KPLIB_garrisonToken", [], true];
                 [_eventUnit, "PATH"] remoteExec ["enableAI", _eventUnit];
                 _eventUnit setCombatMode "RED";
                 [_eventUnit, _eventUnit getVariable ["KPLIB_lambs_garrisonEventHandlers", []]] call KPLIB_fnc_removeLambsEventHandlers;
@@ -167,6 +120,7 @@ private _addReleaseEventHandler = {
         case 2: {
             private _handle = _unit addEventHandler ["Fired", {
                 params ["_eventUnit"];
+                _eventUnit setVariable ["KPLIB_garrisonToken", [], true];
                 [_eventUnit, "PATH"] remoteExec ["enableAI", _eventUnit];
                 _eventUnit setCombatMode "RED";
                 [_eventUnit, _eventUnit getVariable ["KPLIB_lambs_garrisonEventHandlers", []]] call KPLIB_fnc_removeLambsEventHandlers;
@@ -178,6 +132,7 @@ private _addReleaseEventHandler = {
             private _handle = _unit addEventHandler ["FiredNear", {
                 params ["_eventUnit", "_shooter", "_distance"];
                 if (side _eventUnit != side _shooter && {_distance < (10 + random 10)}) then {
+                    _eventUnit setVariable ["KPLIB_garrisonToken", [], true];
                     [_eventUnit, "PATH"] remoteExec ["enableAI", _eventUnit];
                     _eventUnit doMove (getPosATL _shooter);
                     _eventUnit setCombatMode "RED";
@@ -190,6 +145,7 @@ private _addReleaseEventHandler = {
         case 4: {
             private _handle = _unit addEventHandler ["Suppressed", {
                 params ["_eventUnit"];
+                _eventUnit setVariable ["KPLIB_garrisonToken", [], true];
                 [_eventUnit, "PATH"] remoteExec ["enableAI", _eventUnit];
                 _eventUnit setCombatMode "RED";
                 [_eventUnit, _eventUnit getVariable ["KPLIB_lambs_garrisonEventHandlers", []]] call KPLIB_fnc_removeLambsEventHandlers;
@@ -203,46 +159,7 @@ private _addReleaseEventHandler = {
 };
 
 {
-    doStop _x;
-    private _buildingPosition = _buildingPositions deleteAt 0;
-
-    if (_teleport) then {
-        if (surfaceIsWater _buildingPosition) then {
-            _x doFollow (leader _x);
-        } else {
-            _x setVehiclePosition [_buildingPosition, [], 0, "CAN_COLLIDE"];
-            _x disableAI "PATH";
-            _x setUnitPos selectRandom ["UP", "UP", "MIDDLE"];
-
-            if !([_x] call KPLIB_fnc_isIndoor) then {
-                _x doWatch AGLToASL (_x getPos [
-                    250,
-                    (nearestBuilding _buildingPosition) getDir _buildingPosition
-                ]);
-            };
-        };
-    } else {
-        if (surfaceIsWater _buildingPosition) exitWith {
-            _x doFollow (leader _x);
-        };
-        _x doMove _buildingPosition;
-        [
-            {
-                params ["_unit"];
-                unitReady _unit
-            },
-            {
-                params ["_unit", "_target"];
-                if (surfaceIsWater (getPosASL _unit) || {_unit distance _target > 1.5}) exitWith {
-                    _unit doFollow (leader _unit);
-                };
-                _unit disableAI "PATH";
-                _unit setUnitPos selectRandom ["UP", "UP", "MIDDLE"];
-            },
-            [_x, _buildingPosition]
-        ] call CBA_fnc_waitUntilAndExecute;
-    };
-
+    _x setVariable ["KPLIB_garrisonToken", _token, true];
     if (_exitCondition == -1) then {
         for "_i" from 0 to 4 do {
             [_x, _i] call _addReleaseEventHandler;
@@ -252,6 +169,14 @@ private _addReleaseEventHandler = {
     };
 } forEach _units;
 
+private _args = [_group, _units, _pos, _radius, _area, _teleport, _sortBasedOnHeight, _token];
+if (isServer) then {
+    _args call KPLIB_fnc_garrisonAssign;
+} else {
+    _args remoteExecCall ["KPLIB_fnc_garrisonAssign", 2];
+};
+
+_pos = +_pos;
 _pos set [2, 0];
 private _waypoint = _group addWaypoint [_pos, _radius / 5];
 _waypoint setWaypointType "HOLD";

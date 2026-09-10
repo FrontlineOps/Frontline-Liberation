@@ -3,19 +3,38 @@ BATTLESPACE_TASK_FORCE_GARRISON_BUILD_ASSIGNMENT = {
     getMarkerPos _sector
 };
 
+BATTLESPACE_TASK_FORCE_GARRISON_STOP_ROUTE = {
+    params ["_taskForceName", "_taskForce"];
+    if (!isServer || {isRemoteExecuted}) exitWith {};
+    _taskForce set [2, []];
+    private _registered = BATTLESPACE_TASK_FORCES get _taskForceName;
+    if (!isNil "_registered") then {_registered set [2, []]};
+    BATTLESPACE_TASK_FORCE_PATHS deleteAt _taskForceName;
+    // A completed old route would otherwise be reported as a failure against
+    // the now-empty destination and send an occupied garrison back home.
+    BATTLESPACE_PATHFIND_REQUEST_GENERATIONS set [_taskForceName,
+        1 + (BATTLESPACE_PATHFIND_REQUEST_GENERATIONS getOrDefault [_taskForceName, 0])];
+    QUEUED_PATHFIND_REQUESTS = QUEUED_PATHFIND_REQUESTS select {(_x select 0) != _taskForceName};
+    if (!isNil "BATTLESPACE_PATHFIND_ACTIVE_JOB"
+        && {(BATTLESPACE_PATHFIND_ACTIVE_JOB getOrDefault ["taskForceName", ""]) == _taskForceName}) then {
+        BATTLESPACE_PATHFIND_ACTIVE_JOB = nil;
+    };
+};
+
 BATTLESPACE_TASK_FORCE_GARRISON_ORDER = {
+    if (!isServer || {isRemoteExecuted}) exitWith {};
     params ["_taskForce", "_operation"];
     private _position = _operation getOrDefault ["targetPosition", _taskForce param [1, []]];
     private _groups = (_taskForce param [4, []]) select {
         !isNull _x && {(units _x) findIf {alive _x} >= 0}
     };
-    private _buildings = nearestObjects [_position, ["Building"], 250] select {
-        ([_x] call BIS_fnc_buildingPositions) isNotEqualTo []
-    };
     {
-        private _building = if (_buildings isEqualTo []) then {objNull} else {_buildings deleteAt 0};
-        private _args = [_x, _position, if (isNull _building) then {[]} else {getPosATL _building}];
-        if (local _x) then {_args call BATTLESPACE_DEFENSE_GARRISON_GROUP} else {_args remoteExecCall ["BATTLESPACE_DEFENSE_GARRISON_GROUP", groupOwner _x]};
+        private _args = [_x, _position, []];
+        if (local _x) then {
+            _args call BATTLESPACE_DEFENSE_GARRISON_GROUP;
+        } else {
+            _args remoteExecCall ["BATTLESPACE_DEFENSE_GARRISON_GROUP", groupOwner _x];
+        };
     } forEach _groups;
 };
 
@@ -36,7 +55,9 @@ BATTLESPACE_TASK_FORCE_GARRISON_ORDER = {
                     private _phase = if (isNil "_operation") then {""} else {_operation getOrDefault ["phase", ""]};
                     private _onStation = _phase in ["", "ACTIVE", "ON_STATION"];
                     private _success = [_taskForceName, _taskForce, _onStation] call BATTLESPACE_TASK_FORCE_DEFAULT_TRY_SPAWN;
-                    if (_success && {_onStation}) then {BATTLESPACE_TASK_FORCE_PATHS deleteAt _taskForceName};
+                    if (_success && {_onStation}) then {
+                        [_taskForceName, _taskForce] call BATTLESPACE_TASK_FORCE_GARRISON_STOP_ROUTE;
+                    };
                     [_taskForceName, _taskForce, _success] call BATTLESPACE_TASK_FORCE_DEFAULT_FINISH_SPAWN;
                 };
             }
@@ -87,8 +108,7 @@ BATTLESPACE_TASK_FORCE_GARRISON_ORDER = {
                     private _arrivalRadius = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DEFENDER_ARRIVAL_RADIUS", 100];
                     if (_currentLocation distance2D _targetPosition <= _arrivalRadius) then {
                         _operation set ["phase", "ON_STATION"];
-                        _taskForce set [2, []];
-                        BATTLESPACE_TASK_FORCE_PATHS deleteAt _taskForceName;
+                        [_taskForceName, _taskForce] call BATTLESPACE_TASK_FORCE_GARRISON_STOP_ROUTE;
                         BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceName, _operation];
                         [_taskForce, _operation] call BATTLESPACE_TASK_FORCE_GARRISON_ORDER;
                         [format ["Garrison %1 occupied %2", _taskForceName, _assignedSector]] call BATTLESPACE_STRATEGIC_LOG;

@@ -182,6 +182,10 @@ class KPLIB {
         class isAlive                       {};
         class hunt                         {}; // [] call KPLIB_fnc_hunt
         class rush                         {}; // [] call KPLIB_fnc_rush
+        class garrisonSelect               {};
+        class garrisonAssign               {};
+        class garrisonMove                 {};
+        class garrisonRetry                {};
         class garrison                     {}; // [] call KPLIB_fnc_garrison
         class isIndoor                     {}; // [] call KPLIB_fnc_isIndoor
         class removeLambsEventHandlers     {}; // [] call KPLIB_fnc_removeLambsEventHandlers

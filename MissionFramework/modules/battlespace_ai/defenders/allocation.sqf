@@ -61,11 +61,9 @@ BATTLESPACE_DEFENSE_GARRISON_GROUP = {
     if (!isRemoteExecuted && {!isServer}) exitWith {};
     if (isNull _group || {!local _group}) exitWith {};
     [_group] call BATTLESPACE_DEFENSE_RESET_GROUP;
-    if (_buildingPosition isEqualTo []) then {
-        [_group, _position, 150, 4, [], false, true] call KPLIB_fnc_taskPatrol;
-    } else {
-        [_group, _buildingPosition] call KPLIB_fnc_garrison;
-    };
+    // The legacy third argument is retained for callers, but every squad
+    // searches the objective rather than overlapping 50m circles around houses.
+    [_group, _position, 250] call KPLIB_fnc_garrison;
 };
 
 BATTLESPACE_DEFENSE_AMBUSH_GROUP = {

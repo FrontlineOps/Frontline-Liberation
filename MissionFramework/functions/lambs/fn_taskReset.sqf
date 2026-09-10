@@ -32,6 +32,11 @@ _group setVariable ["KPLIB_lambs_taskPatrolArea", nil, true];
 private _leader = leader _group;
 {
     private _unit = _x;
+    if ((_unit getVariable ["KPLIB_garrisonToken", []]) isNotEqualTo []) then {
+        _unit setVariable ["KPLIB_garrisonToken", [], true];
+    };
+    _unit setVariable ["KPLIB_garrisonState", nil];
+    _unit setVariable ["KPLIB_garrisonTarget", nil];
     _unit doMove (getPosASL _unit);
     {
         _unit enableAI _x;

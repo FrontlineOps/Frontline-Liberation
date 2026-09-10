@@ -23,3 +23,5 @@ The sources were taken from upstream commit `63122df5d9403a52f10bf50198ac75a49f0
 Upstream project: <https://github.com/nk3nny/LambsDanger>
 
 These adapted files remain subject to the LAMBS license in `LICENSE.LAMBS`. In addition to GPL version 2, the upstream license prohibits use or distribution on monetized servers or communities, prohibits upload of the software or derivatives to the Steam Workshop, and requires modified or derivative source to remain open source.
+
+Mission changes on 2026-09-10: taskGarrison now uses server-coordinated building/floor/weapon reservations and bounded owner-local movement. taskReset cancels pending garrison movement. The mission helpers fn_garrisonSelect.sqf, fn_garrisonAssign.sqf, fn_garrisonMove.sqf and fn_garrisonRetry.sqf accompany this adaptation under the same license.
