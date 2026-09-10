@@ -108,6 +108,7 @@ KPLIB_INTEL_SERVER_COLLECT_RAW_REPORTS = {
         _reports pushBack createHashMapFromArray [
             ["id", _id], ["kind", _kind], ["phase", _phase], ["position", _position],
             ["sector", [_position] call KPLIB_INTEL_SERVER_NEAREST_SECTOR],
+            ["origin", _operation getOrDefault ["sourceSector", _operation getOrDefault ["originSector", ""]]],
             ["assigned", _operation getOrDefault ["assignedSector", ""]],
             ["funding", _operation getOrDefault ["fundingSector", ""]],
             ["objective", _objective], ["leg", _leg], ["route", _route], ["partial", _routePartial],

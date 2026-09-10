@@ -128,10 +128,10 @@ class RscTitles {
             PictureCombatReadinessShadow, PictureCombatReadiness, LabelCombatReadiness,
             PictureCivRepShadow, PictureCivRep, LabelCivRep,
             PictureIntelShadow, PictureIntel, LabelIntel,
-            BGPictureActiveSectors, BGPictureSector,
+            BGPictureSector,
             CaptureFrame_OPFOR, CaptureFrame_BLUFOR, CaptureFrame,
             LabelPoint, CentralShadow, CentralLabel,
-            ActiveSectors, AlertBGPicture, AlertLabel, AlertTimer
+            AlertBGPicture, AlertLabel, AlertTimer
         };
         class BGPicture {
             idc = 758001;
@@ -414,31 +414,6 @@ class RscTitles {
             y = 0.33 * safezoneH + safezoneY;
             h = 0.03 * safezoneH;
             colorText[] = {0.7, 0, 0, 1};
-        };
-        class ActiveSectors	{
-            idc = 516;
-            type = CT_STRUCTURED_TEXT;
-            colorBackground[] = COLOR_NOALPHA;
-            style = ST_RIGHT;
-            x = 0.7 * safezoneW + safezoneX;
-            w = 0.295 * safezoneW;
-            y = 0.8 * safezoneH + safezoneY;
-            h = 0.2 * safezoneH;
-            text= "";
-            size = 0.02 * safezoneH;
-            sizeEx = 0.02 * safezoneH;
-            shadow = 2;
-            font = FontM;
-            color = "#e0e000";
-            align = "right";
-            valign = "top";
-        };
-        class BGPictureActiveSectors: BGPicture {
-            idc = 517;
-            x = 0.93 * safezoneW + safezoneX;
-            w = 0.1 * safezoneW;
-            y = 0.8 * safezoneH + safezoneY;
-            h = 0.2 * safezoneH;
         };
         class AlertBGPicture: BGPicture {
             idc = 401;

@@ -444,7 +444,7 @@ KPLIB_intelligence_max_reports = 40;
 KPLIB_intelligence_route_point_limit = 48;
 KPLIB_intelligence_lead_duration = 3600;
 // Recovered reports are dated source information, never live tracking.
-KPLIB_intelligence_max_archived_reports = 12;
+KPLIB_intelligence_max_archived_reports = 40;           // Room for recovered base dossiers; still bounded
 KPLIB_intelligence_terminal_distance = 75;
 KPLIB_intelligence_interaction_distance = 4;
 KPLIB_intelligence_delivery_distance = 40;

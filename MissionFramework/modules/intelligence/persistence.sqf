@@ -80,14 +80,14 @@ KPLIB_INTEL_SERVER_EXPORT = {
     {_effects pushBack [_x, (_y - CBA_missionTime) max 0]} forEach (localNamespace getVariable "KPLIB_INTEL_EFFECTS");
     private _reports = [];
     {_reports pushBack [[_y get "report"] call KPLIB_INTEL_SERVER_PACK_REPORT, ((_y get "expiresAt") - CBA_missionTime) max 0]} forEach KPLIB_INTEL_LEADS;
-    [2, localNamespace getVariable "KPLIB_INTEL_NEXT_ID", _cases, _prisoners, _effects, _reports, _refunds]
+    [3, localNamespace getVariable "KPLIB_INTEL_NEXT_ID", _cases, _prisoners, _effects, _reports, _refunds, call KPLIB_INTEL_SERVER_BASE_EXPORT]
 };
 
 KPLIB_INTEL_SERVER_IMPORT = {
     params [["_data", [], [[]]]];
     if (!(call KPLIB_INTEL_SERVER_INTERNAL) || {localNamespace getVariable ["KPLIB_INTEL_IMPORTED", false]}) exitWith {false};
     localNamespace setVariable ["KPLIB_INTEL_IMPORTED", true];
-    if (count _data != 7 || {!((_data # 0) in [1, 2])}) exitWith {false};
+    if !((count _data == 7 && {(_data # 0) in [1, 2]}) || {count _data == 8 && {(_data # 0) == 3}}) exitWith {false};
     if !((_data # 1) isEqualType 0 && {(_data select [2]) findIf {!(_x isEqualType [])} < 0}) exitWith {false};
     _data params ["_version", "_next", "_savedCases", "_savedPrisoners", "_savedEffects", "_savedReports", "_refunds"];
     localNamespace setVariable ["KPLIB_INTEL_NEXT_ID", _next max 0];

@@ -27,7 +27,6 @@ KPLIB_fnc_receivePermissions = {
     if (!hasInterface || {!isRemoteExecuted} || {remoteExecutedOwner != 2}) exitWith {};
     params ["_grants", "_rows", "_revision", "_message", "_roster"];
     localNamespace setVariable ["KPLIB_permissionGrants", +_grants];
-    if (!isNil "KPLIB_INTEL_CLIENT_DIALOG_REFRESH") then {[] call KPLIB_INTEL_CLIENT_DIALOG_REFRESH};
     private _display = findDisplay 75820;
     if (!isNull _display && {_roster}) then {
         private _selected = _display getVariable ["selectedUID", ""];

@@ -27,6 +27,13 @@ private _allObjects = [];
 private _allStorages = [];
 private _allMines = [];
 private _allCrates = [];
+// Records desks have their own persistent identity; never duplicate them as FOB furniture.
+private _intelProps = [];
+{
+    _intelProps pushBack (_y getOrDefault ["table", objNull]);
+    _intelProps pushBack (_y getOrDefault ["object", objNull]);
+    _intelProps pushBack (_y getOrDefault ["office", objNull]);
+} forEach (localNamespace getVariable ["KPLIB_INTEL_BASES", createHashMap]);
 
 // Get all blufor groups
 private _allBlueGroups = allGroups select {
@@ -42,6 +49,7 @@ private ["_fobPos", "_fobObjects", "_grpUnits", "_fobMines"];
     _fobObjects = (_fobPos nearObjects (GRLIB_fob_range * 1.2)) select {
         ((toLower (typeof _x)) in KPLIB_classnamesToSave) &&        // Exclude classnames which are not in the presets
         {alive _x} &&                                               // Exclude dead or broken objects
+        {!(_x in _intelProps)} &&                                   // Exclude privately registered records desks
         {getObjectType _x >= 8} &&                                  // Exclude preplaced terrain objects
         {speed _x < 5} &&                                           // Exclude moving objects (like civilians driving through)
         {isNull attachedTo _x} &&                                   // Exclude attachTo'd objects

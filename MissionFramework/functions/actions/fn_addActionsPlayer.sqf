@@ -89,25 +89,6 @@ _player addAction [
     "alive _originalTarget && {!dialog} && {howtoplay == 0} && {build_confirmed == 0}"
 ];
 
-// Source reports and automatically assigned operations remain readable in the field.
-if (KPLIB_intelligence_enabled) then {
-    _player addAction [
-        "<t color='#7FC9FF'>Intelligence Case Files</t>",
-        {[] call KPLIB_INTEL_CLIENT_OPEN_DIALOG},
-        nil,
-        -760,
-        false,
-        true,
-        "",
-        "
-            isNull (objectParent _originalTarget)
-            && {alive _originalTarget}
-            && {side _originalTarget isEqualTo GRLIB_side_friendly}
-            && {build_confirmed isEqualTo 0}
-        "
-    ];
-};
-
 // Build sector storage
 _player addAction [
     ["<t color='#FFFF00'>", localize "STR_SECSTORAGEBUILD_ACTION", "</t>"] joinString "",

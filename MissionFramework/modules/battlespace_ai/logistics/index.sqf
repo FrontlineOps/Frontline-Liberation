@@ -167,6 +167,10 @@ BATTLESPACE_SECTOR_SET_OWNER = {
     if (isNil "_state") exitWith { false };
     if ((_state getOrDefault ["owner", ""]) == _owner) exitWith { true };
 
+    // Recoverable base paperwork must retain stocks before ownership clears them.
+    if ((_state getOrDefault ["owner", ""]) == "OPFOR" && {!isNil "KPLIB_INTEL_SERVER_BASE_FREEZE"}) then {
+        [_sector] call KPLIB_INTEL_SERVER_BASE_FREEZE;
+    };
     private _resources = _state get "resources";
     {
         _resources set [_x, 0];

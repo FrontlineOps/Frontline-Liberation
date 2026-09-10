@@ -174,7 +174,7 @@ KPLIB_INTEL_SERVER_TICK_CUSTODY = {
         private _group = group _unit;
         deleteVehicle _unit;
         if (units _group isEqualTo []) then {deleteGroup _group};
-        ["INFO", 0, "Interrogation complete. The source report and any follow-up mission are in Intelligence Case Files."] remoteExecCall ["KPLIB_INTEL_CLIENT_NOTIFY", _actor];
+        ["INFO", 0, "Interrogation complete. The source report is marked on the map; follow-up operations appear in the map task list."] remoteExecCall ["KPLIB_INTEL_CLIENT_NOTIFY", _actor];
         call KPLIB_INTEL_SERVER_CHANGED;
     } forEach keys _detainees;
 };

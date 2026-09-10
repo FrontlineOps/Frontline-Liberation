@@ -54,12 +54,22 @@ KPLIB_INTEL_CLIENT_CREATE_MARKER = {
 KPLIB_INTEL_CLIENT_RENDER_MARKERS = {
     call KPLIB_INTEL_CLIENT_CLEAR_MARKERS;
     KPLIB_INTEL_CLIENT_MARKER_INDEX = 0;
+    KPLIB_INTEL_CLIENT_MAP_REPORTS = +KPLIB_INTEL_CLIENT_REPORTS;
+    // Native task markers are disabled in description.ext. Keep active stages
+    // visible on the ordinary map after retiring the case-files display.
+    {
+        _x params ["_id", "_title", "_stage", "_status", "_pos", "_brief", "_effect", "_history", "_deadline"];
+        if (_status != "ACTIVE" || {count _pos < 2}) then {continue};
+        private _meta = createHashMapFromArray [["title", _title], ["status", "OPERATION"], ["operation", true],
+            ["deadline", _deadline], ["details", [_brief, _effect] + _history]];
+        KPLIB_INTEL_CLIENT_MAP_REPORTS pushBack ["CASE_" + _id, "OPERATION", ["Recover documents", "Retrieve HVT", "Disrupt support"] # _stage,
+            "", _pos, 0, CBA_missionTime, "", [], _title, [], 3, _meta];
+    } forEach (missionNamespace getVariable ["KPLIB_INTEL_CLIENT_CASES", []]);
     {
         _x params ["_id", "_kind", "_phase", "_region", "_position", "_uncertainty", "_observedAt", "_destinationSector", "_destinationPosition", "_strength", "_route", "_tier", "_meta"];
-        if !(_meta getOrDefault ["mapVisible", true]) then {continue};
         private _status = _meta get "status";
         private _current = _status == "CURRENT";
-        private _color = (["ColorOrange", "ColorOPFOR"] select (_current));
+        private _color = if (_kind == "OPERATION") then {"ColorWEST"} else {["ColorOrange", "ColorOPFOR"] select _current};
         private _selected = _id == KPLIB_INTEL_CLIENT_SELECTED_REPORT;
         private _zone = [_position] call KPLIB_INTEL_CLIENT_CREATE_MARKER;
         _zone setMarkerShapeLocal "ELLIPSE";
@@ -75,11 +85,15 @@ KPLIB_INTEL_CLIENT_RENDER_MARKERS = {
             case "ARTILLERY TRP": {"mil_destroy"};
             case "SAM": {"o_antiair"};
             case "SECTOR ASSESSMENT": {"mil_unknown"};
+            case "OBJECTIVE STOCK": {"mil_box"};
+            case "FORCE-WIDE STOCK": {"mil_box"};
+            case "OPERATION": {"mil_objective"};
             default {"o_unknown"};
         };
         _icon setMarkerTypeLocal _type;
         _icon setMarkerColorLocal _color;
-        _icon setMarkerTextLocal format ["%1 | %2 | %3", _kind, [_status, _phase] select _current, _strength];
+        private _age = floor (((CBA_missionTime - _observedAt) max 0) / 60);
+        _icon setMarkerTextLocal (if (_kind == "OPERATION") then {format ["%1: %2", _phase, _strength]} else {format ["%1 | %2 min ago | %3", _kind, _age, _strength]});
         if (_selected) then {
             if (count _destinationPosition >= 2) then {
                 private _destination = [_destinationPosition] call KPLIB_INTEL_CLIENT_CREATE_MARKER;
@@ -101,14 +115,15 @@ KPLIB_INTEL_CLIENT_RENDER_MARKERS = {
                 _corridor setMarkerAlphaLocal 0.25;
             };
         };
-    } forEach KPLIB_INTEL_CLIENT_REPORTS;
+    } forEach KPLIB_INTEL_CLIENT_MAP_REPORTS;
 };
 
 
 KPLIB_INTEL_CLIENT_NOTIFY = {
     params ["_type", ["_value", 0], ["_detail", ""]];
     if (!hasInterface || {isRemoteExecuted && {remoteExecutedOwner != 2}}) exitWith {};
-    if (_type == "REPORTS") then {_detail = "New source information is available in Intelligence Case Files."};
+    // Ordinary reports and stage changes are visible on the map and task list.
+    if (_type in ["REPORTS", "INFO"]) exitWith {};
     ["lib_admin_notification", ["INTELLIGENCE", _detail, "res\notif\ui_notif_int.paa"]] call BIS_fnc_showNotification;
 };
 
@@ -145,7 +160,7 @@ KPLIB_INTEL_CLIENT_UPDATE_TASKS = {
         if (_status == "ACTIVE" && {_newStage || {(_entry param [2, ""]) == "QUEUED"}}) then {
             player setCurrentTask _task;
             if (KPLIB_INTEL_CLIENT_HAS_SNAPSHOT) then {
-                ["INFO", 0, format ["New task: %1 — %2", _title, ["recover documents", "retrieve the HVT alive", "disrupt enemy support"] # _stage]] call KPLIB_INTEL_CLIENT_NOTIFY;
+                ["INFO", 0, format ["New task: %1 - %2", _title, ["recover documents", "retrieve the HVT alive", "disrupt enemy support"] # _stage]] call KPLIB_INTEL_CLIENT_NOTIFY;
             };
         };
         KPLIB_INTEL_CLIENT_TASKS set [_id, [_task, _stage, _status]];
@@ -175,7 +190,6 @@ KPLIB_INTEL_CLIENT_RECEIVE_SNAPSHOT = {
     call KPLIB_INTEL_CLIENT_UPDATE_TASKS;
     if (_newReports && {KPLIB_INTEL_CLIENT_HAS_SNAPSHOT}) then {["REPORTS"] call KPLIB_INTEL_CLIENT_NOTIFY};
     KPLIB_INTEL_CLIENT_HAS_SNAPSHOT = true;
-    call KPLIB_INTEL_CLIENT_DIALOG_REFRESH;
 };
 
 KPLIB_INTEL_CLIENT_INTERROGATE = {
@@ -193,19 +207,7 @@ KPLIB_INTEL_CLIENT_INTERROGATE = {
     }] call ace_common_fnc_progressBar;
 };
 
-KPLIB_INTEL_CLIENT_UPDATE_HUD = {
-    params ["_display", "_visibleMap"];
-    if (isNull _display) exitWith {};
-    private _count = {(_x # 3) in ["ACTIVE", "QUEUED"]} count KPLIB_INTEL_CLIENT_CASES;
-    private _show = _visibleMap && {_count > 0 || {KPLIB_INTEL_CLIENT_DETAINEES > 0}};
-    (_display displayCtrl 517) ctrlShow _show;
-    (_display displayCtrl 516) ctrlShow _show;
-    if (_show) then {
-        (_display displayCtrl 516) ctrlSetStructuredText parseText format ["<t align='right' color='#7fc9ff'>INTELLIGENCE CASE FILES</t><br/><t align='right'>%1 operations | %2 prisoners awaiting interrogation</t>", _count, KPLIB_INTEL_CLIENT_DETAINEES];
-    };
-};
-
-[] call compileFinal preprocessFileLineNumbers "modules\intelligence\dialog.sqf";
+[] call compileFinal preprocessFileLineNumbers "modules\intelligence\map.sqf";
 
 KPLIB_INTEL_CLIENT_INIT = {
     if (!hasInterface || {missionNamespace getVariable ["KPLIB_INTEL_CLIENT_INITIALIZED", false]}) exitWith {};
@@ -220,8 +222,8 @@ KPLIB_INTEL_CLIENT_INIT = {
     KPLIB_INTEL_CLIENT_SELECTED_REPORT = "";
     KPLIB_INTEL_CLIENT_INFORMANT_MARKER = "";
     KPLIB_INTEL_CLIENT_HAS_SNAPSHOT = false;
-    uiNamespace setVariable ["KPLIB_INTEL_CLIENT_DISPLAY", displayNull];
     if (!KPLIB_intelligence_enabled) exitWith {};
+    [KPLIB_INTEL_CLIENT_MAP_TICK, 0.2] call CBA_fnc_addPerFrameHandler;
     KPLIB_INTEL_CLIENT_CAN_INTERACT = {
         params ["_target", "_actor"];
         alive _target && {alive _actor} && {side group _actor == GRLIB_side_friendly}

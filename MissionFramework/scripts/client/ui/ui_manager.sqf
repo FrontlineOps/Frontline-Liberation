@@ -103,32 +103,6 @@ while {true} do {
             _currentFob         // area title
         ] call KPLIB_fnc_overlayUpdateResources;
 
-            // if (!isNil "active_sectors" && ([] call KPLIB_fnc_getOpforCap >= KPLIB_sector_activation_opfor_threshold)) then {
-
-            //     (_overlay displayCtrl (517)) ctrlShow true;
-
-            //     if (!_active_sectors_hint) then {
-            //         hint localize "STR_OVERLOAD_HINT";
-            //         _active_sectors_hint = true;
-            //     };
-
-            //     _active_sectors_string = "<t align='right' color='#e0e000'>" + (localize "STR_ACTIVE_SECTORS") + "<br/>";
-            //     {
-            //         _active_sectors_string = [_active_sectors_string, markerText _x, "<br/>"] joinString "";
-            //     } forEach active_sectors;
-            //     _active_sectors_string = [_active_sectors_string, "</t>"] joinString "";
-            //     (_overlay displayCtrl (516)) ctrlSetStructuredText parseText _active_sectors_string;
-
-            // } else {
-            //     (_overlay displayCtrl (516)) ctrlSetStructuredText parseText " ";
-            //     (_overlay displayCtrl (517)) ctrlShow false;
-            // };
-            if (!isNil "KPLIB_INTEL_CLIENT_UPDATE_HUD") then {
-                [_overlay, _visibleMap] call KPLIB_INTEL_CLIENT_UPDATE_HUD;
-            } else {
-                (_overlay displayCtrl (516)) ctrlSetStructuredText parseText " ";
-                (_overlay displayCtrl (517)) ctrlShow false;
-            };
             _nearest_active_sector = [GRLIB_sector_size] call KPLIB_fnc_getNearestSector;
             if ( _nearest_active_sector != "" && _visibleMap) then {
                 _zone_size = GRLIB_capture_size;

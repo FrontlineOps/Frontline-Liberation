@@ -33,6 +33,7 @@ KPLIB_INTEL_SERVER_TRIM_ROUTE = {
 [] call compileFinal preprocessFileLineNumbers "modules\intelligence\sites.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\intelligence\operations.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\intelligence\custody.sqf";
+[] call compileFinal preprocessFileLineNumbers "modules\intelligence\baseRecords.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\intelligence\persistence.sqf";
 
 KPLIB_INTEL_SERVER_REJECT = {
@@ -75,6 +76,7 @@ KPLIB_INTEL_SERVER_TAKE_DOCUMENT = {
     if !([_caller, _object, KPLIB_intelligence_interaction_distance] call KPLIB_INTEL_SERVER_ACTOR_VALID) exitWith {false};
     if !((typeOf _object) in KPLIB_intelObjectClasses) exitWith {false};
     if !([_caller, _object] call KPLIB_INTEL_SERVER_SOURCE_VISIBLE) exitWith {false};
+    if ([_object] call KPLIB_INTEL_SERVER_BASE_COLLECT) exitWith {true};
     private _sources = localNamespace getVariable "KPLIB_INTEL_SOURCES";
     private _source = _sources getOrDefault [netId _object, []];
     if (_source isEqualTo [] || {(_source # 0) isNotEqualTo _object}) exitWith {false};
@@ -405,7 +407,10 @@ KPLIB_INTEL_SERVER_INIT = {
         [KPLIB_INTEL_SERVER_INIT, [], 2] call CBA_fnc_waitAndExecute;
     };
     KPLIB_INTEL_SERVER_INITIALIZED = true;
-    [missionNamespace getVariable ["KPLIB_INTEL_PENDING_SAVE", []]] call KPLIB_INTEL_SERVER_IMPORT;
+    private _saved = missionNamespace getVariable ["KPLIB_INTEL_PENDING_SAVE", []];
+    [_saved] call KPLIB_INTEL_SERVER_IMPORT;
+    private _known = _saved isEqualType [] && {_saved isEqualTo [] || {count _saved == 7 && {(_saved # 0) in [1, 2]}} || {count _saved == 8 && {(_saved # 0) == 3} && {(_saved # 7) isEqualType []}}};
+    [if (_known && {count _saved == 8}) then {_saved # 7} else {[]}, !_known] call KPLIB_INTEL_SERVER_BASE_IMPORT;
     KPLIB_INTEL_PENDING_SAVE = nil;
     call KPLIB_INTEL_SERVER_SCHEDULE_INFORMANT;
     KPLIB_INTEL_SERVER_PFH = [{[false] call KPLIB_INTEL_SERVER_RECONCILE}, KPLIB_intelligence_reconcile_interval] call CBA_fnc_addPerFrameHandler;

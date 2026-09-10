@@ -24,6 +24,8 @@ params [
 ];
 
 if (_sector isEqualTo "") exitWith {["Empty string given"] call BIS_fnc_error; false};
+// Military objectives use their persistent records desk instead of loose random papers.
+if (_sector in sectors_military) exitWith {true};
 if (isNil "KPLIB_sectorIntelSpawned") then {KPLIB_sectorIntelSpawned = []};
 
 if !(_sector in KPLIB_sectorIntelSpawned) then {
