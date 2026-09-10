@@ -86,19 +86,19 @@ while {true} do {
         private _actionRepeat = -1;
         private _actionVector = -1;
 
-        _actionCancel = player addAction ["<t color='#B0FF00'>" + localize "STR_CANCEL" + "</t> <img size='2' image='res\ui_cancel.paa'/>", {build_confirmed = 3; GRLIB_ui_notif = ""; hint localize "STR_CANCEL_HINT";}, "", -725, false, true, "", "build_confirmed == 1"];
+        _actionCancel = player addAction [([localize "STR_CANCEL", "#B0FF00"] call KPLIB_fnc_actionLabel), {build_confirmed = 3; GRLIB_ui_notif = ""; hint localize "STR_CANCEL_HINT";}, "", -725, false, true, "", "build_confirmed == 1"];
         if (_isBuildingBuild) then {
-            _actionRepeat = player addAction ["<t color='#B0FF00'>" + localize "STR_PLACEMENT_BIS" + "</t> <img size='2' image='res\ui_confirm.paa'/>", {build_confirmed = 2; repeatbuild = true; hint localize "STR_CONFIRM_HINT";}, "", -785, false, false, "", "build_invalid == 0 && build_confirmed == 1"];
+            _actionRepeat = player addAction [([localize "STR_PLACEMENT_BIS", "#B0FF00"] call KPLIB_fnc_actionLabel), {build_confirmed = 2; repeatbuild = true; hint localize "STR_CONFIRM_HINT";}, "", -785, false, false, "", "build_invalid == 0 && build_confirmed == 1"];
         };
         if (_supportsVector) then {
-            _actionSnap = player addAction ["<t color='#B0FF00'>" + localize "STR_GRID" + "</t>", {gridmode = gridmode + 1;}, "", -735, false, false, "", "build_confirmed == 1"];
-            _actionVector = player addAction ["<t color='#B0FF00'>" + localize "STR_VECACTION" + "</t>", {KP_vector = !KP_vector;}, "", -800, false, false, "", "build_confirmed == 1"];
+            _actionSnap = player addAction [([localize "STR_GRID", "#B0FF00"] call KPLIB_fnc_actionLabel), {gridmode = gridmode + 1;}, "", -735, false, false, "", "build_confirmed == 1"];
+            _actionVector = player addAction [([localize "STR_VECACTION", "#B0FF00"] call KPLIB_fnc_actionLabel), {KP_vector = !KP_vector;}, "", -800, false, false, "", "build_confirmed == 1"];
         };
 
-        private _actionRotate = player addAction ["<t color='#B0FF00'>" + localize "STR_ROTATION" + "</t> <img size='2' image='res\ui_rotation.paa'/>", {build_rotation = build_rotation + 90;}, "", -750, false, false, "", "build_confirmed == 1"];
-        private _actionRaise = player addAction ["<t color='#B0FF00'>" + localize "STR_RAISE" + "</t>", {build_elevation = build_elevation + 0.2;}, "", -765, false, false, "", "build_confirmed == 1"];
-        private _actionLower = player addAction ["<t color='#B0FF00'>" + localize "STR_LOWER" + "</t>", {build_elevation = build_elevation - 0.2;}, "", -766, false, false, "", "build_confirmed == 1"];
-        private _actionPlace = player addAction ["<t color='#B0FF00'>" + localize "STR_PLACEMENT" + "</t> <img size='2' image='res\ui_confirm.paa'/>", {build_confirmed = 2; hint localize "STR_CONFIRM_HINT";}, "", -775, false, true, "", "build_invalid == 0 && build_confirmed == 1"];
+        private _actionRotate = player addAction [([localize "STR_ROTATION", "#B0FF00"] call KPLIB_fnc_actionLabel), {build_rotation = build_rotation + 90;}, "", -750, false, false, "", "build_confirmed == 1"];
+        private _actionRaise = player addAction [([localize "STR_RAISE", "#B0FF00"] call KPLIB_fnc_actionLabel), {build_elevation = build_elevation + 0.2;}, "", -765, false, false, "", "build_confirmed == 1"];
+        private _actionLower = player addAction [([localize "STR_LOWER", "#B0FF00"] call KPLIB_fnc_actionLabel), {build_elevation = build_elevation - 0.2;}, "", -766, false, false, "", "build_confirmed == 1"];
+        private _actionPlace = player addAction [([localize "STR_PLACEMENT", "#B0FF00"] call KPLIB_fnc_actionLabel), {build_confirmed = 2; hint localize "STR_CONFIRM_HINT";}, "", -775, false, true, "", "build_invalid == 0 && build_confirmed == 1"];
 
         private _ghostPosition = (markerPos "ghost_spot") findEmptyPosition [0, 100];
         [] call KPLIB_fnc_stopBuildOverlay;

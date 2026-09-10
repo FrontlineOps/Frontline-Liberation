@@ -27,7 +27,7 @@ if (isNil "FOB_build_in_progress") then {FOB_build_in_progress = false;};
 if ((typeOf _obj) isEqualTo FOB_typename) exitWith {
     _obj setVariable ["KPLIB_fobActionsAdded", true];
     _obj addAction [
-        ["<t color='#FFFF00'>", localize "STR_FOB_REPACKAGE", "</t> <img size='2' image='res\ui_deployfob.paa'/>"] joinString "",
+        [localize "STR_FOB_REPACKAGE", "#FFFF00"] call KPLIB_fnc_actionLabel,
         "scripts\client\actions\do_repackage_fob.sqf",
         nil,
         -754,
@@ -43,7 +43,7 @@ if ((typeOf _obj) isEqualTo FOB_typename) exitWith {
 if ((typeOf _obj) in [FOB_box_typename, FOB_truck_typename]) exitWith {
     _obj setVariable ["KPLIB_fobActionsAdded", true];
     _obj addAction [
-        ["<t color='#FFFF00'>", localize "STR_FOB_ACTION", "</t> <img size='2' image='res\ui_deployfob.paa'/>"] joinString "",
+        [localize "STR_FOB_ACTION", "#FFFF00"] call KPLIB_fnc_actionLabel,
         "scripts\client\build\do_build_fob.sqf",
         nil,
         -752,

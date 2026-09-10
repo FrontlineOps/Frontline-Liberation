@@ -10,9 +10,9 @@ if (_classname isEqualTo KP_liberation_small_storage_building) then {
 
     private _truePosition = [];
     private _sectorPosition = markerPos ([100] call KPLIB_fnc_getNearestSector);
-    private _cancelAction = player addAction ["<t color='#B0FF00'>" + localize "STR_CANCEL" + "</t> <img size='2' image='res\ui_cancel.paa'/>", {build_confirmed = 3;}, "", -725, false, true, "", "build_confirmed == 1"];
-    private _placeAction = player addAction ["<t color='#B0FF00'>" + localize "STR_PLACEMENT" + "</t> <img size='2' image='res\ui_confirm.paa'/>", {build_confirmed = 2;}, "", -775, false, true, "", "build_invalid == 0 && build_confirmed == 1"];
-    private _vectorAction = player addAction ["<t color='#B0FF00'>" + localize "STR_VECACTION" + "</t>", {KP_vector = !KP_vector;}, "", -800, false, false, "", "build_confirmed == 1"];
+    private _cancelAction = player addAction [([localize "STR_CANCEL", "#B0FF00"] call KPLIB_fnc_actionLabel), {build_confirmed = 3;}, "", -725, false, true, "", "build_confirmed == 1"];
+    private _placeAction = player addAction [([localize "STR_PLACEMENT", "#B0FF00"] call KPLIB_fnc_actionLabel), {build_confirmed = 2;}, "", -775, false, true, "", "build_invalid == 0 && build_confirmed == 1"];
+    private _vectorAction = player addAction [([localize "STR_VECACTION", "#B0FF00"] call KPLIB_fnc_actionLabel), {KP_vector = !KP_vector;}, "", -800, false, false, "", "build_confirmed == 1"];
 
     private _ghostPosition = (markerPos "ghost_spot") findEmptyPosition [0, 100];
     private _preview = _classname createVehicleLocal _ghostPosition;

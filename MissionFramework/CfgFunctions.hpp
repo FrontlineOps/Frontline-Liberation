@@ -40,6 +40,7 @@ class KPLIB {
     class functions_actions {
         file = "functions\actions";
 
+        class actionLabel            {};
         class addActionsFob          {};
         class addActionsPlayer       {};
         class createClearanceConfirm {};

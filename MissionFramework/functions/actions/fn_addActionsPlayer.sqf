@@ -49,7 +49,7 @@ if (playerside isEqualTo GRLIB_side_enemy) then {
 };
 
 _player addAction [
-    ["<t color='#80FF80'>", localize "STR_DEPLOY_ACTION", "</t><img size='2' image='res\ui_redeploy.paa'/>"] joinString "",
+    [localize "STR_DEPLOY_ACTION", "#80FF80"] call KPLIB_fnc_actionLabel,
     {GRLIB_force_redeploy = true;},
     nil,
     -720,
@@ -61,7 +61,7 @@ _player addAction [
 
 // Build
 _player addAction [
-    ["<t color='#FFFF00'>", localize "STR_BUILD_ACTION", "</t><img size='2' image='res\ui_build.paa'/>"] joinString "",
+    [localize "STR_BUILD_ACTION", "#FFFF00"] call KPLIB_fnc_actionLabel,
     "scripts\client\build\open_build_menu.sqf",
     nil,
     -750,
@@ -79,7 +79,7 @@ _player addAction [
 
 // Reopen the local field guide without starting the introduction camera.
 _player addAction [
-    localize "STR_TUTO_ACTION",
+    [localize "STR_TUTO_ACTION"] call KPLIB_fnc_actionLabel,
     {howtoplay = 1;},
     nil,
     -755,
@@ -91,7 +91,7 @@ _player addAction [
 
 // Build sector storage
 _player addAction [
-    ["<t color='#FFFF00'>", localize "STR_SECSTORAGEBUILD_ACTION", "</t>"] joinString "",
+    [localize "STR_SECSTORAGEBUILD_ACTION", "#FFFF00"] call KPLIB_fnc_actionLabel,
     "scripts\client\build\do_sector_build.sqf",
     [KP_liberation_small_storage_building],
     -770,
@@ -110,7 +110,7 @@ _player addAction [
 
 // Build supply facility
 _player addAction [
-    ["<t color='#FFFF00'>", localize "STR_SECSUPPLYBUILD_ACTION", "</t>"] joinString "",
+    [localize "STR_SECSUPPLYBUILD_ACTION", "#FFFF00"] call KPLIB_fnc_actionLabel,
     "scripts\client\build\do_sector_build.sqf",
     ["supply"],
     -780,
@@ -130,7 +130,7 @@ _player addAction [
 
 // Build ammo facility
 _player addAction [
-    ["<t color='#FFFF00'>", localize "STR_SECAMMOBUILD_ACTION", "</t>"] joinString "",
+    [localize "STR_SECAMMOBUILD_ACTION", "#FFFF00"] call KPLIB_fnc_actionLabel,
     "scripts\client\build\do_sector_build.sqf",
     ["ammo"],
     -790,
@@ -150,7 +150,7 @@ _player addAction [
 
 // Build fuel facility
 _player addAction [
-    ["<t color='#FFFF00'>", localize "STR_SECFUELBUILD_ACTION", "</t>"] joinString "",
+    [localize "STR_SECFUELBUILD_ACTION", "#FFFF00"] call KPLIB_fnc_actionLabel,
     "scripts\client\build\do_sector_build.sqf",
     ["fuel"],
     -800,
@@ -170,7 +170,7 @@ _player addAction [
 
 // Switch global/local resources
 _player addAction [
-    ["<t color='#FFFF00'>", localize "STR_RESOURCE_GLOBAL_ACTION", "</t>"] joinString "",
+    [localize "STR_RESOURCE_GLOBAL_ACTION", "#FFFF00"] call KPLIB_fnc_actionLabel,
     {KP_liberation_resources_global = !KP_liberation_resources_global},
     nil,
     -810,
@@ -186,7 +186,7 @@ _player addAction [
 
 // Production
 _player addAction [
-    ["<t color='#FF8000'>", localize "STR_PRODUCTION_ACTION", "</t>"] joinString "",
+    [localize "STR_PRODUCTION_ACTION", "#FF8000"] call KPLIB_fnc_actionLabel,
     "scripts\client\commander\open_production.sqf",
     nil,
     -820,
@@ -209,7 +209,7 @@ _player addAction [
 // Reassign Zeus
 if (player == ([] call KPLIB_fnc_getCommander)) then {
     _player addAction [
-        ["<t color='#FF0000'>", localize "STR_REASSIGN_ZEUS", "</t>"] joinString "",
+        [localize "STR_REASSIGN_ZEUS", "#FF0000"] call KPLIB_fnc_actionLabel,
         {[] call KPLIB_fnc_requestZeus},
         nil,
         -870,
@@ -226,7 +226,7 @@ if (player == ([] call KPLIB_fnc_getCommander)) then {
 
 // Create FOB clearance
 _player addAction [
-    ["<t color='#FFFF00'>", localize "STR_CLEARANCE_ACTION", "</t>"] joinString "",
+    [localize "STR_CLEARANCE_ACTION", "#FFFF00"] call KPLIB_fnc_actionLabel,
     {[player getVariable ["KPLIB_fobPos", [0, 0, 0]], GRLIB_fob_range * 0.9, true] call KPLIB_fnc_createClearanceConfirm;},
     nil,
     -850,
@@ -243,7 +243,7 @@ _player addAction [
 ];
 
 _player addAction [
-    ["<t color='#80FF80'>", "Reload Arsenal", "</t>"] joinString "",
+    ["Reload arsenal", "#80FF80"] call KPLIB_fnc_actionLabel,
     { 
         {
             private _box = _x;
@@ -266,7 +266,7 @@ _player addAction [
 ];
 
 _player addAction [
-    ["<t color='#80FF80'>", "Disable Damage", "</t>"] joinString "",
+    ["Disable damage", "#80FF80"] call KPLIB_fnc_actionLabel,
     { 
         player allowDamage false;
         hintSilent "Damage has been disabled.";
@@ -308,7 +308,7 @@ private _getCoords = ["GetCoords","Get Coordinates","",_getCoordsScript,{visible
 
 
 _player addAction [
-    "<t color='#FFFF00'>Player Permissions</t>",
+    ["Player Permissions", "#FFFF00"] call KPLIB_fnc_actionLabel,
     {[] call KPLIB_fnc_openPermissions},
     nil, -880, false, true, "",
     "alive _originalTarget && {[_originalTarget] call KPLIB_fnc_isPermissionAdmin} && {build_confirmed == 0}"

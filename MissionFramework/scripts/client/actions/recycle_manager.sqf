@@ -24,7 +24,7 @@ while {true} do {
             private _vehicle = _object isKindOf "LandVehicle" || {_object isKindOf "Air"} || {_object isKindOf "Ship"};
             private _label = [localize "STR_RECYCLE", "-- SALVAGE VEHICLE"] select _vehicle;
             private _action = _object addAction [
-                "<t color='#FFFF00'>" + _label + "</t> <img size='2' image='res\ui_recycle.paa'/>",
+                ([_label, "#FFFF00"] call KPLIB_fnc_actionLabel),
                 "scripts\client\actions\do_recycle.sqf", "", -900, true, true, "",
                 "build_confirmed == 0 && {[_this, 'RECYCLE'] call KPLIB_fnc_hasPermission} && {[_target, _this] call KPLIB_fnc_canRecycle}"
             ];

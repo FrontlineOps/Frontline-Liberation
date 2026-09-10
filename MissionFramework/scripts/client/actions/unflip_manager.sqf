@@ -23,7 +23,7 @@ while { true } do {
             } foreach _unflippable_vehicles;
 
             if ( !_next_vehicle_already_in_list ) then {
-                _idact_next = _next_vehicle addAction [ "<t color='#FFFF00'>" + localize "STR_UNFLIP" + "</t> <img size='2' image='res\ui_flipveh.paa'/>", "scripts\client\actions\do_unflip.sqf", "", -950, true, true, "", "build_confirmed == 0 && (_this distance _target < veh_action_distance) && (vehicle player == player)"];
+                _idact_next = _next_vehicle addAction [ ([localize "STR_UNFLIP", "#FFFF00"] call KPLIB_fnc_actionLabel), "scripts\client\actions\do_unflip.sqf", "", -950, true, true, "", "build_confirmed == 0 && (_this distance _target < veh_action_distance) && (vehicle player == player)"];
                 _unflippable_vehicles pushback [ _next_vehicle, _idact_next ] ;
             };
         } foreach _detected_vehicles;
