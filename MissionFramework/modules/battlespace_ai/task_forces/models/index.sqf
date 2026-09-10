@@ -264,7 +264,11 @@ BATTLESPACE_TASK_FORCE_DEFAULT_TRY_SPAWN = {
 		} else {
 			_building = createVehicle [_class, _pos, [], 0, ["", "CAN_COLLIDE"] select _ignoresCollision];
 		};
-		_building setDir _dir;
+        if (_type in ["Fortifications", "Outpost"] && {!isNil "BATTLESPACE_FORTIFICATION_APPLY_POSE"}) then {
+            [_building, _x, _dir] call BATTLESPACE_FORTIFICATION_APPLY_POSE;
+        } else {
+            _building setDir _dir;
+        };
 
 		_building addMPEventHandler ["MPKilled", { ["STRUCTURE", _this] call BATTLESPACE_TASK_FORCE_OBJECT_KILLED}];
 		_building setVariable ["TASKFORCEID", _taskForceName];

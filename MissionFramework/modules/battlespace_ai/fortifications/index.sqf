@@ -6,6 +6,55 @@
     those contracts.
 */
 
+call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\fortifications\terrain.sqf";
+
+BATTLESPACE_FORTIFICATION_HAS_GARRISON = {
+    params ["_sector"];
+    private _center = getMarkerPos _sector;
+    private _radius = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_FORTIFICATION_GARRISON_RADIUS", 350];
+    private _present = false;
+    {
+        if ((_y getOrDefault ["kind", ""]) != "DEFENDER"
+            || {(_y getOrDefault ["defenseRole", ""]) != "GARRISON"}
+            || {(_y getOrDefault ["assignedSector", ""]) != _sector}
+            || {!((_y getOrDefault ["phase", ""]) in ["ON_STATION", "ENGAGED"])}
+            || {(_y getOrDefault ["outcome", ""]) != ""}) then {continue};
+        private _force = BATTLESPACE_TASK_FORCES getOrDefault [_x, []];
+        if (_force isEqualTo [] || {(_force # 0) != "Garrison"}
+            || {(_force param [6, GRLIB_side_enemy]) != GRLIB_side_enemy}
+            || {((_force # 3) getOrDefault ["manpower", 0]) <= 0}
+            || {_force param [11, false]} || {_force param [9, false]}) then {continue};
+        private _groups = _force param [4, []];
+        private _objects = _force param [8, []];
+        if (_groups isNotEqualTo [] || {_objects isNotEqualTo []}) then {
+            // Physical soldiers outrank a stale cached force position, including
+            // groups owned by a headless client. This query never issues AI orders.
+            private _people = _objects select {_x isKindOf "Man"};
+            {_people append units _x} forEach (_groups select {!isNull _x});
+            _present = _people findIf {alive _x && {!captive _x} && {side group _x == GRLIB_side_enemy}
+                && {_x distance2D _center <= _radius}} >= 0;
+        } else {
+            // Arrived virtual garrisons remain at the objective off camera;
+            // player proximity must not decide whether construction is funded.
+            private _position = _force param [1, []];
+            _present = count _position >= 2 && {_position distance2D _center <= _radius};
+        };
+        if (_present) exitWith {};
+    } forEach BATTLESPACE_STRATEGIC_OPERATIONS;
+    _present
+};
+
+BATTLESPACE_FORTIFICATION_GET_THREAT_SECTOR = {
+    params ["_sector"];
+    private _friendly = blufor_sectors select {_x != _sector && {markerShape _x != ""}};
+    if (_friendly isEqualTo [] && {markerShape "startbase_marker" != ""}) then {_friendly = ["startbase_marker"]};
+    if (_friendly isEqualTo []) exitWith {""};
+    private _origin = getMarkerPos _sector;
+    private _ranked = _friendly apply {[_origin distance2D getMarkerPos _x, _x]};
+    _ranked sort true;
+    (_ranked # 0) # 1
+};
+
 BATTLESPACE_FORTIFICATION_GET_OPERATIONS_FOR_SECTOR = {
     params ["_sector"];
     private _operations = [];
@@ -58,11 +107,10 @@ BATTLESPACE_FORTIFICATION_GET_RESERVED_POSITIONS = {
 BATTLESPACE_FORTIFICATION_FIND_SITE = {
     params ["_sector", "_tier"];
     private _origin = getMarkerPos _sector;
-    private _frontline = [_sector, blufor_sectors + ["startbase_marker"]] call NETWORKED_SECTORS_traverseGraphAndFindFirstBluforSector;
-    private _frontDirection = random 360;
-    if (!isNil "_frontline" && {_frontline != ""} && {_frontline != _sector}) then {
-        _frontDirection = _origin getDir (getMarkerPos _frontline);
-    };
+    private _frontline = [_sector] call BATTLESPACE_FORTIFICATION_GET_THREAT_SECTOR;
+    if (_frontline == "") exitWith {[]};
+    private _frontPosition = getMarkerPos _frontline;
+    private _frontDirection = _origin getDir _frontPosition;
 
     private _rings = [[180, 450], [300, 650], [450, 850]];
     private _ring = _rings param [(_tier - 1) max 0 min 2, [180, 450]];
@@ -87,10 +135,6 @@ BATTLESPACE_FORTIFICATION_FIND_SITE = {
             } forEach (_candidate nearRoads 120);
             if (!isNull _nearestRoad) then {
                 _candidate = getPosATL _nearestRoad;
-                private _connected = roadsConnectedTo _nearestRoad;
-                if (_connected isNotEqualTo []) then {
-                    _direction = (getPos _nearestRoad) getDir (getPos (_connected#0));
-                };
             };
         };
 
@@ -98,7 +142,13 @@ BATTLESPACE_FORTIFICATION_FIND_SITE = {
         _candidate set [2, 0];
         if (surfaceIsWater _candidate) then {continue};
         if ((_reserved findIf {(_candidate distance2D _x) < 150}) >= 0) then {continue};
-        _site = [_candidate, _direction];
+        if (!isNil "BATTLESPACE_DEFENSE_POSITION_IS_FRIENDLY" && {[_candidate] call BATTLESPACE_DEFENSE_POSITION_IS_FRIENDLY}) then {continue};
+        // Search bearing chooses an approach position; weapon facing points
+        // from that actual position toward a known friendly-held objective.
+        _direction = _candidate getDir _frontPosition;
+        private _structures = [_candidate, _direction, _tier] call BATTLESPACE_FORTIFICATION_BUILD_LAYOUT;
+        if (_structures isNotEqualTo []) then {_site = [_candidate, _direction, _structures]};
+        if (canSuspend) then {sleep 0.001};
     };
     _site
 };
@@ -114,13 +164,10 @@ BATTLESPACE_FORTIFICATION_GET_STATIC_CLASSES = {
     }) arrayIntersect _classes
 };
 
-BATTLESPACE_FORTIFICATION_BUILD_DEFINITION = {
-    params ["_sector", "_tier"];
-    private _site = [_sector, _tier] call BATTLESPACE_FORTIFICATION_FIND_SITE;
-    if (_site isEqualTo []) exitWith {createHashMap};
-    _site params ["_position", "_direction"];
-
+BATTLESPACE_FORTIFICATION_BUILD_LAYOUT = {
+    params ["_position", "_direction", "_tier"];
     private _structures = [];
+    private _valid = true;
     private _resolveClass = {
         params ["_candidates"];
         (_candidates select {isClass (configFile >> "CfgVehicles" >> _x)}) param [0, ""]
@@ -128,18 +175,17 @@ BATTLESPACE_FORTIFICATION_BUILD_DEFINITION = {
     private _addStructure = {
         params ["_candidates", "_offset", ["_relativeDirection", 0]];
         private _class = [_candidates] call _resolveClass;
-        if (_class == "") exitWith {};
+        if (_class == "") exitWith {_valid = false};
         _offset params ["_forward", "_right"];
         private _worldPosition = [
             (_position#0) + (_forward * sin _direction) + (_right * cos _direction),
             (_position#1) + (_forward * cos _direction) - (_right * sin _direction),
             0
         ];
-        _structures pushBack (createHashMapFromArray [
-            ["position", _worldPosition],
-            ["rotation", (_direction + _relativeDirection) mod 360],
-            ["className", _class]
-        ]);
+        private _definition = [_class, _worldPosition, (_direction + _relativeDirection) mod 360] call BATTLESPACE_FORTIFICATION_FIT_STRUCTURE;
+        if (count _definition == 0) exitWith {_valid = false};
+        if (_class isKindOf "StaticWeapon" && {!([_worldPosition, _direction] call BATTLESPACE_FORTIFICATION_FIRE_LANE_CLEAR)}) exitWith {_valid = false};
+        _structures pushBack _definition;
     };
 
     private _barrier = ["Land_HBarrier_3_F", "Land_BagFence_Long_F"];
@@ -175,13 +221,22 @@ BATTLESPACE_FORTIFICATION_BUILD_DEFINITION = {
 
     private _staticClasses = [] call BATTLESPACE_FORTIFICATION_GET_STATIC_CLASSES;
     private _staticCount = [0, 1, 2] param [(_tier - 1) max 0 min 2, 0];
+    if (_staticCount > 0 && {_staticClasses isEqualTo []}) exitWith {[]};
     private _staticOffsets = if (_tier == 2) then {[[3, 0]]} else {[[3, -7], [3, 7]]};
     for "_i" from 0 to (_staticCount - 1) do {
         if (_staticClasses isEqualTo []) exitWith {};
         [[selectRandom _staticClasses], _staticOffsets param [_i, [3, 0]], 0] call _addStructure;
     };
 
-    if (_structures isEqualTo []) exitWith {createHashMap};
+    if (!_valid) exitWith {[]};
+    _structures
+};
+
+BATTLESPACE_FORTIFICATION_BUILD_DEFINITION = {
+    params ["_sector", "_tier"];
+    private _site = [_sector, _tier] call BATTLESPACE_FORTIFICATION_FIND_SITE;
+    if (_site isEqualTo []) exitWith {createHashMap};
+    _site params ["_position", "_direction", "_structures"];
     private _siteKind = ["ROADBLOCK", "EMPLACEMENT", "HARDENED OUTPOST"] param [(_tier - 1) max 0 min 2, "ROADBLOCK"];
     private _manpowerByTier = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_FORTIFICATION_MANPOWER_BY_TIER", [4, 5, 7]];
     private _assignedManpower = floor ((_manpowerByTier param [(_tier - 1) max 0 min 2, 0]) max 0);
@@ -204,6 +259,7 @@ BATTLESPACE_FORTIFICATION_DISPATCH = {
     if !([] call BATTLESPACE_STRATEGIC_SERVER_CALL_ALLOWED) exitWith {false};
     private _state = BATTLESPACE_SECTOR_STATES get _sector;
     if (isNil "_state" || {(_state getOrDefault ["owner", ""]) != "OPFOR"}) exitWith {false};
+    if (_sector in blufor_sectors || {!([_sector] call BATTLESPACE_FORTIFICATION_HAS_GARRISON)}) exitWith {false};
     if (CBA_missionTime < (_state getOrDefault ["nextFortificationAt", 0])) exitWith {false};
 
     private _globalCap = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_ACTIVE_FORTIFICATIONS", 48];
@@ -229,36 +285,49 @@ BATTLESPACE_FORTIFICATION_DISPATCH = {
         [format ["No valid dynamic fortification site found for %1 tier %2", _sector, _tier], "WARNING"] call BATTLESPACE_STRATEGIC_LOG;
         false
     };
-    private _position = _definition get "position";
-    private _siteKind = _definition get "siteKind";
-    private _taskForceId = [
-        _definition get "type",
-        _definition get "composition",
-        _position,
-        [],
-        getMarkerPos _sector,
-        _sector,
-        "FORTIFICATION",
-        createHashMapFromArray [
-            ["phase", format ["BUILT T%1 %2", _tier, _siteKind]],
-            ["targetSector", _sector],
-            ["pressureSector", _sector],
-            ["fortificationTier", _tier],
-            ["siteKind", _siteKind],
-            ["assignedManpower", (_definition get "composition") getOrDefault ["manpower", 0]],
-            ["sitePosition", _position],
-            ["siteDirection", _definition get "direction"]
-        ],
-        createHashMapFromArray [["construction_supplies", _constructionCost]]
-    ] call BATTLESPACE_STRATEGIC_CREATE_FUNDED_TASK_FORCE;
-    if (_taskForceId == "") exitWith {false};
+    // Geometry work may yield. Recheck presence/caps/ownership and settle the
+    // debit, identity and cooldown together before another dispatcher can build.
+    private _constructed = false;
+    isNil {
+        _state = BATTLESPACE_SECTOR_STATES get _sector;
+        if ((_state getOrDefault ["owner", ""]) != "OPFOR" || {_sector in blufor_sectors}
+            || {CBA_missionTime < (_state getOrDefault ["nextFortificationAt", 0])}
+            || {!([_sector] call BATTLESPACE_FORTIFICATION_HAS_GARRISON)}
+            || {((_state get "resources") getOrDefault ["construction_supplies", 0]) < _minimumStock}
+            || {([_sector] call BATTLESPACE_FORTIFICATION_GET_NEXT_TIER) != _tier}
+            || {["FORTIFICATION"] call BATTLESPACE_STRATEGIC_COUNT_OPERATIONS >= _globalCap}) exitWith {};
+        private _position = _definition get "position";
+        private _siteKind = _definition get "siteKind";
+        private _taskForceId = [
+            _definition get "type",
+            _definition get "composition",
+            _position,
+            [],
+            getMarkerPos _sector,
+            _sector,
+            "FORTIFICATION",
+            createHashMapFromArray [
+                ["phase", format ["BUILT T%1 %2", _tier, _siteKind]],
+                ["targetSector", _sector],
+                ["pressureSector", _sector],
+                ["fortificationTier", _tier],
+                ["siteKind", _siteKind],
+                ["assignedManpower", (_definition get "composition") getOrDefault ["manpower", 0]],
+                ["sitePosition", _position],
+                ["siteDirection", _definition get "direction"]
+            ],
+            createHashMapFromArray [["construction_supplies", _constructionCost]]
+        ] call BATTLESPACE_STRATEGIC_CREATE_FUNDED_TASK_FORCE;
+        if (_taskForceId == "") exitWith {};
 
-    _state = BATTLESPACE_SECTOR_STATES get _sector;
-    _state set ["nextFortificationAt", CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_FORTIFICATION_COOLDOWN", 1800])];
-    BATTLESPACE_SECTOR_STATES set [_sector, _state];
-    [] call BATTLESPACE_LOGISTICS_SAVE;
-    [format ["Constructed %1 %2 for %3 at %4", _siteKind, _taskForceId, _sector, _position]] call BATTLESPACE_STRATEGIC_LOG;
-    true
+        _state = BATTLESPACE_SECTOR_STATES get _sector;
+        _state set ["nextFortificationAt", CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_FORTIFICATION_COOLDOWN", 1800])];
+        BATTLESPACE_SECTOR_STATES set [_sector, _state];
+        [format ["Constructed %1 %2 for %3 at %4", _siteKind, _taskForceId, _sector, _position]] call BATTLESPACE_STRATEGIC_LOG;
+        _constructed = true;
+    };
+    if (_constructed) then {[] call BATTLESPACE_LOGISTICS_SAVE};
+    _constructed
 };
 
 BATTLESPACE_FORTIFICATION_DECISION_TICK = {
@@ -276,6 +345,7 @@ BATTLESPACE_FORTIFICATION_DECISION_TICK = {
         private _sectorRank = _forEachIndex;
         private _state = BATTLESPACE_SECTOR_STATES get _sector;
         if ((_state getOrDefault ["owner", ""]) != "OPFOR") then {continue};
+        if (_sector in blufor_sectors || {!([_sector] call BATTLESPACE_FORTIFICATION_HAS_GARRISON)}) then {continue};
         if (CBA_missionTime < (_state getOrDefault ["nextFortificationAt", 0])) then {continue};
         private _siteCount = count ([_sector] call BATTLESPACE_FORTIFICATION_GET_OPERATIONS_FOR_SECTOR);
         if (_siteCount >= (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_FORTIFICATIONS_PER_SECTOR", 3])) then {continue};
