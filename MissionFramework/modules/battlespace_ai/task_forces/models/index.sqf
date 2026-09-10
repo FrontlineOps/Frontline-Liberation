@@ -175,7 +175,10 @@ BATTLESPACE_TASK_FORCE_DEFAULT_FINISH_SPAWN = {
 					[_taskForceName, _currentLocation, _destination, _useRural] call QUEUE_PATHFIND_REQUEST;
 				};
 			};
-		};
+        } else {
+            _registeredTaskForce set [4, []];
+            _registeredTaskForce set [8, []];
+        };
 		_registeredTaskForce set [11, false];
 		BATTLESPACE_TASK_FORCES set [_taskForceName, _registeredTaskForce];
 	} else {
@@ -355,24 +358,37 @@ BATTLESPACE_TASK_FORCE_DEFAULT_TRY_SPAWN = {
 		};
 	};
 	diag_log format ["    Road Positions Picked: %1 | WasOnRoad: %2 | ", _spawnPositions, _taskForceOnRoad];
-	// Fill remaining spawn positions with random pos
-	if((count _spawnPositions) < (count _vehicles)) then {
-		private _remainder = (count _vehicles) - (count _spawnPositions);
-		private _start = (count _spawnPositions) - 1;
-		for "_i" from 1 to _remainder do {
-			private _pos = [];
-			private _execs = 0;
-			while { (_pos isEqualTo []) && _execs <= 20 } do {
-				_execs = _execs + 1;
-			 	_pos = ((_currentLoc getPos [_i * 5 + random (50 + _execs * 5), random 360]) findEmptyPosition [_i * 15, 150, "B_APC_Tracked_01_rcws_F"]);
-			};
+    // Fill remaining spawn positions with random pos.
+    if ((count _spawnPositions) < (count _vehicles)) then {
+        private _remainder = (count _vehicles) - (count _spawnPositions);
+        private _start = (count _spawnPositions) - 1;
+        for "_i" from 1 to _remainder do {
+            private _pos = [];
+            private _execs = 0;
+            while { (_pos isEqualTo []) && _execs <= 20 } do {
+                _execs = _execs + 1;
+                _pos = ((_currentLoc getPos [_i * 5 + random (50 + _execs * 5), random 360]) findEmptyPosition [_i * 15, 150, "B_APC_Tracked_01_rcws_F"]);
+            };
 
-			private _dir = random 360;
+            if (_pos isEqualTo []) exitWith {};
 
-			if(!(_destination isEqualTo [])) then { _dir = _pos getDir _destination };
-			_spawnPositions pushBack [_pos, _dir];
-		};
-	};
+            private _dir = random 360;
+            if (_destination isNotEqualTo []) then {
+                _dir = _pos getDir _destination;
+            };
+            _spawnPositions pushBack [_pos, _dir];
+        };
+    };
+    if (count _spawnPositions < count _vehicles) exitWith {
+        // The finish callback must also clean structures and crew created above.
+        _taskForce set [4, _activeGroups];
+        _taskForce set [8, _activeObjects];
+        diag_log format [
+            "[BATTLESPACE][SPAWN] Task Force %1 (%2) deferred: vehicle position search exhausted near %3 (%4/%5 positions).",
+            _taskForceName, _type, _currentLoc, count _spawnPositions, count _vehicles
+        ];
+        false
+    };
 	diag_log format ["    Road Positions Picked: %1 | WasOnRoad: %2 | ", _spawnPositions, _taskForceOnRoad];
 	// Loop through vehicles and spawn them at the spawn positions
 	{
