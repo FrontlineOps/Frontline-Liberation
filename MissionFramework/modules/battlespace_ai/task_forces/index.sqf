@@ -335,6 +335,7 @@ BATTLESPACE_TASK_FORCES_SAVE = {
 	{
 		[_x, _y] call BATTLESPACE_TASK_FORCE_RELEASE_ABANDONED_VEHICLES;
         if (!isNil "BATTLESPACE_AIRLIFT_SYNC") then {[_x, _y] call BATTLESPACE_AIRLIFT_SYNC};
+        if (!isNil "BATTLESPACE_AIR_SAVE_AIRCRAFT") then {[_x] call BATTLESPACE_AIR_SAVE_AIRCRAFT};
 		_y params [
 			"_taskForceType", // 0
 			"_currentLoc", // 1
@@ -880,6 +881,10 @@ BATTLESPACE_TASK_FORCES_EVALUATE = {
 				// 90s
 				if(_despawnCounter >= 9) then {
 					diag_log format ["Task Force %1 despawning...", _taskForceName];
+                    if (_type == "Air Response" && {!isNil "BATTLESPACE_AIR_SAVE_AIRCRAFT"}) then {
+                        [_taskForceName] call BATTLESPACE_AIR_SAVE_AIRCRAFT;
+                        [_taskForceName] call BATTLESPACE_AIR_STOP;
+                    };
 					_y set [9, true];
 					private _vehicles = +(_composition getOrDefault ["vehicles", []]);
 					private _structures = +(_composition getOrDefault ["structures", []]);

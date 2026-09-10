@@ -2,6 +2,11 @@
     Funded, persistent Battlespace responses to occupied BLUFOR armor and air.
 */
 
+call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\air_response\weapons.sqf";
+call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\air_response\flight.sqf";
+call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\air_response\ace.sqf";
+call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\air_response\controller.sqf";
+
 if (isNil "BATTLESPACE_AIR_RESPONSE_NEXT_CLASS_WARNING") then {
     BATTLESPACE_AIR_RESPONSE_NEXT_CLASS_WARNING = 0;
 };
@@ -104,6 +109,9 @@ BATTLESPACE_AIR_RESPONSE_SELECT_CLASS = {
     } else {
         +(_opfor getOrDefault ["fixedWing", []])
     };
+    // Ground responses can dispatch either attack helicopters or jets. Keeping
+    // jets only as a helicopter fallback would hide the bombing profiles in play.
+    if (_targetKind != "AIR") then {_primary append _secondary};
     private _valid = [];
     {
         if (_x in _resourcePool && {[_x] call BATTLESPACE_AIR_RESPONSE_IS_COMBAT_AIRCRAFT}) then {
@@ -172,6 +180,7 @@ BATTLESPACE_AIR_RESPONSE_SET_DESTINATION = {
     if (count _normalized == 2) then {_normalized pushBack 0};
     _normalized set [2, 0];
     _operation set ["phase", _phase];
+    _operation deleteAt "airReturned";
     _taskForce set [2, _normalized];
     BATTLESPACE_TASK_FORCE_PATHS deleteAt _taskForceId;
     BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceId, _operation];
@@ -251,7 +260,7 @@ BATTLESPACE_AIR_RESPONSE_ON_DECISION_TICK = {
             _operation = BATTLESPACE_STRATEGIC_OPERATIONS get _taskForceId;
             _originSector = _operation getOrDefault ["originSector", ""];
         };
-        if (_originSector != "" && {_currentLocation distance2D (getMarkerPos _originSector) <= 250}) then {
+        if (_originSector != "" && {_currentLocation distance2D (getMarkerPos _originSector) <= 250 || {_operation getOrDefault ["airReturned", false]}}) then {
             _operation set ["outcome", "RETURNED"];
             BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceId, _operation];
             true
@@ -288,6 +297,21 @@ BATTLESPACE_AIR_RESPONSE_ON_DECISION_TICK = {
     _operation set ["targetNetId", _contactNetId];
     _operation set ["contactPosition", _contactPosition];
     _operation deleteAt "contactGraceUntil";
+    // Physical navigation/fire is owned by the fast aircraft controller. The
+    // strategic tick retains lifecycle/timers and must not overwrite its runs.
+    if ((_taskForce param [8, []]) isNotEqualTo []) exitWith {
+        [_taskForceId] call BATTLESPACE_AIR_START;
+        if (_phase == "INTERCEPT") then {
+            _operation set ["phase", "ON_STATION"];
+            _operation set ["loiterUntil", CBA_missionTime + BATTLESPACE_STRATEGIC_AIR_RESPONSE_ON_STATION_DURATION];
+        };
+        if (CBA_missionTime >= (_operation getOrDefault ["loiterUntil", CBA_missionTime + 1])) then {
+            !([_taskForceId, _taskForce, _operation] call BATTLESPACE_AIR_RESPONSE_BEGIN_RETURN)
+        } else {
+            BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceId, _operation];
+            false
+        }
+    };
     {
         if (!isNull _x && {local _x}) then {
             _x reveal [_vehicle, 4];

@@ -9,6 +9,15 @@
                 private _requiredPlayers = [] call BATTLESPACE_TASK_FORCE_GET_NEEDED_PLAYERCOUNT_FOR_PROC;
                 private _procRange = ["Air Response"] call BATTLESPACE_TASK_FORCE_GET_PROC_RANGE;
                 private _canProc = false;
+                private _operation = BATTLESPACE_STRATEGIC_OPERATIONS getOrDefault [_taskForceName, createHashMap];
+                private _target = objectFromNetId (_operation getOrDefault ["targetNetId", ""]);
+                if (
+                    (_taskForce param [8, []]) isNotEqualTo []
+                    && {(_operation getOrDefault ["phase", ""]) != "RETURNING"}
+                    && {!isNull _target}
+                    && {([_target] call BATTLESPACE_AIR_RESPONSE_CLASSIFY_CONTACT) != ""}
+                    && {_currentLocation distance2D _target <= BATTLESPACE_AIR_ENGAGEMENT_KEEP_RANGE}
+                ) exitWith {true};
                 {
                     if (
                         (count (_x getOrDefault ["Players", []])) >= _requiredPlayers
@@ -22,36 +31,40 @@
             "doSpawn",
             {
                 params ["_taskForceName", "_taskForce"];
+                if (!isServer || {isRemoteExecuted}) exitWith {};
                 if (_taskForce param [11, false]) exitWith {};
                 _taskForce set [11, true];
 
                 [_taskForceName, _taskForce] spawn {
                     params ["_taskForceName", "_taskForce"];
-                    private _success = [_taskForceName, _taskForce, false, true, false, false, "FULL"] call BATTLESPACE_TASK_FORCE_DEFAULT_TRY_SPAWN;
+                    private _vehicles = (_taskForce param [3, createHashMap]) getOrDefault ["vehicles", []];
+                    private _success = count _vehicles == 1 && {(_vehicles select 0) isKindOf "Air"}
+                        && {([] call KPLIB_fnc_getOpforCap) < BATTLESPACE_UNIT_CAP};
                     if (_success) then {
-                        private _oldGroups = +(_taskForce param [4, []]);
+                        private _class = _vehicles select 0;
+                        private _position = _taskForce select 1;
+                        private _destination = _taskForce select 2;
+                        private _height = if (_class isKindOf "Plane") then {BATTLESPACE_AIR_BOMB_HEIGHT} else {BATTLESPACE_AIR_HELI_ATTACK_HEIGHT};
+                        private _aircraft = [_position, _class, _height, _position getDir _destination] call BATTLESPACE_TASK_FORCE_SPAWN_VEHICLE;
                         private _responseGroup = createGroup [_taskForce param [6, east], true];
                         _responseGroup setVariable ["TASKFORCEID", _taskForceName];
+                        _responseGroup setVariable ["acex_headless_blacklist", true, true];
+                        private _oldGroup = group driver _aircraft;
+                        (crew _aircraft) joinSilent _responseGroup;
+                        if (!isNull _oldGroup && {units _oldGroup isEqualTo []}) then {deleteGroup _oldGroup};
+                        _aircraft setVariable ["TASKFORCEID", _taskForceName];
+                        _aircraft addMPEventHandler ["MPKilled", {["VEHICLE", _this] call BATTLESPACE_TASK_FORCE_OBJECT_KILLED}];
                         {
-                            if (!isNull _x && {!(_x isKindOf "Man")} && {_x isKindOf "Air"}) then {
-                                (crew _x) joinSilent _responseGroup;
-                            };
-                        } forEach (_taskForce param [8, []]);
-                        {
-                            if (!isNull _x && {_x isNotEqualTo _responseGroup} && {units _x isEqualTo []}) then {
-                                deleteGroup _x;
-                            };
-                        } forEach _oldGroups;
-
-                        if (units _responseGroup isEqualTo []) then {
-                            deleteGroup _responseGroup;
-                            _success = false;
-                        } else {
-                            [_responseGroup, _taskForce param [2, []], "FULL", false, true] call BATTLESPACE_TASK_FORCE_ADD_WAYPOINTS;
-                            _taskForce set [4, [_responseGroup]];
-                        };
+                            _x setVariable ["TASKFORCEID", _taskForceName];
+                        } forEach crew _aircraft;
+                        _taskForce set [4, [_responseGroup]];
+                        _taskForce set [8, [_aircraft] + crew _aircraft];
+                        [_aircraft, BATTLESPACE_STRATEGIC_OPERATIONS getOrDefault [_taskForceName, createHashMap]] call BATTLESPACE_AIR_RESTORE_AIRCRAFT;
+                        _success = alive driver _aircraft;
                     };
-                    [_taskForceName, _taskForce, _success] call BATTLESPACE_TASK_FORCE_DEFAULT_FINISH_SPAWN;
+                    if ([_taskForceName, _taskForce, _success] call BATTLESPACE_TASK_FORCE_DEFAULT_FINISH_SPAWN) then {
+                        [_taskForceName] call BATTLESPACE_AIR_START;
+                    };
                 };
             }
         ],

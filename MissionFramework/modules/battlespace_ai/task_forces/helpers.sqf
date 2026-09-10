@@ -28,29 +28,38 @@ BATTLESPACE_TASK_FORCE_GET_PROC_RANGE = {
 	_range
 };
 BATTLESPACE_TASK_FORCE_SPAWN_VEHICLE = {
-	params ["_pos", "_class"];
+    params ["_pos", "_class", ["_airHeight", -1], ["_airDirection", 0]];
 
-	private _veh = objNull;
+    private _veh = objNull;
 
-	if(_class isKindOf "Air") then {
-		_veh = createVehicle [_class, (_pos vectorAdd [0,0,50]), [], 0, "FLY"];
-		_veh flyInHeight 45;
-	} else {
-		_veh = _class createVehicle _pos;
-	};
-	
-	
-	[_veh] call KPLIB_fnc_addObjectInit;
-	private _crew = units (createVehicleCrew _veh);
+    if(_class isKindOf "Air") then {
+        _veh = createVehicle [_class, (_pos vectorAdd [0,0,50]), [], 0, "FLY"];
+        _veh flyInHeight 45;
+        if (_airHeight >= 0) then {
+            // FLY can override the supplied Z. Initialize altitude and forward
+            // airspeed before crew init; never reposition an active attack run.
+            private _airPosition = +_pos;
+            _airPosition set [2, (getTerrainHeightASL _pos max 0) + _airHeight];
+            _veh setPosASL _airPosition;
+            _veh setDir _airDirection;
+            _veh flyInHeight _airHeight;
+            _veh flyInHeightASL [_airPosition select 2, _airPosition select 2, _airPosition select 2];
+            _veh setVelocityModelSpace [0, [20,160] select (_veh isKindOf "Plane"), 0];
+        };
+    } else {
+        _veh = _class createVehicle _pos;
+    };
+
+    [_veh] call KPLIB_fnc_addObjectInit;
+    private _crew = units (createVehicleCrew _veh);
     {
         _x addMPEventHandler ["MPKilled", {_this spawn kill_manager}];
         [_x] call KPLIB_fnc_addObjectInit;
     } forEach _crew;
 
-	
-	_veh addMPEventHandler ["MPKilled", {_this spawn kill_manager}];
+    _veh addMPEventHandler ["MPKilled", {_this spawn kill_manager}];
 
-	_veh
+    _veh
 
 };
 
@@ -156,6 +165,8 @@ BATTLESPACE_TASK_FORCE_ADD_WAYPOINTS = {
 
 	if(!canSuspend) exitWith { _this spawn BATTLESPACE_TASK_FORCE_ADD_WAYPOINTS };
 	if (isNull _group || {!local _group}) exitWith {};
+    private _force = BATTLESPACE_TASK_FORCES getOrDefault [_group getVariable ["TASKFORCEID", ""], []];
+    if ((_force param [0, ""]) == "Air Response") exitWith {};
 	private _routeToken = (_group getVariable ["BATTLESPACE_ROUTE_WAYPOINT_TOKEN", 0]) + 1;
 	_group setVariable ["BATTLESPACE_ROUTE_WAYPOINT_TOKEN", _routeToken];
 
@@ -224,8 +235,8 @@ BATTLESPACE_TASK_FORCE_APPLY_ROUTE_TO_ACTIVE = {
 	params ["_taskForceName", "_taskForce", "_route"];
 	if (_route isEqualTo []) exitWith {};
 	private _type = _taskForce param [0, ""];
-    // The airlift controller owns landing; generic route workers must not replace it.
-    if (_type == "Airborne Transport") exitWith {};
+    // Aircraft controllers own landing/attack runs; route workers must not replace them.
+    if (_type in ["Airborne Transport", "Air Response"]) exitWith {};
 	private _destination = _taskForce param [2, []];
 	private _speed = ["LIMITED", "FULL"] select (_type in ["Battlegroup", "Mobile Reserve", "Deep Reconnaissance Patrol", "Convoy", "Air Response", "Airborne Transport"]);
 	{
