@@ -190,10 +190,12 @@ BATTLESPACE_TASK_FORCE_ADD_WAYPOINTS = {
 
 		{
 			private _isFinal = _forEachIndex == count _waypointRoute - 1;
-			private _waypoint = _group addWaypoint [_x, [20, 10] select _isFinal];
+            private _placementRadius = if (_type == "Convoy") then {0} else {[20, 10] select _isFinal};
+            private _waypoint = _group addWaypoint [_x, _placementRadius];
 			_waypoint setWaypointType (["MOVE", "SAD"] select (_isFinal && {_fieldHunt}));
 			_waypoint setWaypointSpeed ([_speed, "FULL"] select _fieldHunt);
 			_waypoint setWaypointBehaviour ([(["SAFE", ["SAFE", "COMBAT"] select _isVehicle] select _isFinal), "AWARE"] select _fieldHunt);
+            if (_type == "Convoy") then {_waypoint setWaypointBehaviour "SAFE"};
             _waypoint setWaypointCombatMode _combatMode;
 			_waypoint setWaypointCompletionRadius ([60, 30] select _isFinal);
 		} forEach _waypointRoute;
@@ -203,6 +205,7 @@ BATTLESPACE_TASK_FORCE_ADD_WAYPOINTS = {
             _hold setWaypointType "HOLD";
             _hold setWaypointCombatMode _combatMode;
 			_hold setWaypointBehaviour (["SAFE", "COMBAT"] select _isVehicle);
+            if (_type == "Convoy") then {_hold setWaypointBehaviour "SAFE"};
 		};
 	} else {
 		private _pos = getPos (leader _group);

@@ -1,3 +1,5 @@
+call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\convoyPacing.sqf";
+
 BATTLESPACE_CONVOY_HAS_ARRIVED = {
     params ["_taskForce", "_currentLocation", "_destination"];
     if (_currentLocation distance2D _destination > 100) exitWith {false};
@@ -43,6 +45,7 @@ BATTLESPACE_CONVOY_HAS_ARRIVED = {
                             private _registeredTaskForce = BATTLESPACE_TASK_FORCES get _taskForceName;
                             if (!isNil "_registeredTaskForce") then {
                                 [_taskForceName, _registeredTaskForce] call BATTLESPACE_LOGISTICS_ATTACH_CONVOY_CRATES;
+                                [_taskForceName, _registeredTaskForce] call BATTLESPACE_CONVOY_PACE_START;
                             };
                         };
                     };
@@ -81,6 +84,7 @@ BATTLESPACE_CONVOY_HAS_ARRIVED = {
                 private _currentLoc = _taskForce param [1, []];
                 private _destination = _taskForce param [2, []];
                 private _activeGroups = _taskForce param [4, []];
+                [_taskForceName, _taskForce] call BATTLESPACE_CONVOY_PACE_START;
 
                 if (_activeGroups isNotEqualTo []) then {
                     private _leader = leader (_activeGroups select 0);
