@@ -45,6 +45,8 @@ if (isNil "BATTLESPACE_LOGISTICS_EVACUATION_BLOCKED_WARNED") then {
 
 BATTLESPACE_RESOURCE_CLASS_POOLS = createHashMap;
 
+[] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\logistics\convoyCargo.sqf";
+
 BATTLESPACE_STRATEGIC_SERVER_CALL_ALLOWED = {
     isServer && {!isRemoteExecuted || {remoteExecutedOwner == 2}}
 };
@@ -991,6 +993,7 @@ BATTLESPACE_LOGISTICS_CLAIM_CONVOY_CRATE = {
     ];
     if (
         !isServer
+        || {isRemoteExecuted && {remoteExecutedOwner != 2}}
         || {isNull _crate}
         || {_crate getVariable ["BATTLESPACE_CONVOY_CARGO_CLAIMED", false]}
     ) exitWith { false };
@@ -1006,7 +1009,8 @@ BATTLESPACE_LOGISTICS_CLAIM_CONVOY_CRATE = {
     private _originalCarrier = _crate getVariable ["BATTLESPACE_CONVOY_CARGO_CARRIER", objNull];
     if (!isNull _originalCarrier) then {
         _originalCarrier setVariable ["BATTLESPACE_CONVOY_CARGO_OBJECT", objNull];
-        _originalCarrier setVariable ["GRLIB_ammo_truck_load", 0, true];
+        _originalCarrier setVariable ["BATTLESPACE_CONVOY_CARGO_LOADED", false, true];
+        _originalCarrier setVariable ["GRLIB_ammo_truck_load", ((_originalCarrier getVariable ["GRLIB_ammo_truck_load", 1]) - 1) max 0, true];
     };
 
     private _total = (_operation getOrDefault ["cargoCrateCount", 0]) max 0;
@@ -1026,15 +1030,18 @@ BATTLESPACE_LOGISTICS_CLAIM_CONVOY_CRATE = {
 
 BATTLESPACE_LOGISTICS_ATTACH_CONVOY_CRATES = {
     params ["_taskForceId", "_taskForce"];
-    if (!isServer) exitWith { false };
+    if (!isServer || {isRemoteExecuted && {remoteExecutedOwner != 2}}) exitWith { false };
 
     private _operation = BATTLESPACE_STRATEGIC_OPERATIONS get _taskForceId;
     if (isNil "_operation" || {(_operation getOrDefault ["kind", ""]) != "CONVOY"}) exitWith { false };
 
     private _activeObjects = +(_taskForce param [8, []]);
-    if (_activeObjects findIf {
-        !isNull _x && {_x getVariable ["BATTLESPACE_CONVOY_CARGO_CRATE", false]}
-    } >= 0) exitWith { true };
+    private _records = localNamespace getVariable ["BATTLESPACE_CONVOY_CARGO_RECORDS", createHashMap];
+    private _alreadyLoaded = false;
+    {
+        if ((_y select 3) == _taskForceId) exitWith {_alreadyLoaded = true};
+    } forEach _records;
+    if (_alreadyLoaded) exitWith {true};
 
     private _remainingTruckClasses = ((_operation getOrDefault ["vehicleManifest", []]) select {
         (_x param [1, ""]) == "truck"
@@ -1055,44 +1062,34 @@ BATTLESPACE_LOGISTICS_ATTACH_CONVOY_CRATES = {
         (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_CONVOY_CRATE_VALUE", 100])
         * GRLIB_resources_multiplier
     ) max 1;
+    private _remainingShares = (
+        (_operation getOrDefault ["cargoCrateCount", 0])
+        - (_operation getOrDefault ["cargoCratesLost", 0])
+    ) max 0;
     private _attached = 0;
     {
+        // Materializing a surviving force must not replace already recovered cargo.
+        if (_attached >= _remainingShares) exitWith {};
         private _truck = _x;
-        private _crate = [selectRandom KPLIB_crates, _crateValue, getPosATL _truck] call KPLIB_fnc_createCrate;
-        if (isNull _crate) then { continue };
-
-        private _offset = [0, -1, 1];
-        private _configIndex = KPLIB_transportConfigs findIf {
-            toLower (_x param [0, ""]) == toLower (typeOf _truck)
-        };
-        if (_configIndex >= 0) then {
-            _offset = (KPLIB_transportConfigs select _configIndex) param [2, _offset];
-        };
-
-        _crate setVariable ["BATTLESPACE_CONVOY_CARGO_CRATE", true, true];
-        _crate setVariable ["BATTLESPACE_CONVOY_CARGO_CLAIMED", false, true];
-        _crate setVariable ["BATTLESPACE_CONVOY_CARGO_CARRIER", _truck, true];
-        _crate setVariable ["TASKFORCEID", _taskForceId];
-        _crate attachTo [_truck, _offset];
-        [_crate, false] remoteExec ["enableRopeAttach"];
-
-        _truck setVariable ["BATTLESPACE_CONVOY_CARGO_OBJECT", _crate];
+        private _class = selectRandom KPLIB_crates;
+        // A paid share stays inside the truck. Attached resource geometry can
+        // prevent native road AI from starting, even on an undamaged vehicle.
+        _records set [netId _truck, [_class, _crateValue, _truck, _taskForceId, false]];
+        localNamespace setVariable ["BATTLESPACE_CONVOY_CARGO_RECORDS", _records];
+        _truck setVariable ["BATTLESPACE_CONVOY_CARGO_LOADED", true, true];
         _truck setVariable ["GRLIB_ammo_truck_load", 1, true];
-        _truck addMPEventHandler ["MPKilled", {
-            params ["_vehicle"];
-            private _crate = _vehicle getVariable ["BATTLESPACE_CONVOY_CARGO_OBJECT", objNull];
-            if (!isNull _crate) then {
-                detach _crate;
-                _crate setPosATL ((getPosATL _vehicle) vectorAdd [0, 0, 0.5]);
-                [_crate, "carrier destroyed"] call BATTLESPACE_LOGISTICS_CLAIM_CONVOY_CRATE;
-            };
-        }];
-        _crate addMPEventHandler ["MPKilled", {
-            params ["_crate"];
-            [_crate, "crate destroyed"] call BATTLESPACE_LOGISTICS_CLAIM_CONVOY_CRATE;
-        }];
+        if !(_truck getVariable ["BATTLESPACE_CONVOY_CARGO_HANDLERS", false]) then {
+            _truck setVariable ["BATTLESPACE_CONVOY_CARGO_HANDLERS", true];
+            _truck addMPEventHandler ["MPKilled", {
+                params ["_vehicle"];
+                [_vehicle, "carrier destroyed"] call BATTLESPACE_CONVOY_CARGO_RELEASE;
+            }];
+            _truck addEventHandler ["Deleted", {
+                params ["_vehicle"];
+                [_vehicle] call BATTLESPACE_CONVOY_CARGO_CLEANUP;
+            }];
+        };
 
-        _activeObjects pushBack _crate;
         _attached = _attached + 1;
     } forEach _trucks;
 

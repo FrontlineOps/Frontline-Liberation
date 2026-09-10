@@ -1,3 +1,14 @@
+BATTLESPACE_CONVOY_HAS_ARRIVED = {
+    params ["_taskForce", "_currentLocation", "_destination"];
+    if (_currentLocation distance2D _destination > 100) exitWith {false};
+    // A moving lead truck must not settle and delete cargo still on the road.
+    (_taskForce param [8, []]) findIf {
+        !isNull _x && {alive _x} && {_x isKindOf "LandVehicle"}
+        && {!(_x getVariable ["KPLIB_captured", false])}
+        && {_x distance2D _destination > 100}
+    } < 0
+};
+
 [
     "Convoy",
     createHashMapFromArray [
@@ -46,32 +57,8 @@
                 private _activeGroups = (_taskForce param [4, []]) select {
                     !isNull _x && {units _x findIf {alive _x} >= 0}
                 };
+                [_taskForceName, _taskForce] call BATTLESPACE_CONVOY_CARGO_RECONCILE;
                 private _allActiveObjects = +(_taskForce param [8, []]);
-                {
-                    if (
-                        !isNull _x
-                        && {_x getVariable ["BATTLESPACE_CONVOY_CARGO_CRATE", false]}
-                        && {!(_x getVariable ["BATTLESPACE_CONVOY_CARGO_CLAIMED", false])}
-                    ) then {
-                        private _carrier = attachedTo _x;
-                        private _originalCarrier = _x getVariable ["BATTLESPACE_CONVOY_CARGO_CARRIER", objNull];
-                        if (!alive _x) then {
-                            [_x, "crate destroyed"] call BATTLESPACE_LOGISTICS_CLAIM_CONVOY_CRATE;
-                        } else {
-                            if (isNull _carrier || {_carrier != _originalCarrier}) then {
-                                [_x, "unloaded"] call BATTLESPACE_LOGISTICS_CLAIM_CONVOY_CRATE;
-                            } else {
-                                if (!alive _carrier) then {
-                                    [_x, "carrier destroyed"] call BATTLESPACE_LOGISTICS_CLAIM_CONVOY_CRATE;
-                                } else {
-                                    if (_carrier getVariable ["KPLIB_captured", false]) then {
-                                        [_x, "carrier captured"] call BATTLESPACE_LOGISTICS_CLAIM_CONVOY_CRATE;
-                                    };
-                                };
-                            };
-                        };
-                    };
-                } forEach _allActiveObjects;
                 private _activeObjects = _allActiveObjects select {
                     !isNull _x && {alive _x}
                 };
@@ -108,7 +95,7 @@
                     private _phase = _operation getOrDefault ["phase", "ENROUTE"];
                     private _purpose = _operation getOrDefault ["convoyPurpose", "RESUPPLY"];
                     private _targetSector = _operation getOrDefault ["targetSector", ""];
-                    private _arrived = _currentLoc distance2D _destination <= 100;
+                    private _arrived = [_taskForce, _currentLoc, _destination] call BATTLESPACE_CONVOY_HAS_ARRIVED;
                     private _targetIsOpfor = _targetSector != "" && {!(_targetSector in blufor_sectors)};
                     if (_targetIsOpfor) then {
                         [_targetSector, "OPFOR"] call BATTLESPACE_SECTOR_SET_OWNER;
@@ -174,7 +161,7 @@
                     }
                 } else {
                     if (_activeGroups isNotEqualTo []) exitWith { false };
-                    if (_currentLoc distance2D _destination <= 100) exitWith { true };
+                    if ([_taskForce, _currentLoc, _destination] call BATTLESPACE_CONVOY_HAS_ARRIVED) exitWith { true };
                     [_taskForceName, _taskForce] call BATTLESPACE_TASK_FORCE_MOVE_SIMULATED_GROUP;
                     false
                 }

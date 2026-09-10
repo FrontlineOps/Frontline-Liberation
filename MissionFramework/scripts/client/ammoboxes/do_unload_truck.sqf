@@ -1,4 +1,7 @@
 params [ "_truck_to_unload"];
+if (_truck_to_unload getVariable ["BATTLESPACE_CONVOY_CARGO_LOADED", false]) exitWith {
+    [_truck_to_unload, player] remoteExecCall ["BATTLESPACE_CONVOY_CARGO_UNLOAD", 2];
+};
 private [ "_next_box", "_next_pos", "_offset" ];
 
 _offset = 0;

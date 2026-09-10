@@ -14,6 +14,13 @@ while {true} do {
 
         _nearammoboxes = ((getpos player) nearEntities [KPLIB_crates, 10]);
         _neartransporttrucks = ((getpos player) nearEntities [KPLIB_transport_classes, 10]);
+        // A convoy's paid cargo can also be carried by a configured APC or
+        // support vehicle which is outside the normal hauling class list.
+        {
+            if (_x getVariable ["BATTLESPACE_CONVOY_CARGO_LOADED", false]) then {
+                _neartransporttrucks pushBackUnique _x;
+            };
+        } forEach ((getPos player) nearEntities ["LandVehicle", 10]);
         _nearstorageareas = nearestObjects [player, KPLIB_storageBuildings, 10];
 
         _checked_trucks = [];
