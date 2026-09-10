@@ -77,6 +77,18 @@ _player addAction [
     "
 ];
 
+// Reopen the local field guide without starting the introduction camera.
+_player addAction [
+    localize "STR_TUTO_ACTION",
+    {howtoplay = 1;},
+    nil,
+    -755,
+    false,
+    true,
+    "",
+    "alive _originalTarget && {!dialog} && {howtoplay == 0} && {build_confirmed == 0}"
+];
+
 // Source reports and automatically assigned operations remain readable in the field.
 if (KPLIB_intelligence_enabled) then {
     _player addAction [

@@ -1,65 +1,80 @@
-private [ "_tutorial_titles", "_tutorial_pages", "_current_page", "_old_page", "_dialog" ];
+// Interface-local field guide. Keep the intro's howtoplay handshake; field
+// openings never start a cinematic camera or change the player's position.
+if (!hasInterface) exitWith {};
+disableSerialization;
 
-if ( isNil "howtoplay" ) then { howtoplay = 0; };
+if (isNil "howtoplay") then {howtoplay = 0;};
+private _getPages = compileFinal preprocessFileLineNumbers "scripts\client\ui\tutorial_pages.sqf";
 
-_tutorial_titles = [
-    localize "STR_TUTO_TITLE1",
-    localize "STR_TUTO_TITLE2",
-    localize "STR_TUTO_TITLE3",
-    localize "STR_TUTO_TITLE4",
-    localize "STR_TUTO_TITLE5",
-    localize "STR_TUTO_TITLE6",
-    localize "STR_TUTO_TITLE7",
-    localize "STR_TUTO_TITLE8",
-    localize "STR_TUTO_TITLE9",
-    localize "STR_TUTO_TITLE10"
-];
+private _renderPage = {
+    params ["_display", "_index"];
+    if (isNull _display) exitWith {};
+    private _pages = _display getVariable ["KPLIB_tutorial_pages", []];
+    if (_index < 0 || {_index >= count _pages}) exitWith {};
 
-_tutorial_pages = [
-    "STR_TUTO_TEXT1",
-    "STR_TUTO_TEXT2",
-    "STR_TUTO_TEXT3",
-    "STR_TUTO_TEXT4",
-    "STR_TUTO_TEXT5",
-    "STR_TUTO_TEXT6",
-    "STR_TUTO_TEXT7",
-    "STR_TUTO_TEXT8",
-    "STR_TUTO_TEXT9",
-    "STR_TUTO_TEXT10"
-];
+    (_pages select _index) params ["_title", "_body"];
+    (_display displayCtrl 514) ctrlSetText _title;
+    private _text = _display displayCtrl 515;
+    _text ctrlSetStructuredText parseText _body;
+    private _position = ctrlPosition _text;
+    _position set [3, ctrlTextHeight _text + 0.025 * safezoneH];
+    _text ctrlSetPosition _position;
+    _text ctrlCommit 0;
+    (_display displayCtrl 516) ctrlSetScrollValues [0, 0];
 
-_current_page = 0;
-_old_page = -99;
+    (_display displayCtrl 517) ctrlSetText format [localize "STR_TUTO_PAGE", _index + 1, count _pages];
+    (_display displayCtrl 518) ctrlEnable (_index > 0);
+    (_display displayCtrl 519) ctrlEnable (_index < count _pages - 1);
+    _display setVariable ["KPLIB_tutorial_page", _index];
+    uiNamespace setVariable ["KPLIB_tutorial_lastPage", _index];
+};
 
-while { true } do {
-    waitUntil { sleep 0.3; howtoplay == 1 };
-    waitUntil { !dialog };
-    sleep 0.1;
+while {true} do {
+    waitUntil {uiSleep 0.3; howtoplay == 1};
+    // The intro closes its menu after setting the request flag.
+    waitUntil {uiSleep 0.1; !dialog || {howtoplay == 0}};
+    if (howtoplay == 1) then {
+        private _introCamera = missionNamespace getVariable ["cinematic_camera_started", false];
+        if (createDialog "liberation_tutorial") then {
+            private _display = findDisplay 5353;
+            private _pages = call _getPages;
+            private _list = _display displayCtrl 513;
+            _display setVariable ["KPLIB_tutorial_pages", _pages];
+            _display setVariable ["KPLIB_tutorial_render", _renderPage];
 
-    _dialog = createDialog "liberation_tutorial";
-    if ( !cinematic_camera_started ) then {
-        [] spawn cinematic_camera;
-    };
+            {
+                _list lbAdd format ["%1. %2", _forEachIndex + 1, _x select 0];
+            } forEach _pages;
 
-    waitUntil { dialog };
+            [_list, "LBSelChanged", {
+                params ["_control", "_index"];
+                private _display = ctrlParent _control;
+                [_display, _index] call (_display getVariable "KPLIB_tutorial_render");
+            }] call CBA_fnc_addBISEventHandler;
+            [_display displayCtrl 518, "ButtonClick", {
+                private _list = (ctrlParent (_this select 0)) displayCtrl 513;
+                _list lbSetCurSel ((lbCurSel _list - 1) max 0);
+            }] call CBA_fnc_addBISEventHandler;
+            [_display displayCtrl 519, "ButtonClick", {
+                private _list = (ctrlParent (_this select 0)) displayCtrl 513;
+                _list lbSetCurSel ((lbCurSel _list + 1) min (lbSize _list - 1));
+            }] call CBA_fnc_addBISEventHandler;
+            [_display, "Unload", {howtoplay = 0;}] call CBA_fnc_addBISEventHandler;
 
-    {
-        lbAdd [ 513, _x];
-    } foreach _tutorial_titles;
-
-    lbSetCurSel [ 513, 0 ];
-
-    while { howtoplay == 1 && alive player && dialog } do {
-        _current_page = lbCurSel 513;
-        if ( _current_page != _old_page ) then {
-            ctrlSetText [ 514, _tutorial_titles select _current_page ];
-            ((findDisplay 5353) displayCtrl (515)) ctrlSetStructuredText parseText localize (_tutorial_pages select _current_page);
-            _old_page = _current_page;
+            // Always render on opening, including reopening the same chapter.
+            private _lastPage = uiNamespace getVariable ["KPLIB_tutorial_lastPage", 0];
+            _list lbSetCurSel (_lastPage min (count _pages - 1));
+            ["Frontline field guide opened", "TUTORIAL"] call KPLIB_fnc_log;
+            waitUntil {
+                uiSleep 0.2;
+                isNull _display || {howtoplay == 0} || {!alive player}
+            };
+            if (!isNull _display) then {_display closeDisplay 0;};
+        } else {
+            ["Unable to open Frontline field guide", "TUTORIAL"] call KPLIB_fnc_log;
         };
-        sleep 0.2;
-    };
-    if ( dialog ) then { closeDialog 0 };
 
-    cinematic_camera_started = false;
-    howtoplay = 0;
-}
+        if (_introCamera) then {cinematic_camera_started = false;};
+        howtoplay = 0;
+    };
+};
