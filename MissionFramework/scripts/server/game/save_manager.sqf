@@ -57,6 +57,8 @@ private _weights = [];
 private _allMines = [];
 // All unclaimed crates from crate spawning sectors
 private _allCrates = [];
+private _factoryDepots = [];
+private _spawnedObjects = [];
 
 /*
     --- Globals ---
@@ -189,6 +191,7 @@ if (!isNil "_saveData") then {
         _allMines                                   = _saveData param [19, []];
         _allCrates                                  = _saveData param [20, []];
         KPLIB_sectorTowers                          = _saveData param [21, []];
+        _factoryDepots                             = _saveData param [22, []];
 
         stats_ammo_produced                         = _stats select  0;
         stats_ammo_spent                            = _stats select  1;
@@ -305,7 +308,7 @@ if (!isNil "_saveData") then {
     } forEach KP_liberation_clearances;
 
     // Collection array for all objects which are loaded
-    private _spawnedObjects = [];
+    _spawnedObjects = [];
 
     // Spawn all saved objects
     private _object = objNull;
@@ -494,6 +497,9 @@ if (!isNil "_saveData") then {
 } else {
     ["Save nil", "SAVE"] call KPLIB_fnc_log;
 };
+
+// Restore tracked cargo only after standard vehicle and storage ownership loads.
+[_factoryDepots, _spawnedObjects] call KPLIB_fnc_factoryInit;
 
 publicVariable "stats_civilian_vehicles_seized";
 

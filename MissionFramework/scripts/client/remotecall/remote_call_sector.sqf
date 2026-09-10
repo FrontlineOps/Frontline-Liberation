@@ -3,7 +3,7 @@ if ( isDedicated ) exitWith {};
 
 params [ "_sector", "_status" ];
 
-if ( _status == 0 ) then {
+if (_status == 0 && {!(_sector in sectors_factory)}) then {
     [ "lib_sector_captured", [ markerText _sector ] ] call BIS_fnc_showNotification;
 };
 

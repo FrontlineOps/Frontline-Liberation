@@ -16,6 +16,10 @@
 */
 
 private _objectsToSave = [];
+private _savedVehicles = [];
+private _factoryDepots = [1, []];
+private _factoryCrates = [];
+private _productionSnapshot = [];
 private _resourceStorages = [];
 private _aiGroups = [];
 
@@ -91,41 +95,52 @@ private ["_savedPos", "_savedVecDir", "_savedVecUp", "_class", "_hasCrew"];
         (!((toLower _class) in KPLIB_o_allVeh_classes) || {_x getVariable ["KPLIB_captured", false]})
     ) then {
         _objectsToSave pushBack [_class, _savedPos, _savedVecDir, _savedVecUp, _hasCrew];
+        _savedVehicles pushBack _x;
     };
 } forEach _allObjects;
 
-// Save all storages and resources
-private ["_supplyValue", "_ammoValue", "_fuelValue"];
-{
-    // Position data
-    _savedPos = getPosWorld _x;
-    _savedVecDir = vectorDirVisual _x;
-    _savedVecUp = vectorUpVisual _x;
-    _class = typeOf _x;
-
-    // Resource variables
-    _supplyValue = 0;
-    _ammoValue = 0;
-    _fuelValue = 0;
-
-    // Sum all stored resources of current storage
+// Snapshot crate ownership and aggregate totals together: a concurrent loading
+// action must not let the same pallet enter both representations in one save.
+isNil {
+    _allStorages = (_allStorages arrayIntersect _allStorages) select {alive _x};
+    // Save all storages and resources
+    private ["_supplyValue", "_ammoValue", "_fuelValue"];
     {
-        switch ((typeOf _x)) do {
-            case KP_liberation_supply_crate: {_supplyValue = _supplyValue + (_x getVariable ["KP_liberation_crate_value",0]);};
-            case KP_liberation_ammo_crate: {_ammoValue = _ammoValue + (_x getVariable ["KP_liberation_crate_value",0]);};
-            case KP_liberation_fuel_crate: {_fuelValue = _fuelValue + (_x getVariable ["KP_liberation_crate_value",0]);};
-            default {[format ["Invalid object (%1) at storage area", (typeOf _x)], "ERROR"] call KPLIB_fnc_log;};
-        };
-    } forEach (attachedObjects _x);
+        // Position data
+        _savedPos = getPosWorld _x;
+        _savedVecDir = vectorDirVisual _x;
+        _savedVecUp = vectorUpVisual _x;
+        _class = typeOf _x;
 
-    // Add to saving with corresponding resource values
-    _resourceStorages pushBack [_class, _savedPos, _savedVecDir, _savedVecUp, _supplyValue, _ammoValue, _fuelValue];
-} forEach _allStorages;
+        // Resource variables
+        _supplyValue = 0;
+        _ammoValue = 0;
+        _fuelValue = 0;
+
+        // Sum all stored resources of current storage
+        {
+            switch ((typeOf _x)) do {
+                case KP_liberation_supply_crate: {_supplyValue = _supplyValue + (_x getVariable ["KP_liberation_crate_value",0]);};
+                case KP_liberation_ammo_crate: {_ammoValue = _ammoValue + (_x getVariable ["KP_liberation_crate_value",0]);};
+                case KP_liberation_fuel_crate: {_fuelValue = _fuelValue + (_x getVariable ["KP_liberation_crate_value",0]);};
+                default {[format ["Invalid object (%1) at storage area", (typeOf _x)], "ERROR"] call KPLIB_fnc_log;};
+            };
+        } forEach ((attachedObjects _x) select {alive _x});
+
+        // Add to saving with corresponding resource values
+        _resourceStorages pushBack [_class, _savedPos, _savedVecDir, _savedVecUp, _supplyValue, _ammoValue, _fuelValue];
+    } forEach _allStorages;
+
+    private _factorySnapshot = [_allStorages, _savedVehicles, _objectsToSave] call KPLIB_fnc_factorySave;
+    _factoryDepots = _factorySnapshot select 0;
+    _productionSnapshot = _factorySnapshot select 1;
+    _factoryCrates = _factorySnapshot select 2;
+};
 
 // Save crates at blufor sectors which spawn crates on activation
 {
     _allCrates append (
-        ((nearestObjects [markerPos _x, KPLIB_crates, GRLIB_capture_size]) select {isNull attachedTo _x}) apply {
+        ((nearestObjects [markerPos _x, KPLIB_crates, GRLIB_capture_size]) select {alive _x && {isNull attachedTo _x} && {!(_x in _factoryCrates)}}) apply {
             [typeOf _x, _x getVariable ["KP_liberation_crate_value", 0], getPosATL _x]
         }
     );
@@ -199,10 +214,11 @@ private _weights = [
     KP_liberation_clearances,
     KP_liberation_guerilla_strength,
     KP_liberation_logistics,
-    KP_liberation_production,
+    _productionSnapshot,
     KP_liberation_production_markers,
     0, // Reserved former intelligence-currency slot
     _allMines,
     _allCrates,
-    call KPLIB_RADIO_SERVER_EXPORT
+    call KPLIB_RADIO_SERVER_EXPORT,
+    _factoryDepots
 ] // return

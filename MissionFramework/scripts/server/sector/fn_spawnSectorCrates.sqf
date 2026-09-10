@@ -21,6 +21,10 @@ params [
     ["_sector", "", [""]]
 ];
 
+// Factory stock has its own persistent ledger and surveyed loading-yard layout.
+if (!isServer || {isRemoteExecuted}) exitWith {false};
+if (_sector in sectors_factory) exitWith {[_sector] call KPLIB_fnc_factoryEnsure};
+
 if (_sector isEqualTo "") exitWith {["Empty string given"] call BIS_fnc_error; false};
 if (isNil "KPLIB_sectorCratesSpawned") then {KPLIB_sectorCratesSpawned = [];};
 

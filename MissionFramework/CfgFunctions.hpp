@@ -1,4 +1,18 @@
 class KPLIB {
+    class module_factory_depots {
+        file = "modules\factory_depots";
+
+        class factoryInit    {};
+        class factoryEnsure  {};
+        class factoryLayout  {};
+        class factoryClear   {};
+        class factoryPlan    {};
+        class factorySave    {};
+        class factoryRestore {};
+        class factoryStatus  {};
+        class factoryTick    {};
+        class factoryReceive {};
+    };
     class module_ai_skills {
         file = "modules\ai_skills";
 

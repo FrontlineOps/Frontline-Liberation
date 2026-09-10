@@ -16,6 +16,10 @@
 */
 
 if (!isServer) exitWith {false};
+if !(missionNamespace getVariable ["save_is_loaded", false]) exitWith {
+    ["Campaign is still loading, skipping save!", "SAVE"] call KPLIB_fnc_log;
+    false
+};
 
 if (!KPLIB_init) exitWith {
     ["Framework is not initalized, skipping save!", "SAVE"] call KPLIB_fnc_log;

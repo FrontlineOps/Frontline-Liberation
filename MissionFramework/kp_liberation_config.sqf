@@ -491,9 +491,13 @@ KP_liberation_cr_sector_gain = 5;           			// Civrep sector capture gain
 KP_liberation_cr_wounded_chance = 15;        			// Wounded civ chance
 KP_liberation_cr_wounded_gain = 3;           			// Wounded civ healed civrep gain
 
-KP_liberation_sector_resource_chance = 100;  			// BLUFOR sector resource chance on capture
+// Ordinary settlement loot; factories use the organized depot below.
+KP_liberation_sector_resource_chance = 100;  			// Settlement crate chance on activation
 KP_liberation_sector_resource_crate_count = [3, 5];	// Inclusive physical crate count range
 KP_liberation_sector_resource_crate_value = 100;		// Base value per crate before resource multiplier
+// One-time factory cache: 24 pallets in six bays (12 supply / 8 ammo / 4 fuel).
+KPLIB_factory_crate_value = 100; // Each pallet, before GRLIB_resources_multiplier.
+KPLIB_factory_capture_report = true; // Set false for physical stock/map feedback without a capture popup.
 
 KP_liberation_medical_vehicles = [
 	// Prairie Fire

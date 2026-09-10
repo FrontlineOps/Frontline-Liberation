@@ -37,6 +37,8 @@ last_blufor_sector_change = CBA_missionTime;
 stats_sectors_liberated = stats_sectors_liberated + 1;
 
 if (_liberated_sector in sectors_factory) then {
+    [] call KPLIB_fnc_factoryTick;
+    [_liberated_sector, [_liberated_sector] call KPLIB_fnc_factoryStatus] remoteExecCall ["KPLIB_fnc_factoryReceive", 0];
     {
         if (_liberated_sector in _x) exitWith {KP_liberation_production = KP_liberation_production - [_x];};
     } forEach KP_liberation_production;

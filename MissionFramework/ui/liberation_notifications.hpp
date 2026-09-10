@@ -1,4 +1,13 @@
 class CfgNotifications {
+    class lib_factory_secured {
+        title = "Factory secured: %1";
+        description = "%2";
+        iconPicture = "res\notif\ui_notif_sec_cap.paa";
+        color[] = {0, 1, 0, 1};
+        duration = 18;
+        priority = 5;
+        sound = "taskSucceeded";
+    };
     class lib_default_notification {
         duration = 10;
         soundClose = "defaultNotificationClose";
