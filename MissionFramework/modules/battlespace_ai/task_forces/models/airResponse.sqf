@@ -15,7 +15,9 @@
                     (_taskForce param [8, []]) isNotEqualTo []
                     && {(_operation getOrDefault ["phase", ""]) != "RETURNING"}
                     && {!isNull _target}
-                    && {([_target] call BATTLESPACE_AIR_RESPONSE_CLASSIFY_CONTACT) != ""}
+                    && {([_target] call BATTLESPACE_AIR_RESPONSE_CLASSIFY_CONTACT) != ""
+                        || {(_operation getOrDefault ["targetKind", ""]) == "INFANTRY"
+                            && {[_target] call BATTLESPACE_AIR_INFANTRY_IS_TARGET}}}
                     && {_currentLocation distance2D _target <= BATTLESPACE_AIR_ENGAGEMENT_KEEP_RANGE}
                 ) exitWith {true};
                 {

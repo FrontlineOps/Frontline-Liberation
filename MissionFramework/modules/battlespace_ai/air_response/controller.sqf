@@ -179,6 +179,10 @@ BATTLESPACE_AIR_TICK = {
         || {fuel _aircraft < 0.12} || {damage _aircraft > 0.6}) exitWith {
         if !([_id, _force, _operation] call BATTLESPACE_AIR_RESPONSE_BEGIN_RETURN) then {[_id] call BATTLESPACE_AIR_STOP};
     };
+    // Keep the established vehicle engagement path unchanged.
+    if ((_operation getOrDefault ["targetKind", ""]) == "INFANTRY") exitWith {
+        [_id, _state, _force, _operation] call BATTLESPACE_AIR_INFANTRY_TICK;
+    };
     private _target = objectFromNetId (_operation getOrDefault ["targetNetId", ""]);
     private _valid = !isNull _target && {([_target] call BATTLESPACE_AIR_RESPONSE_CLASSIFY_CONTACT) == (_operation getOrDefault ["targetKind", ""])};
     if (!_valid) exitWith {
@@ -395,7 +399,12 @@ if (isServer) then {
                 _y set ["nextTickAt", CBA_missionTime + 0.1];
                 [_x, _y] call BATTLESPACE_AIR_TICK;
             };
-            [_y] call BATTLESPACE_AIR_FLY_ATTACK;
+            if (_y getOrDefault ["infantryMemoryAttack", false]
+                && {(BATTLESPACE_STRATEGIC_OPERATIONS getOrDefault [_x, createHashMap]) getOrDefault ["targetKind", ""] == "INFANTRY"}) then {
+                [_y] call BATTLESPACE_AIR_INFANTRY_FLY_ATTACK;
+            } else {
+                [_y] call BATTLESPACE_AIR_FLY_ATTACK;
+            };
         } forEach _runtime;
         private _shots = localNamespace getVariable ["BATTLESPACE_AIR_GUIDED_SHOTS", createHashMap];
         if (CBA_missionTime >= (localNamespace getVariable ["BATTLESPACE_AIR_NEXT_PRUNE", 0])) then {

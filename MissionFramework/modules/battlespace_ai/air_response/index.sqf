@@ -5,6 +5,9 @@
 call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\air_response\weapons.sqf";
 call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\air_response\flight.sqf";
 call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\air_response\ace.sqf";
+call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\air_response\infantry.sqf";
+call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\air_response\infantryCombat.sqf";
+call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\air_response\infantryController.sqf";
 call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\air_response\controller.sqf";
 
 if (isNil "BATTLESPACE_AIR_RESPONSE_NEXT_CLASS_WARNING") then {
@@ -13,6 +16,7 @@ if (isNil "BATTLESPACE_AIR_RESPONSE_NEXT_CLASS_WARNING") then {
 
 BATTLESPACE_AIR_RESPONSE_APPLY_TARGET_COOLDOWN = {
     params ["_taskForceId", "_operation", "_eventType"];
+    if ((_operation getOrDefault ["targetKind", ""]) == "INFANTRY") then {[_operation] call BATTLESPACE_AIR_INFANTRY_COOLDOWN};
     private _targetNetId = _operation getOrDefault ["targetNetId", ""];
     if (_targetNetId == "") exitWith {false};
 
@@ -96,6 +100,7 @@ BATTLESPACE_AIR_RESPONSE_IS_COMBAT_AIRCRAFT = {
 
 BATTLESPACE_AIR_RESPONSE_SELECT_CLASS = {
     params ["_targetKind"];
+    if (_targetKind == "INFANTRY") exitWith {[] call BATTLESPACE_AIR_INFANTRY_SELECT_CLASS};
     private _catalogs = missionNamespace getVariable ["KPLIB_autoFactionCatalogs", createHashMap];
     private _opfor = _catalogs getOrDefault ["opfor", createHashMap];
     private _resourcePool = BATTLESPACE_RESOURCE_CLASS_POOLS getOrDefault ["aircraft", []];
@@ -211,6 +216,7 @@ BATTLESPACE_AIR_RESPONSE_BEGIN_RETURN = {
 
 BATTLESPACE_AIR_RESPONSE_FIND_CONTACT = {
     params ["_taskForceId", "_operation"];
+    if ((_operation getOrDefault ["targetKind", ""]) == "INFANTRY") exitWith {[_taskForceId, _operation] call BATTLESPACE_AIR_INFANTRY_FIND_CONTACT};
     private _targetKind = _operation getOrDefault ["targetKind", ""];
     private _targetNetId = _operation getOrDefault ["targetNetId", ""];
     private _vehicle = if (_targetNetId == "") then {objNull} else {objectFromNetId _targetNetId};
@@ -390,11 +396,13 @@ BATTLESPACE_AIR_RESPONSE_DISPATCH = {
         ["expiresAt", CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_AIR_RESPONSE_MAX_LIFETIME", 1800])],
         ["outcome", ""]
     ];
+    if (_targetKind == "INFANTRY") then {_metadata set ["infantrySector", _contact param [5, ""]]};
     private _taskForceId = [
         "Air Response", _composition, getMarkerPos _originSector, _targetPosition, getMarkerPos _originSector,
         _originSector, "AIR_RESPONSE", _metadata
     ] call BATTLESPACE_STRATEGIC_CREATE_FUNDED_TASK_FORCE;
     if (_taskForceId == "") exitWith {false};
+    if (_targetKind == "INFANTRY") then {[_metadata] call BATTLESPACE_AIR_INFANTRY_COOLDOWN};
 
     private _state = BATTLESPACE_SECTOR_STATES get _originSector;
     _state set ["nextAirResponseAt", CBA_missionTime + ([(missionNamespace getVariable ["BATTLESPACE_STRATEGIC_AIR_RESPONSE_COOLDOWN", 1800])] call KPLIB_RADIO_SERVER_COMMAND_DELAY)];
@@ -417,7 +425,8 @@ BATTLESPACE_AIR_RESPONSE_DECISION_TICK = {
     private _weightThreshold = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_AIR_RESPONSE_MIN_WEIGHT", 50];
     private _armorAllowed = (missionNamespace getVariable ["armor_weight", 0]) >= _weightThreshold;
     private _airAllowed = (missionNamespace getVariable ["air_weight", 0]) >= _weightThreshold;
-    if (!_armorAllowed && {!_airAllowed}) exitWith {};
+    private _contacts = [] call BATTLESPACE_AIR_RESPONSE_COLLECT_CONTACTS;
+    _contacts append ([] call BATTLESPACE_AIR_INFANTRY_CONTACTS);
 
     {
         if (_remaining <= 0) exitWith {};
@@ -427,5 +436,5 @@ BATTLESPACE_AIR_RESPONSE_DECISION_TICK = {
         if ((_kind == "ARMOR" && {!_armorAllowed}) || {(_kind == "AIR" && {!_airAllowed})}) then {continue};
         if ([_position, _targetNetId] call BATTLESPACE_AIR_RESPONSE_CONTACT_IS_COVERED) then {continue};
         if ([_x] call BATTLESPACE_AIR_RESPONSE_DISPATCH) then {_remaining = _remaining - 1};
-    } forEach ([] call BATTLESPACE_AIR_RESPONSE_COLLECT_CONTACTS);
+    } forEach _contacts;
 };

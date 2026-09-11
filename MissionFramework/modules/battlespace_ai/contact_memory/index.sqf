@@ -14,14 +14,18 @@ BATTLESPACE_CONTACT_COLLECT = {
     private _units = units _group select {alive _x && {!captive _x}};
     if (_units isEqualTo []) exitWith {[]};
     private _reports = [];
+    // Fresh native sightings can have negative ages and disappear when the
+    // engine age filter is enabled. Apply the same age limit below instead;
+    // the receiver also checks age before accepting any local or HC report.
     {
         _x params ["_accuracy", "_target", "_side", "_class", "_position", "_age"];
-        if (_accuracy <= 0 || {isNull _target} || {_side != GRLIB_side_friendly} || {count _position < 2}) then {continue};
+        if (_accuracy <= 0 || {isNull _target} || {_side != GRLIB_side_friendly}
+            || {count _position < 2} || {_age > BATTLESPACE_CONTACT_MEMORY_MAX_AGE}) then {continue};
         private _weight = if (_class isKindOf "Tank") then {8} else {([1, 3] select (_class isKindOf "Car"))};
         private _player = isPlayer _target || {(crew _target) findIf {alive _x && {isPlayer _x}} >= 0};
         _reports pushBack [_target, [_position select 0, _position select 1, 0], CBA_missionTime - (0 max _age), _weight, _player, _class];
         if (count _reports >= 12) exitWith {};
-    } forEach ((_units select 0) targetsQuery [objNull, GRLIB_side_friendly, "", [], BATTLESPACE_CONTACT_MEMORY_MAX_AGE]);
+    } forEach ((_units select 0) targetsQuery [objNull, GRLIB_side_friendly, "", [], 0]);
     _reports
 };
 

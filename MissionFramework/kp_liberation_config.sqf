@@ -179,6 +179,13 @@ BATTLESPACE_UNIT_PROC_RANGE = 1175;
 BATTLESPACE_MINEFIELD_PROC_RANGE = 1125;
 BATTLESPACE_AA_PROC_RANGE = 2500;
 BATTLESPACE_AIR_PROC_RANGE = 3000; // Separate horizontal aircraft activation radius
+// Reported infantry assaults near enemy objectives may request funded CAS.
+BATTLESPACE_AIR_INFANTRY_MIN_COUNT = 3;
+BATTLESPACE_AIR_INFANTRY_CLUSTER_RADIUS = 150;
+BATTLESPACE_AIR_INFANTRY_OBJECTIVE_RADIUS = 800;
+BATTLESPACE_AIR_INFANTRY_PRESSURE_DURATION = 90;
+BATTLESPACE_AIR_INFANTRY_CONTACT_MAX_AGE = 60;
+BATTLESPACE_AIR_INFANTRY_ATTACK_MEMORY = 60;
 
 // Server-owned hybrid routing for virtual and materialized Battlespace forces.
 // Ground vehicles use an A* road trunk with terrain-grid A* connectors; infantry

@@ -129,11 +129,11 @@ BATTLESPACE_AIR_ALIGN_FIXED_WEAPON = {
 };
 
 BATTLESPACE_AIR_FLY_ATTACK = {
-    params ["_state"];
+    params ["_state", ["_observedPositionAttack", false]];
     if (!isServer || {isRemoteExecuted} || {_state get "stage" != "RUN"}) exitWith {};
     private _aircraft = _state get "aircraft";
     if (!local _aircraft || {!alive _aircraft} || {!local driver _aircraft} || {crew _aircraft findIf {isPlayer _x} >= 0}
-        || {_aircraft getVariable ["KPLIB_captured", false]} || {!(_state get "visible")}) exitWith {};
+        || {_aircraft getVariable ["KPLIB_captured", false]} || {!(_state get "visible") && {!_observedPositionAttack}}) exitWith {};
     private _wanted = _state getOrDefault ["aimDirection", []];
     if (_wanted isEqualTo [] || {CBA_missionTime > (_state getOrDefault ["aimExpiresAt", 0])}) exitWith {
         if (_state getOrDefault ["angularAssist", false]) then {

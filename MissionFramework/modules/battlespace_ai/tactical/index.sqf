@@ -619,7 +619,7 @@ BATTLESPACE_STRATEGIC_BUILD_INTEGRITY_AUDIT = {
             if (typeName _cost != "HASHMAP" || {count _cost != 1} || {(_cost getOrDefault ["aircraft", 0]) != 1}) then {
                 _errors pushBack format ["Air response operation %1 does not own exactly one paid aircraft", _x];
             };
-            if !((_y getOrDefault ["targetKind", ""]) in ["AIR", "ARMOR"]) then {
+            if !((_y getOrDefault ["targetKind", ""]) in ["AIR", "ARMOR", "INFANTRY"]) then {
                 _errors pushBack format ["Air response operation %1 has an invalid target kind", _x];
             };
         };
