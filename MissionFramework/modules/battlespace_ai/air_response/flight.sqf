@@ -18,6 +18,13 @@ BATTLESPACE_AIR_ORDER = {
     private _tolerance = if (_state get "stage" == "RUN") then {15} else {75};
     if (_last vectorDistance _position > _tolerance || {CBA_missionTime >= (_state getOrDefault ["nextOrderAt", 0])}) then {
         private _destination = +_position;
+        if (_state get "stage" == "RUN"
+            && {(_state getOrDefault ["weapon", createHashMap]) getOrDefault ["kind", ""] in ["GUN", "ROCKET"]}) then {
+            // Fly through the firing leg. A destination on the target makes
+            // the native helicopter pilot brake and raise the nose to stop.
+            private _direction = _state get "runDirection";
+            _destination = _destination vectorAdd ([sin _direction, cos _direction, 0] vectorMultiply 2000);
+        };
         _destination set [2, _altitude - (getTerrainHeightASL _destination max 0)];
         if (count waypoints _group < 2) then {
             private _waypoint = _group addWaypoint [_destination, 0];
@@ -39,8 +46,7 @@ BATTLESPACE_AIR_ORDER = {
 BATTLESPACE_AIR_SET_STAGE = {
     if (!isServer || {isRemoteExecuted}) exitWith {};
     params ["_state", "_stage"];
-    if ((_state getOrDefault ["stage", ""]) == "RUN" && {_stage != "RUN"}
-        && {_state getOrDefault ["angularAssist", false]}) then {
+    if (_stage != (_state getOrDefault ["stage", ""]) && {_state getOrDefault ["angularAssist", false]}) then {
         private _aircraft = _state get "aircraft";
         if (!isNull _aircraft && {local _aircraft}) then {_aircraft setAngularVelocity [0,0,0]};
         _state set ["angularAssist", false];
@@ -54,6 +60,22 @@ BATTLESPACE_AIR_SET_STAGE = {
     if (missionNamespace getVariable ["BATTLESPACE_DEBUG_INDEPTH", false]) then {
         diag_log format ["[BATTLESPACE][AIR] %1 %2 %3 %4", _state get "id", _stage, (_state getOrDefault ["weapon", createHashMap]) getOrDefault ["kind", ""], (_state getOrDefault ["weapon", createHashMap]) getOrDefault ["guidance", ""]];
     };
+};
+
+// Plan a usable straight leg before entering a bomb release envelope. The
+// margin gives the aircraft five seconds to settle on the planned course.
+BATTLESPACE_AIR_MINIMUM_RUN = {
+    params ["_weapon", "_entry", "_aim", "_altitude", "_speed", "_direction"];
+    if (_weapon get "kind" != "BOMB") exitWith {1500};
+    if (_weapon get "guidance" == "GPS") exitWith {
+        // Glide bombs use the same inner height/range envelope as release.
+        (((_altitude - (_aim select 2)) * 0.6) + _speed * 5) max 1500
+    };
+    private _axis = [sin _direction, cos _direction, 0];
+    private _trial = +_entry;
+    _trial set [2, _altitude];
+    private _prediction = [_trial, _axis vectorMultiply (_speed + (_weapon get "speed")), _axis, _weapon, _aim, [0,0,0]] call BATTLESPACE_AIR_PREDICT;
+    ((((_prediction select 1) vectorDiff _trial) vectorDotProduct _axis) + _speed * 5) max 1500
 };
 
 BATTLESPACE_AIR_PLAN_RUN = {
@@ -87,7 +109,9 @@ BATTLESPACE_AIR_PLAN_RUN = {
     _state set ["attackSpeed", _speed];
     _state set ["shotsAtEntry", _state get "shots"];
     private _aligned = (vectorDir _aircraft) vectorDotProduct ((getPosASL _aircraft) vectorFromTo _aim) > 0.85;
-    private _alreadyInbound = _aligned && {_aircraft distance2D _aim > 1500} && {_aircraft distance2D _aim < _runLength};
+    private _minimumRun = [_weapon, _entry, _aim, _terrain + _height, _speed, _direction] call BATTLESPACE_AIR_MINIMUM_RUN;
+    _state set ["minimumRun", _minimumRun];
+    private _alreadyInbound = _aligned && {_aircraft distance2D _aim > _minimumRun} && {_aircraft distance2D _aim < _runLength};
     [_state, ["INGRESS", "RUN"] select _alreadyInbound] call BATTLESPACE_AIR_SET_STAGE;
 };
 
@@ -118,11 +142,19 @@ BATTLESPACE_AIR_ALIGN_FIXED_WEAPON = {
     if (_state get "stage" != "RUN" || {getPosATL _aircraft select 2 < 100}) exitWith {false};
     private _error = (_solution select 1) vectorDiff (_solution select 3);
     private _range = (getPosASL _aircraft) vectorDistance (_solution select 3);
-    if (_range > ([1200,2200] select (_aircraft isKindOf "Plane")) || {_range < 400}) exitWith {false};
+    if (_range > 2200 || {_range < 400}) exitWith {false};
     private _wantedLaunch = vectorNormalized (_launchDirection vectorDiff (_error vectorMultiply (2 / (_range max 1))));
     private _direction = vectorDir _aircraft;
     private _wanted = vectorNormalized (_direction vectorAdd (_wantedLaunch vectorDiff _launchDirection));
-    if ((_wanted select 2) < -sin ([25,50] select (_aircraft isKindOf "Plane"))) exitWith {false};
+    private _pitchLimit = [25,50] select (_aircraft isKindOf "Plane");
+    if ((_wanted select 2) < -sin _pitchLimit) then {
+        // Keep correcting within the safe envelope instead of dropping all
+        // aiming assistance when a steep correction first reaches its limit.
+        private _horizontal = +_wanted;
+        _horizontal set [2, 0];
+        _wanted = (vectorNormalized _horizontal) vectorMultiply cos _pitchLimit;
+        _wanted set [2, -sin _pitchLimit];
+    };
     _state set ["aimDirection", _wanted];
     _state set ["aimExpiresAt", CBA_missionTime + 0.25];
     true
@@ -130,10 +162,29 @@ BATTLESPACE_AIR_ALIGN_FIXED_WEAPON = {
 
 BATTLESPACE_AIR_FLY_ATTACK = {
     params ["_state", ["_observedPositionAttack", false]];
-    if (!isServer || {isRemoteExecuted} || {_state get "stage" != "RUN"}) exitWith {};
+    if (!isServer || {isRemoteExecuted}) exitWith {};
     private _aircraft = _state get "aircraft";
+    private _bomb = _aircraft isKindOf "Plane" && {(_state getOrDefault ["weapon", createHashMap]) getOrDefault ["kind", ""] == "BOMB"};
+    private _turning = _bomb && {_state get "stage" == "TURN"};
+    if (_state get "stage" != "RUN" && {!_turning}) exitWith {};
     if (!local _aircraft || {!alive _aircraft} || {!local driver _aircraft} || {crew _aircraft findIf {isPlayer _x} >= 0}
-        || {_aircraft getVariable ["KPLIB_captured", false]} || {!(_state get "visible") && {!_observedPositionAttack}}) exitWith {};
+        || {_aircraft getVariable ["KPLIB_captured", false]} || {!(_state get "visible") && {!_observedPositionAttack} && {!_turning}}) exitWith {
+        if (local _aircraft && {_state getOrDefault ["angularAssist", false]}) then {
+            _aircraft setAngularVelocity [0,0,0];
+            _state set ["angularAssist", false];
+        };
+    };
+    private _headingError = 0;
+    if (_bomb) then {
+        private _position = getPosASL _aircraft;
+        private _point = _state get "runTarget";
+        if (!_turning) then {_point = _state getOrDefault ["orderPosition", _point]};
+        _headingError = (((_position getDir _point) - (getDir _aircraft) + 540) mod 360) - 180;
+        private _heading = getDir _aircraft + (if (_turning) then {(_headingError max -60) min 60} else {_headingError});
+        private _pitch = (((_state get "altitude") - (_position select 2)) atan2 2000) max -5 min 5;
+        _state set ["aimDirection", [sin _heading * cos _pitch, cos _heading * cos _pitch, sin _pitch]];
+        _state set ["aimExpiresAt", CBA_missionTime + 0.25];
+    };
     private _wanted = _state getOrDefault ["aimDirection", []];
     if (_wanted isEqualTo [] || {CBA_missionTime > (_state getOrDefault ["aimExpiresAt", 0])}) exitWith {
         if (_state getOrDefault ["angularAssist", false]) then {
@@ -145,16 +196,22 @@ BATTLESPACE_AIR_FLY_ATTACK = {
     private _elapsed = (CBA_missionTime - (_state getOrDefault ["lastAlignmentAt", CBA_missionTime - 0.02])) min 0.05;
     _state set ["lastAlignmentAt", CBA_missionTime];
     private _angle = acos ((-1 max (_direction vectorDotProduct _wanted)) min 1);
-    private _fraction = (18 * _elapsed / (_angle max 0.001)) min 1;
+    private _alignmentRate = if (_turning) then {((9.80665 * tan 45) / ((vectorMagnitude velocity _aircraft) max 80)) * 180 / pi} else {18};
+    private _fraction = (_alignmentRate * _elapsed / (_angle max 0.001)) min 1;
     private _next = vectorNormalized (_direction vectorAdd ((_wanted vectorDiff _direction) vectorMultiply _fraction));
     private _up = vectorUp _aircraft;
     private _levelUp = vectorNormalized ((_next vectorCrossProduct [0,0,1]) vectorCrossProduct _next);
+    if (_turning) then {
+        private _bank = (_headingError * 0.5) max -45 min 45;
+        private _right = _next vectorCrossProduct _levelUp;
+        _levelUp = (_levelUp vectorMultiply cos _bank) vectorAdd (_right vectorMultiply sin _bank);
+    };
     private _upAngle = acos ((-1 max (_up vectorDotProduct _levelUp)) min 1);
     private _upFraction = (8 * _elapsed / (_upAngle max 0.001)) min 1;
     _up = vectorNormalized (_up vectorAdd ((_levelUp vectorDiff _up) vectorMultiply _upFraction));
     private _velocity = velocity _aircraft;
     private _desiredVelocity = if (_aircraft isKindOf "Plane") then {
-        _next vectorMultiply (_state get "attackSpeed")
+        (if (_bomb && {!_turning}) then {_wanted} else {_next}) vectorMultiply (if (_turning) then {110} else {_state get "attackSpeed"})
     } else {
         // Rotorcraft can keep translating while pitching their fixed weapons.
         private _horizontal = +_next;
@@ -162,7 +219,7 @@ BATTLESPACE_AIR_FLY_ATTACK = {
         (vectorNormalized _horizontal) vectorMultiply (_state get "attackSpeed")
     };
     private _change = _desiredVelocity vectorDiff _velocity;
-    private _limit = 2.5 * 9.80665 * _elapsed;
+    private _limit = (if (_turning) then {tan 45} else {2.5}) * 9.80665 * _elapsed;
     if (vectorMagnitude _change > _limit) then {_change = (vectorNormalized _change) vectorMultiply _limit};
     private _nextVelocity = _velocity vectorAdd _change;
     private _ahead = getPosASL _aircraft vectorAdd (_nextVelocity vectorMultiply 2);
@@ -171,16 +228,17 @@ BATTLESPACE_AIR_FLY_ATTACK = {
         [_state, "EGRESS"] call BATTLESPACE_AIR_SET_STAGE;
         false
     };
-    // Only the straight firing leg gets this bounded autopilot assist (18deg/s,
-    // 2.5g). Position is never rewritten, and real ammunition keeps its physics.
-    // Native navigation owns the climb-out, turns, search and return.
+    // Bombers also need a coordinated turn onto the release course. Turn rate
+    // and lateral acceleration follow a 45-degree bank; the firing leg retains
+    // the 18-degree/s and 2.5g limits. Native navigation owns ingress, egress,
+    // search and return. Neither aircraft position nor ammunition is rewritten.
     if (_state get "physX") then {
-        // Repeated pose writes reset PhysX integration and slow the aircraft.
-        // Rotate its actual rigid body instead, keeping translation continuous.
+        // Native angular control also works for the legacy Su-25 airplane
+        // simulation. Repeated pose writes interfere with its flight response.
         private _turn = _direction vectorCrossProduct _wanted;
         private _roll = (vectorUp _aircraft) vectorCrossProduct _levelUp;
         private _angular = (_turn vectorAdd (_direction vectorMultiply (_roll vectorDotProduct _direction))) vectorMultiply 2;
-        private _angularLimit = 18 * pi / 180;
+        private _angularLimit = _alignmentRate * pi / 180;
         if (vectorMagnitude _angular > _angularLimit) then {_angular = vectorNormalized _angular vectorMultiply _angularLimit};
         _aircraft setAngularVelocity (_angular vectorMultiply -1);
         _state set ["angularAssist", true];

@@ -1,5 +1,5 @@
-/* Infantry-only filters and point attacks. Vehicle weapon choice, planning,
-   release, ballistics and guidance retain the 4a218d8 implementations. */
+/* Infantry-only weapon filters, observation authorization and point attacks.
+   Shared flight geometry also serves vehicle responses. */
 BATTLESPACE_AIR_WEAPON_VS_POSITION = {
     params ["_weapon"];
     private _guidance = _weapon getOrDefault ["guidance", ""];
@@ -130,7 +130,9 @@ BATTLESPACE_AIR_INFANTRY_PLAN_RUN = {
     _state set ["attackSpeed", _speed];
     _state set ["shotsAtEntry", _state get "shots"];
     private _aligned = (vectorDir _aircraft) vectorDotProduct ((getPosASL _aircraft) vectorFromTo _aim) > 0.85;
-    private _alreadyInbound = _aligned && {_aircraft distance2D _aim > 1500} && {_aircraft distance2D _aim < _runLength};
+    private _minimumRun = [_weapon, _entry, _aim, _terrain + _height, _speed, _direction] call BATTLESPACE_AIR_MINIMUM_RUN;
+    _state set ["minimumRun", _minimumRun];
+    private _alreadyInbound = _aligned && {_aircraft distance2D _aim > _minimumRun} && {_aircraft distance2D _aim < _runLength};
     [_state, ["INGRESS", "RUN"] select _alreadyInbound] call BATTLESPACE_AIR_INFANTRY_SET_STAGE;
 };
 

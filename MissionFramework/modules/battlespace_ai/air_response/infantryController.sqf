@@ -120,6 +120,8 @@ BATTLESPACE_AIR_INFANTRY_TICK = {
         if (_position distance2D _entry < ([180,400] select _plane)) then {[_state, "TURN"] call BATTLESPACE_AIR_INFANTRY_SET_STAGE};
     };
     if (_stage == "TURN") exitWith {
+        // Steering and alignment must follow the same authorized aim point.
+        _state set ["runTarget", +_aim];
         private _towards = _position vectorFromTo [_aim select 0, _aim select 1, _position select 2];
         private _alignment = vectorDir _aircraft vectorDotProduct _towards;
         private _speed = if (_plane) then {if (_alignment > 0.8) then {_state get "attackSpeed"} else {110}} else {30};
@@ -194,7 +196,7 @@ BATTLESPACE_AIR_INFANTRY_TICK = {
     private _solutionInterval = ((CBA_missionTime - (_state getOrDefault ["lastSolutionAt", CBA_missionTime - 0.1])) max 0.1) min 0.3;
     _state set ["lastSolutionAt", CBA_missionTime];
     _state set ["solution", _solution];
-    private _strafeRange = if (_kind == "ROCKET") then {[1000,2200] select _plane} else {[1000,1500] select _plane};
+    private _strafeRange = if (_kind == "ROCKET") then {2200} else {1500};
     private _tolerance = if (_kind == "BOMB") then {if (_weapon get "guidance" == "NONE") then {8} else {150}} else {12};
     private _wingsLevel = abs ((vectorDir _aircraft vectorCrossProduct vectorUp _aircraft) select 2) < sin 20;
     private _onTarget = (_solution select 0) <= _tolerance;

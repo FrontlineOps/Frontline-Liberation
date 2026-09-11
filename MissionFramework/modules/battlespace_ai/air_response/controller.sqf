@@ -94,7 +94,7 @@ BATTLESPACE_AIR_START = {
     private _crewSettings = (crew _aircraft) apply {[_x, _x checkAIFeature "AUTOCOMBAT", _x checkAIFeature "AUTOTARGET", getForcedSpeed _x, unitCombatMode _x, _x getVariable ["lambs_danger_disableAI", false], _x checkAIFeature "AIMINGERROR"]};
     private _state = createHashMapFromArray [
         ["id", _id], ["aircraft", _aircraft], ["group", _group], ["crewSettings", _crewSettings],
-        ["physX", toLower getText (configFile >> "CfgVehicles" >> typeOf _aircraft >> "simulation") in ["airplanex", "helicopterx", "helicopterrtd"]],
+        ["physX", toLower getText (configFile >> "CfgVehicles" >> typeOf _aircraft >> "simulation") in ["airplane", "airplanex", "helicopterx", "helicopterrtd"]],
         ["combatMode", combatMode _group], ["behaviour", behaviour _pilot],
         ["lambsGroup", _group getVariable ["lambs_danger_disableGroupAI", false]],
         ["stage", "PLAN"], ["stageAt", CBA_missionTime], ["weapon", createHashMap],
@@ -179,7 +179,7 @@ BATTLESPACE_AIR_TICK = {
         || {fuel _aircraft < 0.12} || {damage _aircraft > 0.6}) exitWith {
         if !([_id, _force, _operation] call BATTLESPACE_AIR_RESPONSE_BEGIN_RETURN) then {[_id] call BATTLESPACE_AIR_STOP};
     };
-    // Keep the established vehicle engagement path unchanged.
+    // Infantry admission and observation memory use their own engagement path.
     if ((_operation getOrDefault ["targetKind", ""]) == "INFANTRY") exitWith {
         [_id, _state, _force, _operation] call BATTLESPACE_AIR_INFANTRY_TICK;
     };
@@ -257,6 +257,8 @@ BATTLESPACE_AIR_TICK = {
         if (_position distance2D _entry < ([180,400] select _plane)) then {[_state, "TURN"] call BATTLESPACE_AIR_SET_STAGE};
     };
     if (_stage == "TURN") exitWith {
+        // Steering and alignment must follow the same authorized aim point.
+        _state set ["runTarget", +_aim];
         private _towards = _position vectorFromTo [_aim select 0, _aim select 1, _position select 2];
         private _alignment = vectorDir _aircraft vectorDotProduct _towards;
         private _speed = if (_plane) then {if (_alignment > 0.8) then {_state get "attackSpeed"} else {110}} else {30};
@@ -368,8 +370,12 @@ BATTLESPACE_AIR_TICK = {
     _origin params ["_launchPosition", "_launchDirection"];
     private _launchVelocity = velocity _aircraft vectorAdd (_launchDirection vectorMultiply (_weapon get "speed"));
     private _solution = [_launchPosition, _launchVelocity, _launchDirection, _weapon, _aim, velocity _target] call BATTLESPACE_AIR_PREDICT;
+    private _solutionInterval = ((CBA_missionTime - (_state getOrDefault ["lastSolutionAt", CBA_missionTime - 0.1])) max 0.1) min 0.3;
+    _state set ["lastSolutionAt", CBA_missionTime];
     _state set ["solution", _solution];
-    private _strafeRange = if (_kind == "ROCKET") then {[1000,2200] select _plane} else {[1000,1500] select _plane};
+    // The live weapon range is checked above. Elevated helicopter approaches
+    // need room to aim before the target falls below their safe pitch limit.
+    private _strafeRange = if (_kind == "ROCKET") then {2200} else {1500};
     private _tolerance = if (_kind == "BOMB") then {if (_weapon get "guidance" == "NONE") then {8} else {150}} else {12};
     private _wingsLevel = abs ((vectorDir _aircraft vectorCrossProduct vectorUp _aircraft) select 2) < sin 20;
     private _onTarget = (_solution select 0) <= _tolerance;
@@ -380,7 +386,10 @@ BATTLESPACE_AIR_TICK = {
         private _error = (_solution select 1) vectorDiff (_solution select 3);
         private _along = _error vectorDotProduct _direction;
         private _across = vectorMagnitude (_error vectorDiff (_direction vectorMultiply _along));
-        _onTarget = abs _along <= 9 && {_across <= 25};
+        // Keep the release window reachable between controller updates while
+        // bounding the timing allowance to 25m. Cross-track accuracy is unchanged.
+        private _alongTolerance = 9 max ((vectorMagnitude velocity _aircraft * _solutionInterval * 0.6) min 25);
+        _onTarget = abs _along <= _alongTolerance && {_across <= 25};
     };
     if (_onTarget && {_wingsLevel} && {_kind == "BOMB" || {_distance <= _strafeRange}}) then {
         [_state, _target, if (_weapon get "guidance" == "GPS") then {_aim} else {_solution select 3}] call BATTLESPACE_AIR_FIRE;
