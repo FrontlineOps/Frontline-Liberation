@@ -32,7 +32,7 @@ private _configurationErrors = [];
         _configurationErrors pushBack format ["%1 selection is empty, invalid, or assigned to the wrong side", _label];
         continue;
     };
-    if ((_catalog get "units") isEqualTo []) then {
+    if ((_catalog get "units") isEqualTo [] && {!(_manual && {(_catalog get "side") == 1})}) then {
         _configurationErrors pushBack format ["%1 selection exposes no public units", _label];
     };
     if (_requireVehicles && {(_catalog get "allVehicles") isEqualTo []}) then {
@@ -88,13 +88,6 @@ private _makeEntries = {
         ]
     }
 };
-private _squad = {
-    params ["_groups", "_defaultUnits", ["_size", 8]];
-    private _result = +(_groups param [0, _defaultUnits]);
-    if (_result isEqualTo []) then {_result = +_defaultUnits};
-    if (count _result > _size) then {_result resize _size};
-    _result
-};
 private _transportConfigClasses = KPLIB_transportConfigs apply {toLower (_x select 0)};
 private _registerTransportConfig = {
     params ["_vehicleClass"];
@@ -113,7 +106,7 @@ private _unitRole = {
 };
 private _manualValue = {
     params ["_section", "_key", "_automatic"];
-    if (_manual) exitWith {(_profile get _section) getOrDefault [_key, if (_section == "squads") then {[]} else {""}]};
+    if (_manual) exitWith {(_profile get _section) getOrDefault [_key, ""]};
     _automatic
 };
 
@@ -145,14 +138,6 @@ static_vehicles = [_blufor get "static", "static"] call _makeEntries;
     [_x select 0] call _registerTransportConfig;
 } forEach (groundlogi_vehicles + rotarylogi_vehicles);
 
-private _units = _blufor get "units";
-private _groups = _blufor get "infantryGroups";
-private _defaultSquad = +_units;
-if (count _defaultSquad > 8) then {_defaultSquad resize 8};
-blufor_squad_inf = ["squads", "blufor_squad_inf", [_groups, _defaultSquad, 8] call _squad] call _manualValue;
-
-crewman_classname = [_units, "crew"] call _unitRole;
-pilot_classname = [_units, "pilot"] call _unitRole;
 private _rotaryPool = (_blufor get "rotaryLogistics") + (_blufor get "rotaryCas");
 private _generalGroundPool = _light + (_blufor get "recon") + _groundTransport + (_blufor get "heavy");
 private _logisticsPool = (_blufor get "groundLogistics") + _groundTransport;
@@ -181,54 +166,36 @@ _profile = _profiles getOrDefault ["opfor", createHashMap];
 private _units = _opfor get "units";
 opfor_officer = [_units, "officer"] call _unitRole;
 opfor_squad_leader = [_units, "squadleader"] call _unitRole;
-opfor_team_leader = [_units, "teamleader"] call _unitRole;
-opfor_sentry = [_units, "rifleman"] call _unitRole;
-opfor_rifleman = opfor_sentry;
+opfor_rifleman = [_units, "rifleman"] call _unitRole;
 opfor_rpg = [_units, "at"] call _unitRole;
 opfor_grenadier = [_units, "grenadier"] call _unitRole;
 opfor_machinegunner = [_units, "machinegunner"] call _unitRole;
 opfor_heavygunner = [_units, "heavygunner"] call _unitRole;
 opfor_marksman = [_units, "marksman"] call _unitRole;
 opfor_sharpshooter = opfor_marksman;
-opfor_sniper = [_units, "sniper"] call _unitRole;
 opfor_at = [_units, "at"] call _unitRole;
 opfor_aa = [_units, "aa"] call _unitRole;
 opfor_medic = [_units, "medic"] call _unitRole;
-opfor_engineer = [_units, "engineer"] call _unitRole;
-opfor_paratrooper = [_units, "paratrooper"] call _unitRole;
 opfor_rto = [_units, "rto"] call _unitRole;
 opfor_rto_loadout = getUnitLoadout opfor_rto;
 KPLIB_autoFactionOpforNightVision = (opfor_rto_loadout param [9, []]) param [5, ""];
 
 private _unitLoadouts = _units apply {getUnitLoadout _x};
 opfor_uniforms = [];
-opfor_vests = [];
-opfor_backpacks = [];
 {
     private _uniform = (_x param [3, []]) param [0, ""];
-    private _vest = (_x param [4, []]) param [0, ""];
-    private _backpack = (_x param [5, []]) param [0, ""];
     if (_uniform != "") then {opfor_uniforms pushBackUnique _uniform};
-    if (_vest != "") then {opfor_vests pushBackUnique _vest};
-    if (_backpack != "") then {opfor_backpacks pushBackUnique _backpack};
 } forEach _unitLoadouts;
-opfor_uniform_kit = (opfor_rto_loadout param [3, []]) param [1, []];
 
-private _defaultGroup = +_units;
-if (count _defaultGroup > 8) then {_defaultGroup resize 8};
-militia_squad = ["squads", "militia_squad", [(_opfor get "infantryGroups"), _defaultGroup, 8] call _squad] call _manualValue;
-militia_squad_lower = militia_squad apply {toLower _x};
 private _allVehicles = _opfor get "allVehicles";
 private _generalPool = (_opfor get "light") + (_opfor get "recon");
 private _groundVehicles = _allVehicles select {!(_x isKindOf "Air")};
 if (!_manual && {_generalPool isEqualTo []}) then {_generalPool = +_groundVehicles};
 if (!_manual && {_generalPool isEqualTo []}) then {_generalPool = +_allVehicles};
-private _generalClass = _generalPool param [0, ""];
 private _heavyPool = +(_opfor get "heavy");
 if (!_manual && {_heavyPool isEqualTo []}) then {_heavyPool = +_generalPool};
 private _transportPool = (_opfor get "transport") select {!(_x isKindOf "Air")};
 if (!_manual && {_transportPool isEqualTo []}) then {_transportPool = +_generalPool};
-private _aaPool = +(_opfor get "aa");
 
 militia_vehicles = +_generalPool;
 opfor_vehicles = +_generalPool;
@@ -238,31 +205,6 @@ opfor_battlegroup_vehicles_low_intensity = _heavyPool + _generalPool;
 opfor_troup_transports = +_transportPool;
 opfor_choppers = (_opfor get "rotaryCas") + (_opfor get "rotaryLogistics");
 opfor_air = (_opfor get "fixedWing") + (_opfor get "rotaryCas");
-opfor_cap = +(_opfor get "fixedWing");
-if (!_manual && {opfor_cap isEqualTo []}) then {opfor_cap = +opfor_air};
-opfor_tanks = [[0, _heavyPool]];
-opfor_sams = [[0, _aaPool]];
-private _armoredTransports = (_opfor get "heavy") select {
-    getNumber (configFile >> "CfgVehicles" >> _x >> "transportSoldier") > 0
-};
-if (!_manual && {_armoredTransports isEqualTo []}) then {_armoredTransports = +_transportPool};
-private _scoutPool = +(_opfor get "recon");
-if (!_manual && {_scoutPool isEqualTo []}) then {_scoutPool = +_generalPool};
-opfor_ifvs = [[0, _armoredTransports]];
-opfor_apcs = [[0, _armoredTransports]];
-opfor_transports = [[0, _transportPool]];
-opfor_scout_cars = [[0, _scoutPool]];
-
-opfor_mrap = ["vehicleRoles", "opfor_mrap", [_generalPool, _generalClass] call _first] call _manualValue;
-opfor_mrap_armed = ["vehicleRoles", "opfor_mrap_armed", [_generalPool, _generalClass] call _last] call _manualValue;
-opfor_transport_helo = ["vehicleRoles", "opfor_transport_helo", [_opfor get "rotaryLogistics", opfor_choppers param [0, _generalClass]] call _first] call _manualValue;
-opfor_transport_truck = ["vehicleRoles", "opfor_transport_truck", [_transportPool, _generalClass] call _first] call _manualValue;
-private _logisticsPool = +(_opfor get "groundLogistics");
-if (!_manual && {_logisticsPool isEqualTo []}) then {_logisticsPool = +_transportPool};
-opfor_ammobox_transport = ["vehicleRoles", "opfor_ammobox_transport", [_logisticsPool, _generalClass] call _first] call _manualValue;
-opfor_fuel_truck = ["vehicleRoles", "opfor_fuel_truck", [_logisticsPool, _generalClass] call _last] call _manualValue;
-opfor_ammo_truck = ["vehicleRoles", "opfor_ammo_truck", [_logisticsPool, _generalClass] call _first] call _manualValue;
-[opfor_ammobox_transport] call _registerTransportConfig;
 
 BATTLESPACE_DEFENDERS_STATIC_CLASSES = (_opfor get "static") - (_opfor get "samRadar");
 
@@ -281,42 +223,6 @@ private _resistance = _catalogs get "resistance";
 KP_liberation_guerilla_units = +(_resistance get "units");
 KP_liberation_guerilla_vehicles = +(_resistance get "allVehicles");
 
-private _weapons = [];
-private _uniforms = [];
-private _vests = [];
-private _headgear = [];
-private _facegear = [];
-{
-    private _loadout = getUnitLoadout _x;
-    private _primary = _loadout param [0, []];
-    private _weapon = _primary param [0, ""];
-    private _magazine = (_primary param [4, []]) param [0, ""];
-    private _optic = _primary param [3, ""];
-    if (_weapon != "" && {_magazine != ""}) then {
-        _weapons pushBackUnique [_weapon, _magazine, 6, _optic, ""];
-    };
-    private _uniform = (_loadout param [3, []]) param [0, ""];
-    private _vest = (_loadout param [4, []]) param [0, ""];
-    private _helmet = _loadout param [6, ""];
-    private _glasses = _loadout param [7, ""];
-    if (_uniform != "") then {_uniforms pushBackUnique _uniform};
-    if (_vest != "") then {_vests pushBackUnique _vest};
-    if (_helmet != "") then {_headgear pushBackUnique _helmet};
-    if (_glasses != "") then {_facegear pushBackUnique _glasses};
-} forEach (_resistance get "units");
-KP_liberation_guerilla_weapons_1 = +_weapons;
-KP_liberation_guerilla_weapons_2 = +_weapons;
-KP_liberation_guerilla_weapons_3 = +_weapons;
-KP_liberation_guerilla_uniforms_1 = +_uniforms;
-KP_liberation_guerilla_uniforms_2 = +_uniforms;
-KP_liberation_guerilla_uniforms_3 = +_uniforms;
-KP_liberation_guerilla_vests_1 = +_vests;
-KP_liberation_guerilla_vests_2 = +_vests;
-KP_liberation_guerilla_vests_3 = +_vests;
-KP_liberation_guerilla_headgear_1 = +_headgear;
-KP_liberation_guerilla_headgear_2 = +_headgear;
-KP_liberation_guerilla_headgear_3 = +_headgear;
-KP_liberation_guerilla_facegear = +_facegear;
 private _civilian = _catalogs get "civilians";
 civilians = +(_civilian get "units");
 civilians_lower = civilians apply {toLower _x};

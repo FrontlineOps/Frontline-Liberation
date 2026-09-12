@@ -2,7 +2,7 @@ params [
     "_stats_ammo_produced",
     "_stats_ammo_spent",
     "_stats_blufor_soldiers_killed",
-    "_stats_blufor_soldiers_recruited",
+    "_reservedRecruitment",
     "_stats_blufor_teamkills",
     "_stats_blufor_vehicles_built",
     "_stats_blufor_vehicles_killed",
@@ -91,12 +91,11 @@ if (dialog) then {sleep 3};
 [] call _cleanPage;
 
 // Second page
-[691, format [localize "STR_STATS_BLUFOR_B_INF", _stats_blufor_soldiers_recruited]] call _addReportLine;
-[692, format [localize "STR_STATS_BLUFOR_K_INF", _stats_blufor_soldiers_killed]] call _addReportLine;
-[693, format [localize "STR_STATS_BLUFOR_B_VEH", _stats_blufor_vehicles_built]] call _addReportLine;
-[694, format [localize "STR_STATS_BLUFOR_K_VEH", _stats_blufor_vehicles_killed]] call _addReportLine;
-[695, format [localize "STR_STATS_BLUFOR_K_PL", _stats_player_deaths]] call _addReportLine;
-[696, format [localize "STR_STATS_BLUFOR_TK", _stats_blufor_teamkills], true] call _addReportLine;
+[691, format [localize "STR_STATS_BLUFOR_K_INF", _stats_blufor_soldiers_killed]] call _addReportLine;
+[692, format [localize "STR_STATS_BLUFOR_B_VEH", _stats_blufor_vehicles_built]] call _addReportLine;
+[693, format [localize "STR_STATS_BLUFOR_K_VEH", _stats_blufor_vehicles_killed]] call _addReportLine;
+[694, format [localize "STR_STATS_BLUFOR_K_PL", _stats_player_deaths]] call _addReportLine;
+[695, format [localize "STR_STATS_BLUFOR_TK", _stats_blufor_teamkills], true] call _addReportLine;
 [] call _cleanPage;
 
 // Third page

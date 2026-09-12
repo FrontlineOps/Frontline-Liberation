@@ -115,9 +115,7 @@ KPLIB_SURRENDER_SERVER_CONVERT_UNIT = {
     _unit setVariable ["KPLIB_intelligencePrisoner", true, true];
     _unit setVariable ["KPLIB_intelligenceEscort", objNull];
     removeAllWeapons _unit;
-    if (typeOf _unit != pilot_classname) then {
-        removeHeadgear _unit;
-    };
+    removeHeadgear _unit;
     removeBackpack _unit;
     removeVest _unit;
     _unit unassignItem "NVGoggles_OPFOR";

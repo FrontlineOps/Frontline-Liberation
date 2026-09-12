@@ -41,8 +41,6 @@ if(isServer) then {
     GET_PARAM(GRLIB_csat_aggressivity,"Aggressivity",2);
     GET_PARAM(GRLIB_civilian_activity,"Civilians",1);
     GET_PARAM(GRLIB_maximum_fobs,"MaximumFobs",26);
-    GET_PARAM_BOOL(GRLIB_blufor_defenders,"BluforDefenders",1);
-    GET_PARAM_BOOL(GRLIB_autodanger,"Autodanger",0);
     GET_PARAM(GRLIB_time_factor,"DayDuration",12);
     GET_PARAM_BOOL(GRLIB_shorter_nights,"ShorterNights",0);
     GET_PARAM(GRLIB_weather_param,"Weather",3);
@@ -217,14 +215,6 @@ if (!isDedicated && hasInterface) then {
 
     _param = localize "STR_PARAM_FOBS_COUNT";
     _value = str GRLIB_maximum_fobs;
-    _text = _text + format ["<font color='#ff8000'>%1</font><br />%2<br /><br />", _param, _value];
-
-    _param = localize "STR_PARAM_BLUFOR_DEFENDERS";
-    _value = if (GRLIB_blufor_defenders) then {localize "STR_PARAMS_ENABLED";} else {localize "STR_PARAMS_DISABLED";};
-    _text = _text + format ["<font color='#ff8000'>%1</font><br />%2<br /><br />", _param, _value];
-
-    _param = localize "STR_PARAM_AUTODANGER";
-    _value = if (GRLIB_autodanger) then {localize "STR_PARAMS_ENABLED";} else {localize "STR_PARAMS_DISABLED";};
     _text = _text + format ["<font color='#ff8000'>%1</font><br />%2<br /><br />", _param, _value];
 
     _param = localize "STR_PARAMS_DAYDURATION";

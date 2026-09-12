@@ -159,7 +159,7 @@ KPLIB_fnc_commitBuild = {
     [_areas, _prices] call (localNamespace getVariable "KPLIB_buildDebit");
     [_object] call KPLIB_fnc_addObjectInit;
     [_object] call KPLIB_fnc_clearCargo;
-    if (unitIsUAV _object) then {[_object] call KPLIB_fnc_forceBluforCrew};
+    if (unitIsUAV _object) then {[_object] call KPLIB_fnc_initUavCrew};
     [{params ["_object"]; if (!isNull _object) then {_object allowDamage true}}, [_object], 0.3] call CBA_fnc_waitAndExecute;
     if !(_class isKindOf "Building") then {stats_blufor_vehicles_built = stats_blufor_vehicles_built + 1};
     if (_type != 6) then {

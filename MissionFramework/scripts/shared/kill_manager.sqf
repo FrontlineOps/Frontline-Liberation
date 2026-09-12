@@ -150,7 +150,7 @@ if (isServer) then {
 
                 private _type = (toLower (typeOf _unit));
 
-                if (_type in KPLIB_o_inf_classes || _type in militia_squad_lower) then {
+                if (_type in KPLIB_o_inf_classes) then {
                     [6, [(name _killer)]] remoteExec ["KPLIB_fnc_crGlobalMsg"];
 
                     combat_readiness = combat_readiness + 5;

@@ -70,13 +70,10 @@ KPLIB_objectInits = [
         true
     ],
 
-    // Disable autocombat (if set in parameters) and fleeing
+    // AI morale and enemy artillery observers.
     [
         ["Man"],
         {
-            if (!(GRLIB_autodanger) && {(side _this) isEqualTo GRLIB_side_friendly}) then {
-                _this disableAI "AUTOCOMBAT";
-            };
             _this allowFleeing 0;
 
             if((side _this) isEqualTo GRLIB_side_enemy) then {

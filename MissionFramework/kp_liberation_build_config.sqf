@@ -181,11 +181,6 @@ support_vehicles = [
 
 elite_vehicles = [];
 
-// Objects used by the standard FOB compositions.
-opfor_fuel_container = "B_Slingload_01_Fuel_F";
-opfor_ammo_container = "B_Slingload_01_Ammo_F";
-opfor_flag = "Flag_CSAT_W";
-
 // Classnames of objects which should be ignored when building
 GRLIB_ignore_colisions_when_building = [
     "Land_Cargo40_military_green_F",

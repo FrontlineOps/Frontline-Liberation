@@ -12,7 +12,6 @@ private _catalogs = createHashMap;
 private _errors = [];
 private _optionalMissing = [];
 private _vehiclePools = ["light", "recon", "medical", "groundLogistics", "artillery", "atgm", "aa", "samTel", "samRadar", "samShorad", "aaGun", "heavy", "rotaryLogistics", "rotaryCas", "fixedWing", "static", "transport", "boat"];
-private _groupPools = ["infantryGroups", "atGroups", "aaGroups", "reconGroups", "paraGroups"];
 private _item = {
     params ["_class"];
     if !(_class isEqualType "" && {_class != ""}) exitWith {
@@ -51,13 +50,32 @@ private _item = {
         _errors pushBack format ["%1 must return a profile HashMap", _path];
         continue;
     };
+    private _sections = switch (_sideKey) do {
+        case "blufor": {["catalog", "vehicleRoles", "prices", "equipment", "roles", "slots", "crates", "defaultRole", "specialtyResources"]};
+        case "opfor": {["catalog", "unitRoles"]};
+        default {["catalog"]};
+    };
+    {
+        if !(_x in _sections) then {
+            [format ["%1/%2 is not used by this side. Follow the sections in the manual template.", _path, _x]] call _fail;
+        };
+    } forEach _profile;
     {
         private _value = _profile getOrDefault [_x, createHashMap];
         if !(_value isEqualType createHashMap) then {[format ["%1/%2 must be a HashMap", _path, _x]] call _fail};
         _profile set [_x, _value];
-    } forEach ["catalog", "unitRoles", "vehicleRoles", "squads", "prices", "equipment", "roles", "slots", "crates"];
+    } forEach ["catalog", "unitRoles", "vehicleRoles", "prices", "equipment", "roles", "slots", "crates"];
     private _catalog = _profile getOrDefault ["catalog", createHashMap];
     if !(_catalog isEqualType createHashMap) then {_errors pushBack format ["Invalid catalog in %1", _path]; continue};
+    if (_sideKey == "blufor" && {"units" in _catalog}) then {
+        ["blufor/catalog/units is not used. Configure player equipment under roles."] call _fail;
+    };
+    private _catalogKeys = ["factions", "units"] + _vehiclePools;
+    {
+        if !(_x in _catalogKeys) then {
+            [format ["Unknown roster list %1/catalog/%2", _path, _x]] call _fail;
+        };
+    } forEach _catalog;
     _catalog set ["side", _sideNumber];
     private _factions = _catalog getOrDefault ["factions", []];
     if !(_factions isEqualType [] && {(_factions findIf {!(_x isEqualType "" && {isClass (configFile >> "CfgFactionClasses" >> _x)})}) == -1}) then {
@@ -83,45 +101,20 @@ private _item = {
         } forEach _pool;
         _catalog set [_x, _normalized];
         if (_x in _vehiclePools) then {_allVehicles append _normalized};
-    } forEach (["units", "crates", "containers"] + _vehiclePools);
-    if ((_catalog get "units") isEqualTo []) then {_errors pushBack format ["%1 has no infantry/civilians", _path]};
+    } forEach (["units"] + _vehiclePools);
+    if (_sideKey != "blufor" && {(_catalog get "units") isEqualTo []}) then {
+        _errors pushBack format ["%1 has no infantry/civilians", _path];
+    };
     _catalog set ["allVehicles", _allVehicles arrayIntersect _allVehicles];
-    private _groups = [];
+    private _unitJobs = ["officer", "squadleader", "rifleman", "at", "grenadier", "machinegunner", "heavygunner", "marksman", "aa", "medic", "rto"];
     {
-        private _pool = _catalog getOrDefault [_x, []];
-        if !(_pool isEqualType []) then {[format ["%1/%2 must be an array of squads", _path, _x]] call _fail};
-        private _normalized = [];
-        {
-            if !(_x isEqualType []) then {[format ["%1: each squad must be an array", _path]] call _fail};
-            private _squad = _x apply {if (_x isEqualType "") then {configName (configFile >> "CfgVehicles" >> _x)} else {""}};
-            if (_squad isEqualTo [] || {(_squad findIf {!(_x in (_catalog get "units"))}) >= 0}) then {
-                _errors pushBack format ["%1 squad is empty or contains an unlisted infantry class", _path];
-            };
-            _normalized pushBack _squad;
-        } forEach _pool;
-        _catalog set [_x, _normalized];
-        _groups append _normalized;
-    } forEach _groupPools;
-    _catalog set ["groups", _groups];
-    {
+        if !(_x in _unitJobs) then {[format ["Unknown AI job %1/unitRoles/%2", _path, _x]] call _fail};
         if !(_y isEqualType "") then {[format ["%1/unitRoles/%2 must be a classname", _path, _x]] call _fail};
         private _canonical = configName (configFile >> "CfgVehicles" >> _y);
         (_profile get "unitRoles") set [_x, _canonical];
         if !(_canonical in (_catalog get "units")) then {_errors pushBack format ["%1 unit role %2 uses unlisted infantry %3", _path, _x, _y]};
     } forEach (_profile getOrDefault ["unitRoles", createHashMap]);
-    {
-        if !(_y isEqualType []) then {[format ["%1/squads/%2 must be an array", _path, _x]] call _fail};
-        private _squad = _y apply {if (_x isEqualType "") then {configName (configFile >> "CfgVehicles" >> _x)} else {""}};
-        (_profile get "squads") set [_x, _squad];
-        if !(_squad isEqualType [] && {(_squad findIf {!(_x in (_catalog get "units"))}) == -1}) then {
-            _errors pushBack format ["Invalid explicit squad %1/%2", _path, _x];
-        };
-    } forEach (_profile getOrDefault ["squads", createHashMap]);
-    private _requiredUnits = switch (_sideKey) do {
-        case "blufor": {["crew", "pilot"]};
-        case "opfor": {["officer", "squadleader", "teamleader", "rifleman", "at", "grenadier", "machinegunner", "heavygunner", "marksman", "sniper", "aa", "medic", "engineer", "paratrooper", "rto"]};
-        default {[]};
-    };
+    private _requiredUnits = [[], _unitJobs] select (_sideKey == "opfor");
     {
         if !(_x in (_profile get "unitRoles")) then {_errors pushBack format ["%1/unitRoles requires %2", _path, _x]};
     } forEach _requiredUnits;
@@ -133,20 +126,11 @@ private _item = {
     } forEach (_profile get "vehicleRoles");
     private _requiredVehicles = switch (_sideKey) do {
         case "blufor": {["Respawn_truck_typename"]};
-        case "opfor": {["opfor_transport_truck", "opfor_ammobox_transport", "opfor_fuel_truck", "opfor_ammo_truck"]};
         default {[]};
     };
     {
         if (((_profile get "vehicleRoles") getOrDefault [_x, ""]) == "") then {_errors pushBack format ["%1/vehicleRoles requires %2", _path, _x]};
     } forEach _requiredVehicles;
-    private _requiredSquads = switch (_sideKey) do {
-        case "blufor": {["blufor_squad_inf"]};
-        case "opfor": {["militia_squad"]};
-        default {[]};
-    };
-    {
-        if (((_profile get "squads") getOrDefault [_x, []]) isEqualTo []) then {_errors pushBack format ["%1/squads requires %2", _path, _x]};
-    } forEach _requiredSquads;
     private _prices = createHashMap;
     {
         if !(_x isEqualType "" && {isClass (configFile >> "CfgVehicles" >> _x)}) then {[format ["%1/prices has an invalid classname", _path]] call _fail};
@@ -164,14 +148,6 @@ private _item = {
     private _specialty = _profile getOrDefault ["specialtyResources", 0];
     if !(_specialty isEqualType 0 && {finite _specialty} && {_specialty >= 0} && {_specialty == floor _specialty}) then {
         _errors pushBack format ["%1/specialtyResources must be a nonnegative integer", _path];
-    };
-    // Combat players are BLUFOR only. Other sides describe AI assets.
-    if (_sideKey != "blufor") then {
-        {
-            if (count (_profile get _x) > 0) then {
-                _errors pushBack format ["%1/%2 is player configuration; put player equipment, roles and requestable crates under blufor only", _path, _x];
-            };
-        } forEach ["equipment", "roles", "slots", "crates"];
     };
     private _equipment = _profile getOrDefault ["equipment", createHashMap];
     private _arsenal = createHashMapFromArray [["weapons", []], ["magazines", []], ["items", []], ["backpacks", []], ["all", []]];

@@ -36,20 +36,6 @@ execVM "scripts\server\sector\lose_sectors.sqf";
 
 KPLIB_fsm_sectorMonitor = [] call KPLIB_fnc_sectorMonitor;
 
-// The automatic faction system uses the mission's standard FOB compositions.
-KPLIB_fob_templates = [
-    "scripts\fob_templates\default\template1.sqf",
-    "scripts\fob_templates\default\template2.sqf",
-    "scripts\fob_templates\default\template3.sqf",
-    "scripts\fob_templates\default\template4.sqf",
-    "scripts\fob_templates\default\template5.sqf",
-    "scripts\fob_templates\default\template6.sqf",
-    "scripts\fob_templates\default\template7.sqf",
-    "scripts\fob_templates\default\template8.sqf",
-    "scripts\fob_templates\default\template9.sqf",
-    "scripts\fob_templates\default\template10.sqf"
-];
-
 // Civil Reputation
 [] call compileFinal preprocessFileLineNumbers "scripts\server\sector\civilian_revolt.sqf";
 execVM "scripts\server\civrep\init_module.sqf";

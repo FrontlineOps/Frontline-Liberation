@@ -40,9 +40,7 @@ KPLIB_fnc_vehicleAccess = {
     private _class = toLower typeOf _vehicle;
     private _side = side group _unit;
     if (_side != GRLIB_side_friendly) exitWith {
-        private _sideKey = ([_unit] call KPLIB_fnc_getPlayerRole) select 0;
-        private _profile = (localNamespace getVariable "KPLIB_factionProfiles") get _sideKey;
-        [_class in (((_profile get "catalog") get "allVehicles") apply {toLower _x}), "This vehicle is outside your faction's roster."]
+        [false, "Player vehicle access is available only to BLUFOR."]
     };
     if (_class in (localNamespace getVariable "KPLIB_enemyVehicleClasses")
         || {getNumber (configOf _vehicle >> "side") == 0}) exitWith {

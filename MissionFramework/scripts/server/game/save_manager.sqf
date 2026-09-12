@@ -39,8 +39,6 @@ KPLIB_classnamesToSave = [toLower FOB_typename, toLower huron_typename];
     --- Locals ---
     Variables which are only used inside the save_manager.sqf
 */
-// All AI squads
-private _aiGroups = [];
 // Current campaign date and time
 private _dateTime = [];
 // Vehicles which shouldn't be handled in the kill manager
@@ -177,7 +175,6 @@ if (!isNil "_saveData") then {
         _resourceStorages                           = _saveData select  3;
         _stats                                      = _saveData select  4;
         _weights                                    = _saveData select  5;
-        _aiGroups                                   = _saveData select  6;
         blufor_sectors                              = _saveData select  7;
         combat_readiness                            = _saveData select  8;
         GRLIB_all_fobs                              = _saveData select  9;
@@ -245,7 +242,6 @@ if (!isNil "_saveData") then {
         _stats                                      = _saveData select  8;
         _weights                                    = _saveData select  9;
         GRLIB_vehicle_to_military_base_links        = _saveData select 10;
-        _aiGroups                                   = _saveData select 12;
         KP_liberation_civ_rep                       = _saveData select 15;
         KP_liberation_production_markers            = _saveData select 16;
         KP_liberation_guerilla_strength             = _saveData select 17;
@@ -314,7 +310,7 @@ if (!isNil "_saveData") then {
     private _object = objNull;
     {
         // Fetch data of saved object
-        _x params ["_class", "_pos", "_vecDir", "_vecUp", ["_hasCrew", false]];
+        _x params ["_class", "_pos", "_vecDir", "_vecUp"];
 
         // This will be removed if we reach a 0.96.7 due to more released Arma 3 DLCs until we finish 0.97.0
         if !(((_saveData select 0) select 0) isEqualType 0) then {
@@ -365,9 +361,9 @@ if (!isNil "_saveData") then {
             // Determine if cargo should be cleared
             [_object] call KPLIB_fnc_clearCargo;
 
-            // Add blufor crew, if it had crew or is a UAV
-            if ((unitIsUAV _object) || _hascrew) then {
-                [_object] call KPLIB_fnc_forceBluforCrew;
+            // Only drones need native engine crew; saved player vehicles stay empty.
+            if (unitIsUAV _object) then {
+                [_object] call KPLIB_fnc_initUavCrew;
             };
         };
     } forEach _objectsToSave;
@@ -459,35 +455,6 @@ if (!isNil "_saveData") then {
         };
     } forEach KP_liberation_production;
     ["Saved sector storages placed and filled", "SAVE"] call KPLIB_fnc_log;
-
-    // Spawn BLUFOR AI groups
-    // This will be removed if we reach a 0.96.7 due to more released Arma 3 DLCs until we finish 0.97.0
-    private _grp = grpNull;
-    if (((_saveData select 0) select 0) isEqualType 0) then {
-        {
-            _x params ["_spawnPos", "_units"];
-            _grp = createGroup [GRLIB_side_friendly, true];
-            {
-                [_x, [_spawnPos, _grp] select (_forEachIndex > 0), _grp] call KPLIB_fnc_createManagedUnit;
-            } forEach _units;
-        } forEach _aiGroups;
-    } else {
-        // Pre 0.96.5 compatibility
-        private _pos = [];
-        private _dir = 0;
-        private _unit = objNull;
-        {
-            _grp = createGroup [GRLIB_side_friendly, true];
-            {
-                _pos = [(_x select 1) select 0, (_x select 1) select 1, ((_x select 1) select 2) + 0.2];
-                _dir = _x select 2;
-                _unit = [(_x select 0), _pos, _grp] call KPLIB_fnc_createManagedUnit;
-                _unit setDir _dir;
-                _unit setPosATL _pos;
-            } forEach _x;
-        } forEach _aiGroups;
-    };
-    ["Saved AI units placed", "SAVE"] call KPLIB_fnc_log;
 
     // Spawn all saved sector crates
     {
