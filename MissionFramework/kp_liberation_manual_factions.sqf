@@ -1,5 +1,5 @@
 // MANUAL FACTIONS
-// Put classnames inside quotes, separated by commas: ["B_Soldier_F", "B_medic_F"].
+// Put classnames inside quotes, separated by commas: ["O_Soldier_F", "O_medic_F"].
 // [] means an empty list. "" means one empty name. Keep the setting names unchanged.
 // Lines starting with // are comments. Remove // from copied example rows to use them.
 // Finish all four sides, select MANUAL in kp_liberation_config.sqf, rebuild/restart.
@@ -9,7 +9,6 @@
 private _blufor = createHashMapFromArray [
     ["catalog", createHashMapFromArray [
         ["factions", []], // Faction IDs, e.g. ["BLU_F"]. Required.
-        ["units", []], // Classes used by crew/pilot/FOB defenders below. Required.
         ["light", []], // Cars and MRAPs.
         ["recon", []], // Scout vehicles.
         ["medical", []], // Ambulances and medical helicopters.
@@ -26,13 +25,8 @@ private _blufor = createHashMapFromArray [
         ["boat", []] // Boats.
     ]],
 
-    // Crew fallback and pilot identification. Also list these classes in units.
-    ["unitRoles", createHashMapFromArray [
-        ["crew", ""],
-        ["pilot", ""]
-    ]],
-
-    // Pick from your vehicle lists above. Leave unused optional jobs as "".
+    // Player vehicles for mobile respawn and map-placed base spawn points.
+    // Pick from your vehicle lists above; unused base spawn points can stay "".
     ["vehicleRoles", createHashMapFromArray [
         ["Respawn_truck_typename", ""], // Mobile respawn truck. Required.
         ["KP_liberation_smallhelo_classname", ""], // Small helicopter.
@@ -53,12 +47,6 @@ private _blufor = createHashMapFromArray [
         ["KP_liberation_drone_classname", ""], // Drone.
         ["KP_liberation_repair_classname", ""], // Repair truck.
         ["KP_liberation_fuel_classname", ""] // Fuel truck.
-    ]],
-
-    // Squad members must be listed in units. Repeat a class for multiple soldiers.
-    // Only used by the optional automatic FOB defenders.
-    ["squads", createHashMapFromArray [
-        ["blufor_squad_inf", []] // Soldier classnames from units. Required.
     ]],
 
     // One price for EVERY BLUFOR vehicle: [supplies, ammunition, fuel].
@@ -163,36 +151,17 @@ private _opfor = createHashMapFromArray [
     ["unitRoles", createHashMapFromArray [
         ["officer", ""],
         ["squadleader", ""],
-        ["teamleader", ""],
         ["rifleman", ""],
         ["at", ""],
         ["grenadier", ""],
         ["machinegunner", ""],
         ["heavygunner", ""],
         ["marksman", ""],
-        ["sniper", ""],
         ["aa", ""],
         ["medic", ""],
-        ["engineer", ""],
-        ["paratrooper", ""],
         ["rto", ""]
-    ]],
-
-    // Choose from the enemy vehicle lists. The four truck jobs are required.
-    ["vehicleRoles", createHashMapFromArray [
-        ["opfor_mrap", ""],
-        ["opfor_mrap_armed", ""],
-        ["opfor_transport_helo", ""],
-        ["opfor_transport_truck", ""],
-        ["opfor_ammobox_transport", ""], // Enemy logistics truck.
-        ["opfor_fuel_truck", ""],
-        ["opfor_ammo_truck", ""]
-    ]],
-
-    // Required basic enemy squad. Use soldier names from units; repeat as needed.
-    ["squads", createHashMapFromArray [
-        ["militia_squad", []]
     ]]
+
 ];
 
 // INSURGENTS - the existing resistance/guerrilla AI roster.

@@ -2500,34 +2500,6 @@
             <German>Alle Sektoren</German>
             <Korean>모든 거점</Korean>
         </Key>
-        <Key ID="STR_PARAM_AUTODANGER">
-            <Original>Auto-danger behavior on BLUFOR forces</Original>
-            <Czech>Chování při automatickém nebezpečí BLUFOR jednotek</Czech>
-            <French>Comportement 'danger' automatique sur les forces BLUFOR</French>
-            <Spanish>Comportamiento de Auto-Alerta en las fuerzas BLUFOR</Spanish>
-            <Italian>Comportamento Auto-Allerta per forze BLUFOR</Italian>
-            <Portuguese>Comportamento automático de alerta nas forças aliadas</Portuguese>
-            <Russian>Авто-опасность для сил BLUFOR</Russian>
-            <German>Automatisches Verhalten "Gefahr" bei BLUFOR Kräften</German>
-            <Korean>아군 부대의 자동 경계 행위</Korean>
-            <Chinese>我軍部隊自動警戒行為</Chinese>
-            <Chinesesimp>我军部队自动警戒行为</Chinesesimp>
-            <Turkish>BLUFOR için Oto-tehlike davranışı</Turkish>
-        </Key>
-        <Key ID="STR_PARAM_BLUFOR_DEFENDERS">
-            <Original>BLUFOR defenders in owned sectors</Original>
-            <Czech>BLUFOR obránci v obsazených sektorech</Czech>
-            <French>Défenseurs BLUFOR dans les secteurs capturés</French>
-            <Spanish>Defensores BLUFOR en los sectores controlados</Spanish>
-            <Italian>Trupppe BLUFOR nei settori controllati</Italian>
-            <Portuguese>Defensores aliados nos setores controlados</Portuguese>
-            <Russian>Солдаты BLUFOR в захваченных секторах</Russian>
-            <German>BLUFOR Verteidiger in besetzten Sektoren</German>
-            <Korean>적군 공격시 방어군 생성</Korean>
-            <Chinese>我軍部隊協防我方戰區</Chinese>
-            <Chinesesimp>我军部队防御己方战区</Chinesesimp>
-            <Turkish>Sektörlerdeki BLUFOR savunmacıları</Turkish>
-        </Key>
         <Key ID="STR_PARAM_CLEAR_CARGO">
             <Original>Clear spawned vehicle cargo</Original>
             <Czech>Vymazat náklad vyvolaného vozidla</Czech>
@@ -3408,20 +3380,6 @@
             <Chinese>敵方戰鬥群增援次數： %1</Chinese>
             <Chinesesimp>敌军战斗组增援次数： %1</Chinesesimp>
             <Turkish>Düşman savaş grupları: %1</Turkish>
-        </Key>
-        <Key ID="STR_STATS_BLUFOR_B_INF">
-            <Original>BLUFOR soldiers recruited: %1</Original>
-            <Czech>Nábor vojáků BLUFOR: %1</Czech>
-            <French>Soldats BLUFOR recrutés: %1</French>
-            <Spanish>Soldados BLUFOR reclutados: %1</Spanish>
-            <Italian>Soldato BLUFOR reclutato: %1</Italian>
-            <Portuguese>Soldados aliados recrutados: %1</Portuguese>
-            <Russian>Солдат BLUFOR призвано: %1</Russian>
-            <German>BLUFOR Soldaten rekrutiert: %1</German>
-            <Korean>AI 병사 소집 : %1</Korean>
-            <Chinese>我軍招募的士兵： %1</Chinese>
-            <Chinesesimp>我军招募的士兵： %1</Chinesesimp>
-            <Turkish>Çağrılan BLUFOR askerleri: %1</Turkish>
         </Key>
         <Key ID="STR_STATS_BLUFOR_B_VEH">
             <Original>BLUFOR vehicles built: %1</Original>

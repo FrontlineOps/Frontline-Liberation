@@ -21,7 +21,6 @@ private _factoryDepots = [1, []];
 private _factoryCrates = [];
 private _productionSnapshot = [];
 private _resourceStorages = [];
-private _aiGroups = [];
 
 private _allObjects = [];
 private _allStorages = [];
@@ -35,15 +34,8 @@ private _intelProps = [];
     _intelProps pushBack (_y getOrDefault ["office", objNull]);
 } forEach (localNamespace getVariable ["KPLIB_INTEL_BASES", createHashMap]);
 
-// Get all blufor groups
-private _allBlueGroups = allGroups select {
-    (side _x == GRLIB_side_friendly) &&                 // Only blufor groups
-    {isNull objectParent (leader _x)} &&                // Make sure it's an infantry group
-    {!(((units _x) select {alive _x}) isEqualTo [])}    // At least one unit has to be alive
-};
-
-// Fetch all objects and AI groups near each FOB
-private ["_fobPos", "_fobObjects", "_grpUnits", "_fobMines"];
+// Fetch persistent player objects near each FOB
+private ["_fobPos", "_fobObjects", "_fobMines"];
 {
     _fobPos = _x;
     _fobObjects = (_fobPos nearObjects (GRLIB_fob_range * 1.2)) select {
@@ -62,14 +54,6 @@ private ["_fobPos", "_fobObjects", "_grpUnits", "_fobMines"];
     _allObjects append (_fobObjects select {!((toLower (typeOf _x)) in KPLIB_storageBuildings)});
     _allStorages append (_fobObjects select {(_x getVariable ["KP_liberation_storage_type",-1]) == 0});
 
-    // Process all groups near this FOB
-    {
-        // Get only living AI units of the group by excluding possible POWs currently in the player group
-        _grpUnits = (units _x) select {!(isPlayer _x) && {!(_x getVariable ["KPLIB_intelligencePrisoner", false])} && (alive _x) && !((typeOf _x) in KPLIB_o_inf_classes) && !((typeOf _x) in militia_squad)};
-        // Add to save array
-        _aiGroups pushBack [getPosATL (leader _x), (_grpUnits apply {typeOf _x})];
-    } forEach (_allBlueGroups select {(_fobPos distance2D (leader _x)) < (GRLIB_fob_range * 1.2)});
-
     // Save all mines around FOB
     _fobMines = allMines inAreaArray [_fobPos, GRLIB_fob_range * 1.2, GRLIB_fob_range * 1.2];
     _allMines append (_fobMines apply {[
@@ -81,28 +65,21 @@ private ["_fobPos", "_fobObjects", "_grpUnits", "_fobMines"];
 } forEach (GRLIB_all_fobs + [getMarkerPos "startbase_marker"]);
 
 // Save all fetched objects
-private ["_savedPos", "_savedVecDir", "_savedVecUp", "_class", "_hasCrew"];
+private ["_savedPos", "_savedVecDir", "_savedVecUp", "_class"];
 {
     // Position data
     _savedPos = getPosWorld _x;
     _savedVecDir = vectorDirVisual _x;
     _savedVecUp = vectorUpVisual _x;
     _class = typeOf _x;
-    _hasCrew = false;
 
-    // Determine if vehicle is crewed
-    if ((toLower _class) in KPLIB_b_allVeh_classes) then {
-        if (({!isPlayer _x} count (crew _x) ) > 0) then {
-            _hasCrew = true;
-        };
-    };
-
-    // Only save player side, seized or captured objects
+    // Only save player-side, seized or captured objects.
     if (
         (!(_class in civilian_vehicles) || {_x getVariable ["KPLIB_seized", false]}) &&
         (!((toLower _class) in KPLIB_o_allVeh_classes) || {_x getVariable ["KPLIB_captured", false]})
     ) then {
-        _objectsToSave pushBack [_class, _savedPos, _savedVecDir, _savedVecUp, _hasCrew];
+        // The fifth field stays reserved for compatibility with existing saves.
+        _objectsToSave pushBack [_class, _savedPos, _savedVecDir, _savedVecUp, false];
         _savedVehicles pushBack _x;
     };
 } forEach _allObjects;
@@ -212,7 +189,7 @@ private _weights = [
     _resourceStorages,
     _stats,
     _weights,
-    _aiGroups,
+    [], // Reserved former BLUFOR AI squad slot.
     blufor_sectors,
     combat_readiness,
     GRLIB_all_fobs,

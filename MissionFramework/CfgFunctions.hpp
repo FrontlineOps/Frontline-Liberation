@@ -126,7 +126,7 @@ class KPLIB {
         file = "functions\units";
 
         class createManagedUnit {};
-        class forceBluforCrew   {};
+        class initUavCrew   {};
         class getGroupType      {};
     };
     class functions_vehicles {

@@ -60,7 +60,6 @@ if ([] call KP_liberation_victoryCheck && GRLIB_endgame != 1) then {
     [format ["OPFOR infantry killed by players: %1", stats_opfor_killed_by_players], "MISSION END"] call KPLIB_fnc_log;
     [format ["OPFOR vehicles destroyed: %1", stats_opfor_vehicles_killed], "MISSION END"] call KPLIB_fnc_log;
     [format ["OPFOR vehicles destroyed by players: %1", stats_opfor_vehicles_killed_by_players], "MISSION END"] call KPLIB_fnc_log;
-    [format ["BLUFOR infantry recruited: %1", stats_blufor_soldiers_recruited], "MISSION END"] call KPLIB_fnc_log;
     [format ["BLUFOR infantry killed: %1", stats_blufor_soldiers_killed], "MISSION END"] call KPLIB_fnc_log;
     [format ["BLUFOR vehicles built: %1", stats_blufor_vehicles_built], "MISSION END"] call KPLIB_fnc_log;
     [format ["BLUFOR vehicles destroyed: %1", stats_blufor_vehicles_killed], "MISSION END"] call KPLIB_fnc_log;

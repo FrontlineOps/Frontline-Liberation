@@ -27,11 +27,9 @@ fixedwing_vehicles                          = fixedwing_vehicles                
 static_vehicles                             = static_vehicles                           select {[( _x select 0)] call KPLIB_fnc_checkClass};
 buildings                                   = buildings                                 select {[( _x select 0)] call KPLIB_fnc_checkClass};
 support_vehicles                            = support_vehicles                          select {[( _x select 0)] call KPLIB_fnc_checkClass};
-blufor_squad_inf                            = blufor_squad_inf                          select {[_x] call KPLIB_fnc_checkClass};
 elite_vehicles                              = elite_vehicles                            select {[_x] call KPLIB_fnc_checkClass};
 
 // OPFOR
-militia_squad                               = militia_squad                             select {[_x] call KPLIB_fnc_checkClass};
 militia_vehicles                            = militia_vehicles                          select {[_x] call KPLIB_fnc_checkClass};
 opfor_vehicles                              = opfor_vehicles                            select {[_x] call KPLIB_fnc_checkClass};
 opfor_vehicles_low_intensity                = opfor_vehicles_low_intensity              select {[_x] call KPLIB_fnc_checkClass};
@@ -147,9 +145,8 @@ KPLIB_o_allVeh_classes  = [];
 KPLIB_o_allVeh_classes = KPLIB_o_allVeh_classes apply {toLower _x};
 KPLIB_o_allVeh_classes = KPLIB_o_allVeh_classes arrayIntersect KPLIB_o_allVeh_classes;
 
-// All regular opfor soldier classnames
-KPLIB_o_inf_classes = [opfor_sentry, opfor_rifleman, opfor_grenadier, opfor_squad_leader, opfor_team_leader, opfor_marksman, opfor_machinegunner, opfor_heavygunner, opfor_medic, opfor_rpg, opfor_at, opfor_aa, opfor_officer, opfor_sharpshooter, opfor_sniper,opfor_engineer,opfor_paratrooper,opfor_rto];
-KPLIB_o_inf_classes = KPLIB_o_inf_classes apply {toLower _x};
+// Include every enemy soldier class when identifying surrendered prisoners.
+KPLIB_o_inf_classes = ((KPLIB_autoFactionCatalogs get "opfor") get "units") apply {toLower _x};
 
 // Military alphabet used for FOBs and convois
 military_alphabet = ["Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golf", "Hotel", "India", "Juliet", "Kilo", "Lima", "Mike", "November", "Oscar", "Papa", "Quebec", "Romeo", "Sierra", "Tango", "Uniform", "Victor", "Whiskey", "X-Ray", "Yankee", "Zulu"];

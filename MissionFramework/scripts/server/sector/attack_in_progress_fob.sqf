@@ -1,18 +1,10 @@
 params [["_fobPosition", [], [[]], [2, 3]]];
 if (!isServer || {_fobPosition isEqualTo []}) exitWith {};
 
-private _defenderGroup = grpNull;
 private _displayStarted = false;
 private _outcome = "STOPPED";
 private _getOwnership = {
     [_fobPosition] call KPLIB_fnc_getSectorOwnership
-};
-private _cleanupDefenders = {
-    if (!isNull _defenderGroup) then {
-        {
-            if (alive _x) then {deleteVehicle _x};
-        } forEach units _defenderGroup;
-    };
 };
 private _clearAttackState = {
     if (_displayStarted) then {["FOB", _fobPosition, _outcome, 0] call KPLIB_fnc_captureStatusSet};
@@ -28,13 +20,6 @@ if (_ownership != GRLIB_side_enemy) exitWith {
     [format ["FOB attack monitor cancelled before activation at %1", mapGridPosition _fobPosition], "SECTOR"] call KPLIB_fnc_log;
 };
 
-if (GRLIB_blufor_defenders) then {
-    _defenderGroup = createGroup [GRLIB_side_friendly, true];
-    {[_x, _fobPosition, _defenderGroup] call KPLIB_fnc_createManagedUnit} forEach blufor_squad_inf;
-    sleep 3;
-    _defenderGroup setBehaviour "COMBAT";
-};
-
 sleep 60;
 KPLIB_sectorsUnderAttack pushBackUnique _fobPosition;
 publicVariable "KPLIB_sectorsUnderAttack";
@@ -42,7 +27,6 @@ publicVariable "KPLIB_sectorsUnderAttack";
 _ownership = call _getOwnership;
 if (_ownership == GRLIB_side_friendly) exitWith {
     call _clearAttackState;
-    call _cleanupDefenders;
     [format ["FOB attack ended before vulnerability at %1", mapGridPosition _fobPosition], "SECTOR"] call KPLIB_fnc_log;
 };
 
@@ -91,5 +75,3 @@ if (GRLIB_endgame == 0) then {
 };
 
 call _clearAttackState;
-sleep 60;
-call _cleanupDefenders;
