@@ -46,7 +46,7 @@ KARMA_ARSENAL_CRATES = [];
 [] call compileFinal preprocessFileLineNumbers "modules\field_hospital\index.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\trash_cleanup\index.sqf";
 
-[] call compileFinal preprocessFileLineNumbers "presets\init_presets.sqf";
+[] call KPLIB_fnc_initFactions;
 [] call compileFinal preprocessFileLineNumbers "modules\permissions\index.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\permissions\arsenal.sqf";
 [] call compileFinal preprocessFileLineNumbers "kp_objectInits.sqf";

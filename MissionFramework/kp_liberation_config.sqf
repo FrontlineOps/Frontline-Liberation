@@ -28,7 +28,7 @@ KPLIB_roleAuditBatchSize = 8;
     merge split factions (useful for mods which separate infantry and vehicles).
 
     All four selections are mandatory. Invalid, wrong-side, empty, or sparse
-    selections stop preset initialization instead of loading legacy faction data.
+    selections stop faction initialization instead of loading legacy faction data.
 */
 KP_liberation_autoFaction_blufor = ["TTU_FE_CUP_Fac_USMC_09_DST"];
 KP_liberation_autoFaction_opfor = ["TTU_FE_CUP_Fac_TKA_12", "TTU_FE_CUP_Fac_TKASF_12"];

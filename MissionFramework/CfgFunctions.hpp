@@ -156,6 +156,7 @@ class KPLIB {
     class functions_factions {
         file = "functions\factions";
 
+        class initFactions                 {};
         class applyFactionPresets          {};
         class loadFactionProfiles          {};
         class normalizeGearClass           {};
