@@ -1,11 +1,8 @@
+if (side group player != GRLIB_side_friendly) exitWith {};
+if ((localNamespace getVariable ["KPLIB_manualFactions", false])) exitWith {[] call KPLIB_fnc_refreshVirtualArsenal};
+
 if (missionNamespace getVariable ["KPLIB_autoFactionActive", false]) exitWith {
-    private _faction = toLower getText (configOf player >> "faction");
-    private _opforFactions = ((missionNamespace getVariable ["KPLIB_autoFactionCatalogs", createHashMap]) getOrDefault ["opfor", createHashMap]) getOrDefault ["factions", []];
-    private _data = if (_faction in (_opforFactions apply {toLower _x})) then {
-        missionNamespace getVariable ["KPLIB_autoFactionOpforArsenalData", createHashMap]
-    } else {
-        missionNamespace getVariable ["KPLIB_autoFactionPlayerArsenalData", createHashMap]
-    };
+    private _data = missionNamespace getVariable ["KPLIB_autoFactionPlayerArsenalData", createHashMap];
 
     private _weapons = _data getOrDefault ["weapons", []];
     private _magazines = _data getOrDefault ["magazines", []];

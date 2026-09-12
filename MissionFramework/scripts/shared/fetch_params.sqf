@@ -12,7 +12,6 @@ KP_liberation_asymmetric_debug = ["DebugAsymmetric", 0] call bis_fnc_getParamVal
 KP_liberation_sectorspawn_debug = ["DebugSectorSpawn", 0] call bis_fnc_getParamValue;
 KP_liberation_kill_debug = ["DebugKill", 0] call bis_fnc_getParamValue;
 KP_liberation_production_debug = ["DebugProduction", 0] call bis_fnc_getParamValue;
-KP_liberation_highcommand_debug = ["DebugHighCommand", 0] call bis_fnc_getParamValue;
 
 KP_load_params = ["LoadSaveParams", 1] call BIS_fnc_getParamValue;
 
@@ -42,7 +41,6 @@ if(isServer) then {
     GET_PARAM(GRLIB_csat_aggressivity,"Aggressivity",2);
     GET_PARAM(GRLIB_civilian_activity,"Civilians",1);
     GET_PARAM(GRLIB_maximum_fobs,"MaximumFobs",26);
-    GET_PARAM(GRLIB_max_squad_size,"MaxSquadSize",10);
     GET_PARAM_BOOL(GRLIB_blufor_defenders,"BluforDefenders",1);
     GET_PARAM_BOOL(GRLIB_autodanger,"Autodanger",0);
     GET_PARAM(GRLIB_time_factor,"DayDuration",12);
@@ -68,8 +66,6 @@ if(isServer) then {
     GET_PARAM_BOOL(KP_liberation_limited_zeus,"LimitedZeus",1);
     GET_PARAM_BOOL(KP_liberation_commander_zeus,"CommanderZeus",1);
     GET_PARAM_BOOL(KP_liberation_enemies_zeus,"ZeusAddEnemies",1);
-    GET_PARAM_BOOL(KP_liberation_high_command,"HighCommand",1);
-    GET_PARAM(KP_liberation_suppMod,"SuppMod",1);
 
     // Technical Options
     ["--- Technical Options ---", "PARAM"] call KPLIB_fnc_log;
@@ -223,10 +219,6 @@ if (!isDedicated && hasInterface) then {
     _value = str GRLIB_maximum_fobs;
     _text = _text + format ["<font color='#ff8000'>%1</font><br />%2<br /><br />", _param, _value];
 
-    _param = localize "STR_PARAM_SQUAD_SIZE";
-    _value = str GRLIB_max_squad_size;
-    _text = _text + format ["<font color='#ff8000'>%1</font><br />%2<br /><br />", _param, _value];
-
     _param = localize "STR_PARAM_BLUFOR_DEFENDERS";
     _value = if (GRLIB_blufor_defenders) then {localize "STR_PARAMS_ENABLED";} else {localize "STR_PARAMS_DISABLED";};
     _text = _text + format ["<font color='#ff8000'>%1</font><br />%2<br /><br />", _param, _value];
@@ -325,17 +317,6 @@ if (!isDedicated && hasInterface) then {
     _value = if (KP_liberation_enemies_zeus) then {localize "STR_PARAMS_ENABLED";} else {localize "STR_PARAMS_DISABLED";};
     _text = _text + format ["<font color='#ff8000'>%1</font><br />%2<br /><br />", _param, _value];
 
-    _param = localize "STR_PARAM_HIGHCOMMAND";
-    _value = if (KP_liberation_high_command) then {localize "STR_PARAMS_ENABLED";} else {localize "STR_PARAMS_DISABLED";};
-    _text = _text + format ["<font color='#ff8000'>%1</font><br />%2<br /><br />", _param, _value];
-
-    _param = localize "STR_PARAM_SUPPMOD";
-    switch (KP_liberation_suppMod) do {
-        case 1: {_value = localize "STR_PARAM_SUPPMOD_COMMANDER";};
-        case 2: {_value = localize "STR_PARAM_SUPPMOD_EVERYONE";};
-        default {_value = localize "STR_PARAMS_DISABLED";};
-    };
-    _text = _text + format ["<font color='#ff8000'>%1</font><br />%2<br /><br />", _param, _value];
 
     _param = localize "STR_CLEANUP_PARAM";
     switch (GRLIB_cleanup_vehicles) do {

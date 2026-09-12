@@ -5,6 +5,7 @@ resupplyLog = {
 [] call compileFinal preprocessFileLineNumbers "scripts\crate-resupply\functions\index.sqf";
 
 if (isServer) then {
+    [] call compileFinal preprocessFileLineNumbers "scripts\crate-resupply\server\authority.sqf";
 	[] call compileFinal preprocessFileLineNumbers "scripts\crate-resupply\server\addCrateDeleteHandlers.sqf";
 	[] call compileFinal preprocessFileLineNumbers "scripts\crate-resupply\server\requestResupplyFlags.sqf";
 	[] call compileFinal preprocessFileLineNumbers "scripts\crate-resupply\server\requestResupplyCrate.sqf";
@@ -31,7 +32,7 @@ if( (isServer && !isDedicated) || !isServer ) then {
 		format ["Class Init %1", _ammoCrateClass] call resupplyLog;
 
 		_conditionToShowRoot = {
-			!(isNull (group player)) && {count ResupplyCrates > 0}
+			side group player == GRLIB_side_friendly && {!(isNull (group player))} && {count ResupplyCrates > 0}
 		};
 
 		// Render category roots
@@ -121,7 +122,7 @@ if( (isServer && !isDedicated) || !isServer ) then {
 					false
 				};
 
-				[_target, player] remoteExec ["requestResupplyCrateRecall", 2];
+                [_target, player] remoteExecCall ["requestResupplyCrateRecall", 2];
 			};
 
 
@@ -273,7 +274,7 @@ if( (isServer && !isDedicated) || !isServer ) then {
 							params ["_target", "_player", "_params"];
 
 							private _crateName = _params select 0;
-							[player, _crateName] remoteExec ["requestResupplyCrate", 2];
+                            [player, _crateName] remoteExecCall ["requestResupplyCrate", 2];
 							true
 						};
 

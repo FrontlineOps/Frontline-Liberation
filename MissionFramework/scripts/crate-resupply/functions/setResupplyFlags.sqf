@@ -1,7 +1,7 @@
 setResupplyFlags = {
     params ["_player", "_debug"];
 
-    if (!isServer || {isNull _player}) exitWith {false};
+    if (!isServer || {isNull _player} || {side group _player != GRLIB_side_friendly}) exitWith {false};
 
     private _isDebugOn = !isNil {_debug};
     private _currentRoleDescription = roleDescription _player;
@@ -17,7 +17,7 @@ setResupplyFlags = {
         if (_currentRoleDescription find _y != -1) then {
             _currentRoles pushBack _x;
         };
-    } forEach ResupplyRoleDescriptionsToRoleFlags;
+    } forEach (localNamespace getVariable "KPLIB_ResupplyRoleDescriptionsToRoleFlags");
 
     private _legacySquadFlag = "AUTO";
     {
@@ -29,8 +29,13 @@ setResupplyFlags = {
             };
         } forEach _squadNames;
         if (_legacySquadFlag != "AUTO") exitWith {};
-    } forEach ResupplyRoleDescriptionToSquadFlags;
+    } forEach (localNamespace getVariable "KPLIB_ResupplyRoleDescriptionToSquadFlags");
 
+    if ((localNamespace getVariable ["KPLIB_manualFactions", false])) then {
+        ([_player] call KPLIB_fnc_getPlayerRole) params ["_sideKey", "_role"];
+        _legacySquadFlag = "MANUAL:" + _sideKey;
+        _currentRoles = [_role];
+    };
     _player setVariable ["resupplySquadRoleFlags", _currentRoles, true];
     _player setVariable ["resupplySquadGroupFlag", _legacySquadFlag, true];
     _player setVariable ["resupplySquadGroupName", _currentSquad, true];
@@ -40,16 +45,18 @@ setResupplyFlags = {
     _player setVariable ["resupplyCompatibleCrates", _newCompatibleCrates, true];
     _player setVariable ["resupplyLastDescription", _currentRoleDescription];
 
-    private _currentAllocations = missionNamespace getVariable _currentSquad;
+    private _currentAllocations = localNamespace getVariable _currentSquad;
     if (isNil {_currentAllocations}) then {
         _currentAllocations = createHashMapFromArray [
-            ["SpecialtyResources", 0],
+            ["SpecialtyResources", if ((localNamespace getVariable ["KPLIB_manualFactions", false])) then {[_legacySquadFlag] call KPLIB_fnc_resupplySpecialtyLimit} else {0}],
+            ["SpecialtyLimit", [_legacySquadFlag] call KPLIB_fnc_resupplySpecialtyLimit],
             ["Crates", 0],
             ["ResetTime", -1],
             ["RecallResetTime", -1],
             ["CanReset", true],
             ["CrateObjects", []]
         ];
+        localNamespace setVariable [_currentSquad, _currentAllocations];
         missionNamespace setVariable [_currentSquad, _currentAllocations, true];
         format ["Initialized automatic group %1 (%2)", groupId (group _player), _currentSquad] call resupplyLog;
     };

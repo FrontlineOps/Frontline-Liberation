@@ -1,5 +1,6 @@
 requestResupplyCrateRecall = {
-    params ["_source", "_recaller"];
+    params [["_source", objNull, [objNull]], ["_recaller", objNull, [objNull]]];
+    if !([_recaller, "recall"] call KPLIB_fnc_validateResupplyRequest) exitWith {};
 
     private _cannotRecallStr = "You cannot recall";
     if (isNull _recaller || {!isPlayer _recaller}) exitWith {};
@@ -12,7 +13,7 @@ requestResupplyCrateRecall = {
         _cannotRecallStr remoteExec ["hint", owner _recaller];
     };
 
-    private _currentAllocations = missionNamespace getVariable _playerSquadName;
+    private _currentAllocations = localNamespace getVariable _playerSquadName;
     if (isNil {_currentAllocations}) exitWith {
         _cannotRecallStr remoteExec ["hint", owner _recaller];
     };
@@ -37,16 +38,19 @@ requestResupplyCrateRecall = {
     _currentAllocations set ["Crates", 0];
     _currentAllocations set ["CrateObjects", []];
     _currentAllocations set ["CanReset", false];
-    _currentAllocations set ["RecallResetTime", CBA_missionTime + ResupplyDefaultRecallCooldown];
+    _currentAllocations set ["RecallResetTime", CBA_missionTime + (localNamespace getVariable "KPLIB_ResupplyDefaultRecallCooldown")];
 
     [{
         params ["_squadName"];
-        private _allocations = missionNamespace getVariable _squadName;
+        private _allocations = localNamespace getVariable _squadName;
         if (isNil {_allocations}) exitWith {};
 
         _allocations set ["CanReset", true];
+        localNamespace setVariable [_squadName, _allocations];
         missionNamespace setVariable [_squadName, _allocations, true];
-    }, [_playerSquadName], ResupplyDefaultRecallCooldown] call CBA_fnc_waitAndExecute;
+    }, [_playerSquadName], (localNamespace getVariable "KPLIB_ResupplyDefaultRecallCooldown")] call CBA_fnc_waitAndExecute;
+
+    localNamespace setVariable [_playerSquadName, _currentAllocations];
 
     missionNamespace setVariable [_playerSquadName, _currentAllocations, true];
     "Crates Recalled" remoteExec ["hint", owner _recaller];

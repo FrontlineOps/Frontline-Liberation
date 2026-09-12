@@ -35,57 +35,26 @@ class liberation_player_permissions {
             w = 0.34 * safezoneW;
             h = 0.04 * safezoneH;
         };
-        class Build {
+        class Grants: StdListBox {
             idc = 110;
-            type = 77;
-            style = 0;
-            checked = 0;
-            color[] = {1, 1, 1, 0.8};
-            colorFocused[] = {1, 1, 1, 1};
-            colorHover[] = {1, 1, 1, 1};
-            colorPressed[] = {1, 1, 1, 1};
-            colorDisabled[] = {1, 1, 1, 0.25};
-            colorBackground[] = {0, 0, 0, 0};
-            colorBackgroundFocused[] = {0, 0, 0, 0};
-            colorBackgroundHover[] = {0, 0, 0, 0};
-            colorBackgroundPressed[] = {0, 0, 0, 0};
-            colorBackgroundDisabled[] = {0, 0, 0, 0};
-            textureChecked = "\A3\Ui_f\data\GUI\RscCommon\RscCheckBox\CheckBox_checked_ca.paa";
-            textureUnchecked = "\A3\Ui_f\data\GUI\RscCommon\RscCheckBox\CheckBox_unchecked_ca.paa";
-            textureFocusedChecked = "\A3\Ui_f\data\GUI\RscCommon\RscCheckBox\CheckBox_checked_ca.paa";
-            textureFocusedUnchecked = "\A3\Ui_f\data\GUI\RscCommon\RscCheckBox\CheckBox_unchecked_ca.paa";
-            textureHoverChecked = "\A3\Ui_f\data\GUI\RscCommon\RscCheckBox\CheckBox_checked_ca.paa";
-            textureHoverUnchecked = "\A3\Ui_f\data\GUI\RscCommon\RscCheckBox\CheckBox_unchecked_ca.paa";
-            texturePressedChecked = "\A3\Ui_f\data\GUI\RscCommon\RscCheckBox\CheckBox_checked_ca.paa";
-            texturePressedUnchecked = "\A3\Ui_f\data\GUI\RscCommon\RscCheckBox\CheckBox_unchecked_ca.paa";
-            textureDisabledChecked = "\A3\Ui_f\data\GUI\RscCommon\RscCheckBox\CheckBox_checked_ca.paa";
-            textureDisabledUnchecked = "\A3\Ui_f\data\GUI\RscCommon\RscCheckBox\CheckBox_unchecked_ca.paa";
-            tooltipColorText[] = {1, 1, 1, 1};
-            tooltipColorBox[] = {1, 1, 1, 1};
-            tooltipColorShade[] = {0, 0, 0, 0.8};
-            soundEnter[] = {"", 0, 1};
-            soundPush[] = {"", 0, 1};
-            soundClick[] = {"", 0, 1};
-            soundEscape[] = {"", 0, 1};
             x = 0.46 * safezoneW + safezoneX;
-            y = 0.33 * safezoneH + safezoneY;
-            w = 0.025 * safezoneW;
-            h = 0.035 * safezoneH;
+            y = 0.32 * safezoneH + safezoneY;
+            w = 0.34 * safezoneW;
+            h = 0.22 * safezoneH;
+            onLBDblClick = "[] call KPLIB_fnc_togglePermission";
+            tooltip = "Double-click a permission to toggle it.";
         };
-        class Recycle: Build {idc = 111; y = 0.40 * safezoneH + safezoneY;};
-        class Production: Build {idc = 112; y = 0.47 * safezoneH + safezoneY;};
-        class BuildLabel: PlayerName {
-            idc = -1;
-            text = "Building and FOB construction";
-            x = 0.49 * safezoneW + safezoneX;
-            y = 0.33 * safezoneH + safezoneY;
-            w = 0.31 * safezoneW;
+        class Role: StdCombo {
+            idc = 130;
+            x = 0.46 * safezoneW + safezoneX;
+            y = 0.57 * safezoneH + safezoneY;
+            w = 0.34 * safezoneW;
+            h = 0.04 * safezoneH;
+            tooltip = "Manual role assignment; slot/default follows the faction configuration.";
         };
-        class RecycleLabel: BuildLabel {text = "Recycling"; y = 0.40 * safezoneH + safezoneY;};
-        class ProductionLabel: BuildLabel {text = "Production management"; y = 0.47 * safezoneH + safezoneY;};
         class All: StdButton {
             idc = 121;
-            text = "Select all";
+            text = "All grants";
             x = 0.46 * safezoneW + safezoneX;
             y = 0.63 * safezoneH + safezoneY;
             w = 0.15 * safezoneW;
@@ -94,7 +63,7 @@ class liberation_player_permissions {
         };
         class None: All {
             idc = 122;
-            text = "Clear all";
+            text = "Clear grants";
             x = 0.64 * safezoneW + safezoneX;
             action = "[false] call KPLIB_fnc_toggleAllPermissions";
         };

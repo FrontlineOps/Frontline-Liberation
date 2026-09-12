@@ -78,17 +78,6 @@ class liberation_build {
         h = (0.04 * safezoneH);
         text = "";
     };
-    class BuildInfantryImage: BuildTypeImage {
-        idc = 1025;
-        x = (0.402 * safezoneW + safezoneX);
-        text = "\a3\Ui_F_Curator\Data\Displays\RscDisplayCurator\modeUnits_ca.paa";
-    };
-    class BuildInfantryButton: BuildTypeButton {
-        idc = 102;
-        text = "";
-        action = "buildtype=1";
-        x = (0.4 * safezoneW + safezoneX);
-    };
     class BuildTransportVehicleImage: BuildTypeImage {
         idc = 1035;
         x = (0.427 * safezoneW + safezoneX);

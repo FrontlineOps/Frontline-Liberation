@@ -16,7 +16,6 @@ missionNamespace setVariable ["BYPASS_ENFORCED_ARSENAL", false, true];
 
 execVM "scripts\server\base\huron_manager.sqf";
 execVM "scripts\server\base\startvehicle_spawn.sqf";
-[] call KPLIB_fnc_createSuppModules;
 execVM "scripts\server\game\cleanup_vehicles.sqf";
 if (!KP_liberation_fog_param) then {execVM "scripts\server\game\fucking_set_fog.sqf";};
 execVM "scripts\server\game\manage_time.sqf";
@@ -32,11 +31,10 @@ execVM "scripts\server\resources\manage_resources.sqf";
 execVM "scripts\server\resources\recalculate_resources.sqf";
 execVM "scripts\server\resources\recalculate_timer.sqf";
 execVM "scripts\server\resources\recalculate_timer_sector.sqf";
-execVM "scripts\server\resources\unit_cap.sqf";
+execVM "scripts\server\resources\aircraft_counts.sqf";
 execVM "scripts\server\sector\lose_sectors.sqf";
 
 KPLIB_fsm_sectorMonitor = [] call KPLIB_fnc_sectorMonitor;
-if (KP_liberation_high_command) then {KPLIB_fsm_highcommand = [] call KPLIB_fnc_highcommand;};
 
 // The automatic faction system uses the mission's standard FOB compositions.
 KPLIB_fob_templates = [

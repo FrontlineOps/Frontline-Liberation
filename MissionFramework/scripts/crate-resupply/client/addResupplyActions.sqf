@@ -70,7 +70,7 @@ addResupplyActions = {
 		_onReturn = {
 			params ["_target", "_player", "_params"];
 			
-			[_target, player] remoteExec ["requestResupplyCrateReturn", 2];
+            [_target, player] remoteExecCall ["requestResupplyCrateReturn", 2];
 		};
 
 		_returnAction = ["KARMA_RESUPPLY_CRATE_RETURN", format ["Return %1", _crateType], "", _onReturn, _canReturn] call ace_interact_menu_fnc_createAction;
@@ -189,7 +189,7 @@ addResupplyActions = {
 			private _globalResupplier = _squadDefinition getOrDefault ["Resupplier", false];
 
 			if(_globalResupplier || _playerSquadName == _crateSquadOwner) then {
-				[_target, player] remoteExec ["requestResupplyCrateRefill", 2];
+                [_target, player] remoteExecCall ["requestResupplyCrateRefill", 2];
 			};
 
 		};
@@ -201,7 +201,7 @@ addResupplyActions = {
 		_onEmpty = {
 			params ["_target", "_player", "_params"];
 
-			[_target, player] remoteExec ["requestResupplyCrateEmpty", 2];
+            [_target, player] remoteExecCall ["requestResupplyCrateEmpty", 2];
 		};
 		// Being able to empty is the same perms as being able to return it.
 		_emptyAction = ["KARMA_RESUPPLY_CRATE_EMPTY", format ["Empty %1", _crateType], "", _onEmpty, _canReturn] call ace_interact_menu_fnc_createAction;

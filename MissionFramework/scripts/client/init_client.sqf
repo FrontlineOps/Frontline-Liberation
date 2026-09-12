@@ -11,6 +11,8 @@ if (typeOf player == "VirtualSpectator_F") exitWith {
     execVM "scripts\client\ui\ui_manager.sqf";
 };
 
+if (side group player != GRLIB_side_friendly) exitWith {endMission "BLUFOROnly"};
+
 // This causes the script error with not defined variable _display in File A3\functions_f_bootcamp\Inventory\fn_arsenal.sqf [BIS_fnc_arsenal], line 2122
 // ["Preload"] call BIS_fnc_arsenal;
 spawn_camera = compileFinal preprocessFileLineNumbers "scripts\client\spawn\spawn_camera.sqf";
@@ -23,7 +25,7 @@ kp_fuel_consumption = compileFinal preprocessFileLineNumbers "scripts\client\mis
 [] call KPLIB_COPS_CLIENT_INIT;
 execVM "scripts\client\actions\recycle_manager.sqf";
 
-_role = [player] call RoleArsenal_DetermineRole;
+_role = ([player] call KPLIB_fnc_getPlayerRole) select 1;
 if (_role in ["OgreTL", "CE"]) then {
     execVM "scripts\client\actions\unflip_manager.sqf";
 };
@@ -31,11 +33,9 @@ if (_role in ["OgreTL", "CE"]) then {
 execVM "scripts\client\ammoboxes\ammobox_action_manager.sqf";
 execVM "scripts\client\build\build_overlay.sqf";
 execVM "scripts\client\build\do_build.sqf";
-if (side player != GRLIB_side_enemy) then {
-    if (KP_liberation_mapmarkers) then {execVM "scripts\client\markers\empty_vehicles_marker.sqf";};
-};
+if (KP_liberation_mapmarkers) then {execVM "scripts\client\markers\empty_vehicles_marker.sqf";};
 execVM "scripts\client\markers\fob_markers.sqf";
-if (!KP_liberation_high_command && KP_liberation_mapmarkers) then {execVM "scripts\client\markers\group_icons.sqf";};
+if (KP_liberation_mapmarkers) then {execVM "scripts\client\markers\group_icons.sqf";};
 execVM "scripts\client\markers\hostile_groups.sqf";
 if (KP_liberation_mapmarkers) then {execVM "scripts\client\markers\huron_marker.sqf";} else {deleteMarkerLocal "huronmarker"};
 execVM "scripts\client\markers\sector_manager.sqf";
@@ -55,10 +55,12 @@ execVM "scripts\client\misc\restrict_gamma.sqf";
 player addMPEventHandler ["MPKilled", {_this spawn kill_manager;}];
 ["KPLIB_PLAYER_GET_IN", "GetInMan", {
     private _vehicle = _this select 2;
+    if !([] call KPLIB_fnc_checkLocalVehicleAccess) exitWith {};
     [_vehicle] spawn kp_fuel_consumption;
     [_vehicle] call KPLIB_fnc_setVehicleSeized;
     [_vehicle] call KPLIB_fnc_setVehicleCaptured;
 }] call CBA_fnc_addBISPlayerEventHandler;
+["KPLIB_PLAYER_SEAT", "SeatSwitchedMan", {[] call KPLIB_fnc_checkLocalVehicleAccess}] call CBA_fnc_addBISPlayerEventHandler;
 ["KPLIB_PLAYER_RATING", "HandleRating", {if ((_this select 1) < 0) then {0};}] call CBA_fnc_addBISPlayerEventHandler;
 
 // Disable stamina, if selected in parameter

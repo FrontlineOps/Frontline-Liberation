@@ -105,45 +105,38 @@ KPLIB_fnc_commitBuild = {
     params [["_type", -1, [0]], ["_index", -1, [0]], ["_position", [], [[]]], ["_direction", 0, [0]], ["_level", true, [false]], ["_manned", false, [false]]];
     private _caller = ["BUILD"] call KPLIB_fnc_permissionRequest;
     if (isNull _caller) exitWith {};
-    if !(_type in [1, 2, 3, 4, 5, 6, 7, 8]) exitWith {};
+    if (_manned || {!(_type in [2, 3, 4, 5, 6, 7])}) exitWith {};
     private _catalog = KPLIB_buildList select _type;
     if (_index < 0 || {_index != floor _index} || {_index >= count _catalog}) exitWith {};
     private _entry = _catalog select _index;
     private _class = _entry select 0;
+    if !(_class isEqualType "" && {!(_class isKindOf "CAManBase")}) exitWith {};
     private _prices = _entry select [1, 3];
     private _fob = [_caller] call KPLIB_fnc_buildFobPosition;
     if (_fob isEqualTo []) exitWith {};
     if (([getPos _caller, 500, GRLIB_side_enemy] call KPLIB_fnc_getUnitsCount) > 4) exitWith {
         [localize "STR_BUILD_ENEMIES_NEARBY"] remoteExecCall ["hint", owner _caller];
     };
-    private _commander = _caller isEqualTo ([] call KPLIB_fnc_getCommander);
-    if (_manned && {!_commander}) exitWith {};
-    if (_manned && {unitcap >= ([] call KPLIB_fnc_getLocalCap)}) exitWith {};
-    private _infantry = _type in [1, 8];
-    if (_infantry && {(missionNamespace getVariable ["unitcap", 0]) >= ([] call KPLIB_fnc_getLocalCap)}) exitWith {};
-    if (_type == 1 && {count units group _caller >= GRLIB_max_squad_size}) exitWith {};
     private _requirement = _entry param [5, 0];
     private _required = if (_requirement < 1) then {round (count sectors_military * _requirement)} else {_requirement};
     if (count blufor_military_sectors < _required) exitWith {};
-    if (!_infantry) then {
-        if !([_caller, _position, _direction, _class] call KPLIB_fnc_validBuildPosition) exitWith {_class = ""};
-        if (_position distance2D _fob >= GRLIB_fob_range) exitWith {_class = ""};
-        if (surfaceIsWater _position && {!(_class in boats_names)}) exitWith {_class = ""};
-        if (!KP_liberation_allow_fob_vehcile_building && {_fob isNotEqualTo getMarkerPos "startbase_marker"}) then {
-            if (_class isKindOf "LandVehicle" || {_class isKindOf "Helicopter"}
-                || {!KP_liberation_allow_fixedwing_at_fobs && {_class isKindOf "Plane"}}) then {_class = ""};
-        };
-        if (_class == "") exitWith {};
-        private _air = toLower _class in KPLIB_b_air_classes && {!([_class] call KPLIB_fnc_isClassUAV)};
-        if (_air || {toLower _class in KPLIB_airSlots}) then {
-            if ((nearestObjects [_fob, [KP_liberation_air_vehicle_building], GRLIB_fob_range]) findIf {alive _x} == -1) exitWith {_class = ""};
-        };
-        if (_air) then {
-            private _kind = (["Plane", "Helicopter"] select (_class isKindOf "Helicopter"));
-            private _slots = ([KP_liberation_plane_slots, KP_liberation_heli_slots] select (_kind == "Helicopter"));
-            private _count = {alive _x && {_x isKindOf _kind} && {toLower typeOf _x in KPLIB_b_air_classes} && {!unitIsUAV _x} && {!(_x getVariable ["KP_liberation_preplaced", false])}} count vehicles;
-            if (_count >= _slots) then {_class = ""};
-        };
+    if !([_caller, _position, _direction, _class] call KPLIB_fnc_validBuildPosition) exitWith {};
+    if (_position distance2D _fob >= GRLIB_fob_range) exitWith {};
+    if (surfaceIsWater _position && {!(_class in boats_names)}) exitWith {};
+    if (!KP_liberation_allow_fob_vehcile_building && {_fob isNotEqualTo getMarkerPos "startbase_marker"}) then {
+        if (_class isKindOf "LandVehicle" || {_class isKindOf "Helicopter"}
+            || {!KP_liberation_allow_fixedwing_at_fobs && {_class isKindOf "Plane"}}) then {_class = ""};
+    };
+    if (_class == "") exitWith {};
+    private _air = toLower _class in KPLIB_b_air_classes && {!([_class] call KPLIB_fnc_isClassUAV)};
+    if (_air || {toLower _class in KPLIB_airSlots}) then {
+        if ((nearestObjects [_fob, [KP_liberation_air_vehicle_building], GRLIB_fob_range]) findIf {alive _x} == -1) exitWith {_class = ""};
+    };
+    if (_air) then {
+        private _kind = (["Plane", "Helicopter"] select (_class isKindOf "Helicopter"));
+        private _slots = ([KP_liberation_plane_slots, KP_liberation_heli_slots] select (_kind == "Helicopter"));
+        private _count = {alive _x && {_x isKindOf _kind} && {toLower typeOf _x in KPLIB_b_air_classes} && {!unitIsUAV _x} && {!(_x getVariable ["KP_liberation_preplaced", false])}} count vehicles;
+        if (_count >= _slots) then {_class = ""};
     };
     if (_class isEqualTo "") exitWith {};
     private _areas = [_fob, GRLIB_fob_range * 2] call KPLIB_fnc_buildStorage;
@@ -151,58 +144,26 @@ KPLIB_fnc_commitBuild = {
     if ((_prices select 0) > (_stock select 0) || {(_prices select 1) > (_stock select 1)} || {(_prices select 2) > (_stock select 2)}) exitWith {
         ["Construction cancelled: this FOB no longer has enough resources."] remoteExecCall ["hint", owner _caller];
     };
-    private _created = [];
-    private _group = grpNull;
-    if (_infantry) then {
-        _group = createGroup [GRLIB_side_friendly, true];
-        private _classes = if (_type == 8) then {_class} else {[_class]};
-        {
-            private _unit = _group createUnit [_x, getPosATL _caller vectorAdd [1, 1, 0], [], 0, "NONE"];
-            if (!isNull _unit) then {
-                _unit setSkill 0.5;
-                _unit setRank (if (_type == 1) then {"PRIVATE"} else {["SERGEANT", "CORPORAL"] param [_forEachIndex, "PRIVATE"]});
-                if (_type == 8 && {_class isEqualTo blufor_squad_para}) then {
-                    removeBackpackGlobal _unit;
-                    _unit addBackpackGlobal "B_parachute";
-                };
-                _created pushBack _unit;
-            };
-        } forEach _classes;
-        if (count _created != count _classes) then {
-            {deleteVehicle _x} forEach _created;
-            _created = [];
-            deleteGroup _group;
-        };
-    } else {
-        private _object = createVehicle [_class, _position, [], 0, "CAN_COLLIDE"];
-        if (!isNull _object) then {
-            _object allowDamage false;
-            _object setDir _direction;
-            if (toLower _class in KPLIB_b_static_classes) then {_object setPosATL _position} else {_object setPos _position};
-            _object setVectorUp (if (_level) then {[0, 0, 1]} else {surfaceNormal position _object});
-            _created pushBack _object;
-        };
-    };
-    if (_created isEqualTo []) exitWith {
+    private _object = createVehicle [_class, _position, [], 0, "CAN_COLLIDE"];
+    if (isNull _object) exitWith {
         ["Construction failed; no resources were spent."] remoteExecCall ["hint", owner _caller];
     };
-    [_areas, _prices] call (localNamespace getVariable "KPLIB_buildDebit");
-    if (_infantry) then {
-        stats_blufor_soldiers_recruited = stats_blufor_soldiers_recruited + count _created;
-        unitcap = unitcap + count _created;
-        if (_type == 1 && {!_manned}) then {_created joinSilent group _caller} else {
-            if (_type == 8) then {_group setGroupId [format ["%1 %2", squads_names select _index, groupId _group]]};
-            _group setBehaviour "SAFE";
-        };
+    _object allowDamage false;
+    _object setDir _direction;
+    if (toLower _class in KPLIB_b_static_classes) then {
+        _object setPosATL _position;
     } else {
-        private _object = _created select 0;
-        [_object] call KPLIB_fnc_addObjectInit;
-        [_object] call KPLIB_fnc_clearCargo;
-        if (unitIsUAV _object || {_manned}) then {[_object] call KPLIB_fnc_forceBluforCrew};
-        [{params ["_object"]; if (!isNull _object) then {_object allowDamage true}}, [_object], 0.3] call CBA_fnc_waitAndExecute;
-        if !(_class isKindOf "Building") then {stats_blufor_vehicles_built = stats_blufor_vehicles_built + 1};
-        _created append crew _object;
+        _object setPos _position;
     };
-    if (_type != 6) then {{_x addMPEventHandler ["MPKilled", {_this spawn kill_manager}]} forEach _created};
+    _object setVectorUp (if (_level) then {[0, 0, 1]} else {surfaceNormal position _object});
+    [_areas, _prices] call (localNamespace getVariable "KPLIB_buildDebit");
+    [_object] call KPLIB_fnc_addObjectInit;
+    [_object] call KPLIB_fnc_clearCargo;
+    if (unitIsUAV _object) then {[_object] call KPLIB_fnc_forceBluforCrew};
+    [{params ["_object"]; if (!isNull _object) then {_object allowDamage true}}, [_object], 0.3] call CBA_fnc_waitAndExecute;
+    if !(_class isKindOf "Building") then {stats_blufor_vehicles_built = stats_blufor_vehicles_built + 1};
+    if (_type != 6) then {
+        {_x addMPEventHandler ["MPKilled", {_this spawn kill_manager}]} forEach ([_object] + crew _object);
+    };
     [format ["Construction committed: category %1, entry %2, cost %3", _type, _index, _prices], "BUILD"] call KPLIB_fnc_log;
 };

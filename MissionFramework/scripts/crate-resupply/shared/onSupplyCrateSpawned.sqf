@@ -1,5 +1,6 @@
 onSupplyCrateSpawned = {
 	params ["_supplyCrate", "_spawner", "_offset"];
+    if (!isRemoteExecuted || {remoteExecutedOwner != 2}) exitWith {};
 
 	format ["OnSupplyCrateSpawned(%1, %2, %3)", _supplyCrate, _spawner, _offset];
 

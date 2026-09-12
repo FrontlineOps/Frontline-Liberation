@@ -26,15 +26,6 @@ waitUntil {cinematic_camera_stop};
 private _basenamestr    = "8ID Operations Base";
 private _startPosition  = getposATL startbase;
 
-// Handle KOG ===================================================== //
-private _isKog          = playerside isEqualTo GRLIB_side_enemy;
-private _kogMarker      = "kog_base";
-if (_isKog) then {
-    _basenamestr        = "KOG Base";
-    _startPosition      = markerPos _kogMarker;
-};
-// ======================================================================== //
-
 KP_liberation_respawn_time = time;
 KP_liberation_respawn_mobile_done = false;
 
@@ -86,51 +77,39 @@ while {true} do {
     while {dialog && alive player && deploy == 0} do {
         // ARRAY - [[NAME, POSITION(, OBJECT)], ...]
         KPLIB_respawnPositionsList = [[_basenamestr, _startPosition]];
-        if (_isKog) then {
+        {
+            private _nearby = 0;
+            private _nearEntities = _x nearEntities [["Man", "Tank", "Car"], 400];
             {
-                if (count ((_x nearEntities [["Man", "Tank", "Car"], 300]) select {side (group _x) == GRLIB_side_friendly}) < 4) then {
-                    KPLIB_respawnPositionsList pushBack [
-                        format ["Respawn Truck - %1", mapGridPosition getPosATL _x],
-                        getPosATL _x
-                    ];
+                if(side (group _x) == GRLIB_side_enemy) then {
+                    _nearby = _nearby + 1;
                 };
-            } forEach (vehicles select {alive _x && typeOf _x in GRLIB_kog_trucks});
 
-        } else {
-            {
-                private _nearby = 0;
-                private _nearEntities = _x nearEntities [["Man", "Tank", "Car"], 400];
+                if(_nearby >= 4) exitWith {};
+            } forEach _nearEntities;
+
+            if(_nearby < 4) then {
+                KPLIB_respawnPositionsList pushBack [
+                    format ["FOB %1 - %2", (military_alphabet select _forEachIndex), mapGridPosition _x],
+                    _x
+                ];
+            };
+        } forEach GRLIB_all_fobs;
+
+        if (!isNil "KPLIB_COPS_CLIENT_GET_DEPLOY_DESTINATIONS") then {
+            KPLIB_respawnPositionsList append ([] call KPLIB_COPS_CLIENT_GET_DEPLOY_DESTINATIONS);
+        };
+
+        if (KP_liberation_mobilerespawn) then {
+            if (KP_liberation_respawn_time <= time) then {
+                private _mobileRespawns = [] call KPLIB_fnc_getMobileRespawns;
                 {
-                    if(side (group _x) == GRLIB_side_enemy) then {
-                        _nearby = _nearby + 1;
-                    };
-
-                    if(_nearby >= 4) exitWith {};
-                } forEach _nearEntities;
-
-                if(_nearby < 4) then {
                     KPLIB_respawnPositionsList pushBack [
-                        format ["FOB %1 - %2", (military_alphabet select _forEachIndex), mapGridPosition _x],
+                        format ["%1 - %2", localize "STR_RESPAWN_TRUCK", mapGridPosition getPosATL _x],
+                        getPosATL _x,
                         _x
                     ];
-                };
-            } forEach GRLIB_all_fobs;
-
-            if (!isNil "KPLIB_COPS_CLIENT_GET_DEPLOY_DESTINATIONS") then {
-                KPLIB_respawnPositionsList append ([] call KPLIB_COPS_CLIENT_GET_DEPLOY_DESTINATIONS);
-            };
-
-            if (KP_liberation_mobilerespawn) then {
-                if (KP_liberation_respawn_time <= time) then {
-                    private _mobileRespawns = [] call KPLIB_fnc_getMobileRespawns;
-                    {
-                        KPLIB_respawnPositionsList pushBack [
-                            format ["%1 - %2", localize "STR_RESPAWN_TRUCK", mapGridPosition getPosATL _x],
-                            getPosATL _x,
-                            _x
-                        ];
-                    } forEach _mobileRespawns;
-                };
+                } forEach _mobileRespawns;
             };
         };
 

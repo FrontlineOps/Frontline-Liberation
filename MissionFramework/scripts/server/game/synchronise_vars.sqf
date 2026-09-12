@@ -6,12 +6,10 @@ waitUntil{!isNil "KP_liberation_supplies_global"};
 waitUntil{!isNil "KP_liberation_ammo_global"};
 waitUntil{!isNil "KP_liberation_fuel_global"};
 waitUntil{!isNil "combat_readiness"};
-waitUntil{!isNil "unitcap"};
 waitUntil{!isNil "KP_liberation_heli_count"};
 waitUntil{!isNil "KP_liberation_plane_count"};
 waitUntil{!isNil "KP_liberation_heli_slots"};
 waitUntil{!isNil "KP_liberation_plane_slots"};
-waitUntil{!isNil "infantry_cap"};
 waitUntil{!isNil "KP_liberation_civ_rep"};
 waitUntil{!isNil "KP_liberation_guerilla_strength"};
 waitUntil{!isNil "infantry_weight"};
@@ -23,13 +21,11 @@ private _KP_liberation_fob_resources_old = [];
 private _KP_liberation_supplies_global_old = -1;
 private _KP_liberation_ammo_global_old = -1;
 private _KP_liberation_fuel_global_old = -1;
-private _unitcap_old = -1;
 private _KP_liberation_heli_count_old = -1;
 private _KP_liberation_plane_count_old = -1;
 private _KP_liberation_heli_slots_old = -1;
 private _KP_liberation_plane_slots_old = -1;
 private _combat_readiness_old = -1;
-private _infantry_cap_old = -999;
 private _KP_liberation_civ_rep_old = -999;
 private _KP_liberation_guerilla_strength_old = -999;
 private _infantry_weight_old = -1;
@@ -42,13 +38,11 @@ while {true} do {
         || _KP_liberation_supplies_global_old != KP_liberation_supplies_global
         || _KP_liberation_ammo_global_old != KP_liberation_ammo_global
         || _KP_liberation_fuel_global_old != KP_liberation_fuel_global
-        || _unitcap_old != unitcap
         || _KP_liberation_heli_count_old != KP_liberation_heli_count
         || _KP_liberation_plane_count_old != KP_liberation_plane_count
         || _KP_liberation_heli_slots_old != KP_liberation_heli_slots
         || _KP_liberation_plane_slots_old != KP_liberation_plane_slots
         || _combat_readiness_old != combat_readiness
-        || _infantry_cap_old != infantry_cap
         || _KP_liberation_civ_rep_old != KP_liberation_civ_rep
         || _KP_liberation_guerilla_strength_old != KP_liberation_guerilla_strength
         || _infantry_weight_old != infantry_weight
@@ -63,14 +57,14 @@ while {true} do {
         KP_liberation_supplies_global,
         KP_liberation_ammo_global,
         KP_liberation_fuel_global,
-        unitcap,
+        0, // Reserved former recruited-unit count.
         KP_liberation_heli_count,
         KP_liberation_plane_count,
         KP_liberation_heli_slots,
         KP_liberation_plane_slots,
         combat_readiness,
         0, // Reserved former intelligence-currency slot
-        infantry_cap,
+        0, // Reserved former recruitment capacity.
         KP_liberation_civ_rep,
         KP_liberation_guerilla_strength,
         infantry_weight,
@@ -83,13 +77,11 @@ while {true} do {
     _KP_liberation_supplies_global_old = KP_liberation_supplies_global;
     _KP_liberation_ammo_global_old = KP_liberation_ammo_global;
     _KP_liberation_fuel_global_old = KP_liberation_fuel_global;
-    _unitcap_old = unitcap;
     _KP_liberation_heli_count_old = KP_liberation_heli_count;
     _KP_liberation_plane_count_old = KP_liberation_plane_count;
     _KP_liberation_heli_slots_old = KP_liberation_heli_slots;
     _KP_liberation_plane_slots_old = KP_liberation_plane_slots;
     _combat_readiness_old = combat_readiness;
-    _infantry_cap_old = infantry_cap;
     _KP_liberation_civ_rep_old = KP_liberation_civ_rep;
     _KP_liberation_guerilla_strength_old = KP_liberation_guerilla_strength;
     _infantry_weight_old = infantry_weight;

@@ -1,6 +1,28 @@
 // https://github.com/KillahPotatoes/KP-Liberation
 
-/* Automatic factions (required)
+/* Select exactly one faction source. AUTO keeps the existing generation below.
+   MANUAL reads only kp_liberation_manual_factions.sqf; populate it before switching. */
+KP_liberation_faction_source = "AUTO";
+localNamespace setVariable ["KPLIB_manualFactions", KP_liberation_faction_source == "MANUAL"]; // "AUTO" or "MANUAL"
+KPLIB_factionOptionalEquipment = [["ace_", "ace_main"], ["acm_", "acm_core"], ["acre_", "acre_main"], ["tfar_", "tfar_core"]];
+
+// Admin grants for BLUFOR operating seats. Passengers remain available for transport.
+// [permission key, menu label, catalog categories, restricted seat roles]
+KPLIB_vehiclePermissionDefinitions = [
+    ["VEHICLE_GROUND", "Ground vehicles", ["light", "recon", "medical", "groundLogistics", "transport"], ["driver", "gunner", "commander"]],
+    ["VEHICLE_ARMOR", "Armored vehicles", ["heavy"], ["driver", "gunner", "commander"]],
+    ["VEHICLE_ROTARY", "Helicopters", ["rotaryLogistics", "rotaryCas"], ["driver", "gunner", "commander"]],
+    ["VEHICLE_FIXED", "Fixed-wing aircraft", ["fixedWing"], ["driver", "gunner", "commander"]],
+    ["VEHICLE_WEAPONS", "Artillery and static weapons", ["static", "artillery", "atgm", "aa"], ["driver", "gunner", "commander"]],
+    ["VEHICLE_BOATS", "Boats", ["boat"], ["driver", "gunner", "commander"]]
+];
+// Last matching category owns the vehicle's grant; aircraft/armor override transport tags.
+// Explicit infrastructure or civilian exceptions: [classname, permission key]. OPFOR is always denied.
+KPLIB_vehiclePermissionExceptions = [];
+KPLIB_roleAuditInterval = 1;
+KPLIB_roleAuditBatchSize = 8;
+
+/* Automatic factions (used in AUTO mode)
 
     Select one or more CfgFactionClasses classnames per side. Multiple entries
     merge split factions (useful for mods which separate infantry and vehicles).
@@ -47,7 +69,6 @@ KP_liberation_autoFaction_resupplyCrateLimit = 16;
 // Prices round to 25; unarmed vehicles cost no ammo and statics cost no fuel.
 KP_liberation_autoFaction_vehiclePriceMultipliers = [1, 1, 1]; // Supplies, ammunition, fuel
 KP_liberation_autoFaction_priceDefaults = createHashMapFromArray [
-    ["infantry",       [25,   0,   0]],
     ["light",          [75,  25,  50]],
     ["recon",         [100,  50,  75]],
     ["medical",       [100,   0,  75]],
@@ -408,9 +429,8 @@ KP_liberation_save_interval = 60;            			// Save interval (sec)
 // Behavior-preserving scheduler tuning.
 KP_liberation_sector_monitor_pass_interval = 1;
 KP_liberation_sector_monitor_sector_yield = 0.01;
-KP_liberation_high_command_refresh_interval = 2;
 KP_liberation_resource_reconcile_interval = 15;
-KP_liberation_unit_cap_refresh_interval = 5;
+KP_liberation_aircraft_count_refresh_interval = 5;
 KP_liberation_state_sync_poll_interval = 1;
 KP_liberation_zeus_sync_interval = 15;
 KP_liberation_zeus_sync_batch_size = 32;       // Maximum new/removed curator entities processed together
@@ -497,7 +517,6 @@ KPLIB_surrender_escort_break_distance = 150;			// Distance at which an abandoned
 
 GRLIB_cleanup_delay = 250;                   			// Corpse cleanup time (sec)
 
-GRLIB_blufor_cap = 171; // Recruitment ceiling, scaled by GRLIB_unitcap; campaign infantry availability can be lower.
 // Existing OPFOR count at which new sector activation pauses. Activation range
 // starts shrinking at half this count. Scaled by GRLIB_unitcap; this does not
 // set defender strength or replace BATTLESPACE_UNIT_CAP for physical spawning.
@@ -800,7 +819,6 @@ KPLIB_transportConfigs = [
 	]	// 2 crates
 ];
 
-KPLIB_aiResupplySources = [];
 vehicle_repair_sources = [];
 vehicle_rearm_sources = [];
 vehicle_refuel_sources = [];
@@ -813,7 +831,6 @@ boats_names = [
 	"rhsusf_mkvsoc"
 ];
 
-KP_liberation_suppMod_artyVeh = [];
 
 // Intel objects
 KPLIB_intelObjectClasses = [
@@ -905,6 +922,4 @@ KP_liberation_small_storage_positions = [
 // DO NOT CHANGE (unless you know what you are doing)
 GRLIB_endgame = 0;
 // KP_liberation_production_interval = ceil (KP_liberation_production_interval / GRLIB_resources_multiplier);
-GRLIB_blufor_cap = GRLIB_blufor_cap * GRLIB_unitcap;
 KPLIB_sector_activation_opfor_threshold = KPLIB_sector_activation_opfor_threshold * GRLIB_unitcap;
-GRLIB_kog_trucks = ["UK3CB_ARD_O_GAZ_Vodnik"];//"vn_o_wheeled_z157_01_vcmf"rhs_ka60_grey

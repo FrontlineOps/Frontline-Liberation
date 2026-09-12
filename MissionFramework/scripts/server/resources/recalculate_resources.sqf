@@ -7,7 +7,6 @@ KP_liberation_ammo_global = 0;
 KP_liberation_fuel_global = 0;
 KP_liberation_heli_slots = 0;
 KP_liberation_plane_slots = 0;
-infantry_cap = 50 * GRLIB_resources_multiplier;
 
 please_recalculate = true;
 
@@ -36,7 +35,6 @@ while {true} do {
     private _local_fuel_global = 0;
     private _local_heli_slots = 0;
     private _local_plane_slots = 0;
-    private _local_infantry_cap = 50 * GRLIB_resources_multiplier;
 
     {
         private _fobBuildings = nearestObjects [_x, _trackedFobClasses, GRLIB_fob_range, false];
@@ -83,18 +81,11 @@ while {true} do {
         _local_plane_slots = _local_plane_slots + _planeSlots;
     } forEach (GRLIB_all_fobs + [getMarkerPos "startbase_marker"]);
 
-    {
-        if ( _x in sectors_capture ) then {
-            _local_infantry_cap = _local_infantry_cap + (10 * GRLIB_resources_multiplier);
-        };
-    } foreach blufor_sectors;
-
     KP_liberation_fob_resources = _local_fob_resources;
     KP_liberation_supplies_global = _local_supplies_global;
     KP_liberation_ammo_global = _local_ammo_global;
     KP_liberation_fuel_global = _local_fuel_global;
     KP_liberation_heli_slots = _local_heli_slots;
     KP_liberation_plane_slots = _local_plane_slots;
-    infantry_cap = _local_infantry_cap;
 
 };
