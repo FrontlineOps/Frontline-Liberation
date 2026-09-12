@@ -13,27 +13,7 @@ if (isServer) then {
 [] call compileFinal preprocessFileLineNumbers "presets\battlespace_tuning.sqf";
 
 KPLIB_autoFactionActive = false;
-[] call KPLIB_fnc_applyAutomaticFactionPresets;
-
-// Prices for the blufor infantry squads (supplies, ammo, fuel)
-KPLIB_b_allSquads = [
-    [blufor_squad_inf_light,0,0,0],
-    [blufor_squad_inf,0,0,0],
-    [blufor_squad_at,0,0,0],
-    [blufor_squad_aa,0,0,0],
-    [blufor_squad_recon,0,0,0],
-    [blufor_squad_para,0,0,0]
-];
-
-// Squad names for build menu
-squads_names = [
-    localize "STR_LIGHT_RIFLE_SQUAD",
-    localize "STR_RIFLE_SQUAD",
-    localize "STR_AT_SQUAD",
-    localize "STR_AA_SQUAD",
-    localize "STR_RECON_SQUAD",
-    localize "STR_PARA_SQUAD"
-];
+[] call KPLIB_fnc_applyFactionPresets;
 
 // Classnames of objects which should be ignored when building
 GRLIB_ignore_colisions_when_building = [
@@ -342,7 +322,6 @@ GRLIB_ignore_colisions_when_building = [
 // Checking all preset arrays for missing mods and sort out not available classnames
 
 // BLUFOR
-infantry_units                              = infantry_units                            select {[( _x select 0)] call KPLIB_fnc_checkClass};
 light_vehicles                              = light_vehicles                            select {[( _x select 0)] call KPLIB_fnc_checkClass};
 recon_vehicles                              = recon_vehicles                            select {[( _x select 0)] call KPLIB_fnc_checkClass};
 medical_vehicles                            = medical_vehicles                          select {[( _x select 0)] call KPLIB_fnc_checkClass};
@@ -357,12 +336,7 @@ fixedwing_vehicles                          = fixedwing_vehicles                
 static_vehicles                             = static_vehicles                           select {[( _x select 0)] call KPLIB_fnc_checkClass};
 buildings                                   = buildings                                 select {[( _x select 0)] call KPLIB_fnc_checkClass};
 support_vehicles                            = support_vehicles                          select {[( _x select 0)] call KPLIB_fnc_checkClass};
-blufor_squad_inf_light                      = blufor_squad_inf_light                    select {[_x] call KPLIB_fnc_checkClass};
 blufor_squad_inf                            = blufor_squad_inf                          select {[_x] call KPLIB_fnc_checkClass};
-blufor_squad_at                             = blufor_squad_at                           select {[_x] call KPLIB_fnc_checkClass};
-blufor_squad_aa                             = blufor_squad_aa                           select {[_x] call KPLIB_fnc_checkClass};
-blufor_squad_recon                          = blufor_squad_recon                        select {[_x] call KPLIB_fnc_checkClass};
-blufor_squad_para                           = blufor_squad_para                         select {[_x] call KPLIB_fnc_checkClass};
 elite_vehicles                              = elite_vehicles                            select {[_x] call KPLIB_fnc_checkClass};
 
 // OPFOR
@@ -386,13 +360,11 @@ civilian_vehicles                           = civilian_vehicles                 
 
 // Misc
 KPLIB_transportConfigs                      = KPLIB_transportConfigs                    select {[_x select 0] call KPLIB_fnc_checkClass};
-KPLIB_aiResupplySources                     = KPLIB_aiResupplySources                   select {[_x] call KPLIB_fnc_checkClass};
 
 /*
     Fetch arrays with only classnames from the blufor preset build arrays
     Beware that all classnames are converted to lowercase. Important for e.g. `in` checks, as it's case-sensitive.
 */
-KPLIB_b_infantry_classes                    = infantry_units                            apply {toLower (_x select 0)};
 KPLIB_b_light_classes                       = light_vehicles                            apply {toLower (_x select 0)};
 KPLIB_b_recon_classes                       = recon_vehicles                            apply {toLower (_x select 0)};
 KPLIB_b_medical_classes                     = medical_vehicles                          apply {toLower (_x select 0)};
@@ -410,9 +382,6 @@ KPLIB_b_buildings_classes                   = buildings                         
 KPLIB_b_support_classes                     = support_vehicles                          apply {toLower (_x select 0)};
 KPLIB_transport_classes                     = KPLIB_transportConfigs                    apply {toLower (_x select 0)};
 
-KPLIB_b_infantry_classes append (blufor_squad_inf_light + blufor_squad_inf + blufor_squad_at + blufor_squad_aa + blufor_squad_recon + blufor_squad_para);
-KPLIB_b_infantry_classes                    = KPLIB_b_infantry_classes                  apply {toLower _x};
-KPLIB_b_infantry_classes                    = KPLIB_b_infantry_classes                  arrayIntersect KPLIB_b_infantry_classes;
 
 /*
     Liberation specific collections
@@ -420,19 +389,17 @@ KPLIB_b_infantry_classes                    = KPLIB_b_infantry_classes          
 
 private _airBuildList = rotarylogi_vehicles + rotarycas_vehicles + fixedwing_vehicles;
 
-// Combines Phantom recon vehicles into light vehicles list for building
-KPLIB_buildList         = [[], infantry_units, light_vehicles + recon_vehicles + medical_vehicles, heavy_vehicles, _airBuildList, static_vehicles + artillery_vehicles + atgm_vehicles + aa_vehicles, buildings, support_vehicles + groundlogi_vehicles, KPLIB_b_allSquads];
+// Categories 0 and 1 remain reserved; vehicles and structures retain their IDs.
+KPLIB_buildList         = [[], [], light_vehicles + recon_vehicles + medical_vehicles, heavy_vehicles, _airBuildList, static_vehicles + artillery_vehicles + atgm_vehicles + aa_vehicles, buildings, support_vehicles + groundlogi_vehicles];
 KPLIB_crates            = [KP_liberation_supply_crate, KP_liberation_ammo_crate, KP_liberation_fuel_crate];
 KPLIB_airSlots          = [KP_liberation_heli_slot_building, KP_liberation_plane_slot_building];
 KPLIB_storageBuildings  = [KP_liberation_small_storage_building, KP_liberation_large_storage_building];
 KPLIB_upgradeBuildings  = [KP_liberation_recycle_building, KP_liberation_air_vehicle_building, KP_liberation_heli_slot_building, KP_liberation_plane_slot_building];
-KPLIB_aiResupplySources append [Respawn_truck_typename, huron_typename, Arsenal_typename];
 
 KPLIB_crates            = KPLIB_crates              apply {toLower _x};
 KPLIB_airSlots          = KPLIB_airSlots            apply {toLower _x};
 KPLIB_storageBuildings  = KPLIB_storageBuildings    apply {toLower _x};
 KPLIB_upgradeBuildings  = KPLIB_upgradeBuildings    apply {toLower _x};
-KPLIB_aiResupplySources = KPLIB_aiResupplySources   apply {toLower _x};
 
 /*
     Classname collections

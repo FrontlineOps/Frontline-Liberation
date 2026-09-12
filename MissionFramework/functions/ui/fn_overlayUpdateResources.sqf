@@ -44,7 +44,6 @@ if (_updateValues || {!ctrlShown (_overlay displayCtrl IDC_OVERLAY_RSC_LABEL_SUP
     (_overlay displayCtrl IDC_OVERLAY_RSC_LABEL_SUPPLIES) ctrlSetText str floor KP_liberation_supplies;
     (_overlay displayCtrl IDC_OVERLAY_RSC_LABEL_AMMO) ctrlSetText str floor KP_liberation_ammo;
     (_overlay displayCtrl IDC_OVERLAY_RSC_LABEL_FUEL) ctrlSetText str floor KP_liberation_fuel;
-    (_overlay displayCtrl IDC_OVERLAY_RSC_LABEL_UNITCAP) ctrlSetText ([unitcap, "/", [] call KPLIB_fnc_getLocalCap] joinString "");
     (_overlay displayCtrl IDC_OVERLAY_RSC_LABEL_HELIPAD) ctrlSetText ([KP_liberation_heli_count, "/", KP_liberation_heli_slots] joinString "");
     (_overlay displayCtrl IDC_OVERLAY_RSC_LABEL_PLANE) ctrlSetText ([KP_liberation_plane_count, "/", KP_liberation_plane_slots] joinString "");
     (_overlay displayCtrl IDC_OVERLAY_RSC_LABEL_ALERT) ctrlSetText ([round combat_readiness, "%"] joinString "");
@@ -71,7 +70,7 @@ if (_updateValues || {!ctrlShown (_overlay displayCtrl IDC_OVERLAY_RSC_LABEL_SUP
 {
     (_overlay displayCtrl _x) ctrlShow true;
 } forEach OVERLAY_RSC_IDCS;
-// The intelligence currency is retired; leave the reserved control IDs intact.
-{(_overlay displayCtrl _x) ctrlShow false} forEach [IDC_OVERLAY_RSC_PIC_INTEL, IDC_OVERLAY_RSC_PIC_INTEL_SHADOW, IDC_OVERLAY_RSC_LABEL_INTEL];
+// Retired counters keep reserved control IDs.
+{(_overlay displayCtrl _x) ctrlShow false} forEach [IDC_OVERLAY_RSC_PIC_INTEL, IDC_OVERLAY_RSC_PIC_INTEL_SHADOW, IDC_OVERLAY_RSC_LABEL_INTEL, IDC_OVERLAY_RSC_PIC_UNITCAP, IDC_OVERLAY_RSC_PIC_UNITCAP_SHADOW, IDC_OVERLAY_RSC_LABEL_UNITCAP];
 
 true

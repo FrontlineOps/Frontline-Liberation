@@ -27,7 +27,6 @@ params [
 private _amount = _side countSide (_entities select {
     _x isKindOf "Man"
     && {!(captive _x)}
-    && {!(side _x == GRLIB_side_enemy && (isPlayer _x))}
     && {((getPos _x) select 2) < 500}
 });
 

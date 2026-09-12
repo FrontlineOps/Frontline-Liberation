@@ -47,12 +47,6 @@ class Params {
         texts[] = {1, 2, 3, 4, 5, 6, 7};
         default = 2;
     };
-    class MaxSquadSize {
-        title = $STR_PARAM_SQUAD_SIZE;
-        values[] = {0, 1, 2, 4, 6, 8, 10, 12, 16, 20, 24, 30, 36};
-        texts[] = {0, 1, 2, 4, 6, 8, 10, 12, 16, 20, 24, 30, 36};
-        default = 16;
-    };
     class BluforDefenders {
         title = $STR_PARAM_BLUFOR_DEFENDERS;
         values[] = {1, 0};
@@ -197,18 +191,6 @@ class Params {
         texts[] = {$STR_PARAMS_ENABLED, $STR_PARAMS_DISABLED};
         default = 1;
     };
-    class HighCommand {
-        title = $STR_PARAM_HIGHCOMMAND;
-        values[] = {1, 0};
-        texts[] = {$STR_PARAMS_ENABLED, $STR_PARAMS_DISABLED};
-        default = 1;
-    };
-    class SuppMod {
-        title = $STR_PARAM_SUPPMOD;
-        values[] = {0, 1, 2};
-        texts[] = {$STR_PARAMS_DISABLED, $STR_PARAM_SUPPMOD_COMMANDER, $STR_PARAM_SUPPMOD_EVERYONE};
-        default = 0;
-    };
     class Spacer3 {
         title = "";
         values[] = {""};
@@ -277,12 +259,6 @@ class Params {
     };
     class DebugCivRep {
         title = $STR_PARAMS_DEBUG_CIVREP;
-        values[] = {0, 1};
-        texts[] = {$STR_PARAMS_DISABLED, $STR_PARAMS_ENABLED};
-        default = 0;
-    };
-    class DebugHighCommand {
-        title = $STR_PARAM_DEBUG_HIGHCOMMAND;
         values[] = {0, 1};
         texts[] = {$STR_PARAMS_DISABLED, $STR_PARAMS_ENABLED};
         default = 0;

@@ -21,6 +21,8 @@ params [
 
 if !(isPlayer _player) exitWith {["No player given"] call BIS_fnc_error; false};
 
+if (side group _player != GRLIB_side_friendly) exitWith {false};
+
 if (isNil "KP_liberation_resources_global") then {KP_liberation_resources_global = false;};
 
 _redeployEvaluation = "
@@ -34,19 +36,6 @@ _redeployEvaluation = "
             }
             && {build_confirmed isEqualTo 0}
         ";
-
-// Todo: how to constantly evalute for nearby spawn trucks w/o screwing the client's perf???
-// Actually, it might be a good thing that KOG can't re-redeploy from a truck lol
-if (playerside isEqualTo GRLIB_side_enemy) then {
-    _redeployEvaluation = "
-            isNull (objectParent _originalTarget)
-            && {alive _originalTarget}
-            && {
-                (markerPos 'kog_base') distance player < 20
-            }
-            && {build_confirmed isEqualTo 0}
-        ";
-};
 
 _player addAction [
     [localize "STR_DEPLOY_ACTION", "#80FF80"] call KPLIB_fnc_actionLabel,
@@ -250,7 +239,7 @@ _player addAction [
             if (!isNull _box) then 
             {
                 //KARMA_ARSENAL_CRATES deleteAt (KARMA_ARSENAL_CRATES find _x);
-                [_box, player] call roleArsenal;
+                [_box, player] call KPLIB_fnc_initPlayerArsenal;
             };
         } forEach KARMA_ARSENAL_CRATES;
     },

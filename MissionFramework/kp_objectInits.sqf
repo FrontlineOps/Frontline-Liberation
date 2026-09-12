@@ -70,12 +70,6 @@ KPLIB_objectInits = [
         true
     ],
 
-    // Add valid vehicles to support module, if system is enabled
-    [
-        KP_liberation_suppMod_artyVeh,
-        {if (KP_liberation_suppMod > 0) then {KPLIB_suppMod_arty synchronizeObjectsAdd [_this];};}
-    ],
-    
     // Disable autocombat (if set in parameters) and fleeing
     [
         ["Man"],
@@ -202,44 +196,18 @@ KPLIB_objectInits = [
         /*
         // Loop through every box just to be safe.
         {
-            [_box, _player] call roleArsenal;          
+            [_box, _player] call KPLIB_fnc_initPlayerArsenal;
         } forEach KARMA_ARSENAL_CRATES;
         */
-        
+
         KARMA_ARSENAL_CRATES pushBackUnique _box;
-        [roleArsenal, [_box, _player], 5] call CBA_fnc_waitAndExecute;
+        [KPLIB_fnc_initPlayerArsenal, [_box, _player], 5] call CBA_fnc_waitAndExecute;
     },
     true,
     [],
     true
 ] call CBA_fnc_addClassEventHandler;
 
-["UK3CB_AK47_Equipbox_Indfor", "init",
-    { 
-        private _box = (_this select 0);
-        [_box, false, [0, 0, 0], 1] call ace_dragging_fnc_setDraggable;
-        [_box, false, [0, 0, 0], 1] call ace_dragging_fnc_setCarryable;
-        private _player = player;
-
-        if (isServer) then {
-            clearMagazineCargoGlobal _box;
-	        clearItemCargoGlobal _box;
-	        clearBackpackCargoGlobal _box;
-	        clearWeaponCargoGlobal _box;
-        };
-
-        OPFOR_ARSENAL_CRATES pushBackUnique _box;
-
-        if (side player == GRLIB_side_enemy) then {
-            [_box, false] call ace_arsenal_fnc_removeBox;
-            private _items = [player] call OpforArsenal_DetermineGear;
-	        [_box, _items, false] call ace_arsenal_fnc_initBox;
-        };
-    },
-    true,
-    [],
-    true
-] call CBA_fnc_addClassEventHandler;
 
 ["ttt_phalanx", "init",
     { 
@@ -1015,7 +983,6 @@ KPLIB_objectInits = [
 ] call CBA_fnc_addClassEventHandler;
 
 
-
 // ---------------------- TRUCKS ----------------------
 
 ["pook_NASAMS_BASE", "init",
@@ -1312,7 +1279,6 @@ KPLIB_objectInits = [
     [],
     true
 ] call CBA_fnc_addClassEventHandler;
-
 
 
 ["Land_TentHangar_V1_F", "init",

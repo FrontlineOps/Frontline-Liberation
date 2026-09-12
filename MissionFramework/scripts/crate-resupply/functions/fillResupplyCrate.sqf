@@ -1,13 +1,16 @@
-fillResupplyCrate = {
+localNamespace setVariable ["KPLIB_fillResupplyCrate", {
 
 	params ["_crate"];
+    if (!isServer) exitWith {};
 
 
-	private _crateType = _crate getVariable "resupplyCrateName";
+    private _record = (localNamespace getVariable "KPLIB_resupplyRegistry") getOrDefault [netId _crate, []];
+    if (_record isEqualTo []) exitWith {};
+    private _crateType = _record select 0;
 
 	diag_log format ["Fill Crate Exec [%1, %2]", _crate, _crateType];
 	if( !isNil{ _crateType }) then {
-		private _crateInfo = ResupplyCrates get _crateType;
+        private _crateInfo = (localNamespace getVariable "KPLIB_resupplyDefinitions") get _crateType;
 
 		clearItemCargoGlobal _crate;
 		clearMagazineCargoGlobal _crate;
@@ -26,8 +29,8 @@ fillResupplyCrate = {
 
 		private _itemsMap = _crateInfo getOrDefault ["Items", createHashMap];
 		{
-			_itemClass = _x;
-			_itemAmount = _y;
+            private _itemClass = _x;
+            private _itemAmount = _y;
 			
 			// Check if the item is a backpack
 			// https://community.bistudio.com/wiki/BIS_fnc_itemType
@@ -40,4 +43,4 @@ fillResupplyCrate = {
 
 		} forEach _itemsMap;
 	};
-};
+}];

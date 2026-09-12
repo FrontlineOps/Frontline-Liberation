@@ -1,3 +1,18 @@
+if ((localNamespace getVariable ["KPLIB_manualFactions", false])) exitWith {
+    {
+        ["KPLIB_ROLE_" + _x, _x, {[player] call KPLIB_fnc_enforceRoleEquipment}] call CBA_fnc_addBISPlayerEventHandler;
+    } forEach ["Take", "InventoryClosed"];
+    ["ace_arsenal_displayClosed", {[player] call KPLIB_fnc_enforceRoleEquipment}] call CBA_fnc_addEventHandler;
+    [missionNamespace, "arsenalClosed", {[player] call KPLIB_fnc_enforceRoleEquipment}] call BIS_fnc_addScriptedEventHandler;
+    [{
+        if (!alive player || {!(localNamespace getVariable ["KPLIB_permissionsReady", false])}) exitWith {};
+        if (([player] call KPLIB_fnc_getPlayerRole) isNotEqualTo (localNamespace getVariable ["KPLIB_clientRole", []])) then {
+            [] call KPLIB_fnc_refreshRoleEquipment;
+        };
+        [player] call KPLIB_fnc_enforceRoleEquipment;
+    }, KPLIB_roleAuditInterval] call CBA_fnc_addPerFrameHandler;
+};
+
 /*
 	File: 
 		scripts\client\misc\enforced_arsenal.sqf
@@ -29,7 +44,7 @@ _fnc_enforceArsenal = {
 
 	// Allow for a global bypass to the arsenal, set through zeus action
 	if (BYPASS_ENFORCED_ARSENAL) exitWith {};
-	if (side player == GRLIB_side_enemy) exitWith {};
+    if (side group player != GRLIB_side_friendly) exitWith {};
 
 	fn_clean_array = {
 		params["_array"];
@@ -47,7 +62,7 @@ _fnc_enforceArsenal = {
 	private _loadout_full 	   = getUnitLoadout _unit;
 	private _loadout      	   = [flatten(_loadout_full)] call fn_clean_array;
 	private _items 		  	   = assignedItems _unit;
-	private _allowed_loadout   = [[_unit] call RoleArsenal_DetermineRole] call RoleArsenal_DetermineGear;
+    private _allowed_loadout   = [_unit, "blufor"] call KPLIB_fnc_getRoleGear;
 
 	// Get Resupply crate items and add to allowed loadout whitelist
 	{

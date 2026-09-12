@@ -14,14 +14,6 @@ _cinematic_camera cameraEffect ["internal","back"];
 _cinematic_camera camcommit 0;
 if ( isNil "first_camera_round" ) then { first_camera_round = true; };
 
-private _isKog          = playerside isEqualTo GRLIB_side_enemy;
-private _kogTrucks      = [];
-private _kogCamTarget   = nil;
-if (_isKog) then {
-    _kogCamTarget = "Sign_Arrow_Blue_F" createVehicleLocal (markerPos "kog_base");
-    _kogCamTarget hideObject true;
-};
-
 while { cinematic_camera_started } do {
 
     waitUntil { !cinematic_camera_started || camCommitted _cinematic_camera };
@@ -30,29 +22,17 @@ while { cinematic_camera_started } do {
         camUseNVG false;
 
         private _positions = [];
-        if (_isKog) then {
-            _positions pushBack (markerPos "kog_base");
-        } else {
-            _positions pushBack (getpos startbase);
-        };
+        _positions pushBack (getpos startbase);
 
         if ( !first_camera_round ) then {
 
-            if (!_isKog) then {
-                if ( count GRLIB_all_fobs > 0 ) then {
-                    for [ {_idx=0},{_idx < 2},{_idx=_idx+1} ] do {
-                        _positions pushback (selectRandom GRLIB_all_fobs);
-                    };
-                } else {
-                    for [ {_idx=0},{_idx < 2},{_idx=_idx+1} ] do {
-                        _positions pushback (markerPos (selectRandom sectors_allSectors));
-                    };
+            if ( count GRLIB_all_fobs > 0 ) then {
+                for [ {_idx=0},{_idx < 2},{_idx=_idx+1} ] do {
+                    _positions pushback (selectRandom GRLIB_all_fobs);
                 };
             } else {
-                if (count _kogTrucks > 0) then {
-                    for [ {_idx=0},{_idx < 2},{_idx=_idx+1} ] do {
-                        _positions pushback (getpos (selectRandom _kogTrucks));
-                    };
+                for [ {_idx=0},{_idx < 2},{_idx=_idx+1} ] do {
+                    _positions pushback (markerPos (selectRandom sectors_allSectors));
                 };
             };
 
@@ -68,8 +48,8 @@ while { cinematic_camera_started } do {
 
             if ( GRLIB_endgame == 0 ) then {
 
-                // players, respective of side [for KOG]
-                _activeplayers = (allPlayers select {alive _x && (_x distance (markerPos GRLIB_respawn_marker)) > 100 && side _x isEqualTo side player});
+                // Show active BLUFOR players.
+                _activeplayers = (allPlayers select {alive _x && (_x distance (markerPos GRLIB_respawn_marker)) > 100 && side group _x isEqualTo GRLIB_side_friendly});
 
                 if ( count _activeplayers > 0 ) then {
                     for [ {_idx=0},{_idx < 3},{_idx=_idx+1} ] do {
@@ -85,11 +65,7 @@ while { cinematic_camera_started } do {
         private _nearentities = _position nearEntities [ "Man", 100 ];
         private _camtarget = _cinematic_pointer;
         if ( first_camera_round ) then {
-            if (_isKog) then {
-                _camtarget = _kogCamTarget;
-            } else {
-                _camtarget = startbase;
-            };
+            _camtarget = startbase;
         } else {
             if (count (_nearentities select {alive _x && isPlayer _x}) != 0) then {
                 _camtarget = selectRandom (_nearentities select {alive _x && isPlayer _x});
@@ -302,9 +278,6 @@ while { cinematic_camera_started } do {
     };
 };
 
-if (_isKog) then {
-    deleteVehicle _kogCamTarget;
-};
 
 _cinematic_camera cameraEffect ["Terminate", "BACK"];
 camDestroy _cinematic_camera;

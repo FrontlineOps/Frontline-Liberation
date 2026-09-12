@@ -3,7 +3,7 @@ if (([getPos player, 500, GRLIB_side_enemy] call KPLIB_fnc_getUnitsCount) > 4) e
     hint localize "STR_BUILD_ENEMIES_NEARBY";
 };
 
-if (isNil "buildtype") then {buildtype = 1;};
+if (isNil "buildtype" || {!(buildtype in [2, 3, 4, 5, 6, 7])}) then {buildtype = 2;};
 if (isNil "buildindex") then {buildindex = -1;};
 
 dobuild = 0;
@@ -23,25 +23,17 @@ private _pageControl = _display displayCtrl 151;
 private _capControl = _display displayCtrl 134;
 private _unlockControl = _display displayCtrl 161;
 private _buildButton = _display displayCtrl 120;
-private _crewButton = _display displayCtrl 121;
 private _supplyControl = _display displayCtrl 131;
 private _ammoControl = _display displayCtrl 132;
 private _fuelControl = _display displayCtrl 133;
-private _isCommander = player isEqualTo ([] call KPLIB_fnc_getCommander);
-
-{
-    (_display displayCtrl _x) ctrlShow _isCommander;
-} forEach [108, 1085, 121];
-
 private _buildPages = [
-    localize "STR_BUILD1",
+    "", // Reserved former recruitment category.
     localize "STR_BUILD2",
     localize "STR_BUILD3",
     localize "STR_BUILD4",
     localize "STR_BUILD5",
     localize "STR_BUILD6",
-    localize "STR_BUILD7",
-    localize "STR_BUILD8"
+    localize "STR_BUILD7"
 ];
 
 private _nearestFob = [] call KPLIB_fnc_getNearestFob;
@@ -50,7 +42,7 @@ private _actualFob = KP_liberation_fob_resources select {
 };
 private _isStartBase = _nearestFob isEqualTo (getMarkerPos "startbase_marker");
 
-while {dialog && {alive player} && {dobuild isEqualTo 0 || {buildtype isEqualTo 1}}} do {
+while {dialog && {alive player} && {dobuild isEqualTo 0}} do {
     private _buildList = KPLIB_buildList select buildtype;
 
     if (_oldBuildType != buildtype || {synchro_done}) then {
@@ -69,44 +61,40 @@ while {dialog && {alive player} && {dobuild isEqualTo 0 || {buildtype isEqualTo 
             private _entryName = "";
             private _icon = "";
 
-            if (buildtype isEqualTo 8) then {
-                _entryName = squads_names param [_forEachIndex, ""];
-            } else {
-                private _entryClass = _entry select 0;
-                private _customName = _entry param [4, ""];
-                _entryName = getText (_vehicleConfig >> _entryClass >> "displayName");
+            private _entryClass = _entry select 0;
+            private _customName = _entry param [4, ""];
+            _entryName = getText (_vehicleConfig >> _entryClass >> "displayName");
 
-                if (count _entry > 4 && {!isNil {_customName}}) then {
-                    _entryName = _customName;
-                };
+            if (count _entry > 4 && {!isNil {_customName}}) then {
+                _entryName = _customName;
+            };
 
-                switch (_entryClass) do {
-                    case FOB_box_typename: {_entryName = localize "STR_FOBBOX";};
-                    case Arsenal_typename: {
-                        if (KP_liberation_mobilearsenal) then {
-                            _entryName = localize "STR_ARSENAL_BOX";
-                        };
+            switch (_entryClass) do {
+                case FOB_box_typename: {_entryName = localize "STR_FOBBOX";};
+                case Arsenal_typename: {
+                    if (KP_liberation_mobilearsenal) then {
+                        _entryName = localize "STR_ARSENAL_BOX";
                     };
-                    case Respawn_truck_typename: {
-                        if (KP_liberation_mobilerespawn) then {
-                            _entryName = localize "STR_RESPAWN_TRUCK";
-                        };
+                };
+                case Respawn_truck_typename: {
+                    if (KP_liberation_mobilerespawn) then {
+                        _entryName = localize "STR_RESPAWN_TRUCK";
                     };
-                    case FOB_truck_typename: {_entryName = localize "STR_FOBTRUCK";};
-                    case "Flag_White_F": {_entryName = localize "STR_INDIV_FLAG";};
-                    case KP_liberation_small_storage_building: {_entryName = localize "STR_SMALL_STORAGE";};
-                    case KP_liberation_large_storage_building: {_entryName = localize "STR_LARGE_STORAGE";};
-                    case KP_liberation_recycle_building: {_entryName = localize "STR_RECYCLE_BUILDING";};
-                    case KP_liberation_air_vehicle_building: {_entryName = localize "STR_HELI_BUILDING";};
-                    case KP_liberation_heli_slot_building: {_entryName = localize "STR_HELI_SLOT";};
-                    case KP_liberation_plane_slot_building: {_entryName = localize "STR_PLANE_SLOT";};
-                    default {};
                 };
+                case FOB_truck_typename: {_entryName = localize "STR_FOBTRUCK";};
+                case "Flag_White_F": {_entryName = localize "STR_INDIV_FLAG";};
+                case KP_liberation_small_storage_building: {_entryName = localize "STR_SMALL_STORAGE";};
+                case KP_liberation_large_storage_building: {_entryName = localize "STR_LARGE_STORAGE";};
+                case KP_liberation_recycle_building: {_entryName = localize "STR_RECYCLE_BUILDING";};
+                case KP_liberation_air_vehicle_building: {_entryName = localize "STR_HELI_BUILDING";};
+                case KP_liberation_heli_slot_building: {_entryName = localize "STR_HELI_SLOT";};
+                case KP_liberation_plane_slot_building: {_entryName = localize "STR_PLANE_SLOT";};
+                default {};
+            };
 
-                _icon = getText (_vehicleConfig >> _entryClass >> "icon");
-                if (isText (configFile >> "CfgVehicleIcons" >> _icon)) then {
-                    _icon = getText (configFile >> "CfgVehicleIcons" >> _icon);
-                };
+            _icon = getText (_vehicleConfig >> _entryClass >> "icon");
+            if (isText (configFile >> "CfgVehicleIcons" >> _icon)) then {
+                _icon = getText (configFile >> "CfgVehicleIcons" >> _icon);
             };
 
             private _row = _buildListControl lnbAddRow [
@@ -140,7 +128,6 @@ while {dialog && {alive player} && {dobuild isEqualTo 0 || {buildtype isEqualTo 
 
     private _selectedItem = lbCurSel _buildListControl;
     private _affordable = false;
-    private _squadFull = buildtype isEqualTo 1 && {count (units group player) >= GRLIB_max_squad_size};
     private _hasUnlockRequirements = false;
     private _unlockRequirementsMet = true;
     private _requiredSectorCount = 0;
@@ -154,20 +141,16 @@ while {dialog && {alive player} && {dobuild isEqualTo 0 || {buildtype isEqualTo 
             && {(_buildItem select 3) isEqualTo 0 || {(_buildItem select 3) <= ((_actualFob select 0) select 3)}};
 
         if (_hasResources) then {
-            if (_selectedClass isEqualType []) then {
-                _affordable = true;
+            private _selectedClassLower = toLower _selectedClass;
+            if (_selectedClassLower in KPLIB_b_air_classes && {!([_selectedClass] call KPLIB_fnc_isClassUAV)}) then {
+                _affordable = KP_liberation_air_vehicle_building_near
+                    && {
+                        (_selectedClass isKindOf "Helicopter" && {KP_liberation_heli_count < KP_liberation_heli_slots})
+                        || {(_selectedClass isKindOf "Plane") && {KP_liberation_plane_count < KP_liberation_plane_slots}}
+                    };
             } else {
-                private _selectedClassLower = toLower _selectedClass;
-                if (_selectedClassLower in KPLIB_b_air_classes && {!([_selectedClass] call KPLIB_fnc_isClassUAV)}) then {
-                    _affordable = KP_liberation_air_vehicle_building_near
-                        && {
-                            (_selectedClass isKindOf "Helicopter" && {KP_liberation_heli_count < KP_liberation_heli_slots})
-                            || {(_selectedClass isKindOf "Plane") && {KP_liberation_plane_count < KP_liberation_plane_slots}}
-                        };
-                } else {
-                    _affordable = !(_selectedClassLower in KPLIB_airSlots)
-                        || {KP_liberation_air_vehicle_building_near};
-                };
+                _affordable = !(_selectedClassLower in KPLIB_airSlots)
+                    || {KP_liberation_air_vehicle_building_near};
             };
         };
 
@@ -195,27 +178,14 @@ while {dialog && {alive player} && {dobuild isEqualTo 0 || {buildtype isEqualTo 
         };
     };
 
-    private _localCap = [] call KPLIB_fnc_getLocalCap;
-    private _crewAffordable = _affordable;
-    if (unitcap >= _localCap) then {
-        _crewAffordable = false;
-        if (buildtype in [1, 8]) then {
-            _affordable = false;
-        };
-    };
-
-    _buildButton ctrlEnable (_affordable && {_unlockRequirementsMet} && {!_squadFull});
-    _crewButton ctrlEnable (_crewAffordable && {_unlockRequirementsMet});
+    _buildButton ctrlEnable (_affordable && {_unlockRequirementsMet});
 
     _supplyControl ctrlSetText format ["%1 : %2", localize "STR_MANPOWER", floor KP_liberation_supplies];
     _ammoControl ctrlSetText format ["%1 : %2", localize "STR_AMMO", floor KP_liberation_ammo];
     _fuelControl ctrlSetText format ["%1 : %2", localize "STR_FUEL", floor KP_liberation_fuel];
 
     _capControl ctrlSetStructuredText formatText [
-        "%1/%2 %3 - %4/%5 %6 - %7/%8 %9",
-        unitcap,
-        _localCap,
-        image "\a3\Ui_F_Curator\Data\Displays\RscDisplayCurator\modeGroups_ca.paa",
+        "%1/%2 %3 - %4/%5 %6",
         KP_liberation_heli_count,
         KP_liberation_heli_slots,
         image "\A3\air_f_beta\Heli_Transport_01\Data\UI\Map_Heli_Transport_01_base_CA.paa",
@@ -237,13 +207,6 @@ while {dialog && {alive player} && {dobuild isEqualTo 0 || {buildtype isEqualTo 
     };
 
     buildindex = _selectedItem;
-
-    if (buildtype isEqualTo 1 && {dobuild != 0}) then {
-        _buildButton ctrlEnable false;
-        _crewButton ctrlEnable false;
-        sleep 1;
-        dobuild = 0;
-    };
 
     sleep 0.1;
 };

@@ -25,3 +25,9 @@ class BlacklistedMod {
     description = "You are using a mod that isn't allowed on the KC Liberation server. Please remove the mod (see previous message), and re-connect.";
     pictureBackground = "";
 };
+
+class BLUFOROnly {
+    title = "Choose a BLUFOR slot";
+    subtitle = "This mission supports BLUFOR players only.";
+    description = "Return to the lobby and choose a BLUFOR slot. OPFOR, insurgents and civilians are controlled by AI.";
+};

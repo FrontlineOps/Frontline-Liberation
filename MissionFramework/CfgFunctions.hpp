@@ -81,7 +81,6 @@ class KPLIB {
             postInit = 1;
         };
         class getCommander      {};
-        class getLocalCap       {};
         class getNearbyPlayers  {};
         class getPlayerCount    {};
         class ensurePlayerRadio {};
@@ -157,7 +156,14 @@ class KPLIB {
     class functions_factions {
         file = "functions\factions";
 
-        class applyAutomaticFactionPresets {};
+        class applyFactionPresets          {};
+        class loadFactionProfiles          {};
+        class normalizeGearClass           {};
+        class getPlayerRole                {};
+        class getAutomaticRole             {};
+        class initPlayerArsenal            {};
+        class getRoleGear                  {};
+        class filterRoleLoadout            {};
         class buildAutomaticResupplyCrates {};
         class buildFactionCatalog          {};
         class buildFactionIndex            {};

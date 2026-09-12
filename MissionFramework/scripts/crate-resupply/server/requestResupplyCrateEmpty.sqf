@@ -1,37 +1,37 @@
 
 
 requestResupplyCrateEmpty = {
-	params ["_crate", "_requester"];
+    params [["_crate", objNull, [objNull]], ["_requester", objNull, [objNull]]];
+    if !([_requester, "empty", _crate] call KPLIB_fnc_validateResupplyRequest) exitWith {};
 
-	private _cannotEmptyStr = "You cannot empty this crate";
-	if (isNull _crate || {isNull _requester} || {!isPlayer _requester}) exitWith {};
-	if !([_requester] call setResupplyFlags) exitWith {
-		_cannotEmptyStr remoteExec ["hint", owner _requester];
-	};
+    private _cannotEmptyStr = "You cannot empty this crate";
+    if (isNull _crate || {isNull _requester} || {!isPlayer _requester}) exitWith {};
+    if !([_requester] call setResupplyFlags) exitWith {
+        _cannotEmptyStr remoteExec ["hint", owner _requester];
+    };
 
-	private _crateName = _crate getVariable "resupplyCrateName";
+    private _crateName = _crate getVariable "resupplyCrateName";
 
-	private _crateSquadOwner = _crate getVariable "resupplySquadOwner";
+    private _crateSquadOwner = _crate getVariable "resupplySquadOwner";
 
-	if (isNil { _crateSquadOwner }) exitWith {
-		_cannotEmptyStr remoteExec ["hint", owner _requester];
-	};
+    if (isNil { _crateSquadOwner }) exitWith {
+        _cannotEmptyStr remoteExec ["hint", owner _requester];
+    };
 
-	private _playerSquadName = [_requester] call getResupplyGroupKey;
-	if (_playerSquadName isEqualTo "") exitWith {
-		_cannotEmptyStr remoteExec ["hint", owner _requester];
-	};
+    private _playerSquadName = [_requester] call getResupplyGroupKey;
+    if (_playerSquadName isEqualTo "") exitWith {
+        _cannotEmptyStr remoteExec ["hint", owner _requester];
+    };
 
+    if(_crateSquadOwner == _playerSquadName) then {
 
-	if(_crateSquadOwner == _playerSquadName) then {
+        clearItemCargoGlobal _crate;
+        clearMagazineCargoGlobal _crate;
+        clearWeaponCargoGlobal _crate;
+        clearBackpackCargoGlobal _crate;
 
-		clearItemCargoGlobal _crate;
-		clearMagazineCargoGlobal _crate;
-		clearWeaponCargoGlobal _crate;
-		clearBackpackCargoGlobal _crate;	
-
-		format ["%1 Emptied", _crateName] remoteExec ["hint", owner _requester];
-	} else {
-		_cannotEmptyStr remoteExec ["hint", owner _requester];
-	};
+        format ["%1 Emptied", _crateName] remoteExec ["hint", owner _requester];
+    } else {
+        _cannotEmptyStr remoteExec ["hint", owner _requester];
+    };
 };

@@ -14,8 +14,7 @@
 
 // What provides a source for refililng and grabbing crates
 ResupplyCrateSourceClasses = [
-    "Land_Cargo40_military_green_F",         // USMC Vehicle Service Point
-    "Land_Cargo20_yellow_F"				                // Vehicle Service Point (RU)
+    "Land_Cargo40_military_green_F"         // Vehicle service point
 ];
 
 /* Automatic per-group allowance: one active crate per four connected members. */
@@ -60,27 +59,7 @@ ResupplyRoleDescriptionsToRoleFlags = createHashMapFromArray [
     ["WTL", "Wraith Team Leader"],
     ["GBT", "Goblin Team Leader"],
     ["GBS", "Goblin Squad Leader"],
-    ["WPSQ", "Assassin 1-4 (Heavy Weapons Squad)"],
-    // OPFOR UNDER HERE
-    //["OPDC", "Detachment Commander"],
-    //["OPADC", "Assistant Detachment Commander"],
-    ["OPSL", "Squad Leader"],
-    ["OPMD", "Medical Specialist"],
-    //["OPHWS", "Launcher Specialist"],
-    //["OPHWS", "Machine Gunner"],
-    //["OPHWS", "Automatic Rifleman"],
-    //["OPDRON", "Drone Specialist"],
-    ["OPTL", "Weapons Team Leader"],
-    ["OPGN", "Weapons Gunner"]
-    //["OPLSPEC", "Launcher Specialist"],
-    //["OPSNIP", "Sniper"],
-    //["OPENGI", "Demolitions Specialist"],
-    //["OPETL", "Engineer Team Leader"],
-    //["OPSAP", "Sapper"],
-    //["TERSL", "Terminator 1 Team Leader"],
-    //["TERMMM", "Terminator 1 Mortarman"],
-    //["TERMAM", "Terminator 1 Asst. Mortarman"],
-    //["OPPIL", "Pilot"]
+    ["WPSQ", "Assassin 1-4 (Heavy Weapons Squad)"]
 ];
 // Legacy specialty/logistics profile matching. Automatic group identity comes from the networked Arma Group.
 // Maps a role description to a shorthand flag that is used by the scripts to determine what type of SQUAD someone belongs to
@@ -266,135 +245,6 @@ ResupplyRoleDescriptionToSquadFlags = [
                 "Scout/Mortarman (B)@Fox"
             ]
         ]
-    ],
-
-    //////////////////////// OPFOR STARTS UNDER HERE /////////////////////////////
-
-    createHashMapFromArray [
-        ["FlagName", "OPDC"],
-        ["SquadNames",
-            [
-                "Detachment Commander"
-            ]
-        ]
-    ],
-    createHashMapFromArray [
-        ["FlagName", "OPSL"],
-        ["SquadNames",
-            [
-                "K11 Squad Leader",
-                "K12 Squad Leader"
-            ]
-        ]
-    ],
-     createHashMapFromArray [
-        ["FlagName", "OPDRON"],
-        ["SquadNames",
-            [
-                "K11 Drone Specialist",
-                "K12 Drone Specialist"
-            ]
-        ]
-    ],
-    createHashMapFromArray [
-        ["FlagName", "OPHWS"],
-        ["SquadNames",
-            [
-                "K11 Launcher Specialist",
-                "K12 Launcher Specialist"
-            ]
-        ]
-    ],
-    createHashMapFromArray [
-        ["FlagName", "OPTL"],
-        ["SquadNames",
-            [
-                "Weapons Team Leader"
-            ]
-        ]
-    ],
-     createHashMapFromArray [
-        ["FlagName", "OPGN"],
-        ["SquadNames",
-            [
-                "Weapons Gunner"
-            ]
-        ]
-    ],
-    createHashMapFromArray [
-        ["FlagName", "OPLSPEC"],
-        ["SquadNames",
-            [
-                "K11 Machine Gunner",
-                "K12 Machine Gunner"
-            ]
-        ]
-    ],
-    createHashMapFromArray [
-        ["FlagName", "OPSNIP"],
-        ["SquadNames",
-            [
-                "SNOT Sniper"
-            ]
-        ]
-    ],
-    createHashMapFromArray [
-        ["FlagName", "OPENGI"],
-        ["SquadNames",
-            [
-                "K11 Demolitions Specialist",
-                "K12 Demolitions Specialist"
-            ]
-        ]
-    ],
-    createHashMapFromArray [
-        ["FlagName", "OPSAP"],
-        ["SquadNames",
-            [
-                "K11 Sapper",
-                "K12 Sapper"
-            ]
-        ]
-    ],
-    createHashMapFromArray [
-        ["FlagName", "TERSL"],
-        ["SquadNames",
-            [
-                "Terminator 1 Team Leader"
-            ]
-        ]
-    ],
-    createHashMapFromArray [
-        ["FlagName", "TERMMM"],
-        ["SquadNames",
-            [
-                "Terminator 1 Mortarman"
-            ]
-        ]
-    ],
-    createHashMapFromArray [
-        ["FlagName", "TERMAM"],
-        ["SquadNames",
-            [
-                "Terminator 1 Asst. Mortarman"
-            ]
-        ]
-    ],
-    createHashMapFromArray [
-        ["FlagName", "OPETL"],
-        ["SquadNames",
-            [
-                "Engineer Team Leader"
-            ]
-        ]
-    ],
-    createHashMapFromArray [
-        ["FlagName", "OPPIL"],
-        ["SquadNames",
-            [
-                "Sokol 1"
-            ]
-        ]
     ]
 ];
 
@@ -577,121 +427,6 @@ ResupplyCrateAllocations = createHashMapFromArray [
             ["SpecialtyAllocations", 4],
             ["WhitelistedFlags", []]
         ]
-    ],
-    
-    //////////////////////////// OPFOR STARTS UNDER HERE//////////////////////////////
-
-    [
-        "OPDC",
-        createHashMapFromArray [
-            ["CrateAllocations", 1],
-            ["SpecialtyAllocations", 0],
-            ["WhitelistedFlags", []]
-        ]
-    ],
-    [
-        "OPSL",
-        createHashMapFromArray [
-            ["CrateAllocations", 1],
-            ["SpecialtyAllocations", 0],
-            ["WhitelistedFlags", []]
-        ]
-    ],
-    [
-        "OPDRON",
-        createHashMapFromArray [
-            ["CrateAllocations", 1],
-            ["SpecialtyAllocations", 1],
-            ["WhitelistedFlags", []]
-        ]
-    ],
-    [
-        "OPHWS",
-        createHashMapFromArray [
-            ["CrateAllocations", 1],
-            ["SpecialtyAllocations", 1],
-            ["WhitelistedFlags", []]
-        ]
-    ],
-    [
-        "OPTL",
-        createHashMapFromArray [
-            ["CrateAllocations", 3],
-            ["SpecialtyAllocations", 3],
-            ["WhitelistedFlags", []]
-        ]
-    ],
-    [
-        "OPGN",
-        createHashMapFromArray [
-            ["CrateAllocations", 2],
-            ["SpecialtyAllocations", 2],
-            ["WhitelistedFlags", []]
-        ]
-    ],
-    [
-        "OPLSPEC",
-        createHashMapFromArray [
-            ["CrateAllocations", 0],
-            ["SpecialtyAllocations", 0],
-            ["WhitelistedFlags", []]
-        ]
-    ],
-    [
-        "OPENGI",
-        createHashMapFromArray [
-            ["CrateAllocations", 1],
-            ["SpecialtyAllocations", 1],
-            ["WhitelistedFlags", []]
-        ]
-    ],
-    [
-        "OPSNIP",
-        createHashMapFromArray [
-            ["CrateAllocations", 1],
-            ["SpecialtyAllocations", 1],
-            ["WhitelistedFlags", []]
-        ]
-    ],
-    [
-        "OPSAP",
-        createHashMapFromArray [
-            ["CrateAllocations", 1],
-            ["SpecialtyAllocations", 1],
-            ["WhitelistedFlags", []]
-        ]
-    ],
-    [
-        "TERMTL",
-        createHashMapFromArray [
-            ["CrateAllocations", 0],
-            ["SpecialtyAllocations", 0],
-            ["WhitelistedFlags", []]
-        ]
-    ],
-    [
-        "TERMMM",
-        createHashMapFromArray [
-            ["CrateAllocations", 1],
-            ["SpecialtyAllocations", 1],
-            ["WhitelistedFlags", []]
-        ]
-    ],
-    [
-        "TERMAM",
-        createHashMapFromArray [
-            ["CrateAllocations", 1],
-            ["SpecialtyAllocations", 1],
-            ["WhitelistedFlags", []]
-        ]
-    ],
-    [
-        "OPETL",
-        createHashMapFromArray [
-            ["CrateAllocations", 3],
-            ["SpecialtyAllocations", 3],
-            ["WhitelistedFlags", []]
-        ]
     ]
 ];
 
@@ -724,7 +459,19 @@ ResupplyCrates = createHashMap;
 
 
 // Cache what is special
-[] call KPLIB_fnc_buildAutomaticResupplyCrates;
+if ((localNamespace getVariable ["KPLIB_manualFactions", false])) then {
+    {
+        private _sideKey = _x;
+        ResupplyCrateAllocations set ["MANUAL:" + _sideKey, createHashMapFromArray [
+            ["SpecialtyAllocations", _y getOrDefault ["specialtyResources", 0]], ["Resupplier", false]
+        ]];
+        {
+            ResupplyCrates set [_sideKey + ": " + _x, _y];
+        } forEach (_y get "crates");
+    } forEach (localNamespace getVariable "KPLIB_factionProfiles");
+} else {
+    [] call KPLIB_fnc_buildAutomaticResupplyCrates;
+};
 
 SpecialCategories = createHashMap;
 

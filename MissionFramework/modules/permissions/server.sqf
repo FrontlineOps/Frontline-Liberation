@@ -7,7 +7,19 @@ if (_saved isEqualType []) then {
         if !(_x isEqualType [] && {count _x == 3}) then {continue};
         _x params ["_uid", "_name", "_grants"];
         if !(_uid isEqualType "" && {_uid != ""} && {_name isEqualType ""} && {_grants isEqualType []}) then {continue};
-        private _valid = _grants arrayIntersect KPLIB_PERMISSION_KEYS;
+        private _valid = _grants select {
+            _x isEqualType "" && {_x in (localNamespace getVariable "KPLIB_permissionKeys") || {(_x find "ROLE:blufor:") == 0 && {count _x < 160}}}
+        };
+        private _roleSeen = false;
+        _valid = _valid select {
+            if ((_x find "ROLE:") == 0) then {
+                private _keep = !_roleSeen;
+                _roleSeen = true;
+                _keep
+            } else {
+                true
+            }
+        };
         if (_valid isNotEqualTo []) then {_records set [_uid, [_name, _valid]]};
     } forEach _saved;
 };
@@ -28,8 +40,8 @@ KPLIB_fnc_permissionRejected = {
     if (_reason != (_last select 0) || {diag_tickTime - (_last select 1) >= 10}) then {
         _caller setVariable ["KPLIB_permissionLastDenial", [_reason, diag_tickTime]];
         [format ["Request rejected for connection %1: %2", owner _caller, _reason], "PERMISSIONS"] call KPLIB_fnc_log;
+        [_reason] remoteExecCall ["hint", owner _caller];
     };
-    [_reason] remoteExecCall ["hint", owner _caller];
 };
 
 KPLIB_fnc_permissionRequest = {
@@ -86,8 +98,9 @@ KPLIB_fnc_setPlayerPermissions = {
         [_caller, "Only a logged-in server admin can manage player permissions."] call KPLIB_fnc_permissionRejected;
     };
     if (canSuspend) exitWith {};
-    if (_uid == "" || {count _grants > count KPLIB_PERMISSION_KEYS}
-        || {(_grants findIf {!(_x in KPLIB_PERMISSION_KEYS)}) != -1}) exitWith {};
+    if (_uid == "" || {count _grants > count (localNamespace getVariable "KPLIB_permissionKeys")}
+        || {(_grants findIf {!(_x in (localNamespace getVariable "KPLIB_permissionKeys"))}) != -1}) exitWith {};
+    if ({(_x find "ROLE:") == 0} count _grants > 1) exitWith {};
     private _currentRevision = localNamespace getVariable ["KPLIB_permissionRevision", 0];
     if (_revision != _currentRevision) exitWith {
         [_caller, true, "Permissions changed since you opened this list. Review them and apply again."] call KPLIB_fnc_permissionSnapshot;
@@ -96,7 +109,10 @@ KPLIB_fnc_setPlayerPermissions = {
     private _target = (allPlayers select {isPlayer _x && {getPlayerUID _x == _uid}}) param [0, objNull];
     if (isNull _target && {!(_uid in _records)}) exitWith {};
     private _name = if (isNull _target) then {(_records get _uid) select 0} else {name _target};
-    private _valid = _grants arrayIntersect KPLIB_PERMISSION_KEYS;
+    private _valid = _grants arrayIntersect (localNamespace getVariable "KPLIB_permissionKeys");
+    if !(localNamespace getVariable ["KPLIB_manualFactions", false]) then {
+        _valid append (((_records getOrDefault [_uid, ["", []]]) select 1) select {(_x find "ROLE:") == 0});
+    };
     if (_valid isEqualTo []) then {
         _records deleteAt _uid;
     } else {
@@ -111,6 +127,10 @@ KPLIB_fnc_setPlayerPermissions = {
     profileNamespace setVariable [KPLIB_permissions_save_key, _save];
     saveProfileNamespace;
     [format ["Admin connection %1 updated player permissions: %2", owner _caller, _valid], "PERMISSIONS"] call KPLIB_fnc_log;
-    if (!isNull _target) then {[_target, false, "Your permissions have been updated."] call KPLIB_fnc_permissionSnapshot};
+    if (!isNull _target) then {
+        [_target, false, "Your permissions have been updated."] call KPLIB_fnc_permissionSnapshot;
+        [_target] call KPLIB_fnc_validatePlayerVehicle;
+        if (!isNil "setResupplyFlags") then {[_target] call setResupplyFlags};
+    };
     [_caller, true, "Permissions saved."] call KPLIB_fnc_permissionSnapshot;
 };
