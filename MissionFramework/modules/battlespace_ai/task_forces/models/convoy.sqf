@@ -1,3 +1,4 @@
+call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\convoyRoute.sqf";
 call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\convoyPacing.sqf";
 
 BATTLESPACE_CONVOY_HAS_ARRIVED = {

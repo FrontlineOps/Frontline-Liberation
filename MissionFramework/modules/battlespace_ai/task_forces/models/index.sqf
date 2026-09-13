@@ -319,7 +319,10 @@ BATTLESPACE_TASK_FORCE_DEFAULT_TRY_SPAWN = {
 	private _taskForceOnRoad = (count (_currentLoc nearRoads 33) > 0);
 	private _spawnPositions = [];
 
-	if(_taskForceOnRoad && !(_destination isEqualTo [])) then {
+    if (_type == "Convoy") then {
+        _spawnPositions = [_taskForceName, _taskForce] call BATTLESPACE_CONVOY_SPAWN_POSITIONS;
+    };
+	if(_type != "Convoy" && {_taskForceOnRoad} && {!(_destination isEqualTo [])}) then {
 		// Find which way points towards the back of the column
 		private _unitVecToDestination = _currentLoc vectorFromTo _destination;
 		private _dirToFace = _currentLoc getDir _destination;
@@ -363,7 +366,7 @@ BATTLESPACE_TASK_FORCE_DEFAULT_TRY_SPAWN = {
 	};
 	diag_log format ["    Road Positions Picked: %1 | WasOnRoad: %2 | ", _spawnPositions, _taskForceOnRoad];
     // Fill remaining spawn positions with random pos.
-    if ((count _spawnPositions) < (count _vehicles)) then {
+    if (_type != "Convoy" && {(count _spawnPositions) < (count _vehicles)}) then {
         private _remainder = (count _vehicles) - (count _spawnPositions);
         private _start = (count _spawnPositions) - 1;
         for "_i" from 1 to _remainder do {

@@ -87,6 +87,13 @@ BATTLESPACE_CONVOY_PACE_TICK = {
     if (_vehicles isEqualTo []) exitWith {};
 
     private _route = BATTLESPACE_TASK_FORCE_PATHS getOrDefault [_id, []];
+    {
+        if (local _x && {_x getVariable ["BATTLESPACE_CONVOY_ROUTE_MORE", false]}
+            && {count waypoints _x - currentWaypoint _x <= 5}) then {
+            _x setVariable ["BATTLESPACE_CONVOY_ROUTE_MORE", false];
+            [_x, _force select 2, "FULL", false, true, _route] spawn BATTLESPACE_TASK_FORCE_ADD_WAYPOINTS;
+        };
+    } forEach _groups;
     if (_route isNotEqualTo (_state getOrDefault ["route", []])) then {
         private _segments = [];
         private _offset = 0;
@@ -120,6 +127,17 @@ BATTLESPACE_CONVOY_PACE_TICK = {
         _ranked pushBack [[getPosATL _x, _segments] call BATTLESPACE_CONVOY_PACE_PROGRESS, _forEachIndex, _x];
     } forEach _vehicles;
     _ranked sort false;
+    // Off-route or turning vehicles need native steering/reversing room before
+    // along-route distances can safely control their spacing.
+    private _forming = false;
+    if (count _route >= 2) then {
+        _forming = _vehicles findIf {
+            ([getPosATL _x, _route] call BATTLESPACE_CONVOY_ROUTE_PROJECT) params ["_segment", "_along", "_progress", "_distance"];
+            private _direction = (_route select _segment) getDir (_route select (_segment + 1));
+            private _turn = abs (((getDir _x - _direction + 540) % 360) - 180);
+            _distance > 20 || {_turn > 60}
+        } >= 0;
+    };
     // Let native combat manoeuvres respond to an ambush without a spacing hold.
     private _inCombat = _vehicles findIf {behaviour driver _x == "COMBAT"} >= 0;
     {
@@ -127,7 +145,7 @@ BATTLESPACE_CONVOY_PACE_TICK = {
         private _limit = _cruise;
         private _frontGap = -1;
         private _rearGap = -1;
-        if (!_inCombat && {_segments isNotEqualTo []}) then {
+        if (!_inCombat && {!_forming} && {_segments isNotEqualTo []}) then {
             if (_forEachIndex > 0) then {
                 private _front = _ranked select (_forEachIndex - 1);
                 _frontGap = (_front select 0) - _progress;
@@ -149,7 +167,7 @@ BATTLESPACE_CONVOY_PACE_TICK = {
             };
         };
         _limit = round ((_limit max 0) min _ceiling);
-        [_vehicle, _id, _limit, !_inCombat] call BATTLESPACE_CONVOY_PACE_SEND;
+        [_vehicle, _id, _limit, !_inCombat && {!_forming}] call BATTLESPACE_CONVOY_PACE_SEND;
         _vehicle setVariable ["BATTLESPACE_CONVOY_PACE_SAMPLE", [_limit, _ceiling, _frontGap, _rearGap]];
     } forEach _ranked;
 };

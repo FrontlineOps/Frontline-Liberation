@@ -120,6 +120,10 @@ BATTLESPACE_TASK_FORCE_GET_WAYPOINT_ROUTE = {
 		diag_log format ["Task Force %1 withheld an invalid route from active-group waypoints", _taskForceName];
 		[[], _taskForceName]
 	};
+    private _force = BATTLESPACE_TASK_FORCES getOrDefault [_taskForceName, []];
+    if ((_force param [0, ""]) == "Convoy") exitWith {
+        [[_group, _route] call BATTLESPACE_CONVOY_ROUTE_WAYPOINTS, _taskForceName]
+    };
 
 	private _startIndex = 0;
 	if (_taskForceName != "") then {
@@ -198,9 +202,12 @@ BATTLESPACE_TASK_FORCE_ADD_WAYPOINTS = {
             _hold setWaypointCombatMode _combatMode;
 		};
 		if (_waypointRoute isEqualTo []) then {_waypointRoute = [+_destination]};
+        private _continues = _type == "Convoy"
+            && {(_waypointRoute select (count _waypointRoute - 1)) distance2D _destination > 1};
+        _group setVariable ["BATTLESPACE_CONVOY_ROUTE_MORE", _continues];
 
 		{
-			private _isFinal = _forEachIndex == count _waypointRoute - 1;
+			private _isFinal = !_continues && {_forEachIndex == count _waypointRoute - 1};
             private _placementRadius = if (_type == "Convoy") then {0} else {[20, 10] select _isFinal};
             private _waypoint = _group addWaypoint [_x, _placementRadius];
 			_waypoint setWaypointType (["MOVE", "SAD"] select (_isFinal && {_fieldHunt}));
@@ -209,9 +216,10 @@ BATTLESPACE_TASK_FORCE_ADD_WAYPOINTS = {
             if (_type == "Convoy") then {_waypoint setWaypointBehaviour "SAFE"};
             _waypoint setWaypointCombatMode _combatMode;
 			_waypoint setWaypointCompletionRadius ([60, 30] select _isFinal);
+            if (_type == "Convoy" && {!_isFinal}) then {_waypoint setWaypointCompletionRadius 15};
 		} forEach _waypointRoute;
 
-		if (!_fieldHunt) then {
+		if (!_fieldHunt && {!_continues}) then {
 			private _hold = _group addWaypoint [_destination, 30];
             _hold setWaypointType "HOLD";
             _hold setWaypointCombatMode _combatMode;

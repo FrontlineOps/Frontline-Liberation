@@ -278,13 +278,13 @@ BATTLESPACE_PATHFIND_CAN_TRAVERSE_LINE = {
 };
 
 BATTLESPACE_PATHFIND_SMOOTH_GRID_ROUTE = {
-    params ["_route", "_profile"];
+    params ["_route", "_profile", ["_lookahead", 12]];
     if (count _route <= 2) exitWith {_route};
     private _result = [_route select 0];
     private _anchor = 0;
     private _last = count _route - 1;
     while {_anchor < _last} do {
-        private _candidate = _last min (_anchor + 12);
+        private _candidate = _last min (_anchor + _lookahead);
         while {
             _candidate > _anchor + 1
             && {!([_route select _anchor, _route select _candidate, _profile] call BATTLESPACE_PATHFIND_CAN_TRAVERSE_LINE)}
@@ -562,7 +562,9 @@ BATTLESPACE_PATHFIND_CREATE_JOB = {
             _destination
         ];
     };
-    private _cacheKey = [_origin, _destination, _profile] call BATTLESPACE_PATHFIND_CACHE_KEY;
+    private _convoy = (_taskForce param [0, ""]) == "Convoy";
+    private _cacheProfile = _profile + (["", ":CONVOY"] select _convoy);
+    private _cacheKey = [_origin, _destination, _cacheProfile] call BATTLESPACE_PATHFIND_CACHE_KEY;
     private _cached = [_cacheKey, _origin, _destination] call BATTLESPACE_PATHFIND_GET_CACHED_ROUTE;
     private _snapshots = [_taskForceName] call BATTLESPACE_PATHFIND_BUILD_SNAPSHOTS;
     private _costContext = createHashMapFromArray [
@@ -578,6 +580,7 @@ BATTLESPACE_PATHFIND_CREATE_JOB = {
         ["origin", +_origin],
         ["destination", +_destination],
         ["profile", _profile],
+        ["convoy", _convoy],
         ["cacheKey", _cacheKey],
         ["segments", []],
         ["segmentIndex", 0],
@@ -664,7 +667,10 @@ BATTLESPACE_PATHFIND_STEP_JOB = {
         if ((_search get "kind") == "ROAD") then {
             _segmentRoute = [_segmentRoute] call BATTLESPACE_PATHFIND_REDUCE_ROAD_ROUTE;
         } else {
-            _segmentRoute = [_segmentRoute, _job get "profile"] call BATTLESPACE_PATHFIND_SMOOTH_GRID_ROUTE;
+            // Trucks need intermediate terrain targets through valleys and bends;
+            // a kilometre-long smoothed connector leaves all local planning to AI.
+            private _lookahead = [12, 2] select (_job getOrDefault ["convoy", false]);
+            _segmentRoute = [_segmentRoute, _job get "profile", _lookahead] call BATTLESPACE_PATHFIND_SMOOTH_GRID_ROUTE;
         };
         [_job get "combined", _segmentRoute] call BATTLESPACE_PATHFIND_APPEND_SEGMENT;
         _job set ["segmentIndex", _segmentIndex + 1];
