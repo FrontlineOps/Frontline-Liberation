@@ -131,6 +131,19 @@ void Domain::walls(std::size_t first, std::size_t count, unsigned int mask) {
         && mask < (1u << count), "Invalid face mask");
     for (std::size_t i = 0; i < count; ++i) {
         faces[first + i].blocked = (mask & (1u << i)) != 0;
+        faces[first + i].opening = faces[first + i].blocked ? 0 : 1;
+    }
+}
+
+void Domain::openings(std::size_t first, const std::vector<double>& fractions) {
+    require(!fractions.empty() && fractions.size() <= 8 && first < faces.size()
+        && fractions.size() <= faces.size() - first, "Invalid opening range");
+    for (double fraction : fractions) {
+        require(std::isfinite(fraction) && fraction >= 0 && fraction <= 1, "Invalid opening fraction");
+    }
+    for (std::size_t i = 0; i < fractions.size(); ++i) {
+        faces[first + i].opening = fractions[i];
+        faces[first + i].blocked = fractions[i] == 0;
     }
 }
 
@@ -160,9 +173,10 @@ double Domain::step(double maxDt, double cfl) {
     const double factor = dt / spacing;
     const double areaTime = dt * spacing * spacing;
     for (const Face& face : faces) {
-        // An impermeable interior face has two independent reflecting sides.
-        // Each side transfers momentum to the wall; neither exchanges gas.
-        if (face.blocked) {
+        // A sampled opening shares one conservative exchange between cells.
+        // The remaining surface reflects on both sides without exchanging gas.
+        const double opening = face.blocked ? 0 : face.opening;
+        if (opening < 1) {
             const auto reflect = [&](std::size_t cell, int sign) {
                 State mirror = cells[cell];
                 Primitive wm = primitives[cell];
@@ -170,15 +184,17 @@ double Domain::step(double maxDt, double cfl) {
                 wm[face.axis + 1] *= -1;
                 const State f = flux(cells[cell], mirror, primitives[cell], wm, face.axis, sign);
                 for (std::size_t k = 0; k < f.size(); ++k) {
-                    delta[cell][k] -= f[k] * factor;
-                    boundary[k] += f[k] * areaTime;
+                    delta[cell][k] -= f[k] * factor * (1 - opening);
+                    boundary[k] += f[k] * areaTime * (1 - opening);
                 }
             };
             reflect(face.a, face.sign);
             if (face.b >= 0) {
                 reflect(static_cast<std::size_t>(face.b), -face.sign);
             }
-            continue;
+            if (opening == 0) {
+                continue;
+            }
         }
         const State& l = cells[face.a];
         const Primitive& wl = primitives[face.a];
@@ -195,12 +211,12 @@ double Domain::step(double maxDt, double cfl) {
         }
         const State f = flux(l, r, wl, wr, face.axis, face.sign);
         for (std::size_t k = 0; k < f.size(); ++k) {
-            const double change = f[k] * factor;
+            const double change = f[k] * factor * opening;
             delta[face.a][k] -= change;
             if (face.b >= 0) {
                 delta[face.b][k] += change;
             } else {
-                boundary[k] += f[k] * areaTime;
+                boundary[k] += f[k] * areaTime * opening;
             }
         }
     }

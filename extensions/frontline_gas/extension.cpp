@@ -114,7 +114,7 @@ std::string dispatch(const std::string& command, const Arguments& args) {
     output << std::setprecision(17);
     if (command == "version") {
         args.size(0);
-        output << "[2," << flgas::maxCells << ',' << maxDomains << ',' << maxBatch << ']';
+        output << "[3," << flgas::maxCells << ',' << maxDomains << ',' << maxBatch << ']';
         return output.str();
     }
     if (command == "reset") {
@@ -146,11 +146,13 @@ std::string dispatch(const std::string& command, const Arguments& args) {
         return output.str();
     }
     // Reject an unknown command before it can address a domain.
-    const std::map<std::string, unsigned int> counts{{"release", 1}, {"fill", 9}, {"advance", 4}, {"sample", 3}, {"cells", 3}, {"stats", 1}, {"faces", 3}, {"walls", 4}, {"heat", 3}, {"samples", 0}};
+    const std::map<std::string, unsigned int> counts{{"release", 1}, {"fill", 9}, {"advance", 4}, {"sample", 3}, {"cells", 3}, {"stats", 1}, {"faces", 3}, {"walls", 4}, {"heat", 3}, {"samples", 0}, {"openings", 0}};
     const auto expected = counts.find(command);
     require(expected != counts.end(), "Unknown command");
     if (command == "samples") {
         require(args.count >= 2 && args.count <= 9, "Expected one to eight sample indices");
+    } else if (command == "openings") {
+        require(args.count >= 3 && args.count <= 10, "Expected one to eight opening fractions");
     } else {
         args.size(expected->second);
     }
@@ -158,6 +160,14 @@ std::string dispatch(const std::string& command, const Arguments& args) {
     const auto found = domains.find(id);
     require(found != domains.end(), "Unknown or released domain handle");
     auto& d = *found->second;
+    if (command == "openings") {
+        std::vector<double> fractions;
+        for (unsigned int i = 2; i < args.count; ++i) {
+            fractions.push_back(args.number(i));
+        }
+        d.openings(static_cast<std::size_t>(args.integer(1, 0, 24575)), fractions);
+        return "[]";
+    }
     if (command == "release") {
         domains.erase(found);
         return "[]";
@@ -250,12 +260,12 @@ std::string dispatch(const std::string& command, const Arguments& args) {
 }
 
 FL_EXPORT void FL_CALL RVExtensionVersion(char* output, unsigned int outputSize) {
-    write(output, outputSize, "Frontline Gas 2.0.0 / generic game integration");
+    write(output, outputSize, "Frontline Gas 3.0.0 / sampled openings");
 }
 
 FL_EXPORT void FL_CALL RVExtension(char* output, unsigned int outputSize, const char* function) {
     if (function && std::strcmp(function, "version") == 0) {
-        write(output, outputSize, "[2,4096,8,8]");
+        write(output, outputSize, "[3,4096,8,8]");
     } else {
         write(output, outputSize, "[\"Use the array callExtension interface\"]");
     }

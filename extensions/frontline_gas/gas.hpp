@@ -25,6 +25,7 @@ struct Face {
     int sign;
     Boundary boundary;
     bool blocked = false;
+    double opening = 1;
 };
 
 class Domain {
@@ -33,6 +34,7 @@ public:
         double gamma, const std::array<Boundary, 6>& boundaries);
     void fill(std::size_t first, std::size_t count, const State& value);
     void walls(std::size_t first, std::size_t count, unsigned int mask);
+    void openings(std::size_t first, const std::vector<double>& fractions);
     void heat(std::size_t cell, double joules);
     double step(double maxDt, double cfl = 0.4);
     std::array<double, 11> sample(std::size_t cell, double gasConstant = 287.05) const;

@@ -2,7 +2,7 @@
    No medical pressure thresholds. Stationary samples use native integrated
    impulse; changing cells does not replay that cell's old pressure history. */
 if (!isServer || {isRemoteExecuted}) exitWith {};
-params ["_job", "_index"];
+params ["_job", "_index", ["_prepared", []]];
 private _unit = (_job get "targets") select _index;
 private _debug = CBA_missionTime < (localNamespace getVariable ["KPLIB_munitionsUntil", -1]);
 private _trace = _job getOrDefault ["gasTrace", createHashMap];
@@ -13,10 +13,21 @@ if (isNull _unit || {!alive _unit}) exitWith {
     if (_debug) then {_trace set [_key, ["missing/dead recipient", _age]]};
 };
 private _profile = _job get "profile";
-private _body = aimPos _unit;
 private _cellSize = _job get "gasCell";
 private _n = _job get "gasN";
-private _grid = ((_body vectorDiff (_job get "origin")) vectorMultiply (1 / _cellSize)) apply {floor (_x + _n / 2)};
+if (_prepared isEqualTo []) then {
+    private _rows = [_job, [_index]] call KPLIB_fnc_gasTargetSamples;
+    if (_rows isNotEqualTo []) then {
+        private _row = _rows select 0;
+        _prepared = (_row select [1, 4]) + [[]];
+        if (_row select 3 >= 0) then {
+            private _reply = ["sample", [_job get "gasHandle", _row select 3, 287.05]] call KPLIB_fnc_gasNative;
+            if (_reply select 0) then {_prepared set [4, _reply select 1]};
+        };
+    };
+};
+if (_prepared isEqualTo []) exitWith {};
+_prepared params ["_body", "_grid", "_cell", "_fraction", "_sample"];
 private _time = _job get "gasTime";
 private _states = _job get "gasMeasures";
 private _state = _states getOrDefault [_key, [0,-1,0,0,0,0,0]];
@@ -30,38 +41,10 @@ if (_grid findIf {_x < 0 || {_x >= _n}} >= 0) exitWith {
     _state set [4, 0];
     _states set [_key, _state];
 };
-private _cell = (_grid select 0) + _n * ((_grid select 1) + _n * (_grid select 2));
-// A coarse cell center can lie across a thin floor from the recipient.
-// Select the nearest visible center from this cell and its six face neighbours.
-// Never select by pressure or pass a native wall/terrain obstruction.
-private _candidates = [];
-{
-    private _coords = _grid vectorAdd _x;
-    if (_coords findIf {_x < 0 || {_x >= _n}} < 0) then {
-        private _index = (_coords select 0) + _n * ((_coords select 1) + _n * (_coords select 2));
-        private _point = [_job, _index] call KPLIB_fnc_gasPosition;
-        _candidates pushBack [_point distance _body, _index, _point];
-    };
-} forEach [[0,0,0],[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
-_candidates sort true;
-private _fraction = 0;
-{
-    _x params ["", "_candidate", "_point"];
-    private _visible = 0;
-    if (_point select 2 >= getTerrainHeightASL _point) then {
-        {
-            if ([_point, _x, _unit] call KPLIB_fnc_blastClear) then {_visible = _visible + 1 / 3};
-        } forEach [eyePos _unit, _body, (getPosASL _unit) vectorAdd [0,0,0.35]];
-    };
-    if (_visible > 0) exitWith {_cell = _candidate; _fraction = _visible};
-} forEach _candidates;
-private _reply = ["sample", [_job get "gasHandle",_cell,287.05]] call KPLIB_fnc_gasNative;
-if !(_reply select 0) exitWith {
-    _job set ["gasReason", _reply select 2];
+if (_sample isEqualTo []) exitWith {
+    _job set ["gasReason", "Recipient sample unavailable"];
     _job set ["truncated", true];
-    if (_debug) then {_trace set [_key, ["native sample failed", _age, _reply select 2]]};
 };
-private _sample = _reply select 1;
 private _dt = (_time - (_state select 0)) max 0;
 private _pressure = ((_sample select 1) - 101325) max 0;
 private _same = _cell == (_state select 1);
@@ -76,6 +59,12 @@ private _peak = (_state select 6) max (([_pressure, _sample select 2] select _sa
 private _referenceP = (_job get "gasSourcePressure") max 1;
 private _referenceI = _referenceP * _cellSize / 340;
 private _heat = (((_sample select 5) - 101325 / (1.2 * 287.05)) max 0) / (_referenceP / (1.2 * 287.05)) * ((_sample select 10) max 0) * _fraction;
+private _responseGain = (_profile get "strength") * KPLIB_munitions_gas_damage_gain * (missionNamespace getVariable ["KPLIB_munitions_pressure_gain", 8]);
+private _KPLIB_blastTraumaServerContext = true;
+[_job, _unit, [
+    (0.2 * _responseGain * _peak / _referenceP) min 2,
+    (0.08 * _responseGain * _impulse / _referenceI) min 2
+], ["GAS", _peak, _impulse, _time, _fraction]] call KPLIB_fnc_blastTrauma;
 private _dose = (_job get "dose") getOrDefault [_key, [0,0]];
 // Refine this event's cumulative maximum through the bounded job lifetime.
 // Native credits match the original event time even when geometry was delayed.

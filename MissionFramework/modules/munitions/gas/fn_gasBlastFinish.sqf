@@ -11,3 +11,6 @@ _job set ["gasHandle", -1];
 _job deleteAt "gasInitialPositions";
 _job deleteAt "gasFrameRows";
 _job deleteAt "gasGeometryPositions";
+_job deleteAt "gasGeometryWatch";
+_job deleteAt "gasOpeningCandidates";
+_job deleteAt "gasSurfaceCells";

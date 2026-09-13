@@ -3,35 +3,42 @@
    alone does not load a DLL or run a fluid simulation on ammunition. */
 if (!isServer || {isRemoteExecuted}) exitWith {[false, [], "Server-local invocation required"]};
 params [["_command", "", [""]], ["_arguments", [], [[]]]];
-if !(_command in ["version", "status", "create", "fill", "advance", "sample", "samples", "cells", "faces", "walls", "heat", "stats", "release"]) exitWith {[false, [], "Unknown command"]};
+if !(_command in ["version", "status", "create", "fill", "advance", "sample", "samples", "cells", "faces", "walls", "openings", "heat", "stats", "release"]) exitWith {[false, [], "Unknown command"]};
 if (count _arguments > 17 || {_arguments findIf {!(_x isEqualType 0) || {!finite _x}} >= 0}) exitWith {[false, [], "Finite numeric arguments required"]};
 if !(missionNamespace getVariable ["KPLIB_gasNativeInitialized", false]) then {
     missionNamespace setVariable ["KPLIB_gasNativeInitialized", true];
-    private _version = "frontline_gas" callExtension ["version", []];
+    // Versioned filename permits an upgrade while the old DLL is still loaded.
+    private _library = "frontline_gas_v3";
+    private _version = _library callExtension ["version", []];
+    if (count _version != 3 || {_version select 1 != 0} || {_version select 2 != 0}) then {
+        _library = "frontline_gas";
+        _version = _library callExtension ["version", []];
+    };
     private _ready = count _version == 3 && {_version select 1 == 0} && {_version select 2 == 0};
     private _schema = [];
     if (_ready) then {
         _schema = parseSimpleArray (_version select 0);
-        _ready = _schema isEqualTo [2,4096,8,8];
+        _ready = _schema in [[2,4096,8,8], [3,4096,8,8]];
     };
     if (_ready) then {
         // Extensions can outlive a mission. Reset native state at first use in
         // each mission; native handles themselves are never recycled.
-        private _reset = "frontline_gas" callExtension ["reset", []];
+        private _reset = _library callExtension ["reset", []];
         _ready = _reset select 1 == 0 && {_reset select 2 == 0};
     };
     missionNamespace setVariable ["KPLIB_gasNativeReady", _ready];
     missionNamespace setVariable ["KPLIB_gasNativeSchema", _schema];
+    localNamespace setVariable ["KPLIB_gasNativeLibrary", _library];
     missionNamespace setVariable ["KPLIB_gasNativeMetrics", [0, 0, "", ""]];
     if (_ready) then {
         addMissionEventHandler [["Ended", "MPEnded"] select isMultiplayer, {
-            if (isServer) then {"frontline_gas" callExtension ["reset", []]};
+            if (isServer) then {(localNamespace getVariable ["KPLIB_gasNativeLibrary", "frontline_gas"]) callExtension ["reset", []]};
         }];
     };
 };
 if !(missionNamespace getVariable ["KPLIB_gasNativeReady", false]) exitWith {[false, [], "Native backend unavailable or incompatible; no SQF hot-path fallback"]};
 private _started = diag_tickTime;
-private _reply = "frontline_gas" callExtension [_command, _arguments];
+private _reply = (localNamespace getVariable ["KPLIB_gasNativeLibrary", "frontline_gas"]) callExtension [_command, _arguments];
 private _ok = count _reply == 3 && {_reply select 1 == 0} && {_reply select 2 == 0};
 private _data = [];
 private _reason = "";

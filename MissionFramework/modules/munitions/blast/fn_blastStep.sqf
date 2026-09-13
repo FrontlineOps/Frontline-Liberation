@@ -87,6 +87,8 @@ private _previous = _sent getOrDefault [_key, [0, 0]];
 private _age = CBA_missionTime - (_job get "thermalAt");
 if (_phase in ["PRIMARY", "PRESSURE"]) then {
     _pressure = (_pressure * (missionNamespace getVariable ["KPLIB_munitions_pressure_gain", 8])) min 24;
+    private _KPLIB_blastTraumaServerContext = true;
+    [_job, _unit, [(_pressure * 0.2) min 2, (_pressure * 0.08) min 2], ["LEGACY", _pressure, _fraction]] call KPLIB_fnc_blastTrauma;
     _dose set [0, (_dose select 0) max _pressure];
     (_job get "last") set [_key, _age];
     private _exposures = _job get "exposures";

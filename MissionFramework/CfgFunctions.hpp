@@ -25,6 +25,11 @@ class KPLIB {
         class gasBlastStart {};
         class gasBlastStep {};
         class gasBlastDose {};
+        class gasTargetSamples {};
+        class gasTargetsStep {};
+        class gasOpeningStep {};
+        class gasDust {};
+        class gasDustReceive {};
         class gasBlastFinish {};
         class gasDraw {};
         class gasPublish {};
@@ -59,6 +64,13 @@ class KPLIB {
         class blastWound    {};
         class blastApply    {};
         class blastTrace    {};
+        class blastTraumaInit {};
+        class blastTrauma {};
+        class blastTraumaDecay {};
+        class blastTraumaSend {};
+        class blastTraumaReceive {};
+        class blastTraumaReset {};
+        class blastTraumaTick {};
     };
     class module_munitions {
         file = "modules\munitions";

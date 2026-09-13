@@ -1,6 +1,46 @@
 /* Frontline Munitions & Guidance. Defaults preserve the prior mission configuration. */
 
 [
+    "KPLIB_munitions_trauma_enabled", "CHECKBOX",
+    "Persistent blast symptoms",
+    "Retain blast exposure between detonations. Disorientation affects sight and weapon steadiness; sustained instability restricts sprinting. Symptoms recover separately and full medical healing clears them.",
+    ["Frontline - Munitions & Guidance", "Blast recovery"],
+    true, false
+] call _add;
+
+[
+    "KPLIB_munitions_trauma_fast_recovery", "SLIDER",
+    "Disorientation recovery half-time",
+    "Seconds for blast disorientation to halve without another exposure. Longer values prolong blurred sight, muffled hearing and increased weapon sway.",
+    ["Frontline - Munitions & Guidance", "Blast recovery"],
+    [1, 120, 15, 0], false
+] call _add;
+
+[
+    "KPLIB_munitions_trauma_slow_recovery", "SLIDER",
+    "Instability recovery half-time",
+    "Seconds for sustained blast instability to halve without another exposure. Longer values prolong weapon unsteadiness and the sprint restriction after repeated blasts.",
+    ["Frontline - Munitions & Guidance", "Blast recovery"],
+    [10, 600, 90, 0], false
+] call _add;
+
+[
+    "KPLIB_munitions_gas_openings", "CHECKBOX",
+    "Sample openings around blocked connections",
+    "Check alternate clear air routes around blocked pressure-grid connections. The native extension represents verified openings as partially open faces; intact cover remains reflective.",
+    ["Frontline - Munitions & Guidance", "Effects"],
+    true, false
+] call _add;
+
+[
+    "KPLIB_munitions_gas_dust", "CHECKBOX",
+    "Directional blast dust",
+    "Release short-lived local dust near sampled surfaces in the direction of solved airflow. Only nearby observers receive the bounded particle bursts.",
+    ["Frontline - Munitions & Guidance", "Effects"],
+    true, false
+] call _add;
+
+[
     "KPLIB_munitions_blast_max_jobs", "SLIDER",
     "Maximum concurrent blast jobs",
     "Maximum explosions the server can process for pressure and heat at the same time. Further explosions are skipped by this processor while all slots are occupied.",

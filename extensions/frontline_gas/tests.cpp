@@ -152,6 +152,30 @@ int main() {
         rejects([&] { chamber.heat(0, -1); }, "negative prescribed heat rejected");
         check(chamber.cells == beforeInvalidMask, "invalid geometry or heat does not alter conserved state");
 
+        Domain sealed({8, 1, 1}, 1, {1,0,0,0,1,0}, 1.4, walls);
+        sealed.fill(0, 4, {1,0,0,0,2,1});
+        Domain partial = sealed;
+        Domain full = sealed;
+        sealed.openings(faceIndex, {0});
+        partial.openings(faceIndex, {0.25});
+        full.openings(faceIndex, {1});
+        sealed.step(0.01);
+        partial.step(0.01);
+        full.step(0.01);
+        check(sealed.cells[4][5] == 0 && partial.cells[4][5] > 0
+            && partial.cells[4][5] < full.cells[4][5], "sampled aperture bounds first-step transfer between closed and open faces");
+        check(residual(partial) < 1e-11, "partial-face exchange conserves all state including wall momentum");
+        const double openingBefore = partial.faces[faceIndex].opening;
+        rejects([&] { partial.openings(faceIndex, {0.5, -1}); }, "invalid multi-face aperture rejected atomically");
+        check(partial.faces[faceIndex].opening == openingBefore, "bad aperture batch leaves geometry unchanged");
+        rejects([&] { partial.openings(partial.faces.size(), {1}); }, "invalid aperture face rejected");
+        for (int i = 0; i < 40; ++i) { partial.step(0.01); }
+        partial.openings(faceIndex, {0});
+        const double tracerBefore = partial.cells[4][5] + partial.cells[5][5] + partial.cells[6][5] + partial.cells[7][5];
+        for (int i = 0; i < 40; ++i) { partial.step(0.01); }
+        const double tracerAfter = partial.cells[4][5] + partial.cells[5][5] + partial.cells[6][5] + partial.cells[7][5];
+        check(std::abs(tracerAfter - tracerBefore) < 1e-12 && residual(partial) < 1e-11, "closing an existing opening stops exchange without resetting prior history");
+
         for (int n : {64, 128, 256}) {
             Domain sod({n, 1, 1}, 1.0 / n, {0.125, 0, 0, 0, 0.1, 0}, 1.4, walls);
             sod.fill(0, static_cast<std::size_t>(n / 2), {1, 0, 0, 0, 1, 1});

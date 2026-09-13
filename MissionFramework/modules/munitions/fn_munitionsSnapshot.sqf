@@ -12,6 +12,14 @@ if (!(_object isKindOf "CAManBase")) then {
     _rows pushBack format ["  Last pressure game floors [event,at,[component,requested,before,after/reason]]: %1",_object getVariable ["KPLIB_gasAssetLast",[]]];
 };
 if (_object isKindOf "CAManBase") then {
+    private _trauma = _object getVariable ["KPLIB_blastTraumaSnapshot", []];
+    if (_trauma isNotEqualTo []) then {
+        private _scores = [_trauma select 3, CBA_missionTime - (_trauma select 2)] call KPLIB_fnc_blastTraumaDecay;
+        _rows pushBack format ["  Blast recovery: disorientation=%1 instability=%2 events=%3 last=%4 s ago; source reading=%5", _scores select 0, _scores select 1, _trauma select 4, CBA_missionTime - (_trauma select 5), _trauma select 6];
+    };
+    if (isClass (configFile >> "CfgPatches" >> "ACM_core")) then {
+        _rows pushBack format ["  ACM: knockout=%1 lying=%2 airway reflex=%3 oxygen=%4; physiology and treatment remain ACM-owned", _object getVariable ["ACM_core_KnockOut_State", false], _object getVariable ["ACM_core_Lying_State", false], _object getVariable ["ACM_airway_AirwayReflex_State", false], _object getVariable ["ACM_breathing_OxygenSaturation", "unavailable"]];
+    };
     _rows pushBack format ["  Last debug pressure trace (owner-local, may be stale): %1", _object getVariable ["KPLIB_blastLastTrace", []]];
     _rows pushBack format ["  lifeState=%1 unconscious=%2 | uniform=%3 vest=%4 helmet=%5", lifeState _object, _object getVariable ["ACE_isUnconscious", false], uniform _object, vest _object, headgear _object];
     {

@@ -24,14 +24,18 @@ private _jobs = localNamespace getVariable "KPLIB_blastJobs";
 private _cursor = localNamespace getVariable ["KPLIB_blastJobCursor", 0];
 for "_i" from 1 to KPLIB_munitions_blast_cells_per_tick do {
     if (_jobs isEqualTo [] || {diag_tickTime - _start > 0.003}) exitWith {};
-    // Release completed work and deliver primary exposure before costly grids.
-    private _urgent = _jobs findIf {(_x get "phase") in ["DONE", "GAS_PRIMARY"]};
+    // Release completed work and deliver ready recipients before costly grids.
+    private _urgent = _jobs findIf {(_x get "phase") in ["DONE", "GAS_PRIMARY", "PRIMARY", "GAS_TARGETS"]};
     if (_urgent >= 0) then {
         _cursor = _urgent;
     } else {
         // Complete the oldest native field first. Splitting every work unit
         // across eight geometries could make all eight expire before sampling.
-        private _native = _jobs findIf {(_x getOrDefault ["backend", "LEGACY"]) == "GAS"};
+        private _native = _jobs findIf {
+            (_x getOrDefault ["backend", "LEGACY"]) == "GAS"
+                && {(_x get "targets") isNotEqualTo [] || {(_x getOrDefault ["gasAssets", []]) isNotEqualTo []}}
+        };
+        if (_native < 0) then {_native = _jobs findIf {(_x getOrDefault ["backend", "LEGACY"]) == "GAS"}};
         if (_native >= 0) then {_cursor = _native};
     };
     _cursor = _cursor mod count _jobs;

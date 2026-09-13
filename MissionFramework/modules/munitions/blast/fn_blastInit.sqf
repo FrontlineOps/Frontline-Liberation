@@ -10,6 +10,7 @@ localNamespace setVariable ["KPLIB_blastShots", createHashMap];
 localNamespace setVariable ["KPLIB_blastPending", []];
 localNamespace setVariable ["KPLIB_blastMetrics", createHashMapFromArray [["accepted", 0], ["rejected", 0], ["dropped", 0], ["cells", 0], ["maxTickMs", 0]]];
 localNamespace setVariable ["KPLIB_munitionsEffectsReady", true];
+[] call KPLIB_fnc_blastTraumaInit;
 // Clamp authoring mistakes before they can affect hot-path budgets.
 {
     _x params ["_key", "_default", "_min", "_max"];

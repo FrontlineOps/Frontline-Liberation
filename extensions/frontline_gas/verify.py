@@ -92,7 +92,7 @@ def verify(build):
         assert code == expected, (command, code, buffer.value)
         return json.loads(buffer.value)
 
-    assert call('version') == [2, 4096, 8, 8]
+    assert call('version') == [3, 4096, 8, 8]
     call('reset')
     standard = [4, 4, 4, 1, 1.4, 1.2, 0, 0, 0, 101325, 0, 1, 1, 1, 1, 1, 1]
     handle, count = call('create', standard)
@@ -100,6 +100,11 @@ def verify(build):
     call('fill', [handle, 21, 2, 1.2, 0, 0, 0, 150000, 1])
     before = call('stats', [handle])
     snapshot = call('cells', [handle, 16, 16])
+    call('openings', [handle, 0, 0, 0.25, 1])
+    call('openings', [handle, 0, 0.5, -1], expected=1)
+    call('openings', [handle, 24575, 1], expected=1)
+    call('openings', [handle, 0, 'NaN'], expected=1)
+    call('walls', [handle, 0, 3, 0])
     for command, args in (
         ('fill', [handle, 63, 2, 1.2, 0, 0, 0, 150000, 1]),
         ('fill', [handle, 0, 1, 1.2, 0, 0, 0, -1, 1]),

@@ -16,6 +16,9 @@ if (isNull _unit || {!alive _unit}) exitWith {};
 private _exposure = [_job, _unit, _job get "gasRadius"] call KPLIB_fnc_blastExposure;
 _exposure params ["_pressure", "_path", "_fraction"];
 _pressure = (_pressure * (missionNamespace getVariable ["KPLIB_munitions_pressure_gain", 8])) min 24;
+// Direct exposure is provisional; the same event can later refine each channel.
+private _KPLIB_blastTraumaServerContext = true;
+[_job, _unit, [(_pressure * 0.2) min 2, (_pressure * 0.08) min 2], ["DIRECT", _pressure, _fraction]] call KPLIB_fnc_blastTrauma;
 private _key = str _index;
 private _dose = (_job get "dose") getOrDefault [_key, [0,0]];
 private _sent = _job getOrDefault ["sentDose", createHashMap];
