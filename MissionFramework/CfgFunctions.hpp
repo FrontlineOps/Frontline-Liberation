@@ -1,4 +1,14 @@
 class KPLIB {
+    class module_settings {
+        file = "modules\settings";
+
+        class settingsPreInit {preInit = 1;};
+        class settingsValidate {};
+        class settingsDerive {};
+        class settingsApply {};
+        class settingsCommit {};
+        class settingsReceive {};
+    };
     class module_gas {
         file = "modules\munitions\gas";
 

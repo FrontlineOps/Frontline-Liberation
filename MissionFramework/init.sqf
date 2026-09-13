@@ -28,6 +28,15 @@ cleanUpBodies =
 
 if (isDedicated) then {debug_source = "Server";} else {debug_source = name player;};
 
+// Settings must be authoritative before sector, faction or module startup.
+private _settingsDeadline = diag_tickTime + 60;
+waitUntil {
+    sleep 0.05;
+    localNamespace getVariable ["KPLIB_settingsReady", false] || {diag_tickTime > _settingsDeadline}
+};
+if !(localNamespace getVariable ["KPLIB_settingsReady", false]) exitWith {
+    diag_log "[FL SETTINGS] Mission initialization stopped: no valid server configuration received.";
+};
 [] call KPLIB_fnc_initSectors;
 if (!isServer) then {waitUntil {!isNil "KPLIB_initServer"};};
 
