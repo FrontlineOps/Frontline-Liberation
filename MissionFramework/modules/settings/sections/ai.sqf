@@ -1,6 +1,54 @@
 /* Frontline AI. Defaults preserve the prior mission configuration. */
 
 [
+    "KPLIB_vehicleCombat_enabled", "CHECKBOX",
+    "Enable armored vehicle combat",
+    "Let AI tank, APC and IFV crews engage known visible ground targets at extended range and select suitable ammunition from their turret inventory. Applies to all combat sides; vehicles with player crews retain manual control.",
+    ["Frontline - AI", "Vehicle combat"],
+    true, false
+] call _add;
+
+[
+    "KPLIB_vehicleCombat_rangeMultiplier", "SLIDER",
+    "Vehicle engagement range multiplier",
+    "Multiply each weapon's configured AI engagement range. Gun and machine-gun distance caps, projectile lifetime and missile control limits still bound each available round.",
+    ["Frontline - AI", "Vehicle combat"],
+    [1, 3, 2, 1], false
+] call _add;
+
+[
+    "KPLIB_vehicleCombat_gunRange", "SLIDER",
+    "Cannon and missile range cap (m)",
+    "Farthest distance for deliberate cannon and anti-tank missile engagements. Crews need a known hostile target, clear sight and a loaded weapon capable of reaching it.",
+    ["Frontline - AI", "Vehicle combat"],
+    [1000, 6000, 5000, 0], false
+] call _add;
+
+[
+    "KPLIB_vehicleCombat_mgRange", "SLIDER",
+    "Vehicle machine-gun range cap (m)",
+    "Farthest distance for deliberate vehicle machine-gun fire. Beyond this, crews can select suitable cannon ammunition if they carry it.",
+    ["Frontline - AI", "Vehicle combat"],
+    [500, 2500, 1800, 0], false
+] call _add;
+
+[
+    "KPLIB_vehicleCombat_maxActive", "SLIDER",
+    "Concurrent controlled turrets per owner",
+    "Maximum simultaneous deliberate vehicle engagements on the server or each headless client. Other turrets continue native combat while waiting for a slot.",
+    ["Frontline - AI", "Vehicle combat"],
+    [1, 24, 12, 0], false
+] call _add;
+
+[
+    "KPLIB_vehicleCombat_debug", "CHECKBOX",
+    "Log vehicle ammunition decisions",
+    "Write controlled vehicle shots, ammunition, target class and engagement distance to the owning server or headless client's RPT.",
+    ["Frontline - AI", "Vehicle combat"],
+    false, true
+] call _add;
+
+[
     "KPLIB_aiCombat_side_west", "CHECKBOX",
     "Apply to BLUFOR",
     "Include BLUFOR AI infantry in Frontline's extended fire-support and gunfire-hearing behavior.",

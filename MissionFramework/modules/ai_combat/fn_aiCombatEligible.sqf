@@ -5,7 +5,8 @@ if (!KPLIB_aiCombat_enabled) exitWith {"Disabled"};
 if (isNull _unit || {!alive _unit}) exitWith {"Dead or deleted"};
 if (!local _unit || {isPlayer _unit}) exitWith {"Player or nonlocal AI"};
 if (!(side group _unit in KPLIB_aiCombat_sides)) exitWith {"Side excluded"};
-if (!isNull objectParent _unit) exitWith {"Mounted: native vehicle combat"};
+if (!isNull objectParent _unit) exitWith {"Mounted: vehicle combat"};
+if (netId _unit in (localNamespace getVariable ["KPLIB_vehicleCombat_restores", createHashMap])) exitWith {"Vehicle controls being released"};
 if (!simulationEnabled _unit) exitWith {"Simulation suspended"};
 if (captive _unit || {lifeState _unit == "INCAPACITATED"}
     || {_unit getVariable ["ACE_isUnconscious", false]}

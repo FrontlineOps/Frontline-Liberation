@@ -125,6 +125,37 @@ class KPLIB {
         class munitionsLog {};
 
     };
+    class module_combat_fire {
+        file = "modules\ai_combat\combat_fire";
+
+        class combatFireInit {};
+        class combatFireModes {};
+        class combatFirePlan {};
+        class combatFireStep {};
+        class combatFireFired {};
+        class combatFireTick {};
+    };
+    class module_vehicle_combat {
+        file = "modules\ai_combat\vehicle_combat";
+
+        class vehicleCombatInit {};
+        class vehicleCombatRegister {};
+        class vehicleCombatEligible {};
+        class vehicleCombatProfile {};
+        class vehicleCombatWeapons {};
+        class vehicleCombatChoose {};
+        class vehicleCombatVisible {};
+        class vehicleCombatSafe {};
+        class vehicleCombatRequest {};
+        class vehicleCombatPeer {};
+        class vehicleCombatLease {};
+        class vehicleCombatRelease {};
+        class vehicleCombatRestoreLocal {};
+        class vehicleCombatUpdate {};
+        class vehicleCombatFire {};
+        class vehicleCombatTick {};
+        class vehicleCombatInspect {};
+    };
     class module_ai_combat {
         file = "modules\ai_combat";
 
@@ -140,6 +171,7 @@ class KPLIB {
         class aiCombatFinish   {};
         class aiCombatRestore  {};
         class aiCombatUpdate   {};
+        class aiCombatFire {};
         class aiCombatTick     {};
         class aiCombatFired    {};
         class aiCombatSound    {};

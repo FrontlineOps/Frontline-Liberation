@@ -47,6 +47,7 @@ KARMA_ARSENAL_CRATES = [];
 [] call compileFinal preprocessFileLineNumbers "kp_liberation_config.sqf";
 [] call KPLIB_fnc_aiSkillsInit;
 [] call KPLIB_fnc_aiCombatInit;
+[] call KPLIB_fnc_vehicleCombatInit;
 [] call KPLIB_fnc_captureStatusInit;
 [] call compileFinal preprocessFileLineNumbers "modules\radio_towers\index.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\index.sqf";
@@ -94,7 +95,9 @@ if (!isDedicated && hasInterface) then {
     [] call compileFinal preprocessFileLineNumbers "scripts\client\init_client.sqf";
 
 } else {
-    setViewDistance 3000;
+    // AI-only hosts need the same visibility ceiling as extended vehicle fire.
+    setViewDistance (if (KPLIB_vehicleCombat_enabled) then {3000 max KPLIB_vehicleCombat_gunRange} else {3000});
+    setObjectViewDistance (if (KPLIB_vehicleCombat_enabled) then {3000 max KPLIB_vehicleCombat_gunRange} else {3000});
 };
 
 KPLIB_init = true;
