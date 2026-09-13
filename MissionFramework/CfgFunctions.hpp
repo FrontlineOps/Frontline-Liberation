@@ -20,6 +20,27 @@ class KPLIB {
         class aiCombatHear     {};
         class aiCombatInspect  {};
     };
+    class module_guidance {
+        file = "modules\missileGuidance";
+
+        class guidanceInit       {};
+        class guidanceResolve    {};
+        class guidanceBackend    {};
+        class guidanceRegister   {};
+        class guidanceStart      {};
+        class guidanceRetire     {};
+        class guidanceTick       {};
+        class guidanceCandidates {};
+        class guidanceVisible    {};
+        class guidanceSupport    {};
+        class guidanceSeeker     {};
+        class guidanceNavigation {};
+        class guidanceSteer      {};
+        class guidanceFuze       {};
+        class guidanceNotify     {};
+        class guidanceReceive    {};
+        class guidanceInspect    {};
+    };
     class module_factory_depots {
         file = "modules\factory_depots";
 

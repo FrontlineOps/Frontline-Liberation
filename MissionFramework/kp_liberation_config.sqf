@@ -447,6 +447,24 @@ BATTLESPACE_SAM_STRATEGIC_MISSILES_PER_LAUNCHER = 8;
 BATTLESPACE_SAM_TACTICAL_MISSILES_PER_LAUNCHER = 4;
 BATTLESPACE_SAM_RELOAD_BATCH = 4;
 
+// Automatic munition guidance. Unknown/external controllers retain native behavior.
+KPLIB_guidance_enabled = true;
+KPLIB_guidance_debug = false;
+KPLIB_guidance_seeker_interval = 0.1;
+KPLIB_guidance_search_interval = 0.5;
+KPLIB_guidance_candidates_per_scan = 24;
+KPLIB_guidance_max_active = 128;
+KPLIB_guidance_max_countermeasures = 512;
+KPLIB_guidance_track_memory = 1.5;
+KPLIB_guidance_reacquire_time = 6;
+KPLIB_guidance_max_step = 0.05;
+KPLIB_guidance_warnings = true;
+
+// Exact ammo overrides: [classname, [[property, value], ...]]. Empty by default.
+// backend: AUTO/NATIVE; family: IR/ARH/SARH/RADIO/LASER.
+KPLIB_guidance_overrides = [];
+
+
 KP_liberation_save_interval = 60;            			// Save interval (sec)
 
 // Behavior-preserving scheduler tuning.
