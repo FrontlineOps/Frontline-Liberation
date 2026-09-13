@@ -23,7 +23,8 @@ private _cells = [];
 private _samples = [];
 private _ok = true;
 if (_cells isNotEqualTo []) then {
-    private _reply = ["samples", [_job get "gasHandle"] + _cells] call KPLIB_fnc_gasNative;
+    private _command = ["samples", "responseSamples"] select (_job getOrDefault ["gasReference", false]);
+    private _reply = [_command, [_job get "gasHandle"] + _cells] call KPLIB_fnc_gasNative;
     _ok = _reply select 0;
     if (_ok) then {_samples = _reply select 1} else {_job set ["gasReason", _reply select 2]};
 };
@@ -37,4 +38,3 @@ if (!_ok) exitWith {
     [_job, _recipient, [_body, _grid, _cell, _fraction, _sample]] call KPLIB_fnc_gasBlastDose;
 } forEach _rows;
 _job set ["targetIndex", _index + count _indices];
-

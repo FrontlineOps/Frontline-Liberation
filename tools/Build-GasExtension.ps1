@@ -44,11 +44,11 @@ Get-Content -LiteralPath (Join-Path $outputRoot 'native-tests.txt')
 $packageRoot = Join-Path $outputRoot '@FrontlineGas'
 New-Item -ItemType Directory -Path $packageRoot -Force | Out-Null
 Copy-Item -LiteralPath (Join-Path $outputRoot 'frontline_gas_x64.dll') -Destination $packageRoot -Force
-Copy-Item -LiteralPath (Join-Path $outputRoot 'frontline_gas_x64.dll') -Destination (Join-Path $packageRoot 'frontline_gas_v3_x64.dll') -Force
+Copy-Item -LiteralPath (Join-Path $outputRoot 'frontline_gas_x64.dll') -Destination (Join-Path $packageRoot 'frontline_gas_v4_x64.dll') -Force
 Copy-Item -LiteralPath (Join-Path $repoRoot 'LICENSE') -Destination $packageRoot -Force
 $packageFiles = @(
     (Join-Path $packageRoot 'frontline_gas_x64.dll')
-    (Join-Path $packageRoot 'frontline_gas_v3_x64.dll')
+    (Join-Path $packageRoot 'frontline_gas_v4_x64.dll')
     (Join-Path $packageRoot 'LICENSE')
 )
 if (Test-Path -LiteralPath (Join-Path $sourceRoot 'README.md')) {

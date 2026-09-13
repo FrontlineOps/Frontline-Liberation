@@ -23,9 +23,27 @@ if (_phase == "GAS_SEED") exitWith {
     _job set ["gasFrameCursor", 0];
     _job set ["gasAfterFrame", "GAS_EVOLVE"];
     _job set ["phase", "GAS_FRAME"];
+    if (_job getOrDefault ["gasReference", false]) then {
+        _reply = ["refBegin", [_id, _job get "gasEnd", _job get "gasCentre", (_job get "gasEnergy") * (1 - _part)]] call KPLIB_fnc_gasNative;
+        if (_reply select 0) then {
+            _job set ["gasReferenceCacheHit", (_reply select 1) select 0 == 1];
+            _job set ["phase", "GAS_REFERENCE"];
+        } else {
+            [_reply select 2] call _fail;
+        };
+    };
     _job set ["gasReason", "Running; sampled openings; prescribed heat is not combustion"];
     _job set ["gasGeometryMs", 1000 * (CBA_missionTime - (_job get "at"))];
     _job deleteAt "gasGeometryPositions";
+};
+if (_phase == "GAS_REFERENCE") exitWith {
+    private _reply = ["refAdvance", [_id]] call KPLIB_fnc_gasNative;
+    if !(_reply select 0) exitWith {[_reply select 2] call _fail};
+    _job set ["gasReferenceMaxBatchMs", (_job getOrDefault ["gasReferenceMaxBatchMs", 0]) max ((_reply select 1) select 3)];
+    if ((_reply select 1) select 0 == 1) then {
+        _job set ["gasReferenceReadyAge", CBA_missionTime - (_job get "at")];
+        _job set ["phase", "GAS_FRAME"];
+    };
 };
 if (_phase == "GAS_GEOMETRY") exitWith {
     private _first = _job get "gasFaceCursor";
@@ -85,6 +103,7 @@ if (_phase == "GAS_GEOMETRY") exitWith {
         _point
     };
     private _mask = 0;
+    private _terrainMask = 0;
     private _rays = [];
     private _indices = [];
     {
@@ -94,6 +113,13 @@ if (_phase == "GAS_GEOMETRY") exitWith {
             private _offset = [0,0,0];
             _offset set [_axis, _sign * 0.5 * (_job get "gasCell")];
             _from vectorAdd _offset
+        };
+        // Reference ground is level at the source terrain height. Keeping the
+        // actual hills/berms in the reference too would divide their shielding
+        // out of the response. The actual field still queries current terrain.
+        private _ground = _job get "gasReferenceGround";
+        if (_from select 2 < _ground || {_to select 2 < _ground}) then {
+            _terrainMask = _terrainMask + 2^_forEachIndex;
         };
         if (_from select 2 >= getTerrainHeightASL _from && {_to select 2 >= getTerrainHeightASL _to}) then {
             _rays pushBack [_from, _to];
@@ -121,7 +147,11 @@ if (_phase == "GAS_GEOMETRY") exitWith {
     } forEach ([_rays] call KPLIB_fnc_blastClearBatch);
     _job set ["gasOpeningCandidates", _candidates];
     _job set ["gasSurfaceCells", _surfaces];
-    _reply = ["walls", [_id,_first,count _faces,_mask]] call KPLIB_fnc_gasNative;
+    _reply = if (_job getOrDefault ["gasReference", false]) then {
+        ["geometry", [_id,_first,count _faces,_mask,_terrainMask]] call KPLIB_fnc_gasNative
+    } else {
+        ["walls", [_id,_first,count _faces,_mask]] call KPLIB_fnc_gasNative
+    };
     if !(_reply select 0) exitWith {[_reply select 2] call _fail};
     _job set ["gasFaceCursor", _first + count _faces];
 };
@@ -176,7 +206,7 @@ if (_remaining > 0.00001) then {
     _job set ["gasMaxBatchMs", (_job getOrDefault ["gasMaxBatchMs", 0]) max ((_reply select 1) select 4)];
     // Prescribed energy release is a game input, not fuel chemistry. Account for
     // actual solver time advanced, including a budget-limited partial batch.
-    if ((_job get "profile") get "thermal") then {
+    if ((_job get "profile") get "thermal" && {!(_job getOrDefault ["gasReference", false])}) then {
         private _desired = (_job get "gasEnergy") * (1 - (_job get "gasSeedPart")) * (((_job get "gasTime") / (0.5 * (_job get "gasEnd"))) min 1);
         private _joules = (_desired - (_job get "gasHeatAdded")) max 0;
         if (_joules > 0) then {
@@ -184,6 +214,9 @@ if (_remaining > 0.00001) then {
             if !(_reply select 0) exitWith {[_reply select 2] call _fail};
             _job set ["gasHeatAdded", _desired];
         };
+    };
+    if ((_job get "profile") get "thermal" && {_job getOrDefault ["gasReference", false]}) then {
+        _job set ["gasHeatAdded", (_job get "gasEnergy") * (1 - (_job get "gasSeedPart")) * (((_job get "gasTime") / (0.5 * (_job get "gasEnd"))) min 1)];
     };
 };
 if (_job get "phase" == "DONE") exitWith {};

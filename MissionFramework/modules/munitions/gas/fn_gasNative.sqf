@@ -3,13 +3,17 @@
    alone does not load a DLL or run a fluid simulation on ammunition. */
 if (!isServer || {isRemoteExecuted}) exitWith {[false, [], "Server-local invocation required"]};
 params [["_command", "", [""]], ["_arguments", [], [[]]]];
-if !(_command in ["version", "status", "create", "fill", "advance", "sample", "samples", "cells", "faces", "walls", "openings", "heat", "stats", "release"]) exitWith {[false, [], "Unknown command"]};
+if !(_command in ["version", "status", "create", "fill", "advance", "sample", "samples", "cells", "faces", "walls", "openings", "heat", "stats", "release", "geometry", "refBegin", "refAdvance", "refStats", "responseSamples"]) exitWith {[false, [], "Unknown command"]};
 if (count _arguments > 17 || {_arguments findIf {!(_x isEqualType 0) || {!finite _x}} >= 0}) exitWith {[false, [], "Finite numeric arguments required"]};
 if !(missionNamespace getVariable ["KPLIB_gasNativeInitialized", false]) then {
     missionNamespace setVariable ["KPLIB_gasNativeInitialized", true];
     // Versioned filename permits an upgrade while the old DLL is still loaded.
-    private _library = "frontline_gas_v3";
+    private _library = "frontline_gas_v4";
     private _version = _library callExtension ["version", []];
+    if (count _version != 3 || {_version select 1 != 0} || {_version select 2 != 0}) then {
+        _library = "frontline_gas_v3";
+        _version = _library callExtension ["version", []];
+    };
     if (count _version != 3 || {_version select 1 != 0} || {_version select 2 != 0}) then {
         _library = "frontline_gas";
         _version = _library callExtension ["version", []];
@@ -18,7 +22,7 @@ if !(missionNamespace getVariable ["KPLIB_gasNativeInitialized", false]) then {
     private _schema = [];
     if (_ready) then {
         _schema = parseSimpleArray (_version select 0);
-        _ready = _schema in [[2,4096,8,8], [3,4096,8,8]];
+        _ready = _schema in [[2,4096,8,8], [3,4096,8,8], [4,4096,8,8]];
     };
     if (_ready) then {
         // Extensions can outlive a mission. Reset native state at first use in
@@ -28,6 +32,9 @@ if !(missionNamespace getVariable ["KPLIB_gasNativeInitialized", false]) then {
     };
     missionNamespace setVariable ["KPLIB_gasNativeReady", _ready];
     missionNamespace setVariable ["KPLIB_gasNativeSchema", _schema];
+    if (_ready && {_schema select 0 < 4}) then {
+        diag_log "[Frontline Munitions] Native gas extension is older than version 4; sheltered-response normalization is unavailable. Install the current server extension package.";
+    };
     localNamespace setVariable ["KPLIB_gasNativeLibrary", _library];
     missionNamespace setVariable ["KPLIB_gasNativeMetrics", [0, 0, "", ""]];
     if (_ready) then {

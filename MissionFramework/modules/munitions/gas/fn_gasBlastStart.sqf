@@ -57,6 +57,8 @@ for "_i" from 0 to 11 do {_times pushBack (_end * (_i / 11)^2)};
     ["gasNextDose", 0.1], ["gasMeasures", createHashMap],
     ["gasInitialPositions", (_job get "targets") apply {aimPos _x}],
     ["gasReason", "Geometry pending"],
+    ["gasReference", (missionNamespace getVariable ["KPLIB_gasNativeSchema", [0]]) select 0 >= 4],
+    ["gasReferenceGround", getTerrainHeightASL (_job get "origin")],
     ["gasBasis", format ["GAME INPUT: min(indirectHit,5000) * %1 J/game-point = %2 J; ideal air gamma=1.4 rho=1.2; damage gain=%3. Not explosive yield or a clinical injury rule.", KPLIB_munitions_gas_energy_per_hit, _energy, KPLIB_munitions_gas_damage_gain]]
 ];
 private _metrics = localNamespace getVariable "KPLIB_blastMetrics";

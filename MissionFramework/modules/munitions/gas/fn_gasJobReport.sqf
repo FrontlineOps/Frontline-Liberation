@@ -13,15 +13,17 @@ _rows append [
     format ["  Prescribed added heat=%1 J (not chemistry); late pressure omitted=%2; cumulative GAME [pressure,heat] dose=%3", _job get "gasHeatAdded", _job getOrDefault ["gasLatePressure", false], _job get "dose"]
 ];
 _rows pushBack format ["  Openings: checked=%1, connected=%2, unrefined=%3, passes=%4, changed=%5, later changes omitted=%6. Dust: sampled cells=%7/12. Native schema=%8.", count (_job getOrDefault ["gasOpeningEdges", []]), _job getOrDefault ["gasOpenConnections", 0], _job getOrDefault ["gasOpeningOmissions", 0], _job getOrDefault ["gasOpeningPasses", 0], _job getOrDefault ["gasOpeningChanges", 0], _job getOrDefault ["gasOpeningRechecksOmitted", false], count (_job getOrDefault ["gasDustCells", []]), missionNamespace getVariable ["KPLIB_gasNativeSchema", []]];
-_rows pushBack format ["  PRIMARY GAME EXPOSURE: direct native cover rays; finished age=%1 s, pressure gain=%2; [recipient,age,dose,visible fraction,path]=%3. GAS refines the same cumulative maximum; these primary values are not measured fluid pressure.", _job getOrDefault ["primaryDoneAt", -1], missionNamespace getVariable ["KPLIB_munitions_pressure_gain", 8], _job getOrDefault ["primaryExposure", []]];
+_rows pushBack format ["  PRIMARY EXPOSURE: direct cover rays; finished age=%1 s, pressure gain=%2; [recipient,age,dose,visible fraction,path]=%3. GAS refines the same cumulative maximum.", _job getOrDefault ["primaryDoneAt", -1], missionNamespace getVariable ["KPLIB_munitions_pressure_gain", 8], _job getOrDefault ["primaryExposure", []]];
+_rows pushBack format ["  OPEN-GROUND REFERENCE: enabled=%1 cache hit=%2 ready age=%3 s max batch=%4 ms ground ASL=%5. Same source/grid over level ground at source terrain height; actual field retains hills and structures. Covered response uses the open-distance baseline multiplied by resolved peak/impulse ratios, capped after attenuation. Older extensions retain prior scaling.", _job getOrDefault ["gasReference", false], _job getOrDefault ["gasReferenceCacheHit", false], _job getOrDefault ["gasReferenceReadyAge", -1], _job getOrDefault ["gasReferenceMaxBatchMs", 0], _job getOrDefault ["gasReferenceGround", 0]];
 private _measures = _job get "gasMeasures";
+_rows pushBack "  Sheltered response uses r + 0.26*r*max(1-r,0) for each reference ratio. Zero, full and reflected exposure stay unchanged; the 15 m finite-wall control is approximately 5.0 units. Impulse refinement accumulates without replaying earlier samples.";
 _rows pushBack "  PRESSURE PIPELINE: latest per-recipient decision while debug enabled; candidate/accepted/dispatched doses are game values. Rejections/credits/actual medical results are in the recipient owner's PRESSURE TRACE.";
 private _trace = _job getOrDefault ["gasTrace", createHashMap];
 {
     _rows pushBack format ["    target index %1: %2", _x, _trace get _x];
 } forEach ((keys _trace) select [0,48]);
 _rows append ([_job] call KPLIB_fnc_gasAssetReport);
-_rows pushBack "  Recipient samples [solver s,cell,cell positive Pa s,excess Pa,normalized heat,recipient positive Pa s,peak excess Pa]:";
+_rows pushBack "  Recipient samples [solver s,cell,cell positive Pa s,excess Pa,normalized heat,recipient positive Pa s,peak excess Pa,normalized impulse response,normalized peak response,whole-cell history valid,last observed cell peak,body visibility,current-cell impulse ratio]:";
 {
     _rows pushBack format ["    target index %1: %2", _x, _measures get _x];
 } forEach ((keys _measures) select [0,48]);
