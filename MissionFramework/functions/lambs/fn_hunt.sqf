@@ -25,6 +25,8 @@ params [
 
 private _launchFlare = {
     params ["_leader"];
+    // The mission combat controller uses carried illumination with shared cooldowns.
+    if (missionNamespace getVariable ["KPLIB_aiCombat_enabled", false]) exitWith {};
     switch (_doUGL) do {
         case true;
         case 1: {

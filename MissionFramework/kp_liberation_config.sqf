@@ -135,6 +135,29 @@ KPLIB_aiSkills_boostTargetMovement = 25;
 KPLIB_aiSkills_boostExpiry = 12;
 KPLIB_aiSkills_debug = false; // Per-unit profile/eligibility transitions only; no tick spam.
 
+// Infantry fire support. Loaded configs and native ballistics can impose lower limits.
+KPLIB_aiCombat_enabled = true;
+KPLIB_aiCombat_sides = [EAST, RESISTANCE];
+KPLIB_aiCombat_rangeMultiplier = 2;
+KPLIB_aiCombat_rifleRange = 1200;
+KPLIB_aiCombat_launcherRange = 700;
+KPLIB_aiCombat_grenadeRange = 450;
+KPLIB_aiCombat_minRifleRange = 300;
+KPLIB_aiCombat_explosiveCooldown = 25; // Per soldier; native reloads still apply.
+KPLIB_aiCombat_groupExplosiveCooldown = 8;
+KPLIB_aiCombat_blastMargin = 12;
+KPLIB_aiCombat_backblastRange = 20;
+KPLIB_aiCombat_flares = true; // Only carried rounds; no automatic kit additions.
+KPLIB_aiCombat_flareCooldown = 90; // Per group, also suppresses overlapping illumination.
+KPLIB_aiCombat_flareRadius = 350;
+KPLIB_aiCombat_hearing = true;
+KPLIB_aiCombat_hearingRange = 1200; // Reference audibleFire=40, before suppressor/occlusion.
+KPLIB_aiCombat_suppressedRange = 180; // Ceiling for suppressed muzzle reports.
+KPLIB_aiCombat_soundMemory = 20;
+KPLIB_aiCombat_batchSize = 8; // New decisions per 0.25s; active aiming is separately capped.
+KPLIB_aiCombat_maxActive = 12;
+KPLIB_aiCombat_debug = false; // Optional shot/cancel logs; ZEN inspection always available.
+
 // Idle fuel consumption (min)
 KP_liberation_fuel_neutral = 180;
 

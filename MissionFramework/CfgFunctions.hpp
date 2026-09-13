@@ -1,4 +1,25 @@
 class KPLIB {
+    class module_ai_combat {
+        file = "modules\ai_combat";
+
+        class aiCombatInit     {};
+        class aiCombatRegister {};
+        class aiCombatEligible {};
+        class aiCombatProfile  {};
+        class aiCombatWeapons  {};
+        class aiCombatVisible  {};
+        class aiCombatSafe     {};
+        class aiCombatStart    {};
+        class aiCombatSolution {};
+        class aiCombatFinish   {};
+        class aiCombatRestore  {};
+        class aiCombatUpdate   {};
+        class aiCombatTick     {};
+        class aiCombatFired    {};
+        class aiCombatSound    {};
+        class aiCombatHear     {};
+        class aiCombatInspect  {};
+    };
     class module_factory_depots {
         file = "modules\factory_depots";
 
