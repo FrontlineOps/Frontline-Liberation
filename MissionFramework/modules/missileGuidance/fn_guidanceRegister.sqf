@@ -13,7 +13,7 @@ if ((_profile get "family") == "COUNTERMEASURE") exitWith {
     localNamespace setVariable ["KPLIB_guidanceCountermeasures", _list];
 };
 if (!local _projectile) exitWith {};
-if ((_profile get "family") == "BALLISTIC") exitWith {};
+if ((_profile get "family") == "BALLISTIC" && {!(_profile get "ace")}) exitWith {};
 if (!isNull _shooter) then {_projectile setVariable ["KPLIB_guidanceShooter", _shooter]};
 if (!isNull _carrier) then {_projectile setVariable ["KPLIB_guidanceCarrier", _carrier]};
 if (_weapon != "") then {_projectile setVariable ["KPLIB_guidanceWeapon", _weapon]};

@@ -3,14 +3,20 @@
 if (isRemoteExecuted || {isNil "CBA_settings_fnc_set"}) exitWith {};
 private _available = [];
 private _changed = [];
-// ACE 3.21 retains this as a runtime switch, no longer a registered CBA setting.
-// Apply it locally on server, clients and JIP without inventing a CBA entry.
-if (isClass (configFile >> "CfgPatches" >> "ace_missileguidance")
-    && {isNil {["ace_missileguidance_enabled", "default"] call CBA_settings_fnc_get}}) then {
-    _available pushBack "missile guidance (runtime switch)";
-    if (missionNamespace getVariable ["ace_missileguidance_enabled", 0] != 0) then {
-        missionNamespace setVariable ["ace_missileguidance_enabled", 0];
-        _changed pushBack "ace_missileguidance_enabled";
+// ACE-configured rounds retain their controller; Frontline yields per projectile.
+// Level 2 includes the server/HC AI used by air response.
+if (isClass (configFile >> "CfgPatches" >> "ace_missileguidance")) then {
+    private _before = missionNamespace getVariable ["ace_missileguidance_enabled", 0];
+    private _default = ["ace_missileguidance_enabled", "default"] call CBA_settings_fnc_get;
+    if (isNil "_default") then {
+        missionNamespace setVariable ["ace_missileguidance_enabled", 2];
+    } else {
+        if (isServer) then {
+            ["ace_missileguidance_enabled", 2, 2, "server", false] call CBA_settings_fnc_set;
+        };
+    };
+    if (_before != missionNamespace getVariable ["ace_missileguidance_enabled", 0]) then {
+        diag_log "[FL GUIDANCE] ACE guidance fallback enabled for players and AI; Frontline yields for ACE-configured ammunition.";
     };
 };
 {
@@ -25,7 +31,6 @@ if (isClass (configFile >> "CfgPatches" >> "ace_missileguidance")
         };
     };
 } forEach [
-    ["ace_missileguidance_enabled", 0, "missile guidance"],
     ["ace_frag_enabled", false, "fragmentation"],
     ["ace_frag_spallEnabled", false, "spalling"],
     ["ace_frag_reflectionsEnabled", false, "explosion reflections"]

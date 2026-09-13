@@ -26,6 +26,11 @@ private _activeRadar = _sensors findIf {toLower getText (_x >> "componentType") 
 private _infrared = _sensors findIf {toLower getText (_x >> "componentType") == "irsensorcomponent"} >= 0;
 private _visual = _sensors findIf {toLower getText (_x >> "componentType") == "visualsensorcomponent"} >= 0;
 private _dataLink = _sensors findIf {toLower getText (_x >> "componentType") == "datalinksensorcomponent"} >= 0;
+// Match ACE's onFired eligibility: an inherited guidance class alone is insufficient.
+private _aceCfg = _cfg >> "ace_missileguidance";
+private _ace = getNumber (_aceCfg >> "enabled") == 1
+    && {("configName _x == 'ace_missileguidance'" configClasses _cfg) isNotEqualTo []};
+private _aceFamily = toUpper getText (_aceCfg >> "defaultSeekerType");
 private _radarSensor = _sensors select {toLower getText (_x >> "componentType") == "activeradarsensorcomponent"};
 private _radarMinimum = 0;
 private _radarNoise = 0;
@@ -86,7 +91,7 @@ private _authority = _maneuver max 4 min 35;
 private _profile = createHashMapFromArray [
     ["ammo", configName _cfg], ["name", configName _cfg], ["family", _family],
     ["backend", _backend], ["reason", _reason], ["simulation", _simulation],
-    ["lock", _lock],
+    ["ace", _ace], ["aceFamily", _aceFamily], ["lock", _lock],
     ["range", _range], ["gimbal", (_gimbal * 0.5) max 1 min 180],
     ["acquireCone", (getNumber (_cfg >> "missileLockCone") * 0.5) max 1 min 180],
     ["minRange", getNumber (_cfg >> "missileLockMinDistance") max 0],

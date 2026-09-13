@@ -147,7 +147,7 @@
 [
     "KPLIB_guidance_enabled", "CHECKBOX",
     "Enable Frontline guidance",
-    "Use Frontline's seeker, tracking and steering logic for supported guided ammunition, deriving capabilities from the loaded ammunition configuration.",
+    "Use Frontline's seeker, tracking and steering logic for supported native ammunition. ACE-configured ammunition retains ACE guidance, including GPS bombs and command-guided missiles.",
     ["Frontline - Munitions & Guidance", "Guidance"],
     true, false
 ] call _add;

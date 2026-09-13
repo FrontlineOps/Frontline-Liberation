@@ -24,9 +24,10 @@ BATTLESPACE_AIR_WEAPON_INFO = {
     };
     private _aceCfg = _cfg >> "ace_missileguidance";
     private _ace = "";
-    if (getNumber (_aceCfg >> "enabled") == 1 && {(missionNamespace getVariable ["ace_missileguidance_enabled", 0]) >= 2}
-        && {("configName _x == 'ace_missileguidance'" configClasses _cfg) isNotEqualTo []}) then {
-        _ace = getText (_aceCfg >> "defaultSeekerType");
+    private _profile = [_ammo] call KPLIB_fnc_guidanceResolve;
+    if ((([_profile] call KPLIB_fnc_guidanceBackend) select 0) == "ACE"
+        && {(missionNamespace getVariable ["ace_missileguidance_enabled", 0]) >= 2}) then {
+        _ace = _profile get "aceFamily";
         if (_ace == "GPS") then {_guidance = "GPS"};
         if (_ace in ["MCLOS", "SACLOS"]) then {_guidance = "COMMAND"; _kind = "MISSILE"};
         if (_ace == "SALH") then {_guidance = "LASER"};

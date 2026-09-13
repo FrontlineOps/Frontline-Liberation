@@ -21,7 +21,8 @@ _rows pushBack format ["  Mission fragments: requested=%1 classes=%2 speed input
 private _profile = [_ammo] call KPLIB_fnc_guidanceResolve;
 private _blast = [_ammo] call KPLIB_fnc_blastProfile;
 _rows pushBack format ["  Blast model: eligible=%1 thermal=%2 radius=%3 normalized strength=%4 small-source scale=%5 reason=%6", _blast get "eligible", _blast get "thermal", _blast get "radius", _blast get "strength", _blast get "supplementScale", _blast get "reason"];
-_rows pushBack format ["  Guidance config: backend=%1 family=%2 reason=%3", _profile get "backend", _profile get "family", _profile get "reason"];
+private _guidance = [_profile] call KPLIB_fnc_guidanceBackend;
+_rows pushBack format ["  Guidance: controller=%1 native family=%2 ACE seeker=%3 reason=%4", _guidance select 0, _profile get "family", _profile get "aceFamily", _guidance select 1];
 _rows pushBack "  caliber is Arma's penetration coefficient; ACE_caliber is diameter metadata. hit/indirectHit are game units, not joules or pressure. No script-readable armor thickness map.";
 _rows append ([_ammo] call KPLIB_fnc_gasMetadata);
 _rows
