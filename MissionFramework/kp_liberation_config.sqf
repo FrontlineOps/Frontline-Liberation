@@ -464,6 +464,43 @@ KPLIB_guidance_warnings = true;
 // backend: AUTO/NATIVE; family: IR/ARH/SARH/RADIO/LASER.
 KPLIB_guidance_overrides = [];
 
+// Mission owns fragmentation, native-exit spalling and pressure reflections.
+// Competing ACE processors are disabled for this mission session.
+KPLIB_munitions_spatial_fragments = true;
+KPLIB_munitions_fragment_cap = 384;
+
+// Game-space blast/thermal exposure; these are tuning values, not physical units.
+// Native fragmentation, projectile penetration and vehicle armor remain active.
+KPLIB_munitions_blast_enabled = true;
+KPLIB_munitions_blast_gain = 0.08;
+// Supplemental infantry pressure only; explicit game balance, not physical yield.
+KPLIB_munitions_pressure_gain = 8;
+KPLIB_munitions_blast_max_radius = 120;
+KPLIB_munitions_blast_max_jobs = 8;
+KPLIB_munitions_blast_cells = 256;
+KPLIB_munitions_blast_cells_per_tick = 12;
+KPLIB_munitions_blast_targets = 48;
+KPLIB_munitions_thermal_duration = 2;
+// Explicit ammo config KPLIB_thermobaric takes precedence over semantic labels.
+// Label discovery is an inference, reported as such. No named weapon/era profiles.
+KPLIB_munitions_thermal_labels = true;
+
+// Generic native gas flow. These are GAME source/damage conversions, not
+// explosive yield or real injury thresholds. Requires server extension v2.
+KPLIB_munitions_gas_enabled = true;
+KPLIB_munitions_gas_record = true;
+KPLIB_munitions_gas_radius = 24;
+// Requested spacing is subject to the odd grid cap (7..15 per axis). Increasing
+// this cap costs server work and changes numerical/game response. No yield fit.
+KPLIB_munitions_gas_cell = 2;
+KPLIB_munitions_gas_grid_max = 11;
+KPLIB_munitions_gas_energy_per_hit = 2000;
+KPLIB_munitions_gas_damage_gain = 1;
+// Pressure/impulse -> GAME damage floors. No material-failure calibration.
+KPLIB_munitions_gas_assets = true;
+KPLIB_munitions_gas_asset_limit = 8; // Per type: vehicles and buildings.
+KPLIB_munitions_gas_vehicle_gain = 1;
+KPLIB_munitions_gas_building_gain = 1;
 
 KP_liberation_save_interval = 60;            			// Save interval (sec)
 

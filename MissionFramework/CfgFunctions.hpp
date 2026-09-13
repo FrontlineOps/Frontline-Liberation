@@ -1,4 +1,108 @@
 class KPLIB {
+    class module_gas {
+        file = "modules\munitions\gas";
+
+        class gasCreate    {};
+        class gasPrimitive {};
+        class gasFlux      {};
+        class gasStep      {};
+        class gasInject    {};
+        class gasSample    {};
+        class gasNative    {};
+        class gasNativeReport {};
+        class gasMetadata  {};
+        class gasPosition {};
+        class gasBlastStart {};
+        class gasBlastStep {};
+        class gasBlastDose {};
+        class gasBlastFinish {};
+        class gasDraw {};
+        class gasPublish {};
+        class gasJobReport {};
+        class gasFrame {};
+        class gasColor {};
+        class gasPayload {};
+        class gasAssetEligible {};
+        class gasAssetsFind {};
+        class gasAssetProfile {};
+        class gasAssetStep {};
+        class gasAssetApply {};
+        class gasAssetReport {};
+    };
+    class module_blast {
+        file = "modules\munitions\blast";
+
+        class blastInit     {};
+        class blastProfile  {};
+        class blastObserve  {};
+        class blastRequest  {};
+        class blastStart    {};
+        class blastTick     {};
+        class blastStep     {};
+        class blastPrimary  {};
+        class blastExposure {};
+        class blastClear    {};
+        class blastClearBatch {};
+        class blastEnvelope {};
+        class blastView     {};
+        class blastAccount  {};
+        class blastWound    {};
+        class blastApply    {};
+        class blastTrace    {};
+    };
+    class module_munitions {
+        file = "modules\munitions";
+
+        class munitionsSettingsInit {preInit = 1;};
+        class munitionsSettings {};
+        class munitionsFragProfile {};
+        class munitionsEmit {};
+        class munitionsParticleTick {};
+        class munitionsSpallHit {};
+        class munitionsImpact {};
+        class munitionsDebris {};
+        class munitionsDebrisTick {};
+        class munitionsSurfaceDebris {};
+        class munitionsBackfaceEvent {};
+        class munitionsBackfaceTick {};
+        class munitionsBackfaceSurface {};
+        class munitionsInit     {};
+        class munitionsFragInit {};
+        class munitionsFrag     {};
+        class munitionsFragDirections {};
+        class munitionsFragSpatial {};
+        class munitionsSpall    {};
+        class munitionsControl  {};
+        class munitionsTrack    {};
+        class munitionsEvent    {};
+        class munitionsTick     {};
+        class munitionsAmmo     {};
+        class munitionsSnapshot {};
+        class munitionsReport   {};
+        class munitionsRequest  {};
+        class munitionsCollect  {};
+        class munitionsDeliver  {};
+        class munitionsDisplay  {};
+        class munitionsKind {};
+        class munitionsPoint {};
+        class munitionsBurst {};
+        class munitionsRecent {};
+        class munitionsPaths {};
+        class munitionsLivePaths {};
+        class munitionsPayload {};
+        class munitionsDraw {};
+        class munitionsHud {};
+        class munitionsMerge {};
+        class munitionsDebugState {};
+        class munitionsDebugTick {};
+        class munitionsLiveTick {};
+        class munitionsLiveCollect {};
+        class munitionsLiveDeliver {};
+        class munitionsLiveReceive {};
+        class munitionsLiveField {};
+        class munitionsLog {};
+
+    };
     class module_ai_combat {
         file = "modules\ai_combat";
 

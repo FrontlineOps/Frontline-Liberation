@@ -57,6 +57,7 @@ KARMA_ARSENAL_CRATES = [];
 [] call compileFinal preprocessFileLineNumbers "scripts\shared\init_shared.sqf";
 
 [] call compileFinal preprocessFileLineNumbers "modules\missileGuidance\index.sqf";
+[] call KPLIB_fnc_munitionsInit;
 if (isServer) then {
     KPLIB_DISCONNECT_EH = [missionNamespace, "HandleDisconnect", {
         ["KPLIB_playerDisconnected", _this] call CBA_fnc_localEvent;

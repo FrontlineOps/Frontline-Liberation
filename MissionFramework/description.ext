@@ -122,5 +122,6 @@ class CfgFunctions {
 };
 
 #include "ui\liberation_interface.hpp"
+#include "ui\munitions_report.hpp"
 #include "ui\liberation_notifications.hpp"
 #include "ui\mission_params.hpp"
