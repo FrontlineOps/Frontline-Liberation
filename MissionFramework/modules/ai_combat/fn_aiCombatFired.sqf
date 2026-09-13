@@ -20,6 +20,7 @@ if (isServer) then {
             if (_weapon == (_profile get "weapon") && {_muzzle == (_profile get "muzzle")}
                 && {_magazine == (_profile get "magazine")}) then {
                 _job set ["fired", true];
+                [_job get "fire", _mode] call KPLIB_fnc_combatFireFired;
                 private _kind = _profile get "kind";
                 if (_kind in ["RPG", "GL", "FLARE"] && {!isNull _projectile} && {local _projectile}) then {
                     private _target = _job get "target";

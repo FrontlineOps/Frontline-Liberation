@@ -1,7 +1,8 @@
 # Infantry combat, illumination and hearing
 
 Enabled by default for server-owned OPFOR and resistance infantry. Settings are
-in `kp_liberation_config.sqf`, under `KPLIB_aiCombat_*`.
+in CBA Configure Addons -> Frontline - AI, under Infantry combat.
+The registration source is `../settings/sections/ai.sqf`.
 
 | Setting | Default |
 | --- | ---: |
@@ -42,6 +43,43 @@ skill and target movement can cause substantial long-range misses. Rockets aim
 at the lower body; grenades aim near the feet. Targets that move more than 8 m
 during preparation require another solution. This does not guarantee a hit or kill.
 
+## Automatic fire and vehicle submodules
+
+`vehicle_combat/` controls AI tanks, tracked APCs/IFVs and wheeled APCs on the
+server or their headless owner. It selects actual turret ammunition by target,
+loaded metadata and range, preserving native aiming, reloads and guidance.
+Player crews, artillery and hold-fire orders remain excluded. CBA Vehicle combat
+controls retain the 2x range multiplier, 5,000 m gun/missile cap, 1,800 m MG cap
+and 12 active turret defaults. Both visibility distances on AI-only hosts have a
+3,000 m baseline and rise with the gun cap; interface hosts retain their settings.
+
+Acquisition considers only native known targets, then checks current hostility
+and visibility. A stale perceived side after transfer cannot hide a known hostile
+vehicle from that check. Explicit target/watch orders restore turret tracking on
+the new owner; the native alignment threshold still gates each shot.
+
+`combat_fire/` supplies one shared owner-local CBA frame callback for active
+rifle and turret bursts. Target selection and inventory work remain on their
+slower existing callbacks. Loaded mode ranges determine the burst policy;
+`burst`, `burstRangeMax`, `reloadTime` and `aiRateOfFire` supply burst lengths,
+cyclic timing and pauses. A supported one-round trigger mode emits each real
+round, because forcing hidden AI burst modes does not reliably complete a burst.
+Actual Fired events count rounds; native cycling and magazine reloads always
+remain authoritative. Burst-only muzzles with no suitable one-round trigger
+return to native control. Long-range semi-auto modes retain deliberate pauses.
+
+The fast path services only active authorized actors (at most 24 turrets and
+32 infantry with maximum settings), rechecks eligibility, aim and cover before
+each trigger, and never fires several catch-up rounds after a slow frame. Normal
+engine scheduling/cycling can reduce achieved rate below the configured cycle.
+Infantry actions may now complete multiple bursts and reload during their
+25-second action window. The final burst pause survives reacquisition. RPG,
+GL and illumination releases retain their existing single-release path.
+
+ZEN inspections include selected burst policy, trigger mode and remaining rounds.
+Native cadence, ammo, interruption and ownership evidence is retained in
+`.agent-notes/rapid-fire-2026-09-13/REPORT.md` at repository root.
+
 ## Night and sound
 
 Soldiers without configured NVG/thermal vision can use their carried illumination
@@ -72,7 +110,8 @@ most twelve active jobs. Each decision examines at most four visual candidates.
 The sound queue holds at most 64 sources for 20 seconds. Solvers are scheduled,
 bounded and terminated with their jobs. Original AI flags, stance and weapon
 selection are restored; a server-authenticated restoration RPC handles a changed
-owner. No headless-client combat controller is introduced.
+owner. Dismounted infantry assistance remains server-only; mounted vehicle
+assistance also runs on headless owners through `vehicle_combat/`.
 
 ## ZEN debug
 

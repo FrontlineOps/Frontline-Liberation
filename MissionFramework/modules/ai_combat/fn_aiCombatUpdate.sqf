@@ -9,7 +9,7 @@ private _reason = [_unit] call KPLIB_fnc_aiCombatEligible;
 if (_reason != "") exitWith {[_state, _reason] call KPLIB_fnc_aiCombatFinish};
 if (group _unit != (_job get "group")) exitWith {[_state, "Group changed"] call KPLIB_fnc_aiCombatFinish};
 private _now = CBA_missionTime;
-if (_job get "fired") exitWith {[_state, _job getOrDefault ["release", "Shot confirmed"]] call KPLIB_fnc_aiCombatFinish};
+if (_job get "fired" && {(_job get "profile") get "kind" != "RIFLE"}) exitWith {[_state, _job getOrDefault ["release", "Shot confirmed"]] call KPLIB_fnc_aiCombatFinish};
 if (_now > (_job get "deadline")) exitWith {[_state, "Aim/reload timeout"] call KPLIB_fnc_aiCombatFinish};
 private _profile = _job get "profile";
 private _kind = _profile get "kind";
@@ -43,7 +43,15 @@ if (_kind in ["RPG", "GL"]) then {
 };
 if (_reason == "Solving trajectory") exitWith {};
 if (_reason != "") exitWith {[_state, _reason] call KPLIB_fnc_aiCombatFinish};
+private _fireQueue = localNamespace getVariable "KPLIB_combatFire_queue";
+private _fireKey = netId _unit;
+if (_fireKey in _fireQueue) then {(_fireQueue get _fireKey) set [3, _now + 1.25]};
 private _loaded = _unit weaponState _muzzle;
+if (_kind == "RIFLE" && {_loaded param [4, 0] <= 0} && {_loaded param [6, 1] <= 0}
+    && {_now > _job getOrDefault ["loadAt", -1]}) then {
+    _unit reload [_muzzle, _profile get "magazine"];
+    _job set ["loadAt", _now + 2];
+};
 _job set ["loaded", _loaded];
 if ((_loaded param [3, ""]) != (_profile get "magazine") || {(_loaded param [4, 0]) < 1}
     || {(_loaded param [6, 1]) > 0} || {(_loaded param [5, 1]) > 0}) exitWith {};
@@ -66,6 +74,9 @@ if (_kind in ["RPG", "GL", "FLARE"]) then {
 };
 _job set ["alignment", [_aligned, _selected, _direction]];
 if (!_aligned || {_now - (_job get "started") < 2} || {_now < (_job get "nextFire")}) exitWith {};
+if (_kind == "RIFLE") exitWith {
+    (localNamespace getVariable "KPLIB_combatFire_queue") set [netId _unit, [false, _state, _job get "fire", _now + 1.25]];
+};
 if ((_job get "attempts") >= (if (_kind == "RPG") then {80} else {12})) exitWith {[_state, "Native muzzle did not fire"] call KPLIB_fnc_aiCombatFinish};
 _job set ["attempts", (_job get "attempts") + 1];
 _job set ["nextFire", _now + (if (_kind == "RPG") then {0.25} else {1.5})];

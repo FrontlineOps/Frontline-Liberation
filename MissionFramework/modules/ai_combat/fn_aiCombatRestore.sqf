@@ -11,7 +11,7 @@ if (count _flags != 3 || {_flags findIf {!(_x isEqualType true)} >= 0}) exitWith
 {
     if (_flags select _forEachIndex) then {_unit enableAI _x};
 } forEach ["AUTOTARGET", "FSM", "FIREWEAPON"];
-if (isPlayer _unit) exitWith {};
+if (isPlayer _unit || {!isNull remoteControlled _unit}) exitWith {};
 if (_stance != "" && {toUpper _stance in ["UP", "MIDDLE", "DOWN", "AUTO"]}
     && {toUpper unitPos _unit == "MIDDLE"}) then {_unit setUnitPos _stance};
 _unit doWatch objNull;

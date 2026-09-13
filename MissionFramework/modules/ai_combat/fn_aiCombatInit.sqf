@@ -14,6 +14,7 @@ localNamespace setVariable ["KPLIB_aiCombat_initialized", true];
 // Only the shooter's owner forwards the native event; the server validates it.
 ["CAManBase", "FiredMan", {_this call KPLIB_fnc_aiCombatFired}] call CBA_fnc_addClassEventHandler;
 if (!isServer) exitWith {};
+[] call KPLIB_fnc_combatFireInit;
 private _valid = KPLIB_aiCombat_sides isEqualType [];
 if (_valid) then {_valid = KPLIB_aiCombat_sides findIf {!(_x isEqualType EAST) || {_x == civilian}} < 0};
 {

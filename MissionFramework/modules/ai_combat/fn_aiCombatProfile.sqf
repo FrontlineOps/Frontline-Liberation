@@ -31,9 +31,11 @@ if (_simulation == "shotilluminating" && {_speed >= 30}) then {_kind = "FLARE"};
 private _mode = "";
 private _range = 0;
 private _minimum = 0;
+private _rifleMinimum = 1e9;
 {
     private _cfg = if (_x == "this") then {_mc} else {_mc >> _x};
     private _maximum = getNumber (_cfg >> "maxRange");
+    _rifleMinimum = _rifleMinimum min getNumber (_cfg >> "minRange");
     if (_maximum > _range) then {
         _range = _maximum;
         _minimum = getNumber (_cfg >> "minRange");
@@ -41,6 +43,7 @@ private _minimum = 0;
     };
 } forEach getArray (_mc >> "modes");
 if (_mode == "") then {_mode = (getArray (_mc >> "modes")) param [0, "this"]};
+if (_kind == "RIFLE" && {_rifleMinimum < 1e9}) then {_minimum = _rifleMinimum};
 private _cap = switch (_kind) do {
     case "RIFLE": {KPLIB_aiCombat_rifleRange};
     case "RPG": {KPLIB_aiCombat_launcherRange};
@@ -61,7 +64,8 @@ private _profile = createHashMapFromArray [
     ["weapon", _weapon], ["muzzle", _muzzle], ["magazine", _magazine], ["ammo", configName _ac],
     ["kind", _kind], ["mode", _mode], ["range", _range], ["nativeRange", _nativeRange],
     ["minimum", _minimum], ["speed", _speed], ["blast", _blast], ["guided", _guided],
-    ["ttl", _ttl], ["audible", getNumber (_ac >> "audibleFire")]
+    ["ttl", _ttl], ["audible", getNumber (_ac >> "audibleFire")],
+    ["fireModes", [_weapon, _muzzle] call KPLIB_fnc_combatFireModes]
 ];
 if (count _cache >= 512) then {_cache deleteAt ((keys _cache) select 0)};
 _cache set [_key, _profile];

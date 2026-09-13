@@ -47,6 +47,11 @@ if (isNull _unit) then {
     if (count _job > 0) then {
         private _profile = _job get "profile";
         _lines pushBack format ["Aim %1 / %2 | Attempts %3", _profile get "kind", _profile get "magazine", _job get "attempts"];
+        private _fire = _job getOrDefault ["fire", createHashMap];
+        private _plan = _fire getOrDefault ["plan", []];
+        if (_plan isNotEqualTo []) then {
+            _lines pushBack format ["Burst %1 / %2 | %3 rounds left | Confirmed %4", _plan select 4, _plan select 0, _fire getOrDefault ["remaining", 0], _fire getOrDefault ["shots", 0]];
+        };
         _lines pushBack format ["Alignment %1", _job getOrDefault ["alignment", []]];
         _lines pushBack format ["Muzzle state %1", weaponState _unit];
         private _solution = _job get "solution";

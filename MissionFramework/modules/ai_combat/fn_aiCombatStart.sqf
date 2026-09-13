@@ -1,7 +1,7 @@
 params ["_state", "_profile", "_target", ["_flarePosition", []]];
 if (!isServer || {isRemoteExecuted}) exitWith {false};
 private _unit = _state get "unit";
-if ([_unit] call KPLIB_fnc_aiCombatEligible != "") exitWith {false};
+if ([_unit] call KPLIB_fnc_aiCombatEligible != "" || {!(_unit checkAIFeature "FIREWEAPON")}) exitWith {false};
 private _active = localNamespace getVariable "KPLIB_aiCombat_active";
 if (count _active >= KPLIB_aiCombat_maxActive || {count (_state get "job") > 0}) exitWith {false};
 private _kind = _profile get "kind";
@@ -21,7 +21,7 @@ private _job = createHashMapFromArray [
     ["stance", unitPos _unit],
     ["group", group _unit],
     ["started", CBA_missionTime], ["deadline", CBA_missionTime + 25],
-    ["fired", false], ["attempts", 0], ["nextFire", 0],
+    ["fired", false], ["attempts", 0], ["nextFire", 0], ["fire", createHashMap],
     ["solution", []], ["solver", scriptNull], ["solved", false]
 ];
 _state set ["job", _job];
