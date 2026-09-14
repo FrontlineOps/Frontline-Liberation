@@ -1,8 +1,8 @@
 // Buildings, FOB infrastructure, support objects and placement exceptions.
 // Faction vehicles and player equipment come from AUTO or the separate manual file.
 
-FOB_typename = "Land_DamNeck_Deployment";                                            // FOB HQ building
-FOB_box_typename = "UK3CB_BAF_MAN_HX58_Container_Green";                                    // FOB Container
+FOB_typename = "Land_Cargo_HQ_V1_F";                                            // FOB HQ building
+FOB_box_typename = "B_Slingload_01_Cargo_F";                                    // FOB Container
 FOB_truck_typename = "rhsusf_M1078A1P2_B_WD_CP_fmtv_usarmy";                    // FOB Truck
 Arsenal_typename = "B_supplyCrate_F";                                           // Arsenal crate
 huron_typename = "";                                                            // Ops vehicle slot that respawns
