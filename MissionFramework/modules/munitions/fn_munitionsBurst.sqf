@@ -25,7 +25,7 @@ if (_index < 0) then {
     };
     private _id = localNamespace getVariable ["KPLIB_munitionsNextBurst", 0];
     localNamespace setVariable ["KPLIB_munitionsNextBurst", _id + 1];
-    _index = _bursts pushBack [_id, _at, +_position, _at + 60];
+    _index = _bursts pushBack [_id, _at, +_position, _at + 20];
 };
 private _burst = _bursts select _index;
 _shot set ["historyBurst", _burst select 0];

@@ -69,7 +69,7 @@ if (_refresh) then {
     private _text = [
         format ["VISUAL DEBUG ON | %1 paths | %2 recent explosions | cyan projectile / magenta child / yellow fragment", _displayed, count _fields],
         format ["Captured %1 | not displayed %2 | unrecorded %3 | simplified/omitted segments %4", _captured, (_captured - _displayed) max 0, (_stats select 2) + (_stats select 3), _omitted],
-        "Paths: observed start to latest/end, sampled detail. 60 s history, eight bursts/owner. Dots: red +pressure / blue -pressure / orange heat / gray ambient.",
+        "Paths: observed start to latest/end, sampled detail. 20 s history, eight bursts/owner. Dots: red +pressure / blue -pressure / orange heat / gray ambient.",
         _label
     ] joinString toString [10];
     ["KPLIB_traceHud", _text, 0.77, 0.16] call KPLIB_fnc_munitionsHud;
