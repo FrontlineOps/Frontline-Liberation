@@ -1202,29 +1202,6 @@ KPLIB_objectInits = [
 ] call CBA_fnc_addClassEventHandler;
 
 // -------------------------- END VIC CUSTOMISATION -------------------------
-///
-["Man", "init",
-    {
-        _unit = _this select 0; 
-        [_unit] spawn {
-            params ["_unit"];
-            waitUntil {alive _unit};
-            _unit setUnitAbility 1;
-            _unit setskill ["general",1];
-            _unit setskill ["aimingAccuracy",0.78];
-            _unit setskill ["aimingShake",0.82];
-            _unit setskill ["aimingSpeed",0.78];
-            _unit setskill ["Endurance",1];
-            _unit setskill ["spotDistance",1];
-            _unit setskill ["spotTime",0.79];
-            _unit setskill ["courage",0.82];
-            _unit setskill ["reloadSpeed",0.9];
-        };
-    },
-    true,
-    [],
-    true
-] call CBA_fnc_addClassEventHandler;
 
 // ----------------- START VIC CUSTOMISATION -----------------
 
