@@ -5,7 +5,7 @@ veh_action_distance = 10;
 
 while { true } do {
 
-    if (alive player) then {
+    if (alive player && {player getUnitTrait "Engineer"}) then {
 
         _detected_vehicles = ((getpos player) nearEntities [["Tank","APC","IFV","Car"], veh_action_distance]) select {
             (count crew _x) == 0 &&
@@ -23,7 +23,7 @@ while { true } do {
             } foreach _unflippable_vehicles;
 
             if ( !_next_vehicle_already_in_list ) then {
-                _idact_next = _next_vehicle addAction [ ([localize "STR_UNFLIP", "#FFFF00"] call KPLIB_fnc_actionLabel), "scripts\client\actions\do_unflip.sqf", "", -950, true, true, "", "build_confirmed == 0 && (_this distance _target < veh_action_distance) && (vehicle player == player)"];
+                _idact_next = _next_vehicle addAction [ ([localize "STR_UNFLIP", "#FFFF00"] call KPLIB_fnc_actionLabel), "scripts\client\actions\do_unflip.sqf", "", -950, true, true, "", "build_confirmed == 0 && (_this distance _target < veh_action_distance) && (vehicle player == player) && (_this getUnitTrait 'Engineer')"];
                 _unflippable_vehicles pushback [ _next_vehicle, _idact_next ] ;
             };
         } foreach _detected_vehicles;

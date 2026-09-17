@@ -12,8 +12,6 @@ KPLIB_permissions_save_key = GRLIB_save_key + "_PLAYER_PERMISSIONS";
 
 KPLIB_COPS_SAVE_KEY = GRLIB_save_key + "_COPS";
 
-DEBUG_ARSENAL_ROLE_OVERRIDE = "";
-
 DEBUG_PLAYER_COUNT_OVERRIDE = -1;
 
 KPLIB_guidance_seeker_interval = 0.1;

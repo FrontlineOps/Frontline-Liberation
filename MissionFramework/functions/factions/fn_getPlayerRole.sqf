@@ -2,7 +2,7 @@
 params [["_unit", objNull, [objNull]]];
 if (isNull _unit || {side group _unit != GRLIB_side_friendly}) exitWith {["", ""]};
 private _sideKey = "blufor";
-if !(localNamespace getVariable ["KPLIB_manualFactions", false]) exitWith {[_sideKey, [_unit] call KPLIB_fnc_getAutomaticRole]};
+if !(localNamespace getVariable ["KPLIB_manualFactions", false]) exitWith {[_sideKey, ""]};
 private _profiles = localNamespace getVariable ["KPLIB_factionProfiles", createHashMap];
 private _profile = _profiles getOrDefault [_sideKey, createHashMap];
 private _role = _profile getOrDefault ["defaultRole", ""];

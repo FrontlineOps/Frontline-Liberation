@@ -257,6 +257,7 @@ _player addAction [
 _player addAction [
     ["Disable damage", "#80FF80"] call KPLIB_fnc_actionLabel,
     { 
+        if !([player] call KPLIB_fnc_isPermissionAdmin) exitWith {};
         player allowDamage false;
         hintSilent "Damage has been disabled.";
     },
@@ -267,7 +268,7 @@ _player addAction [
     "",
     "
         alive _originalTarget
-        && {(roleDescription _originalTarget) find 'Guide' > -1}
+        && {[_originalTarget] call KPLIB_fnc_isPermissionAdmin}
         && {isDamageAllowed player == true}
         && {_originalTarget getVariable ['KPLIB_fobDist', 99999] < (GRLIB_fob_range * 0.8)}
     "

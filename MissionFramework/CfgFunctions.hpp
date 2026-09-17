@@ -361,7 +361,6 @@ class KPLIB {
         class loadFactionProfiles          {};
         class normalizeGearClass           {};
         class getPlayerRole                {};
-        class getAutomaticRole             {};
         class initPlayerArsenal            {};
         class getRoleGear                  {};
         class filterRoleLoadout            {};

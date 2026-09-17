@@ -4,32 +4,14 @@ setResupplyFlags = {
     if (!isServer || {isNull _player} || {side group _player != GRLIB_side_friendly}) exitWith {false};
 
     private _isDebugOn = !isNil {_debug};
-    private _currentRoleDescription = roleDescription _player;
     private _currentSquad = [_player] call getResupplyGroupKey;
     if (_currentSquad isEqualTo "") exitWith {
         format ["Could not derive a network group key for %1", _player] call resupplyLog;
         false
     };
 
-    /* Legacy role metadata is retained only for unrelated mission permissions. */
     private _currentRoles = [];
-    {
-        if (_currentRoleDescription find _y != -1) then {
-            _currentRoles pushBack _x;
-        };
-    } forEach (localNamespace getVariable "KPLIB_ResupplyRoleDescriptionsToRoleFlags");
-
     private _legacySquadFlag = "AUTO";
-    {
-        private _flagInfo = _x;
-        private _squadNames = _flagInfo get "SquadNames";
-        {
-            if (_currentRoleDescription find _x != -1) exitWith {
-                _legacySquadFlag = _flagInfo get "FlagName";
-            };
-        } forEach _squadNames;
-        if (_legacySquadFlag != "AUTO") exitWith {};
-    } forEach (localNamespace getVariable "KPLIB_ResupplyRoleDescriptionToSquadFlags");
 
     if ((localNamespace getVariable ["KPLIB_manualFactions", false])) then {
         ([_player] call KPLIB_fnc_getPlayerRole) params ["_sideKey", "_role"];
@@ -43,7 +25,6 @@ setResupplyFlags = {
 
     private _newCompatibleCrates = [_player] call getCompatibleCratesForPlayer;
     _player setVariable ["resupplyCompatibleCrates", _newCompatibleCrates, true];
-    _player setVariable ["resupplyLastDescription", _currentRoleDescription];
 
     private _currentAllocations = localNamespace getVariable _currentSquad;
     if (isNil {_currentAllocations}) then {

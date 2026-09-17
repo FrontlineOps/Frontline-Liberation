@@ -3,8 +3,7 @@
     localNamespace setVariable ["KPLIB_" + _x, missionNamespace getVariable _x];
 } forEach [
     "ResupplyCrateSourceClasses", "ResupplyDefaultRecallCooldown", "ResupplyDefaultSpecialtyCooldown",
-    "ResupplyPlayersPerCrate", "ResupplyMinimumGroupCrates", "ResupplyMaximumGroupCrates",
-    "ResupplyRoleDescriptionsToRoleFlags", "ResupplyRoleDescriptionToSquadFlags"
+    "ResupplyPlayersPerCrate", "ResupplyMinimumGroupCrates", "ResupplyMaximumGroupCrates"
 ];
 localNamespace setVariable ["KPLIB_resupplyAllocations", ResupplyCrateAllocations];
 localNamespace setVariable ["KPLIB_resupplyDefinitions", ResupplyCrates];
@@ -32,8 +31,7 @@ KPLIB_fnc_validateResupplyRequest = {
         _valid = typeOf _crate == _model
             && {_crate getVariable ["resupplyCrateName", ""] == _name}
             && {_crate getVariable ["resupplySquadOwner", ""] == _ownerKey};
-        // Manual mode has no legacy cross-group resupplier bypass.
-        if ((localNamespace getVariable ["KPLIB_manualFactions", false]) && {_ownerKey != _groupKey}) then {_valid = false};
+        if (_ownerKey != _groupKey) then {_valid = false};
     };
     if (!_valid || {!(_crateName in (localNamespace getVariable "KPLIB_resupplyDefinitions"))}) exitWith {false};
     if !(_operation in ["spawn", "refill"]) exitWith {true};

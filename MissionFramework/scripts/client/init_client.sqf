@@ -25,10 +25,7 @@ kp_fuel_consumption = compileFinal preprocessFileLineNumbers "scripts\client\mis
 [] call KPLIB_COPS_CLIENT_INIT;
 execVM "scripts\client\actions\recycle_manager.sqf";
 
-_role = ([player] call KPLIB_fnc_getPlayerRole) select 1;
-if (_role in ["OgreTL", "CE"]) then {
-    execVM "scripts\client\actions\unflip_manager.sqf";
-};
+execVM "scripts\client\actions\unflip_manager.sqf";
 
 execVM "scripts\client\ammoboxes\ammobox_action_manager.sqf";
 execVM "scripts\client\build\build_overlay.sqf";
