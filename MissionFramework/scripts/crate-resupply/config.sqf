@@ -14,7 +14,7 @@
 
 // What provides a source for refililng and grabbing crates
 ResupplyCrateSourceClasses = [
-    "Land_Cargo40_military_green_F"         // Vehicle service point
+    "USMC_WarfareBVehicleServicePoint"         // Vehicle service point
 ];
 
 /* Automatic per-group allowance: one active crate per four connected members. */
