@@ -4,13 +4,13 @@
 
 // AUTO generates catalogs from the faction arrays below. MANUAL uses
 // kp_liberation_manual_factions.sqf. Existing faction validation is retained.
-KP_liberation_faction_source = "AUTO";
+KP_liberation_faction_source = "MANUAL";
 
 // CfgFactionClasses names. Multiple entries merge split factions.
-KP_liberation_autoFaction_blufor = ["TTU_FE_CUP_Fac_USMC_09_DST"];
-KP_liberation_autoFaction_opfor = ["TTU_FE_CUP_Fac_TKA_12", "TTU_FE_CUP_Fac_TKASF_12"];
-KP_liberation_autoFaction_resistance = ["TTU_FE_CUP_Fac_TKL_12"];
-KP_liberation_autoFaction_civilians = ["CUP_C_TK"];
+KP_liberation_autoFaction_blufor = [];
+KP_liberation_autoFaction_opfor = [];
+KP_liberation_autoFaction_resistance = [];
+KP_liberation_autoFaction_civilians = [];
 
 // Arsenal and resupply options.
 KP_liberation_arsenal_type = true;

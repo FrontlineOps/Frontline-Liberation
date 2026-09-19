@@ -1,10 +1,10 @@
 // Buildings, FOB infrastructure, support objects and placement exceptions.
 // Faction vehicles and player equipment come from AUTO or the separate manual file.
 
-FOB_typename = "Land_Cargo_HQ_V1_F";                                            // FOB HQ building
-FOB_box_typename = "B_Slingload_01_Cargo_F";                                    // FOB Container
-FOB_truck_typename = "rhsusf_M1078A1P2_B_WD_CP_fmtv_usarmy";                    // FOB Truck
-Arsenal_typename = "B_supplyCrate_F";                                           // Arsenal crate
+FOB_typename = "Land_DamNeck_Deployment";                                            // FOB HQ building
+FOB_box_typename = "UK3CB_BAF_MAN_HX58_Container_Green";                                    // FOB Container
+FOB_truck_typename = "UK3CB_BAF_MAN_HX58_Cargo_Green_B";                    // FOB Truck
+Arsenal_typename = "Land_Bro_locker_metal";                                           // Arsenal crate
 huron_typename = "";                                                            // Ops vehicle slot that respawns
 
 KP_liberation_small_storage_building = "ContainmentArea_02_forest_F";           // Small storage
@@ -158,7 +158,7 @@ buildings = [
 
 support_vehicles = [
     [Arsenal_typename,                              0,      25,     0,      "Arsenal Box"],                 // Arsenal Box
-    ["Land_Cargo40_military_green_F",               100,    100,    0,      "Resupply Point"],              // Resupply Point
+    ["UK3CB_BAF_Vehicles_Logistics_Point",               100,    100,    0,      "Resupply Point"],              // Resupply Point
     [KP_liberation_recycle_building,                200,    0,      0],                                     // Salvage Depot
     [KP_liberation_air_vehicle_building,            400,    0,      0],                                     // Flight Control
     [KP_liberation_small_storage_building,          0,      0,      0],                                     // Small Storage Flat
