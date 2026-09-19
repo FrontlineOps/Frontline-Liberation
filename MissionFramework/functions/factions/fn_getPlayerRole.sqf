@@ -12,7 +12,7 @@ private _description = trim ((roleDescription _unit splitString "@") param [0, "
 private _bestLength = -1;
 {
     private _start = count _description - count _x;
-    if (_start >= 0 && {count _x > _bestLength} && {(_description select _start) == _x}
+    if (_start >= 0 && {count _x > _bestLength} && {(_description select [_start]) == _x}
         && {_start == 0 || {(_description select [_start - 1, 1]) == " "}}) then {
         _role = _y;
         _bestLength = count _x;
@@ -28,7 +28,7 @@ private _prefix = "ROLE:" + _sideKey + ":";
 private _roles = _profile getOrDefault ["roles", createHashMap];
 {
     if ((_x find _prefix) == 0) then {
-        private _candidate = _x select (count _prefix);
+        private _candidate = _x select [count _prefix];
         if (_candidate in _roles) then {_role = _candidate};
     };
 } forEach _grants;
