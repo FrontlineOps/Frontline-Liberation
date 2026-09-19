@@ -9,6 +9,24 @@ private _accept = {
     _removed pushBackUnique _class;
     false
 };
+private _disposableMagazines = localNamespace getVariable "KPLIB_disposableMagazines";
+if (isNil "_disposableMagazines") then {
+    _disposableMagazines = createHashMap;
+    {
+        {
+            private _cfg = configFile >> "CfgWeapons" >> _x;
+            if (isClass _cfg) then {
+                _disposableMagazines set [toLower _x, (getArray (_cfg >> "magazines")) apply {toLower _x}];
+            };
+        } forEach ([configName _x] + getArray _x);
+    } forEach configProperties [configFile >> "CBA_DisposableLaunchers", "isArray _x", true];
+    localNamespace setVariable ["KPLIB_disposableMagazines", _disposableMagazines];
+};
+private _acceptMagazine = {
+    params ["_weaponClass", "_magazineClass"];
+    if (toLower _magazineClass in (_disposableMagazines getOrDefault [toLower _weaponClass, []])) exitWith {true};
+    [_magazineClass] call _accept
+};
 {
     private _weapon = _clean param [_x, []];
     if (_weapon isEqualTo []) then {continue};
@@ -21,7 +39,7 @@ private _accept = {
     } forEach [1, 2, 3, 6];
     {
         private _magazine = _weapon param [_x, []];
-        if (_magazine isNotEqualTo [] && {!([_magazine select 0] call _accept)}) then {
+        if (_magazine isNotEqualTo [] && {!([_weapon select 0, _magazine select 0] call _acceptMagazine)}) then {
             _weapon set [_x, []];
         };
     } forEach [4, 5];
@@ -32,10 +50,13 @@ private _accept = {
     private _cargo = (_container param [1, []]) select {
         private _entry = _x select 0;
         if (_entry isEqualType []) then {
-            // Packed weapons are checked with their attachments and loaded magazines too.
-            private _packed = _entry select {_x isEqualType "" || {_x isEqualType []}};
-            private _classes = flatten _packed select {_x isEqualType ""};
-            (_classes findIf {!([_x] call _accept)}) == -1
+            // Internal disposable ammunition is permitted only inside an authorized weapon.
+            private _weaponClass = _entry param [0, ""];
+            private _valid = ([0, 1, 2, 3, 6] findIf {!([_entry param [_x, ""]] call _accept)}) == -1;
+            _valid && {([4, 5] findIf {
+                private _magazine = _entry param [_x, []];
+                _magazine isNotEqualTo [] && {!([_weaponClass, _magazine select 0] call _acceptMagazine)}
+            }) == -1}
         } else {
             [_entry] call _accept
         }
