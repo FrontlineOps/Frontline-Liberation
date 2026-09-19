@@ -1,5 +1,5 @@
 /* Server owns all infantry orders. Return the first exclusion for diagnostics. */
-params [["_unit", objNull, [objNull]]];
+params [["_unit", objNull, [objNull]], ["_perceptionOnly", false, [false]]];
 if (!isServer || {isRemoteExecuted}) exitWith {"Not a local server call"};
 if (!KPLIB_aiCombat_enabled) exitWith {"Disabled"};
 if (isNull _unit || {!alive _unit}) exitWith {"Dead or deleted"};
@@ -13,6 +13,7 @@ if (captive _unit || {lifeState _unit == "INCAPACITATED"}
     || {_unit getVariable ["KPLIB_intelligencePrisoner", false]}
     || {_unit getVariable ["KPLIB_surrenderInProgress", false]}
     || {_unit getVariable ["ace_captives_isSurrendering", false]}) exitWith {"Captive or unconscious"};
+if (_perceptionOnly) exitWith {""};
 private _mode = unitCombatMode _unit;
 if (_mode == "") then {_mode = combatMode group _unit};
 if (!(combatMode group _unit in ["YELLOW", "RED"]) || {!(_mode in ["YELLOW", "RED"])}) exitWith {"Hold fire"};

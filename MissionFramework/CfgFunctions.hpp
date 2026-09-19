@@ -176,6 +176,7 @@ class KPLIB {
         class aiCombatFired    {};
         class aiCombatSound    {};
         class aiCombatHear     {};
+        class aiCombatInvestigate {};
         class aiCombatInspect  {};
     };
     class module_guidance {

@@ -91,7 +91,7 @@
 [
     "KPLIB_aiCombat_hearing", "CHECKBOX",
     "Enable gunfire hearing",
-    "Let AI turn toward approximate gunfire locations, with hearing affected by the weapon's report, suppressors and obstructions.",
+    "Let AI hear approximate gunfire locations and let unassigned idle groups investigate briefly without identifying the shooter or replacing existing missions. Weapons, suppressors and obstructions affect hearing.",
     ["Frontline - AI", "Infantry combat"],
     true, false
 ] call _add;
