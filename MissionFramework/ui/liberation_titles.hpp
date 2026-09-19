@@ -130,8 +130,7 @@ class RscTitles {
             PictureIntelShadow, PictureIntel, LabelIntel,
             BGPictureSector,
             CaptureFrame_OPFOR, CaptureFrame_BLUFOR, CaptureFrame,
-            LabelPoint, CentralShadow, CentralLabel,
-            AlertBGPicture, AlertLabel, AlertTimer
+            LabelPoint, CentralShadow, CentralLabel
         };
         class BGPicture {
             idc = 758001;
@@ -414,36 +413,6 @@ class RscTitles {
             y = 0.33 * safezoneH + safezoneY;
             h = 0.03 * safezoneH;
             colorText[] = {0.7, 0, 0, 1};
-        };
-        class AlertBGPicture: BGPicture {
-            idc = 401;
-            x = 0.73 * safezoneW + safezoneX;
-            w = 0.26 * safezoneW;
-            y = 0.18 * safezoneH + safezoneY;
-            h = 0.2 * safezoneH;
-        };
-        class AlertLabel: GenericLabel69 {
-            idc = 402;
-            text = "";
-            style = ST_LEFT + ST_MULTI;
-            sizeEx = 0.018 * safezoneH;
-            x = 0.74 * safezoneW + safezoneX;
-            w = 0.24 * safezoneW;
-            y = 0.213 * safezoneH + safezoneY;
-            h = 0.163 * safezoneH;
-            lineSpacing = 1;
-            colorText[] = {1, 1, 1, 1};
-        };
-        class AlertTimer: GenericLabel69 {
-            idc = 403;
-            text = "";
-            style = ST_LEFT;
-            sizeEx = 0.022 * safezoneH;
-            x = 0.74 * safezoneW + safezoneX;
-            w = 0.24 * safezoneW;
-            y = 0.185 * safezoneH + safezoneY;
-            h = 0.03 * safezoneH;
-            colorText[] = {1, 0.35, 0.25, 1};
         };
     };
 };

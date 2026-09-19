@@ -89,12 +89,6 @@ while {true} do {
         (_overlay displayCtrl (266)) ctrlSetText format [ "%1", GRLIB_ui_notif ];
         (_overlay displayCtrl (267)) ctrlSetText format [ "%1", GRLIB_ui_notif ];
 
-        private _captureHud = uiNamespace getVariable ["KPLIB_captureStatusHud", ""];
-        private _showCapture = _captureHud != "";
-        {(_overlay displayCtrl _x) ctrlShow _showCapture} forEach [401, 402, 403];
-        (_overlay displayCtrl 402) ctrlSetText _captureHud;
-        (_overlay displayCtrl 403) ctrlSetText "OBJECTIVE STATUS";
-
         // Update resources overlay
         [
             _overlay,
