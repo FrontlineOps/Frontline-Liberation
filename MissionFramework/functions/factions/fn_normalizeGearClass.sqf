@@ -9,6 +9,7 @@ if !(isClass _cfg) then {_cfg = configFile >> "CfgMagazines" >> _class};
 if !(isClass _cfg) then {_cfg = configFile >> "CfgVehicles" >> _class};
 if !(isClass _cfg) then {_cfg = configFile >> "CfgGlasses" >> _class};
 private _base = getText (_cfg >> "ace_arsenal_uniqueBase");
+if (_base == "") then {_base = getText (_cfg >> "rhs_optic_base")};
 if (_base == "" && {getNumber (_cfg >> "acre_isRadio") == 1}) then {
     _base = getText (_cfg >> "acre_baseClass");
 };
