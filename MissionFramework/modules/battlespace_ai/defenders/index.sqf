@@ -315,7 +315,6 @@ BATTLESPACE_RESERVE_DISPATCH = {
         _operation set ["fieldIncident", _fieldId];
         _operation set ["fieldPosition", +(_incident get "position")];
         _operation set ["fieldContact", +_destination];
-        _operation set ["contactGraceUntil", (_contact select 1) + BATTLESPACE_STRATEGIC_RESERVE_FIELD_CONTACT_MAX_AGE];
         _operation set ["expiresAt", CBA_missionTime + BATTLESPACE_STRATEGIC_RESERVE_HOLD_DURATION];
     };
     _operation deleteAt "holdUntil";

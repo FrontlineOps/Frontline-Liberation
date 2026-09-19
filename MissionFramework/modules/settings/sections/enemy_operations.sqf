@@ -507,7 +507,7 @@
 [
     "BATTLESPACE_STRATEGIC_RESERVE_FIELD_CONTACT_MAX_AGE", "SLIDER",
     "Reserve field contact max age (seconds)",
-    "Maximum age in seconds of a player sighting that supports a reserve response to field casualties. Loss of fresh contact sends the reserve back.",
+    "Maximum age in seconds of a player sighting used to launch or redirect a reserve response to field casualties. Committed reserves retain the last reported area until the hunt ends or withdrawal is required.",
     ["Frontline - Enemy Operations", "Reserves"],
     [1, 3600, 180, 0], false
 ] call _add;

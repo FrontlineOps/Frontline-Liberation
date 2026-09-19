@@ -285,24 +285,13 @@ BATTLESPACE_AIR_RESPONSE_ON_DECISION_TICK = {
     };
 
     private _contact = [_taskForceId, _operation] call BATTLESPACE_AIR_RESPONSE_FIND_CONTACT;
-    if (_contact isEqualTo []) exitWith {
-        private _graceUntil = _operation getOrDefault ["contactGraceUntil", -1];
-        if (_graceUntil < 0) then {
-            _graceUntil = CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_AIR_RESPONSE_CONTACT_GRACE", 120]);
-            _operation set ["contactGraceUntil", _graceUntil];
-            BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceId, _operation];
-        };
-        if (CBA_missionTime >= _graceUntil) then {
-            !([_taskForceId, _taskForce, _operation] call BATTLESPACE_AIR_RESPONSE_BEGIN_RETURN)
-        } else {
-            false
-        }
+    if (_contact isEqualTo []) then {
+        // A missing report does not cancel the sortie or refresh its timers.
+        _contact = [objNull, _operation getOrDefault ["contactPosition", []], _operation getOrDefault ["targetNetId", ""]];
     };
-
     _contact params ["_vehicle", "_contactPosition", "_contactNetId"];
     _operation set ["targetNetId", _contactNetId];
     _operation set ["contactPosition", _contactPosition];
-    _operation deleteAt "contactGraceUntil";
     // Physical navigation/fire is owned by the fast aircraft controller. The
     // strategic tick retains lifecycle/timers and must not overwrite its runs.
     if ((_taskForce param [8, []]) isNotEqualTo []) exitWith {
@@ -319,7 +308,7 @@ BATTLESPACE_AIR_RESPONSE_ON_DECISION_TICK = {
         }
     };
     {
-        if (!isNull _x && {local _x}) then {
+        if (!isNull _vehicle && {!isNull _x} && {local _x}) then {
             _x reveal [_vehicle, 4];
             _x setCombatMode "RED";
             _x setBehaviourStrong "COMBAT";

@@ -89,8 +89,8 @@
 
                 if (_phase == "FIELD_HUNT") then {
                     private _target = _operation getOrDefault ["fieldContact", []];
-                    if (_target isEqualTo [] || {CBA_missionTime >= (_operation getOrDefault ["contactGraceUntil", 0])} || {CBA_missionTime >= (_operation getOrDefault ["expiresAt", 0])}) then {
-                        ["its field contact went stale or its hunt time expired"] call _beginReturn;
+                    if (_target isEqualTo [] || {CBA_missionTime >= (_operation getOrDefault ["expiresAt", 0])}) then {
+                        ["its field destination was missing or its hunt time expired"] call _beginReturn;
                         _phase = "RETURNING";
                     } else {
                         private _destination = _taskForce param [2, []];

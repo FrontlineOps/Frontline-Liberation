@@ -375,11 +375,11 @@ BATTLESPACE_AIRLIFT_TICK = {
     private _targetLost = (_operation getOrDefault ["kind", ""]) == "RESERVE" && {
         (_phase in ["READY", "STAGING"] && {((BATTLESPACE_SECTOR_STATES getOrDefault [_home, createHashMap]) getOrDefault ["owner", ""]) != "OPFOR"})
         || {_phase == "RESPONDING" && {((BATTLESPACE_SECTOR_STATES getOrDefault [_target, createHashMap]) getOrDefault ["owner", ""]) != "OPFOR"}}
-        || {_phase == "FIELD_HUNT" && {CBA_missionTime >= (_operation getOrDefault ["contactGraceUntil", 0])}}
+        || {_phase == "FIELD_HUNT" && {CBA_missionTime >= (_operation getOrDefault ["expiresAt", 0])}}
     };
     if ((_targetLost && {(_operation getOrDefault ["airliftPhase", ""]) != "UNLOADING"})
         || {_return && {((BATTLESPACE_SECTOR_STATES getOrDefault [_operation getOrDefault ["returnSector", ""], createHashMap]) getOrDefault ["owner", ""]) != "OPFOR"}}) then {
-        [_id, _force, _operation, "destination lost or contact expired"] call BATTLESPACE_AIRLIFT_BEGIN_RETURN;
+        [_id, _force, _operation, "destination lost or mission expired"] call BATTLESPACE_AIRLIFT_BEGIN_RETURN;
         _return = true;
         _phase = "RETURNING";
     };

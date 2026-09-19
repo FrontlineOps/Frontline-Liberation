@@ -81,14 +81,6 @@
 ] call _add;
 
 [
-    "BATTLESPACE_STRATEGIC_AIR_RESPONSE_CONTACT_GRACE", "SLIDER",
-    "Air response contact grace",
-    "Seconds an air response waits for contact to return before abandoning a lost target.",
-    ["Frontline - Enemy Support", "Air support"],
-    [1, 480, 120, 0], false
-] call _add;
-
-[
     "BATTLESPACE_STRATEGIC_AIR_RESPONSE_COOLDOWN", "SLIDER",
     "Air response cooldown (seconds)",
     "Base seconds before the same source sector may launch another air response, lengthened by communications disruption.",

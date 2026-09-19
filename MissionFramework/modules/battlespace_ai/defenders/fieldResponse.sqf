@@ -55,7 +55,6 @@ BATTLESPACE_RESERVE_FIELD_TICK = {
         private _contact = [_y get "fieldPosition"] call BATTLESPACE_RESERVE_FIELD_GET_CONTACT;
         if (_contact isNotEqualTo []) then {
             _y set ["fieldContact", +(_contact select 0)];
-            _y set ["contactGraceUntil", (_contact select 1) + BATTLESPACE_STRATEGIC_RESERVE_FIELD_CONTACT_MAX_AGE];
         };
     } forEach BATTLESPACE_STRATEGIC_OPERATIONS;
     {
