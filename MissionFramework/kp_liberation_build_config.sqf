@@ -40,17 +40,11 @@ buildings = [
     ["Land_Billboard_03_aan_F",0,0,0,"Radios Billboard"],                       // updated
     ["Land_Billboard_03_koke_F",0,0,0,"Odin Billboard"],
     ["Land_Billboard_03_cheese_F",0,0,0,"Tutorial Billboard"],
-    ["Land_Billboard_03_bluking_F",0,0,0,"Karmakut Logo Billboard"],
-    ["Land_Billboard_03_ionbase_F",0,0,0,"Karmakut Spread Sheet Radios"],
-    ["Land_Billboard_03_lyfe_F",0,0,0,"Karmakut TFAR HELP"],
-    ["Land_Billboard_03_argois_F",0,0,0,"Karmakut Insurance"],
-    ["Land_Billboard_03_supermarket_F",0,0,0,"Karmakut Role"],
-    ["Land_Billboard_03_ygont_F",0,0,0,"Karmakut Builders"],
     ["SignAd_SponsorS_ARMEX_F",0,0,0,"Direction Sign - Resources"],
     ["SignAd_SponsorS_Fuel_white_F",0,0,0,"Direction Sign - Arsenal"],
     ["SignAd_SponsorS_F",0,0,0,"Direction Sign - Boat Dock"],
     ["SignAd_SponsorS_ION_F",0,0,0,"Direction Sign - Arty Pit"],
-    ["SignAd_SponsorS_Suatmm_F",0,0,0,"Direction Sign - Karmakut Arty Pit"],
+    ["SignAd_SponsorS_Suatmm_F",0,0,0,"Direction Sign - Arty Pit"],
     ["SignAd_SponsorS_Larkin_F",0,0,0,"Direction Sign - CCP"],
     ["SignAd_SponsorS_Quontrol_F",0,0,0,"Direction Sign - Helipads"],
     ["SignAd_SponsorS_Vrana_F",0,0,0,"Direction Sign - Motor Pool"],
@@ -158,7 +152,7 @@ buildings = [
 
 support_vehicles = [
     [Arsenal_typename,                              0,      25,     0,      "Arsenal Box"],                 // Arsenal Box
-    ["UK3CB_BAF_Vehicles_Logistics_Point",               100,    100,    0,      "Resupply Point"],              // Resupply Point
+    ["USMC_WarfareBVehicleServicePoint",               100,    100,    0,      "Resupply Point"],              // Resupply Point
     [KP_liberation_recycle_building,                200,    0,      0],                                     // Salvage Depot
     [KP_liberation_air_vehicle_building,            400,    0,      0],                                     // Flight Control
     [KP_liberation_small_storage_building,          0,      0,      0],                                     // Small Storage Flat

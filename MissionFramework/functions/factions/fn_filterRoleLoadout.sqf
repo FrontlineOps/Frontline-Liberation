@@ -1,12 +1,11 @@
 /* Pure loadout filter; preserves allowed quantities, ammunition and radio instance IDs. */
-params ["_loadout", "_allowed", ["_starter", []]];
-private _clean = parseSimpleArray str _loadout;
+params ["_loadout", "_allowedKeys", ["_starter", []]];
+private _clean = +_loadout;
 private _removed = [];
-private _allowedKeys = createHashMapFromArray (_allowed apply {[[ _x ] call KPLIB_fnc_normalizeGearClass, true]});
 private _accept = {
     params ["_class"];
     if (_class == "") exitWith {true};
-    if (([_class] call KPLIB_fnc_normalizeGearClass) in _allowedKeys) exitWith {true};
+    if (toLower _class in _allowedKeys || {([_class] call KPLIB_fnc_normalizeGearClass) in _allowedKeys}) exitWith {true};
     _removed pushBackUnique _class;
     false
 };

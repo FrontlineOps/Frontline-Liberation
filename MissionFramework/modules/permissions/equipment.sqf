@@ -1,9 +1,10 @@
 /* A shared filter serves immediate owner-local checks and a bounded server reconciliation. */
 KPLIB_fnc_roleDefinition = {
-    params ["_unit"];
+    params ["_unit", ["_identity", []]];
     if (!(localNamespace getVariable ["KPLIB_manualFactions", false]) || {side group _unit != GRLIB_side_friendly}) exitWith {createHashMap};
-    ([_unit] call KPLIB_fnc_getPlayerRole) params ["_sideKey", "_role"];
-    (((localNamespace getVariable "KPLIB_factionProfiles") get _sideKey) get "roles") getOrDefault [_role, createHashMapFromArray [["allowed", []], ["starter", [[], [], [], [], [], [], "", "", [], ["", "", "", "", "", ""]]]]]
+    if (_identity isEqualTo []) then {_identity = [_unit] call KPLIB_fnc_getPlayerRole};
+    _identity params ["_sideKey", "_role"];
+    (((localNamespace getVariable "KPLIB_factionProfiles") get _sideKey) get "roles") getOrDefault [_role, createHashMapFromArray [["allowed", []], ["allowedKeys", createHashMap], ["starter", [[], [], [], [], [], [], "", "", [], ["", "", "", "", "", ""]]]]]
 };
 
 KPLIB_fnc_enforceRoleEquipment = {
@@ -12,13 +13,15 @@ KPLIB_fnc_enforceRoleEquipment = {
     if (isNull _unit || {!local _unit} || {!alive _unit} || {side group _unit != GRLIB_side_friendly}) exitWith {};
     if (isRemoteExecuted && {remoteExecutedOwner != 2}) exitWith {};
     if (_unit isEqualTo player && {!(localNamespace getVariable ["KPLIB_permissionsReady", false])}) exitWith {};
-    private _role = [_unit] call KPLIB_fnc_roleDefinition;
+    if (_unit isEqualTo player && {localNamespace getVariable ["KPLIB_roleArsenalOpen", false]}) exitWith {};
     private _loadout = getUnitLoadout _unit;
     private _identity = [_unit] call KPLIB_fnc_getPlayerRole;
+    private _inventory = (flatten _loadout) select {_x isEqualType ""};
     private _previous = _unit getVariable ["KPLIB_lastCheckedLoadout", []];
-    if (_previous isEqualTo [_identity, _loadout]) exitWith {};
-    ([_loadout, _role get "allowed", _role get "starter"] call KPLIB_fnc_filterRoleLoadout) params ["_clean", "_removed"];
-    _unit setVariable ["KPLIB_lastCheckedLoadout", [_identity, _clean]];
+    if (_previous isEqualTo [_identity, _inventory]) exitWith {};
+    private _role = [_unit, _identity] call KPLIB_fnc_roleDefinition;
+    ([_loadout, _role get "allowedKeys", _role get "starter"] call KPLIB_fnc_filterRoleLoadout) params ["_clean", "_removed"];
+    _unit setVariable ["KPLIB_lastCheckedLoadout", [_identity, (flatten _clean) select {_x isEqualType ""}]];
     if (_removed isNotEqualTo []) then {
         _unit setUnitLoadout [_clean, false];
         if (_unit isEqualTo player) then {systemChat format ["Removed equipment outside your role: %1", _removed joinString ", "]};
@@ -26,9 +29,19 @@ KPLIB_fnc_enforceRoleEquipment = {
     };
 };
 
+KPLIB_fnc_queueRoleEquipmentCheck = {
+    if (localNamespace getVariable ["KPLIB_roleEquipmentQueued", false]) exitWith {};
+    localNamespace setVariable ["KPLIB_roleEquipmentQueued", true];
+    [{
+        localNamespace setVariable ["KPLIB_roleEquipmentQueued", false];
+        [player] call KPLIB_fnc_enforceRoleEquipment;
+    }, []] call CBA_fnc_execNextFrame;
+};
+
 KPLIB_fnc_receiveRoleCorrection = {
     if (!hasInterface || {side group player != GRLIB_side_friendly} || {!isRemoteExecuted} || {remoteExecutedOwner != 2}) exitWith {};
     params ["_observed", "_clean"];
+    if (localNamespace getVariable ["KPLIB_roleArsenalOpen", false]) exitWith {};
     if (getUnitLoadout player isEqualTo _observed) then {
         player setUnitLoadout [_clean, false];
         player setVariable ["KPLIB_lastCheckedLoadout", []];
@@ -42,16 +55,16 @@ KPLIB_fnc_checkPlayerEquipment = {
     if (!isServer || {!isPlayer _unit} || {!alive _unit} || {side group _unit != GRLIB_side_friendly}) exitWith {};
     private _loadout = getUnitLoadout _unit;
     private _identity = [_unit] call KPLIB_fnc_getPlayerRole;
+    private _inventory = (flatten _loadout) select {_x isEqualType ""};
     private _cache = localNamespace getVariable ["KPLIB_equipmentAudit", createHashMap];
     private _checked = _cache getOrDefault [netId _unit, []];
-    if (_checked isEqualTo [_identity, _loadout]) exitWith {};
-    private _role = [_unit] call KPLIB_fnc_roleDefinition;
-    ([_loadout, _role get "allowed", _role get "starter"] call KPLIB_fnc_filterRoleLoadout) params ["_clean", "_removed"];
-    _cache set [netId _unit, [_identity, _clean]];
+    if (_checked isEqualTo [_identity, _inventory]) exitWith {};
+    private _role = [_unit, _identity] call KPLIB_fnc_roleDefinition;
+    ([_loadout, _role get "allowedKeys", _role get "starter"] call KPLIB_fnc_filterRoleLoadout) params ["_clean", "_removed"];
+    _cache set [netId _unit, [_identity, (flatten _clean) select {_x isEqualType ""}]];
     localNamespace setVariable ["KPLIB_equipmentAudit", _cache];
     if (_removed isNotEqualTo []) then {
         [_loadout, _clean] remoteExecCall ["KPLIB_fnc_receiveRoleCorrection", owner _unit];
-        [_unit, "Equipment does not match the assigned role."] call KPLIB_fnc_permissionRejected;
     };
 };
 
@@ -59,12 +72,15 @@ KPLIB_fnc_refreshRoleEquipment = {
     if (!hasInterface || {side group player != GRLIB_side_friendly} || {!alive player} || {!(localNamespace getVariable ["KPLIB_permissionsReady", false])}) exitWith {};
     [] remoteExecCall ["KPLIB_fnc_requestVehicleAccess", 2];
     if (!(localNamespace getVariable ["KPLIB_manualFactions", false])) exitWith {};
-    private _role = [player] call KPLIB_fnc_roleDefinition;
+    private _identity = [player] call KPLIB_fnc_getPlayerRole;
+    if (_identity isEqualTo (localNamespace getVariable ["KPLIB_clientRole", []])
+        && {!(localNamespace getVariable ["KPLIB_pendingRoleStarter", false])}) exitWith {};
+    private _role = [player, _identity] call KPLIB_fnc_roleDefinition;
     if (localNamespace getVariable ["KPLIB_pendingRoleStarter", false]) then {
         player setUnitLoadout [_role get "starter", false];
         localNamespace setVariable ["KPLIB_pendingRoleStarter", false];
     };
-    localNamespace setVariable ["KPLIB_clientRole", [player] call KPLIB_fnc_getPlayerRole];
+    localNamespace setVariable ["KPLIB_clientRole", _identity];
     player setUnitTrait ["Medic", (_role getOrDefault ["medic", 0]) > 0];
     player setUnitTrait ["Engineer", (_role getOrDefault ["engineer", 0]) > 0];
     player setVariable ["ace_medical_medicClass", _role getOrDefault ["medic", 0], true];

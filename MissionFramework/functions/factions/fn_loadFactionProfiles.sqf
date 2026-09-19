@@ -12,13 +12,16 @@ private _catalogs = createHashMap;
 private _errors = [];
 private _optionalMissing = [];
 private _vehiclePools = ["light", "recon", "medical", "groundLogistics", "artillery", "atgm", "aa", "samTel", "samRadar", "samShorad", "aaGun", "heavy", "rotaryLogistics", "rotaryCas", "fixedWing", "static", "transport", "boat"];
+private _itemCache = createHashMap;
+private _gearKeys = createHashMap;
 private _item = {
     params ["_class"];
     if !(_class isEqualType "" && {_class != ""}) exitWith {
         _errors pushBack "Equipment entries must be nonempty classnames";
         ["", ""]
     };
-    private _key = [_class] call KPLIB_fnc_normalizeGearClass;
+    private _key = toLower _class;
+    if (_key in _itemCache) exitWith {_itemCache get _key};
     private _result = ["", ""];
     {
         _x params ["_root", "_bucket"];
@@ -39,6 +42,10 @@ private _item = {
         } else {
             _errors pushBack format ["Unknown equipment class %1", _class];
         };
+    };
+    _itemCache set [_key, _result];
+    if ((_result select 0) != "") then {
+        _gearKeys set [_result select 1, [_class] call KPLIB_fnc_normalizeGearClass];
     };
     _result
 };
@@ -150,20 +157,27 @@ private _item = {
         _errors pushBack format ["%1/specialtyResources must be a nonnegative integer", _path];
     };
     private _equipment = _profile getOrDefault ["equipment", createHashMap];
-    private _arsenal = createHashMapFromArray [["weapons", []], ["magazines", []], ["items", []], ["backpacks", []], ["all", []]];
+    private _equipmentKeys = createHashMap;
+    private _equipmentClasses = createHashMap;
+    private _arsenal = createHashMapFromArray (["weapons", "magazines", "items", "backpacks", "all"] apply {[_x, createHashMap]});
     {
         if !(_y isEqualType []) then {[format ["%1/equipment/%2 must be an array of classnames", _path, _x]] call _fail};
         private _group = _x;
-        private _classes = [];
+        private _classes = createHashMap;
+        private _keys = createHashMap;
         {
             ([_x] call _item) params ["_bucket", "_class"];
             if (_bucket != "") then {
-                _classes pushBackUnique _class;
-                (_arsenal get _bucket) pushBackUnique _class;
-                (_arsenal get "all") pushBackUnique _class;
+                _classes set [_class, true];
+                _keys set [toLower _class, true];
+                _keys set [_gearKeys get _class, true];
+                (_arsenal get _bucket) set [_class, true];
+                (_arsenal get "all") set [_class, true];
             };
         } forEach _y;
-        _equipment set [_group, _classes];
+        _equipment set [_group, keys _classes];
+        _equipmentKeys set [_group, _keys];
+        _equipmentClasses set [_group, _classes];
     } forEach _equipment;
     _profile set ["arsenal", _arsenal];
     private _roles = _profile getOrDefault ["roles", createHashMap];
@@ -172,11 +186,13 @@ private _item = {
         if !(_x isEqualType "" && {_x != ""} && {(_x find ":") == -1} && {_y isEqualType createHashMap}) then {[format ["Invalid role ID/definition in %1", _path]] call _fail};
         private _roleID = _x;
         private _role = _y;
-        private _allowed = [];
+        private _allowed = createHashMap;
+        private _allowedKeys = createHashMap;
         if !((_role getOrDefault ["equipment", []]) isEqualType []) then {[format ["%1/%2 equipment must be an array of group names", _path, _roleID]] call _fail};
         {
             if !(_x in _equipment) then {_errors pushBack format ["%1 role %2 references missing equipment group %3", _path, _roleID, _x]};
-            _allowed append (_equipment getOrDefault [_x, []]);
+            _allowed merge (_equipmentClasses getOrDefault [_x, createHashMap]);
+            _allowedKeys merge (_equipmentKeys getOrDefault [_x, createHashMap]);
         } forEach (_role getOrDefault ["equipment", []]);
         private _gear = _role getOrDefault ["gear", []];
         if !(_gear isEqualType []) then {
@@ -187,14 +203,21 @@ private _item = {
             ([_x] call _item) params ["_bucket", "_class"];
             if (_bucket != "") then {
                 _directGear pushBackUnique _class;
-                _allowed pushBackUnique _class;
-                (_arsenal get _bucket) pushBackUnique _class;
-                (_arsenal get "all") pushBackUnique _class;
+                _allowed set [_class, true];
+                _allowedKeys set [toLower _class, true];
+                _allowedKeys set [_gearKeys get _class, true];
+                (_arsenal get _bucket) set [_class, true];
+                (_arsenal get "all") set [_class, true];
             };
         } forEach _gear;
         _role set ["gear", _directGear];
-        _allowed = _allowed arrayIntersect _allowed;
+        _allowed = keys _allowed;
         _role set ["allowed", _allowed];
+        // ACRE maintains this chat-slot token itself; it is not an equippable radio.
+        if (isClass (configFile >> "CfgPatches" >> "acre_main")) then {
+            _allowedKeys set ["itemradioacreflagged", true];
+        };
+        _role set ["allowedKeys", _allowedKeys];
         private _starter = _role getOrDefault ["starter", [[], [], [], [], [], [], "", "", [], ["", "", "", "", "", ""]]];
         if !(_starter isEqualType [] && {count _starter == 10}) then {
             _errors pushBack format ["%1/%2 needs a ten-element starter loadout", _path, _roleID];
@@ -202,7 +225,7 @@ private _item = {
             private _shapeOK = ({(_starter select _x) isEqualType []} count [0, 1, 2, 3, 4, 5, 8, 9]) == 8;
             if (!_shapeOK || {!((_starter select 6) isEqualType "")} || {!((_starter select 7) isEqualType "")}) then {[format ["Malformed starter loadout in %1/%2", _path, _roleID]] call _fail};
             // Unloaded optional integrations are removed, never replaced with unapproved items.
-            _role set ["starter", ([_starter, _allowed, _starter] call KPLIB_fnc_filterRoleLoadout) select 0];
+            _role set ["starter", ([_starter, _allowedKeys, _starter] call KPLIB_fnc_filterRoleLoadout) select 0];
         };
         {if !((_role getOrDefault [_x, 0]) in [0, 1, 2]) then {_errors pushBack format ["Invalid %1 trait in %2/%3", _x, _path, _roleID]}} forEach ["medic", "engineer"];
     } forEach _roles;
@@ -242,6 +265,7 @@ private _item = {
         _crate set ["Category", _crate getOrDefault ["Category", "Faction Supplies"]];
         _crate set ["faction", _sideKey];
     } forEach _crates;
+    {_arsenal set [_x, keys _y]} forEach _arsenal;
     _profiles set [_sideKey, _profile];
     _catalogs set [_sideKey, _catalog];
 } forEach [["blufor", 1], ["opfor", 0], ["resistance", 2], ["civilians", 3]];

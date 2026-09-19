@@ -1,15 +1,22 @@
 if ((localNamespace getVariable ["KPLIB_manualFactions", false])) exitWith {
     {
-        ["KPLIB_ROLE_" + _x, _x, {[player] call KPLIB_fnc_enforceRoleEquipment}] call CBA_fnc_addBISPlayerEventHandler;
+        ["KPLIB_ROLE_" + _x, _x, KPLIB_fnc_queueRoleEquipmentCheck] call CBA_fnc_addBISPlayerEventHandler;
     } forEach ["Take", "InventoryClosed"];
-    ["ace_arsenal_displayClosed", {[player] call KPLIB_fnc_enforceRoleEquipment}] call CBA_fnc_addEventHandler;
-    [missionNamespace, "arsenalClosed", {[player] call KPLIB_fnc_enforceRoleEquipment}] call BIS_fnc_addScriptedEventHandler;
+    ["ace_arsenal_displayOpened", {localNamespace setVariable ["KPLIB_roleArsenalOpen", true]}] call CBA_fnc_addEventHandler;
+    ["ace_arsenal_displayClosed", {
+        localNamespace setVariable ["KPLIB_roleArsenalOpen", false];
+        [] call KPLIB_fnc_queueRoleEquipmentCheck;
+    }] call CBA_fnc_addEventHandler;
+    [missionNamespace, "arsenalOpened", {localNamespace setVariable ["KPLIB_roleArsenalOpen", true]}] call BIS_fnc_addScriptedEventHandler;
+    [missionNamespace, "arsenalClosed", {
+        localNamespace setVariable ["KPLIB_roleArsenalOpen", false];
+        [] call KPLIB_fnc_queueRoleEquipmentCheck;
+    }] call BIS_fnc_addScriptedEventHandler;
     [{
         if (!alive player || {!(localNamespace getVariable ["KPLIB_permissionsReady", false])}) exitWith {};
         if (([player] call KPLIB_fnc_getPlayerRole) isNotEqualTo (localNamespace getVariable ["KPLIB_clientRole", []])) then {
             [] call KPLIB_fnc_refreshRoleEquipment;
         };
-        [player] call KPLIB_fnc_enforceRoleEquipment;
     }, KPLIB_roleAuditInterval] call CBA_fnc_addPerFrameHandler;
 };
 
