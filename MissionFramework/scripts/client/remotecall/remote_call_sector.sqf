@@ -19,5 +19,11 @@ if ( _status == 3 ) then {
     [ "lib_sector_safe", [ markerText _sector ] ] call BIS_fnc_showNotification;
 };
 
-{ _x setMarkerColorLocal GRLIB_color_enemy; } foreach (sectors_allSectors - blufor_sectors);
-{ _x setMarkerColorLocal GRLIB_color_friendly; } foreach blufor_sectors;
+{
+    _x setMarkerColorLocal GRLIB_color_enemy;
+    _x setMarkerAlphaLocal 0;
+} forEach (sectors_allSectors - blufor_sectors);
+{
+    _x setMarkerColorLocal GRLIB_color_friendly;
+    _x setMarkerAlphaLocal 1;
+} forEach blufor_sectors;

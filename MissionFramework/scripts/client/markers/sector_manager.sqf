@@ -12,25 +12,33 @@ private _cfg = configFile >> "cfgVehicles";
     _marker setMarkerTextLocal (getText (_cfg >> _vehicle >> "displayName"));
     _marker setMarkerColorLocal GRLIB_color_enemy;
     _marker setMarkerTypeLocal "mil_pickup";
+    _marker setMarkerAlphaLocal 0;
     _vehicle_unlock_markers pushback [_marker, _base];
 } forEach GRLIB_vehicle_to_military_base_links;
 
-private _sector_count = -1;
-
-uiSleep 1;
+private _ownedSectors = [];
+private _initialized = false;
 
 while {true} do {
-    waitUntil {
-        uiSleep 1;
-        count blufor_sectors != _sector_count
+    if (!_initialized || {!(blufor_sectors isEqualTo _ownedSectors)}) then {
+        private _currentOwnedSectors = +blufor_sectors;
+        {
+            _x setMarkerColorLocal GRLIB_color_enemy;
+            _x setMarkerAlphaLocal 0;
+        } forEach (sectors_allSectors - _currentOwnedSectors);
+        {
+            _x setMarkerColorLocal GRLIB_color_friendly;
+            _x setMarkerAlphaLocal 1;
+        } forEach _currentOwnedSectors;
+
+        {
+            _x params ["_marker", "_base"];
+            private _owned = _base in _currentOwnedSectors;
+            _marker setMarkerColorLocal ([GRLIB_color_enemy, GRLIB_color_friendly] select _owned);
+            _marker setMarkerAlphaLocal ([0, 1] select _owned);
+        } forEach _vehicle_unlock_markers;
+        _ownedSectors = _currentOwnedSectors;
+        _initialized = true;
     };
-
-    {_x setMarkerColorLocal GRLIB_color_enemy;} forEach (sectors_allSectors - blufor_sectors);
-    {_x setMarkerColorLocal GRLIB_color_friendly;} forEach blufor_sectors;
-
-    {
-        _x params ["_marker", "_base"];
-        _marker setMarkerColorLocal ([GRLIB_color_enemy, GRLIB_color_friendly] select (_base in blufor_sectors));
-    } forEach _vehicle_unlock_markers;
-    _sector_count = count blufor_sectors;
+    uiSleep 1;
 };

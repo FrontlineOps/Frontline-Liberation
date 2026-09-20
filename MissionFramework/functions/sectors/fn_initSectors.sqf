@@ -34,4 +34,8 @@ sectors_tower = [];
     };
 } forEach allMapMarkers;
 
+if (hasInterface) then {
+    {_x setMarkerAlphaLocal 0;} forEach sectors_allSectors;
+};
+
 true
