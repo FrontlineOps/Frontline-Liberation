@@ -20,7 +20,8 @@ private _hit = _blast get "hit";
 // a denser field. These coefficients are explicit balance choices, not SI data.
 if (_hit <= 8) then {_types = ["ACE_frag_tiny_HD"] select {isClass (configFile >> "CfgAmmo" >> _x)}};
 private _cap = (missionNamespace getVariable ["KPLIB_munitions_fragment_cap", 384]) max 1 min 512;
-private _count = (round (8 + 0.4 * _hit)) min _cap;
+private _multiplier = (missionNamespace getVariable ["KPLIB_munitions_fragment_multiplier", 1]) max 0 min 4;
+private _count = (round ((8 + 0.4 * _hit) * _multiplier)) min _cap;
 if (!(_blast get "eligible") || {_types isEqualTo []} || {getNumber (_cfg >> "KPLIB_fragment_skip") == 1}) then {_count = 0};
 private _speed = if (_types isEqualTo []) then {0} else {getNumber (configFile >> "CfgAmmo" >> (_types select 0) >> "typicalSpeed")};
 _cached = [_count, _types, _speed, ["loaded ACE fragment assets", "generic game fragment assets; metadata absent"] select _fallback];

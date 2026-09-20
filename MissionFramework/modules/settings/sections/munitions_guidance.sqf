@@ -65,6 +65,14 @@
 ] call _add;
 
 [
+    "KPLIB_munitions_fragment_multiplier", "SLIDER",
+    "Primary fragment count multiplier",
+    "Scale the ammunition-derived primary fragment count before applying the per-explosion limit. 1 preserves normal counts; 0 disables primary fragments only. Shared particle budgets still apply. Requires a mission restart.",
+    ["Frontline - Munitions & Guidance", "Advanced - effect capacity"],
+    [0.0, 4.0, 1, 2], false
+] call _add;
+
+[
     "KPLIB_munitions_gas_asset_limit", "SLIDER",
     "Vehicle and building recipients per type",
     "Maximum nearby vehicles and maximum nearby buildings evaluated by each pressure field. The limit applies separately to each type.",

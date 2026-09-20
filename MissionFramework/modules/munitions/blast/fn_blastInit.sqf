@@ -19,6 +19,7 @@ localNamespace setVariable ["KPLIB_munitionsEffectsReady", true];
     missionNamespace setVariable [_key, (_value max _min) min _max];
 } forEach [
     ["KPLIB_munitions_fragment_cap", 384, 1, 512],
+    ["KPLIB_munitions_fragment_multiplier", 1, 0, 4],
     ["KPLIB_munitions_blast_gain", 0.08, 0, 0.25],
     ["KPLIB_munitions_pressure_gain", 8, 0, 20],
     ["KPLIB_munitions_blast_max_radius", 120, 5, 200],

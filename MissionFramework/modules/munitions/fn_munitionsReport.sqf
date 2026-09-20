@@ -7,7 +7,7 @@ private _rows = [
 {
     _rows pushBack format ["  %1 = %2", _x, missionNamespace getVariable [_x, "UNAVAILABLE"]];
 } forEach [
-    "KPLIB_munitions_fragment_cap", "ace_missileguidance_enabled", "KPLIB_munitions_spatial_fragments", "KPLIB_munitions_blast_enabled", "KPLIB_munitions_blast_gain", "KPLIB_munitions_pressure_gain", "KPLIB_munitions_thermal_duration",
+    "KPLIB_munitions_fragment_cap", "KPLIB_munitions_fragment_multiplier", "ace_missileguidance_enabled", "KPLIB_munitions_spatial_fragments", "KPLIB_munitions_blast_enabled", "KPLIB_munitions_blast_gain", "KPLIB_munitions_pressure_gain", "KPLIB_munitions_thermal_duration",
     "KPLIB_munitions_gas_enabled", "KPLIB_munitions_gas_record", "KPLIB_munitions_gas_radius", "KPLIB_munitions_gas_cell", "KPLIB_munitions_gas_grid_max", "KPLIB_munitions_gas_energy_per_hit", "KPLIB_munitions_gas_damage_gain",
     "ace_frag_enabled", "ace_frag_spallEnabled", "ace_frag_reflectionsEnabled", "ace_frag_spallIntensity",
     "ace_medical_AIDamageThreshold", "ace_medical_playerDamageThreshold", "ace_medical_fatalDamageSource",
