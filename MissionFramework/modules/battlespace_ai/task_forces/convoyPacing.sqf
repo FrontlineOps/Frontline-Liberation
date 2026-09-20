@@ -41,23 +41,30 @@ BATTLESPACE_CONVOY_PACE_SEND = {
 };
 
 BATTLESPACE_CONVOY_PACE_PROGRESS = {
-    params ["_position", "_segments"];
+    params ["_position", "_segments", ["_first", 0]];
     private _nearest = 1e30;
-    private _progress = 0;
-    {
-        _x params ["_start", "_direction", "_length", "_offset"];
-        private _along = ((_position vectorDiff _start) vectorDotProduct _direction);
+    private _result = [0, 0, 1e30, [0, 1, 0]];
+    if (_segments isEqualTo []) exitWith {_result};
+    _first = (0 max _first) min (count _segments - 1);
+    // Initial followers can be behind the logical leader. Once acquired, only
+    // adjacent segments are considered; a crossing cannot jump route branches.
+    for "_i" from 1 to 8 do {
+        if (_first <= 0) exitWith {};
+        if (_position distance2D ((_segments select (_first - 1)) select 0) >= _position distance2D ((_segments select _first) select 0)) exitWith {};
+        _first = _first - 1;
+    };
+    for "_i" from _first to ((count _segments - 1) min (_first + 8)) do {
+        (_segments select _i) params ["_start", "_direction", "_length", "_offset"];
+        private _along = (_position vectorDiff _start) vectorDotProduct _direction;
         private _bounded = (_along max 0) min _length;
         private _distance = _position distance2D (_start vectorAdd (_direction vectorMultiply _bounded));
-        if (_distance < _nearest) then {
-            _nearest = _distance;
-            // Preserve spacing just before the first and beyond the last node.
-            if (_forEachIndex > 0) then {_along = _along max 0};
-            if (_forEachIndex < count _segments - 1) then {_along = _along min _length};
-            _progress = _offset + _along;
-        };
-    } forEach _segments;
-    _progress
+        if (_distance >= _nearest) exitWith {};
+        _nearest = _distance;
+        if (_i > 0) then {_along = _along max 0};
+        if (_i < count _segments - 1) then {_along = _along min _length};
+        _result = [_offset + _along, _i, _distance, _direction];
+    };
+    _result
 };
 
 BATTLESPACE_CONVOY_PACE_TICK = {
@@ -87,14 +94,7 @@ BATTLESPACE_CONVOY_PACE_TICK = {
     if (_vehicles isEqualTo []) exitWith {};
 
     private _route = BATTLESPACE_TASK_FORCE_PATHS getOrDefault [_id, []];
-    {
-        if (local _x && {_x getVariable ["BATTLESPACE_CONVOY_ROUTE_MORE", false]}
-            && {count waypoints _x - currentWaypoint _x <= 5}) then {
-            _x setVariable ["BATTLESPACE_CONVOY_ROUTE_MORE", false];
-            [_x, _force select 2, "FULL", false, true, _route] spawn BATTLESPACE_TASK_FORCE_ADD_WAYPOINTS;
-        };
-    } forEach _groups;
-    if (_route isNotEqualTo (_state getOrDefault ["route", []])) then {
+    if !(_route isEqualRef (_state getOrDefault ["route", []])) then {
         private _segments = [];
         private _offset = 0;
         for "_i" from 0 to (count _route - 2) do {
@@ -108,7 +108,8 @@ BATTLESPACE_CONVOY_PACE_TICK = {
                 _offset = _offset + _length;
             };
         };
-        _state set ["route", +_route];
+        _state set ["route", _route];
+        _state set ["progress", createHashMap];
         _state set ["segments", _segments];
     };
     private _segments = _state getOrDefault ["segments", []];
@@ -123,22 +124,18 @@ BATTLESPACE_CONVOY_PACE_TICK = {
     private _catchUp = (_cruise + 10) min _ceiling;
     private _spacing = ((missionNamespace getVariable ["BATTLESPACE_CONVOY_SPACING", 30]) max 20) min 60;
     private _ranked = [];
+    private _forming = false;
+    private _progress = _state getOrDefault ["progress", createHashMap];
+    private _first = 0 max (((_force param [5, []]) param [1, 0]) - 1);
     {
-        _ranked pushBack [[getPosATL _x, _segments] call BATTLESPACE_CONVOY_PACE_PROGRESS, _forEachIndex, _x];
+        private _key = str _x;
+        ([getPosATL _x, _segments, _progress getOrDefault [_key, _first]] call BATTLESPACE_CONVOY_PACE_PROGRESS) params ["_along", "_segment", "_distance", "_direction"];
+        _progress set [_key, _segment];
+        _ranked pushBack [_along, _forEachIndex, _x];
+        private _turn = vectorDir _x vectorDotProduct _direction;
+        if (_distance > 20 || {_turn < 0.5}) then {_forming = true};
     } forEach _vehicles;
     _ranked sort false;
-    // Off-route or turning vehicles need native steering/reversing room before
-    // along-route distances can safely control their spacing.
-    private _forming = false;
-    if (count _route >= 2) then {
-        _forming = _vehicles findIf {
-            ([getPosATL _x, _route] call BATTLESPACE_CONVOY_ROUTE_PROJECT) params ["_segment", "_along", "_progress", "_distance"];
-            private _direction = (_route select _segment) getDir (_route select (_segment + 1));
-            private _turn = abs (((getDir _x - _direction + 540) % 360) - 180);
-            _distance > 20 || {_turn > 60}
-        } >= 0;
-    };
-    // Let native combat manoeuvres respond to an ambush without a spacing hold.
     private _inCombat = _vehicles findIf {behaviour driver _x == "COMBAT"} >= 0;
     {
         _x params ["_progress", "_index", "_vehicle"];

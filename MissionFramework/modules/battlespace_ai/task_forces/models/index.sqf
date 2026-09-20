@@ -93,42 +93,25 @@ BATTLESPACE_TASK_FORCE_MOVE_SIMULATED_GROUP = {
 		};
 	};
 
-	private _iterations = round (_travelSpeed / 20);
-
-	private _iterDist = _travelSpeed / _iterations;
-
-	private _newPos = _currentLoc;
-	private _nextNode = _curPath param [_currentPathIndex, []];
-	for "_i" from 1 to _iterations do {
-
-		
-		
-		while { !(_nextNode isEqualTo []) && {(_newPos distance2D _nextNode) < 35} && {_currentPathIndex < (count _curPath - 1)} } do {
-			if(_currentPathIndex < (count _curPath - 1)) then {
-				_currentPathIndex = _currentPathIndex + 1;
-				_nextNode = _curPath param [_currentPathIndex, []];
-			};
-		};
-
-		_state set [1, _currentPathIndex];
-
-		if !(_nextNode isEqualTo []) then {
-			private _remainingDistance = _newPos distance2D _nextNode;
-			if (_remainingDistance <= _iterDist) then {
-				_newPos = +_nextNode;
-			} else {
-				private _dirUnitVec = _newPos vectorFromTo _nextNode;
-				_newPos = _newPos vectorAdd (_dirUnitVec vectorMultiply _iterDist);
-			};
-
-			_newPos set [2, 0];
-
-			
-		};
-	};
-
-	
-	_taskForce set [1, _newPos];
+    private _newPos = +_currentLoc;
+    private _remaining = _travelSpeed;
+    // Consume distance along consecutive edges, never skip nodes by proximity.
+    // A pass visits each reached node once; the route bounds zero-length edges.
+    for "_i" from _currentPathIndex to (count _curPath - 1) do {
+        _currentPathIndex = _i;
+        private _next = _curPath select _i;
+        private _distance = _newPos distance2D _next;
+        if (_distance > _remaining) exitWith {
+            private _factor = _remaining / _distance;
+            _newPos = [(_newPos select 0) + ((_next select 0) - (_newPos select 0)) * _factor,
+                (_newPos select 1) + ((_next select 1) - (_newPos select 1)) * _factor, 0];
+        };
+        _newPos = +_next;
+        _newPos set [2, 0];
+        _remaining = _remaining - _distance;
+    };
+    _state set [1, _currentPathIndex];
+    _taskForce set [1, _newPos];
 	
 };
 

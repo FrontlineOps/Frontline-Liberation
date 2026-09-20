@@ -4,7 +4,9 @@ BATTLESPACE_CONVOY_ROUTE_PROJECT = {
     private _nearest = 1e30;
     private _result = [0, 0, 0, 1e30];
     private _offset = 0;
-    for "_i" from 0 to (count _route - 2) do {
+    // The caller owns the route cursor; proximity cannot choose a future branch.
+    _firstSegment = (0 max _firstSegment) min (count _route - 2);
+    for "_i" from 0 to _firstSegment do {
         private _a = +(_route select _i);
         private _b = +(_route select (_i + 1));
         _a set [2, 0];
@@ -43,20 +45,6 @@ BATTLESPACE_CONVOY_ROUTE_POSE = {
     _pose
 };
 
-BATTLESPACE_CONVOY_ROUTE_WAYPOINTS = {
-    params ["_group", "_route"];
-    if (count _route < 2) exitWith {+_route};
-    private _position = getPosATL vehicle leader _group;
-    ([_position, _route] call BATTLESPACE_CONVOY_ROUTE_PROJECT) params ["_segment", "_along"];
-    // The segment's start is already passed. Retain it only when joining from behind.
-    private _index = _segment + ([0, 1] select (_along > 1));
-    if (_position distance2D (_route select _index) < 5 && {_index < count _route - 1}) then {
-        _index = _index + 1;
-    };
-    // Keep every bend. The pacing worker refills this bounded window as it runs out.
-    _route select [_index, 20]
-};
-
 BATTLESPACE_CONVOY_SPAWN_POSITIONS = {
     params ["_taskForceName", "_taskForce"];
     if (!isServer || {isRemoteExecuted}) exitWith {[]};
@@ -74,8 +62,6 @@ BATTLESPACE_CONVOY_SPAWN_POSITIONS = {
         private _pose = [_route, _progress - _behind] call BATTLESPACE_CONVOY_ROUTE_POSE;
         if (_pose isEqualTo []) exitWith {};
         _pose params ["_planned", "_direction"];
-        private _road = [_planned, 25] call BIS_fnc_nearestRoad;
-        if (!isNull _road) then {_planned = getPosATL _road};
         private _found = [];
         // Search locally along the route; do not scatter the column around a hillside.
         for "_attempt" from 0 to 4 do {

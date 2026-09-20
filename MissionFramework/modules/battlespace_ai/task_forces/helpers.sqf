@@ -106,63 +106,90 @@ BATTLESPACE_TASK_FORCE_HAS_VEHICLES = {
 };
 
 BATTLESPACE_TASK_FORCE_GET_WAYPOINT_ROUTE = {
-	params ["_group", "_destination", ["_route", []]];
-	private _leader = leader _group;
-	private _taskForceName = _group getVariable ["TASKFORCEID", ""];
-	if (_taskForceName == "" && {!isNull _leader}) then {
-		_taskForceName = _leader getVariable ["TASKFORCEID", ""];
-	};
-	if (_route isEqualTo [] && {_taskForceName != ""}) then {
-		_route = +(BATTLESPACE_TASK_FORCE_PATHS getOrDefault [_taskForceName, []]);
-	};
-	if (_route isEqualTo []) exitWith {[[], _taskForceName]};
-	if !([_route] call BATTLESPACE_PATHFIND_ROUTE_IS_VALID) exitWith {
-		diag_log format ["Task Force %1 withheld an invalid route from active-group waypoints", _taskForceName];
-		[[], _taskForceName]
-	};
-    private _force = BATTLESPACE_TASK_FORCES getOrDefault [_taskForceName, []];
-    if ((_force param [0, ""]) == "Convoy") exitWith {
-        [[_group, _route] call BATTLESPACE_CONVOY_ROUTE_WAYPOINTS, _taskForceName]
+    params ["_group", "_destination", ["_route", []]];
+    private _leader = leader _group;
+    private _taskForceName = _group getVariable ["TASKFORCEID", ""];
+    if (_taskForceName == "" && {!isNull _leader}) then {
+        _taskForceName = _leader getVariable ["TASKFORCEID", ""];
     };
-
-	private _startIndex = 0;
-	if (_taskForceName != "") then {
-		private _taskForce = BATTLESPACE_TASK_FORCES get _taskForceName;
-		if (!isNil "_taskForce") then {
-			private _state = _taskForce param [5, []];
-			_startIndex = 0 max ((_state param [1, 0]) - 1);
-		};
-	};
-	if (!isNull _leader) then {
-		private _leaderPosition = getPos _leader;
-		private _closestIndex = 0;
-		private _closestDistance = 1e30;
-		{
-			private _distance = _leaderPosition distance2D _x;
-			if (_distance < _closestDistance) then {
-				_closestDistance = _distance;
-				_closestIndex = _forEachIndex;
-			};
-		} forEach _route;
-		_startIndex = _startIndex max _closestIndex;
-	};
-	if (_startIndex > 0 && {_startIndex < count _route}) then {
-		_route = _route select [_startIndex];
-	};
-
-	private _maximumWaypoints = 20;
-	if (count _route > _maximumWaypoints) then {
-		private _sampled = [];
-		private _stride = ceil ((count _route - 1) / (_maximumWaypoints - 1));
-		for "_i" from 0 to (count _route - 2) step _stride do {
-			_sampled pushBack (_route select _i);
-		};
-		_sampled pushBack (_route select (count _route - 1));
-		_route = _sampled;
-	};
-	_route set [count _route - 1, +_destination];
-	[_route, _taskForceName]
+    if (_route isEqualTo [] && {_taskForceName != ""}) then {
+        _route = BATTLESPACE_TASK_FORCE_PATHS getOrDefault [_taskForceName, []];
+    };
+    if (_route isEqualTo []) exitWith {[[], _taskForceName, 0]};
+    if !([_route] call BATTLESPACE_PATHFIND_ROUTE_IS_VALID) exitWith {
+        diag_log format ["Task Force %1 withheld an invalid route from active-group waypoints", _taskForceName];
+        [[], _taskForceName, 0]
+    };
+    private _state = _group getVariable ["BATTLESPACE_ROUTE_STATE", []];
+    private _index = 0;
+    if ((_state param [0, []]) isEqualTo _route) then {
+        _index = _state select 2;
+    } else {
+        private _force = BATTLESPACE_TASK_FORCES getOrDefault [_taskForceName, []];
+        if (_route isEqualTo (BATTLESPACE_TASK_FORCE_PATHS getOrDefault [_taskForceName, []])) then {
+            _index = ((_force param [5, []]) param [1, 0]) max 0;
+        };
+        _index = _index min (count _route - 1);
+        // Materialized followers can be behind the simulated leader. Walk only
+        // adjacent predecessors, never search for a nearby future road branch.
+        private _position = getPosATL vehicle _leader;
+        while {_index > 0 && {_position distance2D (_route select (_index - 1)) < _position distance2D (_route select _index)}} do {
+            _index = _index - 1;
+        };
+        if (_index < count _route - 1 && {_position distance2D (_route select _index) < 1}) then {_index = _index + 1};
+    };
+    [_route, _taskForceName, _index min (count _route - 1)]
 };
+
+BATTLESPACE_TASK_FORCE_WAYPOINT_RADIUS = {
+    params ["_route", "_index"];
+    private _spacing = 40;
+    if (_index > 0) then {_spacing = _spacing min ((_route select _index) distance2D (_route select (_index - 1)))};
+    if (_index < count _route - 1) then {_spacing = _spacing min ((_route select _index) distance2D (_route select (_index + 1)))};
+    // Adjacent completion circles must not overlap across a bend or junction.
+    0.01 max (12 min (_spacing * 0.35))
+};
+
+BATTLESPACE_TASK_FORCE_ROUTE_ADVANCE = {
+    params ["_group", "_token", "_completed"];
+    if (isRemoteExecuted || {isNull _group} || {!local _group} || {(_group getVariable ["BATTLESPACE_ROUTE_WAYPOINT_TOKEN", -1]) != _token}) exitWith {};
+    private _state = _group getVariable ["BATTLESPACE_ROUTE_STATE", []];
+    if (_state isEqualTo []) exitWith {};
+    _state params ["_route", "_loaded", "_cursor", "_speed", "_combatMode", "_finalType", "_finalBehaviour", "_payload"];
+    _state set [2, _cursor max (_completed + 1)];
+    if (_loaded >= count _route || {_loaded - (_state select 2) > 5}) exitWith {};
+    // Keep the current native waypoint alive during its completion callback.
+    // Refill ahead of it, without polling or stopping at window boundaries.
+    while {currentWaypoint _group > 1} do {deleteWaypoint [_group, 0]};
+    private _end = (count _route) min (_loaded + (20 - count waypoints _group));
+    for "_i" from _loaded to (_end - 1) do {
+        private _final = _i == count _route - 1;
+        private _position = _route select _i;
+        if (count _position == 2) then {_position = [_position select 0, _position select 1, 0]};
+        // Radius zero still permits native placement shifts. -1 uses exact ASL.
+        private _wp = _group addWaypoint [ATLToASL _position, -1];
+        _wp setWaypointType (["MOVE", _finalType] select _final);
+        _wp setWaypointSpeed _speed;
+        _wp setWaypointBehaviour ([( ["SAFE", "AWARE"] select (_finalType == "SAD")), _finalBehaviour] select _final);
+        _wp setWaypointCombatMode _combatMode;
+        _wp setWaypointCompletionRadius ([_route, _i] call BATTLESPACE_TASK_FORCE_WAYPOINT_RADIUS);
+        _wp setWaypointStatements ["true", format ["[group this, %1, %2] call BATTLESPACE_TASK_FORCE_ROUTE_ADVANCE", _token, _i]];
+        if (_final && {_finalType == "TR UNLOAD"}) then {
+            // Keep the existing unloading envelope; only transit targets tighten.
+            _wp setWaypointCompletionRadius 200;
+            _payload synchronizeWaypoint [_wp];
+        };
+        if (_final && {_finalType == "MOVE"}) then {
+            private _hold = _group addWaypoint [ATLToASL _position, -1];
+            _hold setWaypointType "HOLD";
+            _hold setWaypointCompletionRadius 30;
+            _hold setWaypointBehaviour _finalBehaviour;
+            _hold setWaypointCombatMode _combatMode;
+        };
+    };
+    _state set [1, _end];
+};
+
 
 BATTLESPACE_TASK_FORCE_ADD_WAYPOINTS = {
 	params ["_group", "_destination", ["_speed", "LIMITED"], ["_ambush", false], ["_isVehicle", false], ["_route", []]];
@@ -177,11 +204,11 @@ BATTLESPACE_TASK_FORCE_ADD_WAYPOINTS = {
 	while {(count (waypoints _group)) != 0} do {deleteWaypoint ((waypoints _group) select 0);};
 
 	sleep 1;
-	if ((_group getVariable ["BATTLESPACE_ROUTE_WAYPOINT_TOKEN", -1]) != _routeToken) exitWith {};
+    if (!local _group || {(_group getVariable ["BATTLESPACE_ROUTE_WAYPOINT_TOKEN", -1]) != _routeToken}) exitWith {};
 
 	if(!_ambush) then {
 		private _routeData = [_group, _destination, _route] call BATTLESPACE_TASK_FORCE_GET_WAYPOINT_ROUTE;
-		_routeData params ["_waypointRoute", "_taskForceName"];
+        _routeData params ["_waypointRoute", "_taskForceName", "_startIndex"];
         private _force = BATTLESPACE_TASK_FORCES getOrDefault [_taskForceName, []];
         private _type = _force param [0, ""];
         private _phase = (BATTLESPACE_STRATEGIC_OPERATIONS getOrDefault [_taskForceName, createHashMap]) getOrDefault ["phase", ""];
@@ -198,39 +225,22 @@ BATTLESPACE_TASK_FORCE_ADD_WAYPOINTS = {
         };
 		if (_waypointRoute isEqualTo [] && {_taskForceName != ""}) exitWith {
 			private _hold = _group addWaypoint [getPos (leader _group), 0];
+            _hold setWaypointCompletionRadius 30;
             _hold setWaypointType "HOLD";
             _hold setWaypointCombatMode _combatMode;
 		};
 		if (_waypointRoute isEqualTo []) then {_waypointRoute = [+_destination]};
-        private _continues = _type == "Convoy"
-            && {(_waypointRoute select (count _waypointRoute - 1)) distance2D _destination > 1};
-        _group setVariable ["BATTLESPACE_CONVOY_ROUTE_MORE", _continues];
-
-		{
-			private _isFinal = !_continues && {_forEachIndex == count _waypointRoute - 1};
-            private _placementRadius = if (_type == "Convoy") then {0} else {[20, 10] select _isFinal};
-            private _waypoint = _group addWaypoint [_x, _placementRadius];
-			_waypoint setWaypointType (["MOVE", "SAD"] select (_isFinal && {_fieldHunt}));
-			_waypoint setWaypointSpeed ([_speed, "FULL"] select _fieldHunt);
-			_waypoint setWaypointBehaviour ([(["SAFE", ["SAFE", "COMBAT"] select _isVehicle] select _isFinal), "AWARE"] select _fieldHunt);
-            if (_type == "Convoy") then {_waypoint setWaypointBehaviour "SAFE"};
-            _waypoint setWaypointCombatMode _combatMode;
-			_waypoint setWaypointCompletionRadius ([60, 30] select _isFinal);
-            if (_type == "Convoy" && {!_isFinal}) then {_waypoint setWaypointCompletionRadius 15};
-		} forEach _waypointRoute;
-
-		if (!_fieldHunt && {!_continues}) then {
-			private _hold = _group addWaypoint [_destination, 30];
-            _hold setWaypointType "HOLD";
-            _hold setWaypointCombatMode _combatMode;
-			_hold setWaypointBehaviour (["SAFE", "COMBAT"] select _isVehicle);
-            if (_type == "Convoy") then {_hold setWaypointBehaviour "SAFE"};
-		};
+        private _finalType = ["MOVE", "SAD"] select _fieldHunt;
+        private _finalBehaviour = [(["SAFE", "COMBAT"] select _isVehicle), "AWARE"] select _fieldHunt;
+        if (_type == "Convoy") then {_finalBehaviour = "SAFE"};
+        _group setVariable ["BATTLESPACE_ROUTE_STATE", [_waypointRoute, _startIndex, _startIndex, [_speed, "FULL"] select _fieldHunt, _combatMode, _finalType, _finalBehaviour, []]];
+        [_group, _routeToken, _startIndex - 1] call BATTLESPACE_TASK_FORCE_ROUTE_ADVANCE;
 	} else {
 		private _pos = getPos (leader _group);
 		private _waypoint = _group addWaypoint [_pos, 0];
 
 		_waypoint setWaypointType "SENTRY";
+        _waypoint setWaypointCompletionRadius 30;
 		_waypoint setWaypointSpeed _speed;
 		_waypoint setWaypointBehaviour "STEALTH";
 		_waypoint setWaypointCombatMode "YELLOW";
@@ -285,36 +295,26 @@ BATTLESPACE_TASK_FORCE_TRANSPORT_AI = {
 	while {(count (waypoints _group)) != 0} do {deleteWaypoint ((waypoints _group) select 0);};
 	private _routeToken = (_transportGroup getVariable ["BATTLESPACE_TRANSPORT_ROUTE_TOKEN", 0]) + 1;
 	_transportGroup setVariable ["BATTLESPACE_TRANSPORT_ROUTE_TOKEN", _routeToken];
+    private _waypointToken = (_transportGroup getVariable ["BATTLESPACE_ROUTE_WAYPOINT_TOKEN", 0]) + 1;
+    _transportGroup setVariable ["BATTLESPACE_ROUTE_WAYPOINT_TOKEN", _waypointToken];
 
 
 	private _unload_distance = 600 + random 300;
 	sleep 2;
-	if ((_transportGroup getVariable ["BATTLESPACE_TRANSPORT_ROUTE_TOKEN", -1]) != _routeToken) exitWith {};
+    if (!local _transportGroup || {!local _vehicle} || {(_transportGroup getVariable ["BATTLESPACE_TRANSPORT_ROUTE_TOKEN", -1]) != _routeToken}) exitWith {};
 	private _routeData = [_transportGroup, _destination, _route] call BATTLESPACE_TASK_FORCE_GET_WAYPOINT_ROUTE;
-	_routeData params ["_waypointRoute", "_taskForceName"];
+    _routeData params ["_waypointRoute", "_taskForceName", "_startIndex"];
 	if (_waypointRoute isEqualTo [] && {_taskForceName != ""}) exitWith {
 		private _hold = _transportGroup addWaypoint [getPos (leader _transportGroup), 0];
 		_hold setWaypointType "HOLD";
+        _hold setWaypointCompletionRadius 30;
 	};
 	if (_waypointRoute isEqualTo []) then {_waypointRoute = [+_destination]};
-	for "_i" from 0 to (count _waypointRoute - 2) do {
-		private _routeWaypoint = _transportGroup addWaypoint [_waypointRoute select _i, 20];
-		_routeWaypoint setWaypointType "MOVE";
-		_routeWaypoint setWaypointSpeed "FULL";
-		_routeWaypoint setWaypointBehaviour "SAFE";
-		_routeWaypoint setWaypointCombatMode "YELLOW";
-		_routeWaypoint setWaypointCompletionRadius 60;
-	};
-
-	private _transVehWp =  _transportGroup addWaypoint [_destination, 0,0];
-    _transVehWp setWaypointType "TR UNLOAD";
-    _transVehWp setWaypointCompletionRadius 200;
-
     private _infWp = _group addWaypoint [_destination, 0];
     _infWp setWaypointType "GETOUT";
     _infWp setWaypointCompletionRadius 200;
-
-    _infWp synchronizeWaypoint [_transVehWp];
+    _transportGroup setVariable ["BATTLESPACE_ROUTE_STATE", [_waypointRoute, _startIndex, _startIndex, "FULL", "YELLOW", "TR UNLOAD", "SAFE", _infWp]];
+    [_transportGroup, _waypointToken, _startIndex - 1] call BATTLESPACE_TASK_FORCE_ROUTE_ADVANCE;
 
 	waitUntil {
         sleep 5;
@@ -352,6 +352,8 @@ BATTLESPACE_TASK_FORCE_TRANSPORT_AI = {
 		_transportGroup leaveVehicle _vehicle;
 	};
 
+    // Dismounted passengers inherit the carrier's ordered cursor, not its origin.
+    _group setVariable ["BATTLESPACE_ROUTE_STATE", +(_transportGroup getVariable ["BATTLESPACE_ROUTE_STATE", []])];
 	[_transportGroup, _destination, "LIMITED", false, true, _route] call BATTLESPACE_TASK_FORCE_ADD_WAYPOINTS;
 	[_group, _destination, "LIMITED", false, false, _route] call BATTLESPACE_TASK_FORCE_ADD_WAYPOINTS;
 };

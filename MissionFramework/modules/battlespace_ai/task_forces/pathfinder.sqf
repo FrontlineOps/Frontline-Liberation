@@ -301,15 +301,30 @@ BATTLESPACE_PATHFIND_REDUCE_ROAD_ROUTE = {
     params ["_route"];
     if (count _route <= 2) exitWith {_route};
     private _result = [_route select 0];
-    private _lastKept = _route select 0;
-    for "_i" from 1 to (count _route - 2) do {
-        private _previous = _route select (_i - 1);
-        private _current = _route select _i;
-        private _next = _route select (_i + 1);
-        private _turn = abs ((((_previous getDir _current) - (_current getDir _next) + 540) % 360) - 180);
-        if (_lastKept distance2D _current >= 250 || {_turn >= 18}) then {
-            _result pushBack _current;
-            _lastKept = _current;
+    private _anchor = _route select 0;
+    private _delta = (_route select 1) vectorDiff _anchor;
+    _delta set [2, 0];
+    private _axis = vectorNormalized _delta;
+    private _normal = [-(_axis select 1), _axis select 0, 0];
+    private _previousAlong = vectorMagnitude _delta;
+    for "_i" from 2 to (count _route - 1) do {
+        private _point = _route select _i;
+        _delta = _point vectorDiff _anchor;
+        private _along = _delta vectorDotProduct _axis;
+        // All omitted points stay within a 0.35 m fixed-axis corridor. The
+        // resulting chord is therefore at most 0.7 m from any omitted node.
+        // Monotonic projection also preserves switchbacks and U-turns.
+        if (_along < _previousAlong || {_anchor distance2D _point > 60}
+            || {abs (_delta vectorDotProduct _normal) > 0.35} || {_previousAlong == 0}) then {
+            _anchor = _route select (_i - 1);
+            _result pushBack _anchor;
+            _delta = _point vectorDiff _anchor;
+            _delta set [2, 0];
+            _axis = vectorNormalized _delta;
+            _normal = [-(_axis select 1), _axis select 0, 0];
+            _previousAlong = vectorMagnitude _delta;
+        } else {
+            _previousAlong = _along;
         };
     };
     _result pushBack (_route select (count _route - 1));
@@ -535,7 +550,7 @@ BATTLESPACE_PATHFIND_STEP_ROAD = {
 BATTLESPACE_PATHFIND_APPEND_SEGMENT = {
     params ["_combined", "_segment"];
     {
-        if (_combined isEqualTo [] || {(_combined select (count _combined - 1)) distance2D _x > 5}) then {
+        if (_combined isEqualTo [] || {(_combined select (count _combined - 1)) distance2D _x > 0.1}) then {
             _combined pushBack _x;
         };
     } forEach _segment;
