@@ -23,6 +23,7 @@ params [
 
 private _rushOrders = {
     params ["_rushGroup", "_target"];
+    if (CBA_missionTime < (_rushGroup getVariable ["KPLIB_aiCombat_contactUntil", -1])) exitWith {};
     private _distance = (leader _rushGroup) distance _target;
 
     if (_distance < 200 && {(vehicle _target) isKindOf "Air"}) exitWith {
@@ -66,11 +67,11 @@ if (_group isEqualType objNull) then {_group = group _group};
 if (isNull _group) exitWith {false};
 
 _group setSpeedMode "FULL";
-_group enableAttack false;
+_group enableAttack true;
 _group allowFleeing 0;
 {
-    _x disableAI "AUTOCOMBAT";
-    _x disableAI "FSM";
+    _x enableAI "AUTOCOMBAT";
+    _x enableAI "FSM";
 
     private _firedEvent = _x addEventHandler ["Fired", {
         params ["_unit"];

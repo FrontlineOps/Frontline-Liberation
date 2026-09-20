@@ -51,6 +51,23 @@ private _tick = {
         _unit setVariable ["KPLIB_garrisonState", "RELEASED"];
         [_handle] call CBA_fnc_removePerFrameHandler;
     };
+    // Contact suspends the move, not the assignment or its reservation.
+    if (CBA_missionTime < (_unit getVariable ["KPLIB_aiCombat_contactUntil", -1])) exitWith {
+        if !(_state param [11, false]) then {
+            doStop _unit;
+            _state set [11, true];
+            _state set [12, CBA_missionTime];
+        };
+        _unit setVariable ["KPLIB_garrisonState", "CONTACT"];
+        _state set [6, CBA_missionTime];
+    };
+    if (_state param [11, false]) then {
+        _state set [11, false];
+        _deadline = _deadline + CBA_missionTime - (_state select 12);
+        _state set [9, _deadline];
+        _unit setVariable ["KPLIB_garrisonState", "MOVING"];
+        if (_mode == "WEAPON") then {[_unit] orderGetIn true} else {_unit doMove _target};
+    };
     private _asl = AGLToASL _target;
     private _distance = (getPosASL _unit) vectorDistance _asl;
     private _arrived = if (_mode == "WEAPON") then {gunner _building == _unit} else {

@@ -26,6 +26,7 @@ for "_step" from 1 to ((count _queue) min floor KPLIB_aiCombat_batchSize) do {
     };
     _cursor = _cursor + 1;
     [_state] call KPLIB_fnc_aiCombatHear;
+    [_state] call KPLIB_fnc_aiCombatReact;
     [_state] call KPLIB_fnc_aiCombatInvestigate;
     if (_state get "soundWatchUntil" > 0 && {_now > (_state get "soundWatchUntil")}) then {
         if (count (_state get "job") == 0 && {isNull getAttackTarget _unit}) then {_unit doWatch objNull};
@@ -33,13 +34,9 @@ for "_step" from 1 to ((count _queue) min floor KPLIB_aiCombat_batchSize) do {
     };
     if (count (_state get "job") > 0 || {_now < (_state get "next")}) then {continue};
     _state set ["next", _now + 3];
-    private _reason = [_unit] call KPLIB_fnc_aiCombatEligible;
+    private _reason = [_unit, true] call KPLIB_fnc_aiCombatEligible;
     _state set ["reason", _reason];
     if (_reason != "") then {continue};
-    if (count (localNamespace getVariable "KPLIB_aiCombat_active") >= KPLIB_aiCombat_maxActive) then {
-        _state set ["reason", "Active aim budget full"];
-        continue;
-    };
     private _target = getAttackTarget _unit;
     if (!([_unit, _target, true] call KPLIB_fnc_aiCombatVisible)) then {
         _target = objNull;
@@ -58,6 +55,14 @@ for "_step" from 1 to ((count _queue) min floor KPLIB_aiCombat_batchSize) do {
         };
     };
     _state set ["target", _target];
+    [_state, _target] call KPLIB_fnc_aiCombatReact;
+    _reason = [_unit] call KPLIB_fnc_aiCombatEligible;
+    _state set ["reason", _reason];
+    if (_reason != "") then {continue};
+    if (count (localNamespace getVariable "KPLIB_aiCombat_active") >= KPLIB_aiCombat_maxActive) then {
+        _state set ["reason", "Active aim budget full"];
+        continue;
+    };
     private _heard = _state get "heard";
     private _soundRecent = count _heard > 0 && {_now - (_heard select 1) < KPLIB_aiCombat_soundMemory};
     if (isNull _target && {!_soundRecent}) then {

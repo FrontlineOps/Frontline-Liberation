@@ -22,6 +22,7 @@ if (_resetWaypoints) then {
     [_group] call CBA_fnc_clearWaypoints;
 };
 
+_group setVariable ["KPLIB_aiCombat_contactUntil", nil];
 _group setVariable ["KPLIB_lambs_enableGroupReinforce", nil];
 _group setVariable ["KPLIB_lambs_currentTactic", nil];
 _group setVariable ["KPLIB_lambs_baseGroup", nil];
@@ -35,6 +36,7 @@ private _leader = leader _group;
     if ((_unit getVariable ["KPLIB_garrisonToken", []]) isNotEqualTo []) then {
         _unit setVariable ["KPLIB_garrisonToken", [], true];
     };
+    _unit setVariable ["KPLIB_aiCombat_contactUntil", nil];
     _unit setVariable ["KPLIB_garrisonState", nil];
     _unit setVariable ["KPLIB_garrisonTarget", nil];
     _unit doMove (getPosASL _unit);

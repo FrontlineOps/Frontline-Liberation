@@ -60,8 +60,8 @@ private _units = (units _group) select {
     _x call KPLIB_fnc_isAlive && {!isPlayer _x} && {!captive _x} && {isNull objectParent _x}
 };
 
-_group setBehaviour "SAFE";
-_group enableAttack false;
+_group setBehaviour "AWARE";
+_group enableAttack true;
 _group setVariable ["KPLIB_lambs_currentTactic", "taskGarrison"];
 
 reverse _units;

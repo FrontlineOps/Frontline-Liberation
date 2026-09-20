@@ -231,7 +231,7 @@ BATTLESPACE_TASK_FORCE_ADD_WAYPOINTS = {
 		};
 		if (_waypointRoute isEqualTo []) then {_waypointRoute = [+_destination]};
         private _finalType = ["MOVE", "SAD"] select _fieldHunt;
-        private _finalBehaviour = [(["SAFE", "COMBAT"] select _isVehicle), "AWARE"] select _fieldHunt;
+        private _finalBehaviour = [(["AWARE", "COMBAT"] select _isVehicle), "AWARE"] select _fieldHunt;
         if (_type == "Convoy") then {_finalBehaviour = "SAFE"};
         _group setVariable ["BATTLESPACE_ROUTE_STATE", [_waypointRoute, _startIndex, _startIndex, [_speed, "FULL"] select _fieldHunt, _combatMode, _finalType, _finalBehaviour, []]];
         [_group, _routeToken, _startIndex - 1] call BATTLESPACE_TASK_FORCE_ROUTE_ADVANCE;

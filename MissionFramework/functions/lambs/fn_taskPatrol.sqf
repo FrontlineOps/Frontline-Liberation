@@ -47,7 +47,7 @@ _pos = _pos call CBA_fnc_getPos;
 
 [_group] call CBA_fnc_clearWaypoints;
 
-_group setBehaviour "SAFE";
+_group setBehaviour "AWARE";
 _group setSpeedMode "LIMITED";
 _group setCombatMode "YELLOW";
 _group setFormation selectRandom ["STAG COLUMN", "WEDGE", "ECH LEFT", "ECH RIGHT", "VEE", "DIAMOND"];

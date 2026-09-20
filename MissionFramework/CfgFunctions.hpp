@@ -182,6 +182,7 @@ class KPLIB {
         class aiCombatSound    {};
         class aiCombatHear     {};
         class aiCombatInvestigate {};
+        class aiCombatReact {};
         class aiCombatInspect  {};
     };
     class module_guidance {

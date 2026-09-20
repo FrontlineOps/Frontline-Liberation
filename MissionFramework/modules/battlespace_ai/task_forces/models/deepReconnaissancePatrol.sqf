@@ -5,6 +5,7 @@
 
 BATTLESPACE_DEEP_RECON_GET_COMBAT_MODE = {
     params ["_group"];
+    if (CBA_missionTime < (_group getVariable ["KPLIB_aiCombat_contactUntil", -1])) exitWith {"YELLOW"};
     ["BLUE", "GREEN"] select (CBA_missionTime < (_group getVariable ["BATTLESPACE_RECON_UNDER_FIRE_UNTIL", -1]))
 };
 
@@ -39,8 +40,8 @@ BATTLESPACE_DEEP_RECON_INIT_UNIT = {
     if (_unit getVariable ["BATTLESPACE_RECON_ROE_INITIALIZED", false]) exitWith {};
     _unit setVariable ["BATTLESPACE_RECON_ROE_INITIALIZED", true];
     _unit setUnitCombatMode ([group _unit] call BATTLESPACE_DEEP_RECON_GET_COMBAT_MODE);
-    // Incoming projectiles or actual hits release self-defense. Merely seeing
-    // an armed enemy must not let Arma's GREEN mode initiate the firefight.
+    // Hits also release self-defense; confirmed visual contact is handled by
+    // the shared infantry perception pass before scripted firing eligibility.
     _unit addEventHandler ["Suppressed", {
         params ["_unit", "_distance", "_shooter", "_instigator"];
         [_unit, [ _instigator, _shooter ] select isNull _instigator] call BATTLESPACE_DEEP_RECON_UNDER_FIRE;

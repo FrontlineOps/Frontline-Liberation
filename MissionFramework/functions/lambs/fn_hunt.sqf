@@ -47,9 +47,9 @@ if (!local _group) exitWith {false};
 if (_group isEqualType objNull) then {_group = group _group};
 if (isNull _group) exitWith {false};
 
-_group setBehaviour "SAFE";
+_group setBehaviour "AWARE";
 _group setSpeedMode "LIMITED";
-_group enableAttack false;
+_group enableAttack true;
 _group setVariable ["KPLIB_lambs_currentTactic", "taskHunt"];
 _group setVariable ["KPLIB_lambs_enableGroupReinforce", _enableReinforcement];
 
@@ -64,7 +64,7 @@ waitUntil {
     private _combat = (behaviour (leader _group)) isEqualTo "COMBAT";
     private _onFoot = isNull (objectParent (leader _group));
 
-    if (!isNull _target) then {
+    if (!isNull _target && {CBA_missionTime >= (_group getVariable ["KPLIB_aiCombat_contactUntil", -1])}) then {
         _group move (_target getPos [
             random (linearConversion [50, 1000, (leader _group) distance2D _target, 25, 300, true]),
             random 360

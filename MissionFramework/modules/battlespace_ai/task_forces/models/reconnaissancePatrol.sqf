@@ -38,8 +38,8 @@ BATTLESPACE_TASK_FORCE_RECON_SELECT_LEG = {
     BATTLESPACE_TASK_FORCE_PATHS deleteAt _taskForceName;
     [_taskForceName, _taskForce param [1, []], _destination] call QUEUE_PATHFIND_REQUEST;
     {
-        _x setBehaviourStrong "STEALTH";
-        _x setCombatMode "GREEN";
+        _x setBehaviourStrong "AWARE";
+        _x setCombatMode "YELLOW";
         _x setSpeedMode "LIMITED";
     } forEach (_taskForce param [4, []]);
     true
