@@ -7,6 +7,8 @@ if (isNull _object || {!(_object isKindOf "House" || {_object isKindOf "Building
 if (count _position != 3 || {count _normal != 3}
     || {(_position + _normal) findIf {!(_x isEqualType 0) || {!finite _x}} >= 0}
     || {vectorMagnitude _normal < 0.5}) exitWith {0};
+private _material = [_surface] call KPLIB_fnc_munitionsMaterial;
+if !(_material in ["MASONRY", "METAL"]) exitWith {0};
 _normal = vectorNormalized _normal;
 // Move off the observed surface only into its exposed side, never behind it.
 private _origin = _position vectorAdd (_normal vectorMultiply 0.04);

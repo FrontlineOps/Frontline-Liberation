@@ -45,9 +45,9 @@ if (count _position != 3 || {count _velocity != 3} || {count _normal != 3}
 private _cfg = configOf _projectile;
 private _hit = getNumber (_cfg >> "hit");
 private _speed = vectorMagnitude _velocity;
-private _material = toLower _surface;
-// Deliberately bounded game eligibility, not a material failure threshold.
-private _supported = ["concrete", "brick", "stone", "metal", "armour", "armor", "steel"] findIf {_material find _x >= 0} >= 0;
+private _material = [_surface] call KPLIB_fnc_munitionsMaterial;
+// Conservative effect eligibility, not a material failure threshold.
+private _supported = _material in ["MASONRY", "METAL"];
 if (!_supported || {_hit < 40} || {_speed < 50}
     || {!(toLower getText (_cfg >> "simulation") in ["shotbullet", "shotshell", "shotrocket", "shotmissile"])}
     || {getNumber (_cfg >> "explosive") >= 0.5 && {!(_projectile getShotInfo 5)}}) exitWith {};

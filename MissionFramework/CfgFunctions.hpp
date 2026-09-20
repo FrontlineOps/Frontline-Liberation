@@ -80,6 +80,7 @@ class KPLIB {
         class munitionsFragProfile {};
         class munitionsEmit {};
         class munitionsParticleTick {};
+        class munitionsMaterial {};
         class munitionsSpallHit {};
         class munitionsImpact {};
         class munitionsDebris {};

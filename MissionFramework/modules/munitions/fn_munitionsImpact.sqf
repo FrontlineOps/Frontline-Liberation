@@ -17,6 +17,8 @@ _projectile setVariable ["KPLIB_munitionsSurfaceContact", [CBA_missionTime, _obj
 private _cfg = configOf _projectile;
 // Explosive impacts get one structural-debris path from their actual detonation.
 if (getNumber (_cfg >> "explosive") >= 0.5) exitWith {};
+// Ordinary bullets retain native dust/chips without extra damaging proxies.
+if (toLower getText (_cfg >> "simulation") == "shotbullet" && {getNumber (_cfg >> "hit") < 40}) exitWith {};
 private _speed = vectorMagnitude _velocity;
 if (_speed < 20) exitWith {};
 private _count = round linearConversion [0, 200, getNumber (_cfg >> "hit"), 2, 4, true];
