@@ -13,7 +13,7 @@ private _metrics = localNamespace getVariable ["KPLIB_munitionsParticleMetrics",
 private _work = 0;
 while {_queue isNotEqualTo [] && {_work < 64} && {diag_tickTime - _started < 0.002}} do {
     private _job = _queue deleteAt 0;
-    _job params ["_origin", "_ammo", "_directions", "_index", "_types", "_speed", "_parents", "_kind", "_at", "_created", ["_burst", []], ["_anchor", []]];
+    _job params ["_origin", "_ammo", "_directions", "_index", "_types", "_speed", "_parents", "_kind", "_at", "_created", "_burst", "_anchor", "_serial"];
     private _expired = CBA_missionTime - _at > 0.75;
     if (_anchor isNotEqualTo []) then {
         _anchor params ["_object", "_position", "_direction", "_up"];
@@ -25,12 +25,14 @@ while {_queue isNotEqualTo [] && {_work < 64} && {diag_tickTime - _started < 0.0
     };
     if (_expired) then {
         _metrics set [2, (_metrics select 2) + count _directions - _index];
+        [_serial, count _directions - _index] call KPLIB_fnc_munitionsBudgetReturn;
     } else {
         // Eight at a time keeps simultaneous impacts interleaved and bounded.
         for "_i" from 1 to (8 min (count _directions - _index)) do {
             private _direction = _directions select _index;
             private _fragment = createVehicleLocal [selectRandom _types, ASLToAGL _origin, [], 0, "CAN_COLLIDE"];
             if (!isNull _fragment) then {
+                (localNamespace getVariable "KPLIB_munitionsBudgetLive") pushBack [_fragment, _serial];
                 _fragment setVariable ["KPLIB_munitionsParticle", true];
                 _fragment setVariable ["KPLIB_munitionsParticleKind", _kind];
                 _fragment setVariable ["KPLIB_munitionsVisualBurst", _burst];
@@ -43,7 +45,10 @@ while {_queue isNotEqualTo [] && {_work < 64} && {diag_tickTime - _started < 0.0
                 [_fragment] call KPLIB_fnc_munitionsTrack;
                 _created = _created + 1;
                 _metrics set [1, (_metrics select 1) + 1];
-            } else {_metrics set [3, (_metrics select 3) + 1]};
+            } else {
+                _metrics set [3, (_metrics select 3) + 1];
+                [_serial, 1] call KPLIB_fnc_munitionsBudgetReturn;
+            };
             _index = _index + 1;
             _work = _work + 1;
         };

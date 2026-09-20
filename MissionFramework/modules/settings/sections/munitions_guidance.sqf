@@ -73,6 +73,14 @@
 ] call _add;
 
 [
+    "KPLIB_munitions_global_cap", "SLIDER",
+    "Mission-wide concurrent fragment limit",
+    "Maximum combined mission-generated fragments, spall, and damaging debris across all machines. Queued grants reserve slots; excess requests are omitted without deleting particles in flight. 0 disables these custom particles. Ordinary bullets and rockets are unaffected. Requires a mission restart.",
+    ["Frontline - Munitions & Guidance", "Advanced - effect capacity"],
+    [0.0, 8192.0, 2048, 0], false
+] call _add;
+
+[
     "KPLIB_munitions_gas_asset_limit", "SLIDER",
     "Vehicle and building recipients per type",
     "Maximum nearby vehicles and maximum nearby buildings evaluated by each pressure field. The limit applies separately to each type.",
