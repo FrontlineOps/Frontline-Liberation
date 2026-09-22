@@ -17,18 +17,7 @@ Example for initPlayerLocal.sqf:
 ["TAG_PLAYER_GET_IN", "GetInMan", {[_this select 2] spawn kp_fuel_consumption;}] call CBA_fnc_addBISPlayerEventHandler;
 */
 
-//CONFIG
-// Time in Minutes till a full tank depletes when the vehicle is standing with running engine
-private _kp_neutral_consumption = KP_liberation_fuel_neutral;
-// Time in Minutes till a full tank depletes when the vehicle is driving
-private _kp_normal_consumption = KP_liberation_fuel_normal;
-// Time in Minutes till a full tank depletes when the vehicle is driving at max speed
-private _kp_max_consumption = KP_liberation_fuel_max;
-
-/*
-DO NOT EDIT BELOW
-*/
-
+// Read current endurance settings inside the existing vehicle loop.
 if (isNil "kp_fuel_consumption_vehicles") then {
     kp_fuel_consumption_vehicles = [];
 };
@@ -39,12 +28,12 @@ if (!((_this select 0) in kp_fuel_consumption_vehicles)) then {
         if (isEngineOn (_this select 0)) then {
             if (speed (_this select 0) > 5) then {
                 if (speed (_this select 0) > (getNumber (configOf (_this select 0) >> "maxSpeed") * 0.9)) then {
-                    (_this select 0) setFuel (fuel (_this select 0) - (1 / (_kp_max_consumption * 60)));
+                    (_this select 0) setFuel (fuel (_this select 0) - (1 / (KP_liberation_fuel_max * 60)));
                 } else {
-                    (_this select 0) setFuel (fuel (_this select 0) - (1 / (_kp_normal_consumption * 60)));
+                    (_this select 0) setFuel (fuel (_this select 0) - (1 / (KP_liberation_fuel_normal * 60)));
                 };
             } else {
-                (_this select 0) setFuel (fuel (_this select 0) - (1 / (_kp_neutral_consumption * 60)));
+                (_this select 0) setFuel (fuel (_this select 0) - (1 / (KP_liberation_fuel_neutral * 60)));
             };
         };
         uiSleep 1;

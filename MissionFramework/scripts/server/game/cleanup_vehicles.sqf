@@ -8,11 +8,14 @@ private _cleanupClassIndex = createHashMap;
     _cleanupClassIndex set [toLower _x, true];
 } forEach _cleanupClassnames;
 
-while {GRLIB_cleanup_vehicles > 0} do {
+while {GRLIB_endgame == 0} do {
 
     sleep 600;
+    private _cleanupHours = GRLIB_cleanup_vehicles;
+    if (_cleanupHours <= 0) then {continue};
 
     {
+        if (GRLIB_cleanup_vehicles <= 0) exitWith {};
         private _vehicle = _x;
         private _resetTicker = true;
 
@@ -37,7 +40,8 @@ while {GRLIB_cleanup_vehicles > 0} do {
             _vehicle setVariable ["GRLIB_empty_vehicle_ticker", 0];
         };
 
-        if (_vehicle getVariable ["GRLIB_empty_vehicle_ticker", 0] >= (6 * GRLIB_cleanup_vehicles)) then {
+        // Never turn a mid-pass disable into a zero-hour deletion threshold.
+        if (GRLIB_cleanup_vehicles > 0 && {_vehicle getVariable ["GRLIB_empty_vehicle_ticker", 0] >= (6 * _cleanupHours)}) then {
             deleteVehicle _vehicle;
         };
         if ((_forEachIndex % 25) == 24) then {

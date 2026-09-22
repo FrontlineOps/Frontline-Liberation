@@ -16,6 +16,7 @@ private _add = {
         default {_data};
     };
     _rows pushBack [_runtime, _key, _type, _data, _live, _title, _category, _default];
+    _tip = _tip + ([" Requires a mission restart.", " Live: subsequent updates/actions use the new value; existing operations may retain their captured values."] select _live);
     [_key, _type, [_title, _tip], _category, _data, 1, {}, !_live] call CBA_fnc_addSetting;
 };
 #include "sections\campaign.sqf"

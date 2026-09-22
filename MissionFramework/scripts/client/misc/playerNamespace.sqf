@@ -45,14 +45,14 @@ while {true} do {
     player setVariable ["KPLIB_isAwayFromStart", (player distance2d startbase) > 1000];
 
     // Is near an arsenal object
-    if (KP_liberation_mobilearsenal) then {
-        player setVariable ["KPLIB_isNearArsenal", !(((player nearObjects [Arsenal_typename, 5]) select {getObjectType _x >= 8}) isEqualTo [])];
-    };
+    player setVariable ["KPLIB_isNearArsenal", KP_liberation_mobilearsenal && {
+        !(((player nearObjects [Arsenal_typename, 5]) select {getObjectType _x >= 8}) isEqualTo [])
+    }];
 
     // Is near a mobile respawn
-    if (KP_liberation_mobilerespawn) then {
-        player setVariable ["KPLIB_isNearMobRespawn", !((player nearEntities [[Respawn_truck_typename, huron_typename], 10]) isEqualTo [])];
-    };
+    player setVariable ["KPLIB_isNearMobRespawn", KP_liberation_mobilerespawn && {
+        !((player nearEntities [[Respawn_truck_typename, huron_typename], 10]) isEqualTo [])
+    }];
 
     // Is near startbase
     player setVariable ["KPLIB_isNearStart", (player distance2d startbase) < 200];

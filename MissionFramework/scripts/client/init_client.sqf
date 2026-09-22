@@ -60,17 +60,12 @@ player addMPEventHandler ["MPKilled", {_this spawn kill_manager;}];
 ["KPLIB_PLAYER_SEAT", "SeatSwitchedMan", {[] call KPLIB_fnc_checkLocalVehicleAccess}] call CBA_fnc_addBISPlayerEventHandler;
 ["KPLIB_PLAYER_RATING", "HandleRating", {if ((_this select 1) < 0) then {0};}] call CBA_fnc_addBISPlayerEventHandler;
 
-// Disable stamina, if selected in parameter
-if (!GRLIB_fatigue) then {
-    player enableStamina false;
-    ["KPLIB_PLAYER_STAMINA", "Respawn", {player enableStamina false;}] call CBA_fnc_addBISPlayerEventHandler;
-};
-
-// Reduce aim precision coefficient, if selected in parameter
-if (!KPLIB_sway) then {
-    player setCustomAimCoef 0.1;
-    ["KPLIB_PLAYER_SWAY", "Respawn", {player setCustomAimCoef 0.1;}] call CBA_fnc_addBISPlayerEventHandler;
-};
+// Register once regardless of the initial setting. Respawn must use the
+// current configuration rather than reinstalling a hardcoded disabled state.
+player enableStamina GRLIB_fatigue;
+["KPLIB_PLAYER_STAMINA", "Respawn", {player enableStamina GRLIB_fatigue;}] call CBA_fnc_addBISPlayerEventHandler;
+player setCustomAimCoef ([0.1, 1] select KPLIB_sway);
+["KPLIB_PLAYER_SWAY", "Respawn", {player setCustomAimCoef ([0.1, 1] select KPLIB_sway);}] call CBA_fnc_addBISPlayerEventHandler;
 
 execVM "scripts\client\ui\intro.sqf";
 
