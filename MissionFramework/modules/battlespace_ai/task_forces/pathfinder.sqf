@@ -134,8 +134,6 @@ BATTLESPACE_PATHFIND_GET_DYNAMIC_MULTIPLIER = {
 };
 
 BATTLESPACE_PATHFIND_BUILD_SNAPSHOTS = {
-    // Supplying state and a deadline resumes a partial snapshot. One-argument
-    // diagnostic callers retain the original [threats, congestion] return value.
     params ["_taskForceName", ["_state", []], ["_deadline", 1e30]];
     if (_state isEqualTo []) then {
         private _threats = [];
@@ -146,70 +144,23 @@ BATTLESPACE_PATHFIND_BUILD_SNAPSHOTS = {
             if (_normalized isEqualTo []) then {continue};
             _threats pushBack [_normalized, count (_x getOrDefault ["Players", []])];
         } forEach BATTLESPACE_TASK_FORCES_BLUFOR_CLUSTERS;
-        // Keep the route references from this snapshot, not a deep copy of
-        // every point. Published routes are replaced, never edited in place.
-        (toArray BATTLESPACE_TASK_FORCE_PATHS) params ["_ids", "_routes"];
-        _state append [_ids, _routes, 0, [], createHashMap, _threats,
-            missionNamespace getVariable ["BATTLESPACE_PATHFIND_GRID_SIZE", 100]];
-    };
-    _state params ["_ids", "_routes", "_routeIndex", "_entry", "_congestion", "_threats", "_gridSize"];
-
-    while {_routeIndex < count _ids && {diag_tickTime < _deadline}} do {
-        private _id = _ids select _routeIndex;
-        private _route = _routes select _routeIndex;
-        if (_id == _taskForceName || {!(_route isEqualType [])} || {_route isEqualTo []}) then {
-            _routeIndex = _routeIndex + 1;
-            _state set [2, _routeIndex];
-            continue;
-        };
-        if (_entry isEqualTo []) then {
-            private _cached = BATTLESPACE_PATHFIND_ROUTE_CELLS getOrDefault [_id, []];
-            private _ready = count _cached == 3
-                && {(_cached select 0) isEqualRef _route}
-                && {(_cached select 1) == _gridSize};
-            _entry = [if (_ready) then {_cached select 2} else {createHashMap}, 0, _ready];
-            _state set [3, _entry];
-        };
-        _entry params ["_cells", "_cursor", "_ready"];
-        if (!_ready) then {
-            // Validate and project each changed route once. Do not add any
-            // of its cells to the snapshot until the entire route is valid.
-            while {_cursor < count _route && {diag_tickTime < _deadline}} do {
-                private _position = [_route select _cursor] call BATTLESPACE_PATHFIND_NORMALIZE_POSITION;
-                _cursor = _cursor + 1;
-                if (_position isEqualTo []) exitWith {
-                    _cells = createHashMap;
-                    _cursor = count _route;
-                };
-                private _key = format ["%1:%2", floor ((_position select 0) / _gridSize), floor ((_position select 1) / _gridSize)];
-                _cells set [_key, true];
+        // Accepted routes already have cell maps. Retain those immutable maps
+        // so replacement/deletion cannot change a snapshot halfway through.
+        private _routes = [];
+        {
+            if (_x != _taskForceName) then {
+                _routes pushBack (BATTLESPACE_PATHFIND_ROUTE_CELLS get _x);
             };
-            _entry set [0, _cells];
-            _entry set [1, _cursor];
-            if (_cursor >= count _route) then {
-                _cells = keys _cells;
-                BATTLESPACE_PATHFIND_ROUTE_CELLS set [_id, [_route, _gridSize, _cells]];
-                _cursor = 0;
-                _entry set [0, _cells];
-                _entry set [1, 0];
-                _entry set [2, true];
-            };
-        };
-        if !(_entry select 2) exitWith {};
-        // Reuse compact cell keys, with a cursor so even a cold/large snapshot
-        // cannot monopolize a callback. Excluding self still preserves overlaps.
-        while {_cursor < count _cells && {diag_tickTime < _deadline}} do {
-            _congestion set [_cells select _cursor, true];
-            _cursor = _cursor + 1;
-        };
-        _entry set [1, _cursor];
-        if (_cursor < count _cells) exitWith {};
-        _routeIndex = _routeIndex + 1;
-        _state set [2, _routeIndex];
-        _entry = [];
-        _state set [3, _entry];
+        } forEach BATTLESPACE_TASK_FORCE_PATHS;
+        _state append [_routes, 0, createHashMap, _threats];
     };
-    if (_routeIndex < count _ids) exitWith {[]};
+    _state params ["_routes", "_cursor", "_congestion", "_threats"];
+    while {_cursor < count _routes && {diag_tickTime < _deadline}} do {
+        _congestion merge [_routes select _cursor, true];
+        _cursor = _cursor + 1;
+    };
+    _state set [1, _cursor];
+    if (_cursor < count _routes) exitWith {[]};
     [_threats, _congestion]
 };
 
@@ -848,6 +799,14 @@ FULFILL_PATHFIND_REQUESTS = {
                 private _route = _job getOrDefault ["result", []];
                 if ([_route] call BATTLESPACE_PATHFIND_ROUTE_IS_VALID) then {
                     if ([_taskForceName, _route, _job getOrDefault ["profile", ""]] call BATTLESPACE_TASK_FORCE_PATH_FOUND) then {
+                        // Convert only this accepted route, once. Grid size is
+                        // mission configuration, like the terrain-node cache.
+                        private _cells = createHashMap;
+                        private _size = missionNamespace getVariable ["BATTLESPACE_PATHFIND_GRID_SIZE", 100];
+                        {
+                            _cells set [format ["%1:%2", floor ((_x select 0) / _size), floor ((_x select 1) / _size)], true];
+                        } forEach _route;
+                        BATTLESPACE_PATHFIND_ROUTE_CELLS set [_taskForceName, _cells];
                         [_job get "cacheKey", _route] call BATTLESPACE_PATHFIND_CACHE_ROUTE;
                     };
                 } else {
