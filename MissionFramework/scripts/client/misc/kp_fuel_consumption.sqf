@@ -17,18 +17,6 @@ Example for initPlayerLocal.sqf:
 ["TAG_PLAYER_GET_IN", "GetInMan", {[_this select 2] spawn kp_fuel_consumption;}] call CBA_fnc_addBISPlayerEventHandler;
 */
 
-//CONFIG
-// Time in Minutes till a full tank depletes when the vehicle is standing with running engine
-private _kp_neutral_consumption = KP_liberation_fuel_neutral;
-// Time in Minutes till a full tank depletes when the vehicle is driving
-private _kp_normal_consumption = KP_liberation_fuel_normal;
-// Time in Minutes till a full tank depletes when the vehicle is driving at max speed
-private _kp_max_consumption = KP_liberation_fuel_max;
-
-/*
-DO NOT EDIT BELOW
-*/
-
 if (isNil "kp_fuel_consumption_vehicles") then {
     kp_fuel_consumption_vehicles = [];
 };
@@ -36,6 +24,10 @@ if (isNil "kp_fuel_consumption_vehicles") then {
 if (!((_this select 0) in kp_fuel_consumption_vehicles)) then {
     kp_fuel_consumption_vehicles pushBack (_this select 0);
     while {local (_this select 0)} do {
+        // Read live endurance settings for already occupied vehicles too.
+        private _kp_neutral_consumption = KP_liberation_fuel_neutral;
+        private _kp_normal_consumption = KP_liberation_fuel_normal;
+        private _kp_max_consumption = KP_liberation_fuel_max;
         if (isEngineOn (_this select 0)) then {
             if (speed (_this select 0) > 5) then {
                 if (speed (_this select 0) > (getNumber (configOf (_this select 0) >> "maxSpeed") * 0.9)) then {

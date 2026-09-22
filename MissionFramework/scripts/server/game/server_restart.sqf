@@ -1,6 +1,7 @@
-if (!isDedicated) exitWith {};
+if (!isDedicated || {isRemoteExecuted}) exitWith {};
 
-_serverDuration = (KP_liberation_restart * 60 * 60);
+private _hours = KP_liberation_restart;
+private _serverDuration = _hours * 3600;
 
 [format ["Restart Timer Set To %1", _serverDuration], "RESTART"] call KPLIB_fnc_log;
 
@@ -14,6 +15,17 @@ private _timeStart = diag_tickTime;
 private ["_timeSinceStart","_timeUntilRestart"];
 while{true} do
 {
+    if (_hours != KP_liberation_restart) then {
+        _hours = KP_liberation_restart;
+        _serverDuration = _hours * 3600;
+        _timeStart = diag_tickTime;
+        _30minspassed = false;
+        _15minspassed = false;
+        _5minspassed = false;
+        _60secondspassed = false;
+        [format ["Restart timer changed: %1 hours from now (0 = disabled)", _hours], "RESTART"] call KPLIB_fnc_log;
+    };
+    if (_hours <= 0) then {sleep 15; continue};
     _timeSinceStart = diag_tickTime - _timeStart;
     _timeUntilRestart = _serverDuration - _timeSinceStart;
 
@@ -55,6 +67,8 @@ while{true} do
     {
         ["Restart timeout elapsed, attempting server shutdown.", "RESTART"] call KPLIB_fnc_log;
         sleep 5;
+        // An admin can cancel or reschedule even during the final grace period.
+        if (KP_liberation_restart != _hours || {KP_liberation_restart <= 0}) then {continue};
 
         private _myPass = call compile preprocessFileLineNumbers "\userconfig\restart\myPass.hpp";
         private _shutdownSuccess = _myPass serverCommand (["#restart", "#restartserver"] select ((productVersion select 6) isEqualTo "Windows"));

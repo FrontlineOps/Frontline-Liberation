@@ -8,11 +8,15 @@ private _cleanupClassIndex = createHashMap;
     _cleanupClassIndex set [toLower _x, true];
 } forEach _cleanupClassnames;
 
-while {GRLIB_cleanup_vehicles > 0} do {
+// Keep the existing worker alive when disabled; never interpret 0 as an expiry.
+while {true} do {
 
     sleep 600;
+    if (GRLIB_cleanup_vehicles <= 0) then {continue};
 
     {
+        private _hours = GRLIB_cleanup_vehicles;
+        if (_hours <= 0) exitWith {};
         private _vehicle = _x;
         private _resetTicker = true;
 
@@ -37,7 +41,7 @@ while {GRLIB_cleanup_vehicles > 0} do {
             _vehicle setVariable ["GRLIB_empty_vehicle_ticker", 0];
         };
 
-        if (_vehicle getVariable ["GRLIB_empty_vehicle_ticker", 0] >= (6 * GRLIB_cleanup_vehicles)) then {
+        if (GRLIB_cleanup_vehicles > 0 && {_vehicle getVariable ["GRLIB_empty_vehicle_ticker", 0] >= (6 * _hours)}) then {
             deleteVehicle _vehicle;
         };
         if ((_forEachIndex % 25) == 24) then {

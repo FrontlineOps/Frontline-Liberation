@@ -1,4 +1,6 @@
-/* Frontline Intelligence & Civilians. Defaults preserve the prior mission configuration. */
+/* Frontline Intelligence & Civilians. Defaults preserve the prior mission configuration.
+   Live policy changes apply on the next consumer check/new operation;
+   existing compositions, paid resources and recorded deadlines are retained. */
 
 [
     "KP_liberation_cr_building_penalty", "SLIDER",
@@ -35,7 +37,7 @@
 [
     "KP_liberation_cr_param_buildings", "CHECKBOX",
     "Penalize building damage before destruction",
-    "Count damaged civilian buildings toward the capture penalty. When disabled, only destroyed buildings count.",
+    "Count damaged civilian buildings toward the capture penalty. When disabled, only destroyed buildings count. Fixed for the session so capture penalties use consistent building baselines.",
     ["Frontline - Intelligence & Civilians", "Civilian reputation"],
     false, false
 ] call _add;
@@ -69,7 +71,7 @@
     "Archive duration (seconds)",
     "Seconds a completed or closed intelligence case remains in the case archive.",
     ["Frontline - Intelligence & Civilians", "Intelligence"],
-    [1, 7200, 1800, 0], false
+    [1, 7200, 1800, 0], true
 ] call _add;
 
 [
@@ -77,7 +79,7 @@
     "Delivery distance (m)",
     "Maximum distance in metres between the escort and a prisoner being delivered at an intelligence terminal.",
     ["Frontline - Intelligence & Civilians", "Intelligence"],
-    [1, 1000, 40, 0], false
+    [1, 1000, 40, 0], true
 ] call _add;
 
 [
@@ -85,13 +87,13 @@
     "Disruption duration (seconds)",
     "Seconds a successful command or fire-support operation blocks the affected sector's new formations or fire missions.",
     ["Frontline - Intelligence & Civilians", "Intelligence"],
-    [1, 4800, 1200, 0], false
+    [1, 4800, 1200, 0], true
 ] call _add;
 
 [
     "KPLIB_intelligence_enabled", "CHECKBOX",
     "Enable intelligence operations",
-    "Enable recovered intelligence, informants, prisoner interrogation and linked operations against enemy support networks.",
+    "Enable recovered intelligence, informants, prisoner interrogation and linked operations against enemy support networks. Startup-only: intelligence actions and workers need a mission restart.",
     ["Frontline - Intelligence & Civilians", "Intelligence"],
     true, false
 ] call _add;
@@ -101,7 +103,7 @@
     "Informant chance (%)",
     "Percentage chance of creating an informant contact when the scheduled attempt meets territory and reputation requirements.",
     ["Frontline - Intelligence & Civilians", "Intelligence"],
-    [0, 100, 75, 0], false
+    [0, 100, 75, 0], true
 ] call _add;
 
 [
@@ -109,7 +111,7 @@
     "Informant lifetime (seconds)",
     "Seconds an unattended informant remains available. The countdown pauses while friendly players are nearby.",
     ["Frontline - Intelligence & Civilians", "Intelligence"],
-    [1, 4800, 1200, 0], false
+    [1, 4800, 1200, 0], true
 ] call _add;
 
 [
@@ -117,7 +119,7 @@
     "Informant min reputation",
     "Minimum civilian reputation needed for informants to offer contact. Lower values allow contact at worse reputation.",
     ["Frontline - Intelligence & Civilians", "Intelligence"],
-    [-100, 0, 0, 2], false
+    [-100, 0, 0, 2], true
 ] call _add;
 
 [
@@ -125,7 +127,7 @@
     "Informant pause distance (m)",
     "Distance in metres within which a living friendly player pauses an informant's expiry countdown.",
     ["Frontline - Intelligence & Civilians", "Intelligence"],
-    [1, 1000, 150, 0], false
+    [1, 1000, 150, 0], true
 ] call _add;
 
 [
@@ -133,7 +135,7 @@
     "Interaction distance (m)",
     "Maximum distance in metres for interacting with intelligence sources and interrogating prisoners.",
     ["Frontline - Intelligence & Civilians", "Intelligence"],
-    [1, 1000, 4, 0], false
+    [1, 1000, 4, 0], true
 ] call _add;
 
 [
@@ -141,7 +143,7 @@
     "Interrogation duration (seconds)",
     "Seconds the player must remain with an eligible prisoner to complete interrogation.",
     ["Frontline - Intelligence & Civilians", "Intelligence"],
-    [1, 3600, 60, 0], false
+    [1, 3600, 60, 0], true
 ] call _add;
 
 [
@@ -149,7 +151,7 @@
     "Lead duration (seconds)",
     "Seconds recovered source information remains available as an intelligence lead.",
     ["Frontline - Intelligence & Civilians", "Intelligence"],
-    [1, 14400, 3600, 0], false
+    [1, 14400, 3600, 0], true
 ] call _add;
 
 [
@@ -157,7 +159,7 @@
     "Max active cases",
     "Maximum intelligence cases with a populated operation site at the same time. Other accepted cases wait for a slot.",
     ["Frontline - Intelligence & Civilians", "Intelligence"],
-    [1, 20, 2, 0], false
+    [1, 20, 2, 0], true
 ] call _add;
 
 [
@@ -165,7 +167,7 @@
     "Max archived reports",
     "Maximum recovered reports retained in the intelligence archive. The oldest are removed when this limit is exceeded.",
     ["Frontline - Intelligence & Civilians", "Intelligence"],
-    [1, 160, 40, 0], false
+    [1, 160, 40, 0], true
 ] call _add;
 
 [
@@ -173,7 +175,7 @@
     "Max cases",
     "Maximum accepted intelligence cases, counting both active and queued operations.",
     ["Frontline - Intelligence & Civilians", "Intelligence"],
-    [1, 24, 6, 0], false
+    [1, 24, 6, 0], true
 ] call _add;
 
 [
@@ -181,7 +183,7 @@
     "Max detainees",
     "Maximum delivered prisoners held by the intelligence custody system at once.",
     ["Frontline - Intelligence & Civilians", "Intelligence"],
-    [1, 48, 12, 0], false
+    [1, 48, 12, 0], true
 ] call _add;
 
 [
@@ -197,7 +199,7 @@
     "Maximum informant interval (seconds)",
     "Upper end of the random delay, in seconds, between eligible informant contact attempts.",
     ["Frontline - Intelligence & Civilians", "Intelligence"],
-    [60, 86400, 10800, 0], false
+    [60, 86400, 10800, 0], true
 ] call _add;
 
 [
@@ -205,7 +207,7 @@
     "Minimum informant interval (seconds)",
     "Lower end of the random delay, in seconds, between eligible informant contact attempts.",
     ["Frontline - Intelligence & Civilians", "Intelligence"],
-    [60, 86400, 5400, 0], false
+    [60, 86400, 5400, 0], true
 ] call _add;
 
 [
@@ -213,7 +215,7 @@
     "Site radius (m)",
     "Radius in metres around the source objective searched for buildings suitable for an intelligence operation site.",
     ["Frontline - Intelligence & Civilians", "Intelligence"],
-    [1, 3600, 900, 0], false
+    [1, 3600, 900, 0], true
 ] call _add;
 
 [
@@ -221,7 +223,7 @@
     "Site statics",
     "Number of crewed static weapons assigned to a new intelligence site, using the current enemy faction's equipment.",
     ["Frontline - Intelligence & Civilians", "Intelligence"],
-    [1, 20, 2, 0], false
+    [1, 20, 2, 0], true
 ] call _add;
 
 [
@@ -229,7 +231,7 @@
     "Spawn clearance",
     "Minimum player clearance in metres before an intelligence operation site can be populated.",
     ["Frontline - Intelligence & Civilians", "Intelligence"],
-    [1, 1200, 300, 0], false
+    [1, 1200, 300, 0], true
 ] call _add;
 
 [
@@ -237,7 +239,7 @@
     "Stage duration (seconds)",
     "Seconds allowed to complete each stage of an intelligence operation.",
     ["Frontline - Intelligence & Civilians", "Intelligence"],
-    [1, 14400, 3600, 0], false
+    [1, 14400, 3600, 0], true
 ] call _add;
 
 [
@@ -245,7 +247,7 @@
     "Stock loss",
     "Fraction of remaining manpower, construction supplies, rockets and trucks removed from the source sector by a successful logistics operation.",
     ["Frontline - Intelligence & Civilians", "Intelligence"],
-    [0, 1, 0.35, 0, true], false
+    [0, 1, 0.35, 0, true], true
 ] call _add;
 
 [
@@ -253,7 +255,7 @@
     "Task chance",
     "Chance that recovered documents or interrogation information reveal a linked operation. A value of 0.5 gives a 50 percent chance.",
     ["Frontline - Intelligence & Civilians", "Intelligence"],
-    [0, 1, 0.2, 0, true], false
+    [0, 1, 0.2, 0, true], true
 ] call _add;
 
 [
@@ -261,7 +263,7 @@
     "Terminal distance (m)",
     "Distance in metres from an FOB or patrol base within which intelligence delivery and terminal actions are available.",
     ["Frontline - Intelligence & Civilians", "Intelligence"],
-    [1, 1000, 75, 0], false
+    [1, 1000, 75, 0], true
 ] call _add;
 
 [
@@ -269,7 +271,7 @@
     "Disruption duration (seconds)",
     "Seconds enemy command coordination remains disrupted after an enemy-held radio tower is destroyed. Further tower losses refresh the duration.",
     ["Frontline - Intelligence & Civilians", "Radio towers"],
-    [1, 14400, 3600, 0], false
+    [1, 14400, 3600, 0], true
 ] call _add;
 
 [
@@ -277,7 +279,7 @@
     "Disruption multiplier",
     "Multiply enemy command delays while communications are disrupted. A value of 2 makes affected command intervals take twice as long.",
     ["Frontline - Intelligence & Civilians", "Radio towers"],
-    [0, 4, 2, 2], false
+    [0, 4, 2, 2], true
 ] call _add;
 
 [
@@ -285,7 +287,7 @@
     "Maximum tower intercept interval (seconds)",
     "Upper end of the random delay, in seconds, between communications intercepts from a captured tower.",
     ["Frontline - Intelligence & Civilians", "Radio towers"],
-    [30, 7200, 900, 0], false
+    [30, 7200, 900, 0], true
 ] call _add;
 
 [
@@ -293,7 +295,7 @@
     "Minimum tower intercept interval (seconds)",
     "Lower end of the random delay, in seconds, between communications intercepts from a captured tower.",
     ["Frontline - Intelligence & Civilians", "Radio towers"],
-    [30, 7200, 600, 0], false
+    [30, 7200, 600, 0], true
 ] call _add;
 
 [
@@ -301,7 +303,7 @@
     "Chance (%)",
     "Percentage chance of surrender when an enemy group breaks or surviving troops are assessed after a battle.",
     ["Frontline - Intelligence & Civilians", "Surrender and prisoners"],
-    [0, 100, 40, 0], false
+    [0, 100, 40, 0], true
 ] call _add;
 
 [
@@ -309,7 +311,7 @@
     "Escort break distance (m)",
     "Maximum separation in metres from the escort before an abandoned prisoner can escape.",
     ["Frontline - Intelligence & Civilians", "Surrender and prisoners"],
-    [1, 1000, 150, 0], false
+    [1, 1000, 150, 0], true
 ] call _add;
 
 [
@@ -317,7 +319,7 @@
     "Group survivor ratio",
     "Largest surviving fraction of a group's observed strength that permits a casualty-triggered surrender attempt. A value of 0.5 requires at least half its strength to be lost.",
     ["Frontline - Intelligence & Civilians", "Surrender and prisoners"],
-    [0, 1, 0.5, 0, true], false
+    [0, 1, 0.5, 0, true], true
 ] call _add;
 
 [
@@ -325,7 +327,7 @@
     "Max prisoners per event",
     "Maximum soldiers who can become prisoners in one surrender event.",
     ["Frontline - Intelligence & Civilians", "Surrender and prisoners"],
-    [1, 24, 6, 0], false
+    [1, 24, 6, 0], true
 ] call _add;
 
 [
@@ -333,5 +335,5 @@
     "Player witness distance (m)",
     "Maximum distance in metres from a broken group to a living friendly player for a witnessed surrender attempt.",
     ["Frontline - Intelligence & Civilians", "Surrender and prisoners"],
-    [1, 2000, 500, 0], false
+    [1, 2000, 500, 0], true
 ] call _add;

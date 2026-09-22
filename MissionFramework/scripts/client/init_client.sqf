@@ -30,11 +30,11 @@ execVM "scripts\client\actions\unflip_manager.sqf";
 execVM "scripts\client\ammoboxes\ammobox_action_manager.sqf";
 execVM "scripts\client\build\build_overlay.sqf";
 execVM "scripts\client\build\do_build.sqf";
-if (KP_liberation_mapmarkers) then {execVM "scripts\client\markers\empty_vehicles_marker.sqf";};
+execVM "scripts\client\markers\empty_vehicles_marker.sqf";
 execVM "scripts\client\markers\fob_markers.sqf";
-if (KP_liberation_mapmarkers) then {execVM "scripts\client\markers\group_icons.sqf";};
+execVM "scripts\client\markers\group_icons.sqf";
 execVM "scripts\client\markers\hostile_groups.sqf";
-if (KP_liberation_mapmarkers) then {execVM "scripts\client\markers\huron_marker.sqf";} else {deleteMarkerLocal "huronmarker"};
+execVM "scripts\client\markers\huron_marker.sqf";
 execVM "scripts\client\markers\sector_manager.sqf";
 execVM "scripts\client\markers\spot_timer.sqf";
 execVM "scripts\client\misc\broadcast_squad_colors.sqf";
@@ -60,17 +60,11 @@ player addMPEventHandler ["MPKilled", {_this spawn kill_manager;}];
 ["KPLIB_PLAYER_SEAT", "SeatSwitchedMan", {[] call KPLIB_fnc_checkLocalVehicleAccess}] call CBA_fnc_addBISPlayerEventHandler;
 ["KPLIB_PLAYER_RATING", "HandleRating", {if ((_this select 1) < 0) then {0};}] call CBA_fnc_addBISPlayerEventHandler;
 
-// Disable stamina, if selected in parameter
-if (!GRLIB_fatigue) then {
-    player enableStamina false;
-    ["KPLIB_PLAYER_STAMINA", "Respawn", {player enableStamina false;}] call CBA_fnc_addBISPlayerEventHandler;
-};
-
-// Reduce aim precision coefficient, if selected in parameter
-if (!KPLIB_sway) then {
-    player setCustomAimCoef 0.1;
-    ["KPLIB_PLAYER_SWAY", "Respawn", {player setCustomAimCoef 0.1;}] call CBA_fnc_addBISPlayerEventHandler;
-};
+// Apply the active session values and read them again on every respawn.
+if (!GRLIB_fatigue) then {player enableStamina false};
+["KPLIB_PLAYER_STAMINA", "Respawn", {player enableStamina GRLIB_fatigue;}] call CBA_fnc_addBISPlayerEventHandler;
+if (!KPLIB_sway) then {player setCustomAimCoef 0.1};
+["KPLIB_PLAYER_SWAY", "Respawn", {player setCustomAimCoef ([0.1, 1] select KPLIB_sway);}] call CBA_fnc_addBISPlayerEventHandler;
 
 execVM "scripts\client\ui\intro.sqf";
 

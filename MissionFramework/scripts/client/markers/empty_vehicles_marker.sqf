@@ -31,7 +31,7 @@ while { true } do {
         if (alive _x && (toLower (typeof _x)) in _vehtomark && (count (crew _x)) == 0 && (_x distance2d startbase) > 500) then {
             _markedveh pushback _x;
         };
-    } foreach vehicles;
+    } forEach (if (KP_liberation_mapmarkers || {typeOf player == "VirtualSpectator_F"}) then {vehicles} else {[]});
 
     if ( count _markedveh != count _vehmarkers ) then {
         { deleteMarkerLocal _x; } foreach _vehmarkers;

@@ -5,7 +5,7 @@
     "Mobile arsenal",
     "Allow arsenal crates to provide arsenal access away from FOBs.",
     ["Frontline - Player & Zeus", "Player experience"],
-    false, false
+    false, true
 ] call _add;
 
 [
@@ -13,7 +13,7 @@
     "Mobile respawn",
     "Offer eligible mobile respawn vehicles as deployment destinations.",
     ["Frontline - Player & Zeus", "Player experience"],
-    false, false
+    false, true
 ] call _add;
 
 [
@@ -21,7 +21,7 @@
     "Mobile respawn cooldown (minutes)",
     "Minutes a player must wait after using mobile respawn before using it again. Disabled removes this cooldown.",
     ["Frontline - Player & Zeus", "Player experience"],
-    [[0, 300, 600, 900, 1200, 1800, 3600], ["STR_PARAMS_DISABLED", "5", "10", "15", "20", "30", "60"], 2], false
+    [[0, 300, 600, 900, 1200, 1800, 3600], ["STR_PARAMS_DISABLED", "5", "10", "15", "20", "30", "60"], 2], true
 ] call _add;
 
 [
@@ -29,15 +29,15 @@
     "Player fatigue",
     "Enable normal player stamina. Disabling this removes the mission's stamina restriction on movement.",
     ["Frontline - Player & Zeus", "Player experience"],
-    true, false
+    true, true
 ] call _add;
 
 [
     "KP_liberation_mapmarkers", "CHECKBOX",
     "Player map markers",
-    "Show friendly group icons, empty-vehicle markers and the transport helicopter marker on the map.",
+    "Show friendly group icons, empty-vehicle markers and the transport helicopter marker on the map. Changes apply on the existing marker refresh loops, within ten seconds.",
     ["Frontline - Player & Zeus", "Player experience"],
-    true, false
+    true, true
 ] call _add;
 
 [
@@ -45,7 +45,7 @@
     "Respawn at attacked sectors",
     "Allow deployment to friendly sectors while they are under attack.",
     ["Frontline - Player & Zeus", "Player experience"],
-    false, false
+    false, true
 ] call _add;
 
 [
@@ -53,15 +53,15 @@
     "Show deployment cinematic",
     "Play the moving camera sequence when deploying to a selected location.",
     ["Frontline - Player & Zeus", "Player experience"],
-    false, false
+    false, true
 ] call _add;
 
 [
     "GRLIB_introduction", "CHECKBOX",
     "Show introduction",
-    "Show the mission introduction after joining.",
+    "Show the mission introduction after joining. Applies to subsequent joins; does not replay the introduction for connected players.",
     ["Frontline - Player & Zeus", "Player experience"],
-    false, false
+    false, true
 ] call _add;
 
 [
@@ -69,13 +69,13 @@
     "Weapon sway",
     "Use normal player weapon sway. Disabling this reduces the player's aiming coefficient to 0.1.",
     ["Frontline - Player & Zeus", "Player experience"],
-    true, false
+    true, true
 ] call _add;
 
 [
     "KP_liberation_enemies_zeus", "CHECKBOX",
     "Add enemies to Zeus",
-    "Add non-civilian enemy units and enemy-catalog vehicles to the commander's editable Zeus objects.",
+    "Add non-civilian enemy units and enemy-catalog vehicles to the commander's editable Zeus objects. Curator object access is initialized for the session; requires a mission restart.",
     ["Frontline - Player & Zeus", "Zeus access"],
     true, false
 ] call _add;
@@ -83,7 +83,7 @@
 [
     "KP_liberation_commander_zeus", "CHECKBOX",
     "Commander Zeus access",
-    "Give the commander role access to the mission's Zeus interface.",
+    "Give the commander role access to the mission's Zeus interface. Curator access requires a mission restart.",
     ["Frontline - Player & Zeus", "Zeus access"],
     false, false
 ] call _add;
@@ -91,7 +91,7 @@
 [
     "KP_liberation_limited_zeus", "CHECKBOX",
     "Limited commander Zeus",
-    "Use the restricted commander Zeus mode, limiting what the commander can edit and place.",
+    "Use the restricted commander Zeus mode, limiting what the commander can edit and place. Curator permissions require a mission restart.",
     ["Frontline - Player & Zeus", "Zeus access"],
     false, false
 ] call _add;

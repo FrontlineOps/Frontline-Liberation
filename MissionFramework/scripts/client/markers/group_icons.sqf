@@ -3,9 +3,26 @@ private [ "_iconed_groups", "_ticks", "_localgroup", "_grouptype", "_groupicon" 
 _iconed_groups = [];
 _ticks = 0;
 
-setGroupIconsVisible [true,false];
+private _visibilitySet = false;
 
 while { true } do {
+    if (!KP_liberation_mapmarkers && {typeOf player != "VirtualSpectator_F"}) then {
+        {clearGroupIcons _x} forEach _iconed_groups;
+        _iconed_groups = [];
+        sleep 5;
+        continue;
+    };
+    if (!_visibilitySet) then {
+        setGroupIconsVisible [true,false];
+        _visibilitySet = true;
+    };
+    // Clear before rebuilding, not after losing the list of icons we own.
+    _ticks = _ticks + 1;
+    if (_ticks >= 15) then {
+        _ticks = 0;
+        {clearGroupIcons _x} forEach _iconed_groups;
+        _iconed_groups = [];
+    };
     {
         if ((_x != group player) && ((side _x == GRLIB_side_friendly))) then {
             if ( (_x in _iconed_groups) && (
@@ -57,12 +74,6 @@ while { true } do {
         };
         _x setGroupIconParams [_color,"",1,true];
     } foreach _iconed_groups;
-
-    _ticks = _ticks + 1;
-    if ( _ticks >= 15 ) then {
-        _ticks = 0;
-        _iconed_groups = [];
-    };
 
     sleep (missionNamespace getVariable ["KP_liberation_client_action_refresh_interval", 5]);
 };

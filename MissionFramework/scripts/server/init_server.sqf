@@ -17,7 +17,7 @@ missionNamespace setVariable ["BYPASS_ENFORCED_ARSENAL", false, true];
 execVM "scripts\server\base\huron_manager.sqf";
 execVM "scripts\server\base\startvehicle_spawn.sqf";
 execVM "scripts\server\game\cleanup_vehicles.sqf";
-if (!KP_liberation_fog_param) then {execVM "scripts\server\game\fucking_set_fog.sqf";};
+execVM "scripts\server\game\fucking_set_fog.sqf";
 execVM "scripts\server\game\manage_time.sqf";
 execVM "scripts\server\game\manage_weather.sqf";
 execVM "scripts\server\game\playtime.sqf";
@@ -50,6 +50,4 @@ execVM "scripts\server\ai\group_cleanup.sqf";
 } forEach allUnits;
 
 // Server Restart Script from K4s0
-if (KP_liberation_restart > 0) then {
-    execVM "scripts\server\game\server_restart.sqf";
-};
+execVM "scripts\server\game\server_restart.sqf";
