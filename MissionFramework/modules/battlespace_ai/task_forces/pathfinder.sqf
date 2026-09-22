@@ -17,6 +17,7 @@ BATTLESPACE_PATHFIND_REQUEST_GENERATIONS = createHashMap;
 BATTLESPACE_PATHFIND_ROUTE_CACHE = createHashMap;
 BATTLESPACE_PATHFIND_ROUTE_CACHE_ORDER = [];
 BATTLESPACE_PATHFIND_TERRAIN_CACHE = createHashMap;
+BATTLESPACE_PATHFIND_ROUTE_CELLS = createHashMap;
 if (isNil "BATTLESPACE_PATHFIND_ROAD_NEIGHBOR_CACHE") then {
     BATTLESPACE_PATHFIND_ROAD_NEIGHBOR_CACHE = createHashMap;
 };
@@ -133,28 +134,82 @@ BATTLESPACE_PATHFIND_GET_DYNAMIC_MULTIPLIER = {
 };
 
 BATTLESPACE_PATHFIND_BUILD_SNAPSHOTS = {
-    params ["_taskForceName"];
-    private _threats = [];
-    {
-        private _position = _x getOrDefault ["Position", []];
-        if (_position isEqualTo []) then {continue};
-        private _normalized = [_position] call BATTLESPACE_PATHFIND_NORMALIZE_POSITION;
-        if (_normalized isEqualTo []) then {continue};
-        _threats pushBack [
-            _normalized,
-            count (_x getOrDefault ["Players", []])
-        ];
-    } forEach BATTLESPACE_TASK_FORCES_BLUFOR_CLUSTERS;
-
-    private _congestion = createHashMap;
-    {
-        if (_x == _taskForceName) then {continue};
-        if !([_y] call BATTLESPACE_PATHFIND_ROUTE_IS_VALID) then {continue};
+    // Supplying state and a deadline resumes a partial snapshot. One-argument
+    // diagnostic callers retain the original [threats, congestion] return value.
+    params ["_taskForceName", ["_state", []], ["_deadline", 1e30]];
+    if (_state isEqualTo []) then {
+        private _threats = [];
         {
-            private _index = [_x] call BATTLESPACE_PATHFIND_GRID_INDEX;
-            _congestion set [[_index] call BATTLESPACE_PATHFIND_GRID_KEY, true];
-        } forEach _y;
-    } forEach BATTLESPACE_TASK_FORCE_PATHS;
+            private _position = _x getOrDefault ["Position", []];
+            if (_position isEqualTo []) then {continue};
+            private _normalized = [_position] call BATTLESPACE_PATHFIND_NORMALIZE_POSITION;
+            if (_normalized isEqualTo []) then {continue};
+            _threats pushBack [_normalized, count (_x getOrDefault ["Players", []])];
+        } forEach BATTLESPACE_TASK_FORCES_BLUFOR_CLUSTERS;
+        // Keep the route references from this snapshot, not a deep copy of
+        // every point. Published routes are replaced, never edited in place.
+        (toArray BATTLESPACE_TASK_FORCE_PATHS) params ["_ids", "_routes"];
+        _state append [_ids, _routes, 0, [], createHashMap, _threats,
+            missionNamespace getVariable ["BATTLESPACE_PATHFIND_GRID_SIZE", 100]];
+    };
+    _state params ["_ids", "_routes", "_routeIndex", "_entry", "_congestion", "_threats", "_gridSize"];
+
+    while {_routeIndex < count _ids && {diag_tickTime < _deadline}} do {
+        private _id = _ids select _routeIndex;
+        private _route = _routes select _routeIndex;
+        if (_id == _taskForceName || {!(_route isEqualType [])} || {_route isEqualTo []}) then {
+            _routeIndex = _routeIndex + 1;
+            _state set [2, _routeIndex];
+            continue;
+        };
+        if (_entry isEqualTo []) then {
+            private _cached = BATTLESPACE_PATHFIND_ROUTE_CELLS getOrDefault [_id, []];
+            private _ready = count _cached == 3
+                && {(_cached select 0) isEqualRef _route}
+                && {(_cached select 1) == _gridSize};
+            _entry = [if (_ready) then {_cached select 2} else {createHashMap}, 0, _ready];
+            _state set [3, _entry];
+        };
+        _entry params ["_cells", "_cursor", "_ready"];
+        if (!_ready) then {
+            // Validate and project each changed route once. Do not add any
+            // of its cells to the snapshot until the entire route is valid.
+            while {_cursor < count _route && {diag_tickTime < _deadline}} do {
+                private _position = [_route select _cursor] call BATTLESPACE_PATHFIND_NORMALIZE_POSITION;
+                _cursor = _cursor + 1;
+                if (_position isEqualTo []) exitWith {
+                    _cells = createHashMap;
+                    _cursor = count _route;
+                };
+                private _key = format ["%1:%2", floor ((_position select 0) / _gridSize), floor ((_position select 1) / _gridSize)];
+                _cells set [_key, true];
+            };
+            _entry set [0, _cells];
+            _entry set [1, _cursor];
+            if (_cursor >= count _route) then {
+                _cells = keys _cells;
+                BATTLESPACE_PATHFIND_ROUTE_CELLS set [_id, [_route, _gridSize, _cells]];
+                _cursor = 0;
+                _entry set [0, _cells];
+                _entry set [1, 0];
+                _entry set [2, true];
+            };
+        };
+        if !(_entry select 2) exitWith {};
+        // Reuse compact cell keys, with a cursor so even a cold/large snapshot
+        // cannot monopolize a callback. Excluding self still preserves overlaps.
+        while {_cursor < count _cells && {diag_tickTime < _deadline}} do {
+            _congestion set [_cells select _cursor, true];
+            _cursor = _cursor + 1;
+        };
+        _entry set [1, _cursor];
+        if (_cursor < count _cells) exitWith {};
+        _routeIndex = _routeIndex + 1;
+        _state set [2, _routeIndex];
+        _entry = [];
+        _state set [3, _entry];
+    };
+    if (_routeIndex < count _ids) exitWith {[]};
     [_threats, _congestion]
 };
 
@@ -399,7 +454,7 @@ BATTLESPACE_PATHFIND_CREATE_ROAD_SEARCH = {
 };
 
 BATTLESPACE_PATHFIND_STEP_GRID = {
-    params ["_search", "_budget"];
+    params ["_search", "_budget", "_deadline"];
     private _used = 0;
     private _open = _search get "open";
     private _gScore = _search get "gScore";
@@ -421,7 +476,7 @@ BATTLESPACE_PATHFIND_STEP_GRID = {
     private _maxExpansions = missionNamespace getVariable ["BATTLESPACE_PATHFIND_MAX_EXPANSIONS", 12000];
     private _offsets = [[-1,-1],[0,-1],[1,-1],[-1,0],[1,0],[-1,1],[0,1],[1,1]];
 
-    while {_used < _budget && {(_search get "status") == "SEARCHING"}} do {
+    while {_used < _budget && {diag_tickTime < _deadline} && {(_search get "status") == "SEARCHING"}} do {
         if ([_open] call PRIORITY_QUEUE_IS_EMPTY) exitWith {_search set ["status", "FAILED"]};
         private _queued = [_open] call PRIORITY_QUEUE_POP;
         _used = _used + 1;
@@ -490,7 +545,7 @@ BATTLESPACE_PATHFIND_STEP_GRID = {
 };
 
 BATTLESPACE_PATHFIND_STEP_ROAD = {
-    params ["_search", "_budget"];
+    params ["_search", "_budget", "_deadline"];
     private _used = 0;
     private _open = _search get "open";
     private _gScore = _search get "gScore";
@@ -503,7 +558,7 @@ BATTLESPACE_PATHFIND_STEP_ROAD = {
     private _weight = missionNamespace getVariable ["BATTLESPACE_PATHFIND_WEIGHT", 1.12];
     private _maxExpansions = missionNamespace getVariable ["BATTLESPACE_PATHFIND_ROAD_MAX_EXPANSIONS", 20000];
 
-    while {_used < _budget && {(_search get "status") == "SEARCHING"}} do {
+    while {_used < _budget && {diag_tickTime < _deadline} && {(_search get "status") == "SEARCHING"}} do {
         if ([_open] call PRIORITY_QUEUE_IS_EMPTY) exitWith {_search set ["status", "FAILED"]};
         private _queued = [_open] call PRIORITY_QUEUE_POP;
         _used = _used + 1;
@@ -581,12 +636,6 @@ BATTLESPACE_PATHFIND_CREATE_JOB = {
     private _cacheProfile = _profile + (["", ":CONVOY"] select _convoy);
     private _cacheKey = [_origin, _destination, _cacheProfile] call BATTLESPACE_PATHFIND_CACHE_KEY;
     private _cached = [_cacheKey, _origin, _destination] call BATTLESPACE_PATHFIND_GET_CACHED_ROUTE;
-    private _snapshots = [_taskForceName] call BATTLESPACE_PATHFIND_BUILD_SNAPSHOTS;
-    private _costContext = createHashMapFromArray [
-        ["destination", +_destination],
-        ["threats", _snapshots select 0],
-        ["congestion", _snapshots select 1]
-    ];
 
     private _job = createHashMapFromArray [
         ["status", ["SEARCHING", "FOUND"] select (_cached isNotEqualTo [])],
@@ -601,7 +650,7 @@ BATTLESPACE_PATHFIND_CREATE_JOB = {
         ["segmentIndex", 0],
         ["combined", []],
         ["fallbackUsed", false],
-        ["costContext", _costContext],
+        ["costContext", createHashMap],
         ["result", _cached]
     ];
     if (_cached isNotEqualTo []) exitWith {_job};
@@ -611,6 +660,8 @@ BATTLESPACE_PATHFIND_CREATE_JOB = {
         _job
     };
 
+    // Cache hits and direct AIR routes never need a congestion snapshot.
+    _job set ["snapshot", []];
     private _segments = [];
     if (_profile == "GROUND_VEHICLE") then {
         private _snap = missionNamespace getVariable ["BATTLESPACE_PATHFIND_ROAD_SNAP", 900];
@@ -633,7 +684,7 @@ BATTLESPACE_PATHFIND_CREATE_JOB = {
 };
 
 BATTLESPACE_PATHFIND_STEP_JOB = {
-    params ["_job", "_budget"];
+    params ["_job", "_budget", "_deadline"];
     private _taskForceName = _job get "taskForceName";
     private _generation = _job get "generation";
     if (
@@ -644,6 +695,21 @@ BATTLESPACE_PATHFIND_STEP_JOB = {
         "CANCELLED"
     };
     if ((_job get "status") != "SEARCHING") exitWith {_job get "status"};
+    if (diag_tickTime >= _deadline) exitWith {"SEARCHING"};
+
+    private _snapshot = _job get "snapshot";
+    if (!isNil "_snapshot") then {
+        private _result = [_taskForceName, _snapshot, _deadline] call BATTLESPACE_PATHFIND_BUILD_SNAPSHOTS;
+        if (_result isNotEqualTo []) then {
+            _job set ["costContext", createHashMapFromArray [
+                ["destination", +(_job get "destination")],
+                ["threats", _result select 0],
+                ["congestion", _result select 1]
+            ]];
+            _job set ["snapshot", nil];
+        };
+    };
+    if (!isNil {_job get "snapshot"} || {diag_tickTime >= _deadline}) exitWith {"SEARCHING"};
 
     private _segments = _job get "segments";
     private _segmentIndex = _job get "segmentIndex";
@@ -671,12 +737,14 @@ BATTLESPACE_PATHFIND_STEP_JOB = {
     private _status = _search get "status";
     if (_status == "SEARCHING") then {
         _status = if ((_search get "kind") == "ROAD") then {
-            ([_search, _budget] call BATTLESPACE_PATHFIND_STEP_ROAD) select 0
+            ([_search, _budget, _deadline] call BATTLESPACE_PATHFIND_STEP_ROAD) select 0
         } else {
-            ([_search, _budget] call BATTLESPACE_PATHFIND_STEP_GRID) select 0
+            ([_search, _budget, _deadline] call BATTLESPACE_PATHFIND_STEP_GRID) select 0
         };
     };
 
+    // Finish a completed segment on the next tick if searching used the slice.
+    if (diag_tickTime >= _deadline) exitWith {_job get "status"};
     if (_status == "FOUND") then {
         private _segmentRoute = _search getOrDefault ["result", []];
         if ((_search get "kind") == "ROAD") then {
@@ -751,8 +819,11 @@ QUEUE_PATHFIND_REQUEST = {
 
 FULFILL_PATHFIND_REQUESTS = {
     if (!isServer) exitWith {};
+    // One soft deadline shared by queue intake, snapshot building and A*.
+    // An individual engine call/expansion and route finalization may overrun it.
+    private _deadline = diag_tickTime + 0.001 * (missionNamespace getVariable ["BATTLESPACE_PATHFIND_BUDGET_MS", 1]);
     if (isNil "BATTLESPACE_PATHFIND_ACTIVE_JOB") then {
-        while {isNil "BATTLESPACE_PATHFIND_ACTIVE_JOB" && {QUEUED_PATHFIND_REQUESTS isNotEqualTo []}} do {
+        while {isNil "BATTLESPACE_PATHFIND_ACTIVE_JOB" && {QUEUED_PATHFIND_REQUESTS isNotEqualTo []} && {diag_tickTime < _deadline}} do {
             private _request = QUEUED_PATHFIND_REQUESTS deleteAt 0;
             _request params ["_taskForceName", "_origin", "_destination", "_generation", ["_useRural", false, [true]]];
             if (
@@ -766,8 +837,8 @@ FULFILL_PATHFIND_REQUESTS = {
 
     if (!isNil "BATTLESPACE_PATHFIND_ACTIVE_JOB") then {
         private _job = BATTLESPACE_PATHFIND_ACTIVE_JOB;
-        private _status = [_job, missionNamespace getVariable ["BATTLESPACE_PATHFIND_EXPANSIONS_PER_TICK", 120]] call BATTLESPACE_PATHFIND_STEP_JOB;
-        if (_status in ["FOUND", "FAILED", "CANCELLED"]) then {
+        private _status = [_job, missionNamespace getVariable ["BATTLESPACE_PATHFIND_EXPANSIONS_PER_TICK", 120], _deadline] call BATTLESPACE_PATHFIND_STEP_JOB;
+        if (_status in ["FOUND", "FAILED", "CANCELLED"] && {diag_tickTime < _deadline}) then {
             private _taskForceName = _job getOrDefault ["taskForceName", ""];
             private _generation = _job getOrDefault ["generation", -1];
             private _isCurrent = _taskForceName != ""
@@ -801,6 +872,11 @@ FULFILL_PATHFIND_REQUESTS = {
             BATTLESPACE_PATHFIND_ROUTE_CACHE deleteAt _x;
         } forEach _expired;
         BATTLESPACE_PATHFIND_ROUTE_CACHE_ORDER = BATTLESPACE_PATHFIND_ROUTE_CACHE_ORDER - _expired;
+        {
+            if (isNil {BATTLESPACE_TASK_FORCE_PATHS get _x}) then {
+                BATTLESPACE_PATHFIND_ROUTE_CELLS deleteAt _x;
+            };
+        } forEach (keys BATTLESPACE_PATHFIND_ROUTE_CELLS);
     };
 };
 
