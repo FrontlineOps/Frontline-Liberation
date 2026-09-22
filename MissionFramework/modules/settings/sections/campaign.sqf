@@ -13,7 +13,7 @@
     "Clear vehicle cargo",
     "Empty the default weapons, magazines, items and backpacks from vehicles processed by the mission's cargo setup.",
     ["Frontline - Campaign", "Economy"],
-    true, false
+    true, true
 ] call _add;
 
 [
@@ -45,7 +45,7 @@
     "Factory crate value",
     "Resource units in each pallet of a factory's initial cache, before the resource multiplier. Each cache contains 12 supply, 8 ammunition and 4 fuel pallets.",
     ["Frontline - Campaign", "Economy"],
-    [1, 400, 100, 0], false
+    [1, 400, 100, 0], true
 ] call _add;
 
 [
@@ -61,7 +61,7 @@
     "Maximum settlement crates",
     "Upper end of the random crate count placed when a settlement receives resource loot.",
     ["Frontline - Campaign", "Economy"],
-    [0, 30, 5, 0], false
+    [0, 30, 5, 0], true
 ] call _add;
 
 [
@@ -69,7 +69,7 @@
     "Minimum settlement crates",
     "Lower end of the random crate count placed when a settlement receives resource loot. Successful loot placement creates at least one crate.",
     ["Frontline - Campaign", "Economy"],
-    [0, 30, 3, 0], false
+    [0, 30, 3, 0], true
 ] call _add;
 
 [
@@ -77,7 +77,7 @@
     "Resource multiplier",
     "Scale resource quantities in settlement loot, factory caches and convoy salvage crates. A value of 2 doubles their base crate values.",
     ["Frontline - Campaign", "Economy"],
-    [[0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 3], ["0.25x", "0.5x", "0.75x", "1x", "1.25x", "1.5x", "2x", "3x"], 3], false
+    [[0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 3], ["0.25x", "0.5x", "0.75x", "1x", "1.25x", "1.5x", "2x", "3x"], 3], true
 ] call _add;
 
 [
@@ -85,7 +85,7 @@
     "Resource production interval (minutes)",
     "Base minutes between resource production cycles. Negative civilian reputation lengthens the interval.",
     ["Frontline - Campaign", "Economy"],
-    [1, 1440, 120, 0], false
+    [1, 1440, 120, 0], true
 ] call _add;
 
 [
@@ -93,7 +93,7 @@
     "Sector resource chance (%)",
     "Percentage chance that an activated settlement receives resource crates.",
     ["Frontline - Campaign", "Economy"],
-    [0, 100, 100, 0], false
+    [0, 100, 100, 0], true
 ] call _add;
 
 [
@@ -101,7 +101,7 @@
     "Sector resource crate value",
     "Resource units in each settlement loot crate, before the resource multiplier.",
     ["Frontline - Campaign", "Economy"],
-    [1, 400, 100, 0], false
+    [1, 400, 100, 0], true
 ] call _add;
 
 [
@@ -149,7 +149,7 @@
     "Campaign difficulty multiplier",
     "Scale the increase in enemy combat readiness when objectives are captured. Higher values make captures raise readiness faster.",
     ["Frontline - Campaign", "General"],
-    [[1, 2, 3, 4, 5, 6, 8, 10], ["1x", "2x", "3x", "4x", "5x", "6x", "8x", "10x"], 7], false
+    [[1, 2, 3, 4, 5, 6, 8, 10], ["1x", "2x", "3x", "4x", "5x", "6x", "8x", "10x"], 7], true
 ] call _add;
 
 [
@@ -157,7 +157,7 @@
     "Civilian activity",
     "Scale the number of ambient civilian groups created in settlements, towns and factory sectors.",
     ["Frontline - Campaign", "General"],
-    [[0, 0.5, 1, 2], ["0x", "0.5x", "1x", "2x"], 3], false
+    [[0, 0.5, 1, 2], ["0x", "0.5x", "1x", "2x"], 3], true
 ] call _add;
 
 [
@@ -165,7 +165,7 @@
     "Enemy aggressivity",
     "Aggressivity level checked against the minimum required for enemy air responses.",
     ["Frontline - Campaign", "General"],
-    [[2, 3, 4, 5, 6], ["2", "3", "4", "5", "6"], 4], false
+    [[2, 3, 4, 5, 6], ["2", "3", "4", "5", "6"], 4], true
 ] call _add;
 
 [
@@ -181,7 +181,7 @@
     "Unit-cap multiplier",
     "Multiply the OPFOR population threshold used to permit sector activation. Higher values allow activation to continue with more OPFOR already present.",
     ["Frontline - Campaign", "General"],
-    [[0.5, 0.75, 1, 1.25, 1.5, 2], ["0.5x", "0.75x", "1x", "1.25x", "1.5x", "2x"], 3], false
+    [[0.5, 0.75, 1, 1.25, 1.5, 2], ["0.5x", "0.75x", "1x", "1.25x", "1.5x", "2x"], 3], true
 ] call _add;
 
 [
@@ -205,7 +205,7 @@
     "Enemy sector capture time (seconds)",
     "Time enemy forces must hold control to overrun an FOB. Captured sectors add 120 seconds to this value.",
     ["Frontline - Campaign", "Objectives"],
-    [1, 3600, 840, 0], false
+    [1, 3600, 840, 0], true
 ] call _add;
 
 [
@@ -213,7 +213,7 @@
     "Radio tower range",
     "Radius in metres around friendly radio towers within which enemy groups can appear on the map.",
     ["Frontline - Campaign", "Objectives"],
-    [1, 10000, 2500, 0], false
+    [1, 10000, 2500, 0], true
 ] call _add;
 
 [
@@ -221,7 +221,7 @@
     "Sector activation distance",
     "Maximum player proximity range, in metres, for activating sector defenders. The range contracts as the OPFOR population rises.",
     ["Frontline - Campaign", "Objectives"],
-    [500, 10000, 3000, 0], false
+    [500, 10000, 3000, 0], true
 ] call _add;
 
 [
@@ -229,23 +229,23 @@
     "Sector activation population threshold",
     "OPFOR count at which new sector activation pauses, multiplied by the unit-cap setting. Activation range begins shrinking at half this count.",
     ["Frontline - Campaign", "Objectives"],
-    [25, 2000, 480, 0], false
+    [25, 2000, 480, 0], true
 ] call _add;
 
 [
     "GRLIB_time_factor", "LIST",
-    "Nominal full-day duration (real hours)",
-    "Real hours for a complete 24-hour day at the selected time acceleration, before the shorter-nights option.",
+    "Time acceleration",
+    "Game-clock speed relative to real time. Changes apply on the next time-manager tick (normally within 10 seconds). Disable shorter nights for constant speed.",
     ["Frontline - Campaign", "Time and weather"],
-    [[8, 6, 4, 3, 2, 1], ["3", "4", "6", "8", "12", "24"], 1], false
+    [[8, 6, 4, 3, 2, 1], ["8x", "6x", "4x", "3x", "2x", "1x"], 1], true
 ] call _add;
 
 [
     "GRLIB_shorter_nights", "CHECKBOX",
     "Shorter nights",
-    "Advance time four times faster between 20:00 and 04:00 than during the day.",
+    "Multiply the base speed by four at night (20:00-04:00): 3x becomes 12x. Disable for constant speed. Changes apply on the next time-manager tick.",
     ["Frontline - Campaign", "Time and weather"],
-    true, false
+    true, true
 ] call _add;
 
 [

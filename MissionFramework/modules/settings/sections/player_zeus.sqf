@@ -5,7 +5,7 @@
     "Mobile arsenal",
     "Allow arsenal crates to provide arsenal access away from FOBs.",
     ["Frontline - Player & Zeus", "Player experience"],
-    false, false
+    false, true
 ] call _add;
 
 [
@@ -21,7 +21,7 @@
     "Mobile respawn cooldown (minutes)",
     "Minutes a player must wait after using mobile respawn before using it again. Disabled removes this cooldown.",
     ["Frontline - Player & Zeus", "Player experience"],
-    [[0, 300, 600, 900, 1200, 1800, 3600], ["STR_PARAMS_DISABLED", "5", "10", "15", "20", "30", "60"], 2], false
+    [[0, 300, 600, 900, 1200, 1800, 3600], ["STR_PARAMS_DISABLED", "5", "10", "15", "20", "30", "60"], 2], true
 ] call _add;
 
 [
@@ -45,7 +45,7 @@
     "Respawn at attacked sectors",
     "Allow deployment to friendly sectors while they are under attack.",
     ["Frontline - Player & Zeus", "Player experience"],
-    false, false
+    false, true
 ] call _add;
 
 [
@@ -53,7 +53,7 @@
     "Show deployment cinematic",
     "Play the moving camera sequence when deploying to a selected location.",
     ["Frontline - Player & Zeus", "Player experience"],
-    false, false
+    false, true
 ] call _add;
 
 [
@@ -61,7 +61,7 @@
     "Show introduction",
     "Show the mission introduction after joining.",
     ["Frontline - Player & Zeus", "Player experience"],
-    false, false
+    false, true
 ] call _add;
 
 [

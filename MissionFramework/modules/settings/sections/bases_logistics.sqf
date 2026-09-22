@@ -5,7 +5,7 @@
     "Allow fixed-wing construction at FOBs",
     "Permit aircraft construction at FOBs when general vehicle construction there is disabled.",
     ["Frontline - Bases & Logistics", "FOBs"],
-    false, false
+    false, true
 ] call _add;
 
 [
@@ -13,7 +13,7 @@
     "Allow vehicle construction at FOBs",
     "Permit ground vehicles and helicopters to be built at FOBs as well as the starting base.",
     ["Frontline - Bases & Logistics", "FOBs"],
-    false, false
+    false, true
 ] call _add;
 
 [
@@ -21,7 +21,7 @@
     "FOB construction radius (m)",
     "Radius in metres used for FOB construction and nearby base services.",
     ["Frontline - Bases & Logistics", "FOBs"],
-    [1, 1200, 300, 0], false
+    [1, 1200, 300, 0], true
 ] call _add;
 
 [
@@ -29,7 +29,7 @@
     "Maximum FOBs",
     "Maximum number of FOBs that may exist at once.",
     ["Frontline - Bases & Logistics", "FOBs"],
-    [[1, 2, 3, 4, 5, 6, 7], ["1", "2", "3", "4", "5", "6", "7"], 1], false
+    [[1, 2, 3, 4, 5, 6, 7], ["1", "2", "3", "4", "5", "6", "7"], 1], true
 ] call _add;
 
 [
@@ -37,7 +37,7 @@
     "Action duration (seconds)",
     "Seconds needed to deploy or repack a field hospital.",
     ["Frontline - Bases & Logistics", "Field hospital"],
-    [1, 3600, 15, 0], false
+    [1, 3600, 15, 0], true
 ] call _add;
 
 [
@@ -45,7 +45,7 @@
     "Repack distance (m)",
     "Maximum distance in metres from a field hospital at which its owner can repack it.",
     ["Frontline - Bases & Logistics", "Field hospital"],
-    [1, 1000, 5, 0], false
+    [1, 1000, 5, 0], true
 ] call _add;
 
 [
@@ -53,7 +53,7 @@
     "Contest count",
     "Number of nearby hostile units or vehicles needed to block deployment to a patrol base.",
     ["Frontline - Bases & Logistics", "Patrol bases"],
-    [1, 20, 3, 0], false
+    [1, 20, 3, 0], true
 ] call _add;
 
 [
@@ -61,7 +61,7 @@
     "Contest radius (m)",
     "Radius in metres around a patrol base checked for hostiles before offering it as a deployment destination.",
     ["Frontline - Bases & Logistics", "Patrol bases"],
-    [1, 1200, 300, 0], false
+    [1, 1200, 300, 0], true
 ] call _add;
 
 [
@@ -69,7 +69,7 @@
     "Maximum patrol bases",
     "Maximum number of deployed patrol bases shared by BLUFOR.",
     ["Frontline - Bases & Logistics", "Patrol bases"],
-    [1, 20, 1, 0], false
+    [1, 20, 1, 0], true
 ] call _add;
 
 [
@@ -77,7 +77,7 @@
     "Minimum deployment time before dismantling (seconds)",
     "Seconds a newly placed patrol base must remain deployed before its owner can dismantle it.",
     ["Frontline - Bases & Logistics", "Patrol bases"],
-    [1, 10800, 2700, 0], false
+    [1, 10800, 2700, 0], true
 ] call _add;
 
 [
@@ -85,7 +85,7 @@
     "Minimum distance from FOBs (m)",
     "Minimum distance in metres from an FOB or the starting base when placing a patrol base.",
     ["Frontline - Bases & Logistics", "Patrol bases"],
-    [1, 2000, 500, 0], false
+    [1, 2000, 500, 0], true
 ] call _add;
 
 [
@@ -93,7 +93,7 @@
     "Minimum distance from enemy objectives (m)",
     "Minimum distance in metres from an enemy objective when placing a patrol base.",
     ["Frontline - Bases & Logistics", "Patrol bases"],
-    [1, 2000, 500, 0], false
+    [1, 2000, 500, 0], true
 ] call _add;
 
 [
@@ -101,7 +101,7 @@
     "Redeploy radius (m)",
     "Distance in metres within which a patrol base offers redeployment and can be dismantled by its owner.",
     ["Frontline - Bases & Logistics", "Patrol bases"],
-    [1, 1000, 20, 0], false
+    [1, 1000, 20, 0], true
 ] call _add;
 
 [
@@ -109,7 +109,7 @@
     "Sector search distance (m)",
     "Search radius in metres for the nearest enemy objective when validating patrol-base placement.",
     ["Frontline - Bases & Logistics", "Patrol bases"],
-    [1, 10000, 2500, 0], false
+    [1, 10000, 2500, 0], true
 ] call _add;
 
 [

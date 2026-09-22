@@ -13,7 +13,7 @@
     "Dead-unit hiding delay (seconds)",
     "Seconds after death before a queued body is hidden; deletion follows ten seconds later.",
     ["Frontline - Cleanup & Diagnostics", "Cleanup"],
-    [1, 3600, 250, 0], false
+    [1, 3600, 250, 0], true
 ] call _add;
 
 [
@@ -21,7 +21,7 @@
     "Dropped-item lifetime (seconds)",
     "Seconds dropped equipment holders remain before the cleanup worker can remove them.",
     ["Frontline - Cleanup & Diagnostics", "Cleanup"],
-    [1, 3600, 240, 0], false
+    [1, 3600, 240, 0], true
 ] call _add;
 
 [
@@ -29,7 +29,7 @@
     "Maximum despawn delay (minutes)",
     "Maximum extra minutes a sector can remain active after players leave, accumulated from the time players spent there.",
     ["Frontline - Cleanup & Diagnostics", "Cleanup"],
-    [[0, 5, 10, 15, 20, 25, 30], ["STR_PARAMS_DISABLED", "5", "10", "15", "20", "25", "30"], 1], false
+    [[0, 5, 10, 15, 20, 25, 30], ["STR_PARAMS_DISABLED", "5", "10", "15", "20", "25", "30"], 1], true
 ] call _add;
 
 [

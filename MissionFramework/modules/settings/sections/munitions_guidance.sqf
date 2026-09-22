@@ -5,7 +5,7 @@
     "Persistent blast symptoms",
     "Retain blast exposure between detonations. Disorientation affects sight and weapon steadiness; sustained instability restricts sprinting. Symptoms recover separately and full medical healing clears them.",
     ["Frontline - Munitions & Guidance", "Blast recovery"],
-    true, false
+    true, true
 ] call _add;
 
 [
@@ -13,7 +13,7 @@
     "Disorientation recovery half-time",
     "Seconds for blast disorientation to halve without another exposure. Longer values prolong blurred sight, muffled hearing and increased weapon sway.",
     ["Frontline - Munitions & Guidance", "Blast recovery"],
-    [1, 120, 15, 0], false
+    [1, 120, 15, 0], true
 ] call _add;
 
 [
@@ -21,7 +21,7 @@
     "Instability recovery half-time",
     "Seconds for sustained blast instability to halve without another exposure. Longer values prolong weapon unsteadiness and the sprint restriction after repeated blasts.",
     ["Frontline - Munitions & Guidance", "Blast recovery"],
-    [10, 600, 90, 0], false
+    [10, 600, 90, 0], true
 ] call _add;
 
 [
@@ -29,7 +29,7 @@
     "Sample openings around blocked connections",
     "Check alternate clear air routes around blocked pressure-grid connections. The native extension represents verified openings as partially open faces; intact cover remains reflective.",
     ["Frontline - Munitions & Guidance", "Effects"],
-    true, false
+    true, true
 ] call _add;
 
 [
@@ -37,7 +37,7 @@
     "Directional blast dust",
     "Release short-lived local dust near sampled surfaces in the direction of solved airflow. Only nearby observers receive the bounded particle bursts.",
     ["Frontline - Munitions & Guidance", "Effects"],
-    true, false
+    true, true
 ] call _add;
 
 [
@@ -45,7 +45,7 @@
     "Maximum concurrent blast jobs",
     "Maximum explosions the server can process for pressure and heat at the same time. Further explosions are skipped by this processor while all slots are occupied.",
     ["Frontline - Munitions & Guidance", "Advanced - effect capacity"],
-    [1.0, 16.0, 8, 0], false
+    [1.0, 16.0, 8, 0], true
 ] call _add;
 
 [
@@ -53,31 +53,31 @@
     "Maximum infantry recipients per blast",
     "Maximum living soldiers evaluated for pressure and heat from one explosion, selected nearest to the detonation first.",
     ["Frontline - Munitions & Guidance", "Advanced - effect capacity"],
-    [1.0, 64.0, 48, 0], false
+    [1.0, 64.0, 48, 0], true
 ] call _add;
 
 [
     "KPLIB_munitions_fragment_cap", "SLIDER",
     "Primary fragment limit per explosion",
-    "Maximum primary fragment projectiles requested by one explosion. Ammunition properties determine the count up to this ceiling; increasing it allows larger fragment bursts.",
+    "Maximum primary fragment projectiles requested by one explosion. Ammunition properties determine the count up to this ceiling; increasing it allows larger fragment bursts. Applies to subsequent fragmentation requests; existing particles are unchanged.",
     ["Frontline - Munitions & Guidance", "Advanced - effect capacity"],
-    [1.0, 512.0, 384, 0], false
+    [1.0, 512.0, 384, 0], true
 ] call _add;
 
 [
     "KPLIB_munitions_fragment_multiplier", "SLIDER",
     "Primary fragment count multiplier",
-    "Scale the ammunition-derived primary fragment count before applying the per-explosion limit. 1 preserves normal counts; 0 disables primary fragments only. Shared particle budgets still apply. Requires a mission restart.",
+    "Scale the ammunition-derived primary fragment count before applying the per-explosion limit. 1 preserves normal counts; 0 disables primary fragments only. Shared particle budgets still apply. Applies to subsequent fragmentation requests; existing particles are unchanged.",
     ["Frontline - Munitions & Guidance", "Advanced - effect capacity"],
-    [0.0, 4.0, 1, 2], false
+    [0.0, 4.0, 1, 2], true
 ] call _add;
 
 [
     "KPLIB_munitions_global_cap", "SLIDER",
     "Mission-wide concurrent fragment limit",
-    "Maximum combined mission-generated fragments, spall, and damaging debris across all machines. Queued grants reserve slots; excess requests are omitted without deleting particles in flight. 0 disables these custom particles. Ordinary bullets and rockets are unaffected. Requires a mission restart.",
+    "Maximum combined mission-generated fragments, spall, and damaging debris across all machines. Queued grants reserve slots; excess requests are omitted without deleting particles in flight. 0 disables these custom particles. Ordinary bullets and rockets are unaffected. Live edits affect new grants; existing reservations and particles finish normally.",
     ["Frontline - Munitions & Guidance", "Advanced - effect capacity"],
-    [0.0, 8192.0, 2048, 0], false
+    [0.0, 8192.0, 2048, 0], true
 ] call _add;
 
 [
@@ -85,7 +85,7 @@
     "Vehicle and building recipients per type",
     "Maximum nearby vehicles and maximum nearby buildings evaluated by each pressure field. The limit applies separately to each type.",
     ["Frontline - Munitions & Guidance", "Advanced - effect capacity"],
-    [1.0, 16.0, 8, 0], false
+    [1.0, 16.0, 8, 0], true
 ] call _add;
 
 [
@@ -93,15 +93,15 @@
     "Building pressure damage multiplier",
     "Scale building damage derived from pressure and accumulated impulse. Higher values increase the resulting structural damage; 0 removes this contribution.",
     ["Frontline - Munitions & Guidance", "Effects"],
-    [0.0, 4.0, 1, 2], false
+    [0.0, 4.0, 1, 2], true
 ] call _add;
 
 [
     "KPLIB_munitions_gas_enabled", "CHECKBOX",
     "Enable native gas refinement",
-    "Use the server's gas solver to evolve pressure and heat around terrain and solid surfaces, refining blast exposure over time. Requires the Frontline gas extension on the server.",
+    "Use the server's gas solver to evolve pressure and heat around terrain and solid surfaces, refining blast exposure over time. Requires the Frontline gas extension on the server. Applies to new blast jobs; existing fields finish with their selected backend.",
     ["Frontline - Munitions & Guidance", "Effects"],
-    true, false
+    true, true
 ] call _add;
 
 [
@@ -109,7 +109,7 @@
     "Enable pressure damage to vehicles and buildings",
     "Apply damage from the gas pressure field to exposed vehicle components and buildings. Requires native gas refinement.",
     ["Frontline - Munitions & Guidance", "Effects"],
-    true, false
+    true, true
 ] call _add;
 
 [
@@ -117,7 +117,7 @@
     "Enable spatial fragmentation",
     "Emit fragment projectiles in randomized directions around eligible explosions. Their flight and collisions determine what they strike.",
     ["Frontline - Munitions & Guidance", "Effects"],
-    true, false
+    true, true
 ] call _add;
 
 [
@@ -125,7 +125,7 @@
     "Enable supplemental blast effects",
     "Enable Frontline's pressure and heat calculations around explosions, including cover checks and pressure damage to eligible vehicles and buildings.",
     ["Frontline - Munitions & Guidance", "Effects"],
-    true, false
+    true, true
 ] call _add;
 
 [
@@ -133,7 +133,7 @@
     "Infantry pressure damage multiplier",
     "Scale infantry injury from direct blast exposure and the refined pressure field. Higher values increase pressure wounds; 0 removes this pressure contribution.",
     ["Frontline - Munitions & Guidance", "Effects"],
-    [0.0, 20.0, 8, 0], false
+    [0.0, 20.0, 8, 0], true
 ] call _add;
 
 [
@@ -141,7 +141,7 @@
     "Recognize thermobaric ammunition labels",
     "Use thermobaric and fuel-air wording in ammunition magazine or explosion-effect labels to select prolonged heat exposure when no explicit thermobaric flag is provided.",
     ["Frontline - Munitions & Guidance", "Effects"],
-    true, false
+    true, true
 ] call _add;
 
 [
@@ -149,7 +149,7 @@
     "Retain pressure fields from empty impacts",
     "Process and retain pressure fields even when an explosion has no nearby recipients and is outside an active debug capture.",
     ["Frontline - Munitions & Guidance", "Effects"],
-    true, false
+    true, true
 ] call _add;
 
 [
@@ -157,15 +157,15 @@
     "Vehicle pressure damage multiplier",
     "Scale damage to exposed vehicle components from pressure and accumulated impulse. Higher values increase component damage; 0 removes this contribution.",
     ["Frontline - Munitions & Guidance", "Effects"],
-    [0.0, 4.0, 1, 2], false
+    [0.0, 4.0, 1, 2], true
 ] call _add;
 
 [
     "KPLIB_guidance_enabled", "CHECKBOX",
     "Enable Frontline guidance",
-    "Use Frontline's seeker, tracking and steering logic for supported native ammunition. ACE-configured ammunition retains ACE guidance, including GPS bombs and command-guided missiles.",
+    "Use Frontline's seeker, tracking and steering logic for supported native ammunition. ACE-configured ammunition retains ACE guidance, including GPS bombs and command-guided missiles. Applies to newly launched projectiles; missiles already in flight keep their guidance owner.",
     ["Frontline - Munitions & Guidance", "Guidance"],
-    true, false
+    true, true
 ] call _add;
 
 [
@@ -179,7 +179,7 @@
 [
     "KPLIB_guidance_max_active", "SLIDER",
     "Maximum guided projectiles",
-    "Maximum projectiles under Frontline guidance on each machine. Additional projectiles retain their engine guidance while that machine is at capacity.",
+    "Maximum projectiles under Frontline guidance on each machine. Additional projectiles retain their engine guidance while that machine is at capacity. Live edits affect new guidance admissions; existing missiles are not removed.",
     ["Frontline - Munitions & Guidance", "Guidance"],
-    [1, 256, 128, 0], false
+    [1, 256, 128, 0], true
 ] call _add;
