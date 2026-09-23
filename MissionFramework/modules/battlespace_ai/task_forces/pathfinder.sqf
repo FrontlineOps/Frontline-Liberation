@@ -6,9 +6,10 @@
     Optional rural mode: terrain-grid route with roads costlier but still traversable.
     All-air compositions: direct route.
 
-    Searches share the binary heap from networked_sectors/priority_queue.sqf and
-    are expanded incrementally by one CBA worker. Routes are transient and drive
-    both virtual movement and physical group waypoints.
+    One CBA worker runs queued jobs segment by segment; each grid or road segment
+    is searched by the native backend (pathfinder_native.sqf), which the server
+    requires. Routes are transient and drive both virtual movement and physical
+    group waypoints.
 */
 
 QUEUED_PATHFIND_REQUESTS = [];
@@ -16,11 +17,7 @@ BATTLESPACE_PATHFIND_ACTIVE_JOB = nil;
 BATTLESPACE_PATHFIND_REQUEST_GENERATIONS = createHashMap;
 BATTLESPACE_PATHFIND_ROUTE_CACHE = createHashMap;
 BATTLESPACE_PATHFIND_ROUTE_CACHE_ORDER = [];
-BATTLESPACE_PATHFIND_TERRAIN_CACHE = createHashMap;
 BATTLESPACE_PATHFIND_ROUTE_CELLS = createHashMap;
-if (isNil "BATTLESPACE_PATHFIND_ROAD_NEIGHBOR_CACHE") then {
-    BATTLESPACE_PATHFIND_ROAD_NEIGHBOR_CACHE = createHashMap;
-};
 BATTLESPACE_PATHFIND_NEXT_CACHE_PRUNE = 0;
 
 BATTLESPACE_PATHFIND_NORMALIZE_POSITION = {
@@ -71,66 +68,6 @@ BATTLESPACE_PATHFIND_GRID_INDEX = {
 BATTLESPACE_PATHFIND_GRID_KEY = {
     params ["_index"];
     format ["%1:%2", _index select 0, _index select 1]
-};
-
-BATTLESPACE_PATHFIND_GET_TERRAIN_NODE = {
-    params ["_index"];
-    private _key = [_index] call BATTLESPACE_PATHFIND_GRID_KEY;
-    private _cached = BATTLESPACE_PATHFIND_TERRAIN_CACHE get _key;
-    if (!isNil "_cached") exitWith {_cached};
-
-    private _size = missionNamespace getVariable ["BATTLESPACE_PATHFIND_GRID_SIZE", 100];
-    private _position = [
-        ((_index select 0) + 0.5) * _size,
-        ((_index select 1) + 0.5) * _size,
-        0
-    ];
-    private _valid = (_position select 0) >= 0
-        && {(_position select 1) >= 0}
-        && {(_position select 0) <= worldSize}
-        && {(_position select 1) <= worldSize};
-    private _height = if (_valid) then {getTerrainHeightASL _position} else {0};
-    private _water = _valid && {surfaceIsWater _position};
-    private _road = _valid && {isOnRoad _position};
-    private _node = [_position, _height, _water, _road, _valid];
-
-    private _limit = missionNamespace getVariable ["BATTLESPACE_PATHFIND_TERRAIN_CACHE_LIMIT", 24000];
-    if (count BATTLESPACE_PATHFIND_TERRAIN_CACHE < _limit) then {
-        BATTLESPACE_PATHFIND_TERRAIN_CACHE set [_key, _node];
-    };
-    _node
-};
-
-BATTLESPACE_PATHFIND_GET_DYNAMIC_MULTIPLIER = {
-    params ["_context", "_nodeKey", "_position"];
-    private _multiplier = 1;
-    private _destination = _context get "destination";
-    private _approachRadius = missionNamespace getVariable ["BATTLESPACE_PATHFIND_FINAL_APPROACH_RADIUS", 600];
-    private _distanceToDestination = _position distance2D _destination;
-    private _approachFactor = if (_approachRadius <= 0) then {1} else {
-        1 min (_distanceToDestination / _approachRadius)
-    };
-
-    if (_approachFactor > 0) then {
-        private _threatRadius = missionNamespace getVariable ["BATTLESPACE_PATHFIND_THREAT_RADIUS", 1600];
-        {
-            _x params ["_threatPosition", "_strength"];
-            private _distance = _position distance2D _threatPosition;
-            if (_distance < _threatRadius) then {
-                private _strengthFactor = 0.2 min (0.04 * _strength);
-                _multiplier = _multiplier
-                    + ((1 - (_distance / _threatRadius)) * (0.15 + _strengthFactor) * _approachFactor);
-            };
-        } forEach (_context getOrDefault ["threats", []]);
-
-        if (!isNil {(_context get "congestion") get _nodeKey}) then {
-            private _congestionMultiplier = 1 max (
-                missionNamespace getVariable ["BATTLESPACE_PATHFIND_CONGESTION_MULTIPLIER", 1.2]
-            );
-            _multiplier = _multiplier * (1 + ((_congestionMultiplier - 1) * _approachFactor));
-        };
-    };
-    _multiplier
 };
 
 BATTLESPACE_PATHFIND_BUILD_SNAPSHOTS = {
@@ -257,50 +194,6 @@ BATTLESPACE_PATHFIND_CACHE_ROUTE = {
     true
 };
 
-BATTLESPACE_PATHFIND_RECONSTRUCT_GRID = {
-    params ["_search"];
-    private _cameFrom = _search get "cameFrom";
-    private _nodes = _search get "nodes";
-    private _startKey = _search get "startKey";
-    private _key = _search get "goalKey";
-    private _route = [];
-    private _guard = 0;
-    while {_key != "" && {_guard < 50000}} do {
-        private _node = _nodes get _key;
-        if (isNil "_node") exitWith {_route = []};
-        _route pushBack +(_node select 0);
-        if (_key == _startKey) exitWith {};
-        _key = _cameFrom getOrDefault [_key, ""];
-        _guard = _guard + 1;
-    };
-    if (_route isEqualTo [] || {_key != _startKey}) exitWith {[]};
-    reverse _route;
-    _route set [0, +(_search get "startPos")];
-    _route set [count _route - 1, +(_search get "goalPos")];
-    _route
-};
-
-BATTLESPACE_PATHFIND_RECONSTRUCT_ROAD = {
-    params ["_search"];
-    private _cameFrom = _search get "cameFrom";
-    private _nodes = _search get "nodes";
-    private _startKey = _search get "startKey";
-    private _key = _search get "goalKey";
-    private _route = [];
-    private _guard = 0;
-    while {_key != "" && {_guard < 100000}} do {
-        private _road = _nodes get _key;
-        if (isNil "_road" || {isNull _road}) exitWith {_route = []};
-        _route pushBack getPos _road;
-        if (_key == _startKey) exitWith {};
-        _key = _cameFrom getOrDefault [_key, ""];
-        _guard = _guard + 1;
-    };
-    if (_route isEqualTo [] || {_key != _startKey}) exitWith {[]};
-    reverse _route;
-    _route
-};
-
 BATTLESPACE_PATHFIND_CAN_TRAVERSE_LINE = {
     params ["_from", "_to", "_profile"];
     private _distance = _from distance2D _to;
@@ -386,222 +279,6 @@ BATTLESPACE_PATHFIND_REDUCE_ROAD_ROUTE = {
     _result
 };
 
-BATTLESPACE_PATHFIND_CREATE_GRID_SEARCH = {
-    params ["_startPos", "_goalPos", "_profile", "_job"];
-    private _startIndex = [_startPos] call BATTLESPACE_PATHFIND_GRID_INDEX;
-    private _goalIndex = [_goalPos] call BATTLESPACE_PATHFIND_GRID_INDEX;
-    private _startKey = [_startIndex] call BATTLESPACE_PATHFIND_GRID_KEY;
-    private _goalKey = [_goalIndex] call BATTLESPACE_PATHFIND_GRID_KEY;
-    private _startNode = [_startIndex] call BATTLESPACE_PATHFIND_GET_TERRAIN_NODE;
-    private _goalNode = [_goalIndex] call BATTLESPACE_PATHFIND_GET_TERRAIN_NODE;
-    private _valid = (_startNode select 4) && {(_goalNode select 4)}
-        && {!((_startNode select 2) && {!(_startNode select 3)})}
-        && {!((_goalNode select 2) && {!(_goalNode select 3)})};
-    if (!_valid) exitWith {createHashMapFromArray [["status", "FAILED"], ["kind", "GRID"]]};
-
-    private _open = [] call NEW_PRIORITY_QUEUE;
-    private _gScore = createHashMapFromArray [[_startKey, 0]];
-    private _nodes = createHashMapFromArray [[_startKey, _startNode], [_goalKey, _goalNode]];
-    private _heuristic = (_startNode select 0) distance2D (_goalNode select 0);
-    [_open, _heuristic, [_startKey, 0]] call PRIORITY_QUEUE_ENQUEUE;
-
-    createHashMapFromArray [
-        ["kind", "GRID"],
-        ["status", "SEARCHING"],
-        ["startPos", +_startPos],
-        ["goalPos", +_goalPos],
-        ["startKey", _startKey],
-        ["goalKey", _goalKey],
-        ["goalNode", _goalNode],
-        ["open", _open],
-        ["gScore", _gScore],
-        ["cameFrom", createHashMap],
-        ["closed", createHashMap],
-        ["nodes", _nodes],
-        ["expansions", 0],
-        ["profile", _profile],
-        ["costContext", _job get "costContext"]
-    ]
-};
-
-BATTLESPACE_PATHFIND_CREATE_ROAD_SEARCH = {
-    params ["_startRoad", "_goalRoad", "_job"];
-    if (isNull _startRoad || {isNull _goalRoad}) exitWith {
-        createHashMapFromArray [["status", "FAILED"], ["kind", "ROAD"]]
-    };
-
-    private _startKey = str _startRoad;
-    private _goalKey = str _goalRoad;
-    private _open = [] call NEW_PRIORITY_QUEUE;
-    private _gScore = createHashMapFromArray [[_startKey, 0]];
-    private _nodes = createHashMapFromArray [[_startKey, _startRoad], [_goalKey, _goalRoad]];
-    [_open, _startRoad distance2D _goalRoad, [_startKey, 0]] call PRIORITY_QUEUE_ENQUEUE;
-
-    createHashMapFromArray [
-        ["kind", "ROAD"],
-        ["status", "SEARCHING"],
-        ["startKey", _startKey],
-        ["goalKey", _goalKey],
-        ["goalRoad", _goalRoad],
-        ["open", _open],
-        ["gScore", _gScore],
-        ["cameFrom", createHashMap],
-        ["closed", createHashMap],
-        ["nodes", _nodes],
-        ["expansions", 0],
-        ["costContext", _job get "costContext"]
-    ]
-};
-
-BATTLESPACE_PATHFIND_STEP_GRID = {
-    params ["_search", "_budget", "_deadline"];
-    private _used = 0;
-    private _open = _search get "open";
-    private _gScore = _search get "gScore";
-    private _cameFrom = _search get "cameFrom";
-    private _closed = _search get "closed";
-    private _nodes = _search get "nodes";
-    private _goalKey = _search get "goalKey";
-    private _goalPosition = (_search get "goalNode") select 0;
-    private _profile = _search get "profile";
-    private _costContext = _search get "costContext";
-    private _weight = missionNamespace getVariable ["BATTLESPACE_PATHFIND_WEIGHT", 1.12];
-    private _gridSize = missionNamespace getVariable ["BATTLESPACE_PATHFIND_GRID_SIZE", 100];
-    private _vehicleProfile = _profile in ["GROUND_VEHICLE", "RURAL_VEHICLE"];
-    private _ruralProfile = _profile in ["RURAL", "RURAL_VEHICLE"];
-    private _maxSlope = missionNamespace getVariable [
-        ["BATTLESPACE_PATHFIND_INFANTRY_MAX_SLOPE", "BATTLESPACE_PATHFIND_VEHICLE_MAX_SLOPE"] select _vehicleProfile,
-        [1.0, 0.45] select _vehicleProfile
-    ];
-    private _maxExpansions = missionNamespace getVariable ["BATTLESPACE_PATHFIND_MAX_EXPANSIONS", 12000];
-    private _offsets = [[-1,-1],[0,-1],[1,-1],[-1,0],[1,0],[-1,1],[0,1],[1,1]];
-
-    while {_used < _budget && {diag_tickTime < _deadline} && {(_search get "status") == "SEARCHING"}} do {
-        if ([_open] call PRIORITY_QUEUE_IS_EMPTY) exitWith {_search set ["status", "FAILED"]};
-        private _queued = [_open] call PRIORITY_QUEUE_POP;
-        _used = _used + 1;
-        if (isNil "_queued") then {continue};
-        _queued params ["_currentKey", "_queuedCost"];
-        private _bestCost = _gScore getOrDefault [_currentKey, 1e30];
-        if (_queuedCost > _bestCost || {!isNil {_closed get _currentKey}}) then {continue};
-
-        _closed set [_currentKey, true];
-        private _expansions = (_search get "expansions") + 1;
-        _search set ["expansions", _expansions];
-        if (_currentKey == _goalKey) exitWith {
-            _search set ["result", [_search] call BATTLESPACE_PATHFIND_RECONSTRUCT_GRID];
-            _search set ["status", "FOUND"];
-        };
-        if (_expansions >= _maxExpansions) exitWith {_search set ["status", "FAILED"]};
-
-        private _currentNode = _nodes get _currentKey;
-        private _currentPosition = _currentNode select 0;
-        private _currentHeight = _currentNode select 1;
-        private _parts = _currentKey splitString ":";
-        private _currentIndex = [parseNumber (_parts select 0), parseNumber (_parts select 1)];
-        {
-            private _nextIndex = [(_currentIndex select 0) + (_x select 0), (_currentIndex select 1) + (_x select 1)];
-            private _nextKey = [_nextIndex] call BATTLESPACE_PATHFIND_GRID_KEY;
-            if (!isNil {_closed get _nextKey}) then {continue};
-            private _nextNode = [_nextIndex] call BATTLESPACE_PATHFIND_GET_TERRAIN_NODE;
-            if (!(_nextNode select 4)) then {continue};
-            private _nextPosition = _nextNode select 0;
-            private _nextRoad = _nextNode select 3;
-            if ((_nextNode select 2) && {!_nextRoad}) then {continue};
-
-            private _midpoint = [
-                ((_currentPosition select 0) + (_nextPosition select 0)) / 2,
-                ((_currentPosition select 1) + (_nextPosition select 1)) / 2,
-                0
-            ];
-            if (surfaceIsWater _midpoint && {!isOnRoad _midpoint}) then {continue};
-
-            private _edgeDistance = _currentPosition distance2D _nextPosition;
-            private _slope = abs ((_nextNode select 1) - _currentHeight) / (1 max _edgeDistance);
-            if (_slope > _maxSlope) then {continue};
-
-            private _terrainMultiplier = if (_ruralProfile) then {
-                if (_nextRoad) then {
-                    1 max (missionNamespace getVariable ["BATTLESPACE_PATHFIND_RURAL_ROAD_MULTIPLIER", 2.25])
-                } else {
-                    1
-                }
-            } else {
-                if (_nextRoad) then {1} else {[1.05, 1.35] select _vehicleProfile}
-            };
-            private _slopeMultiplier = 1 + (2 min (_slope * 2));
-            private _dynamicMultiplier = [_costContext, _nextKey, _nextPosition] call BATTLESPACE_PATHFIND_GET_DYNAMIC_MULTIPLIER;
-            private _newCost = _bestCost + (_edgeDistance * _terrainMultiplier * _slopeMultiplier * _dynamicMultiplier);
-            if (_newCost >= (_gScore getOrDefault [_nextKey, 1e30])) then {continue};
-
-            _gScore set [_nextKey, _newCost];
-            _cameFrom set [_nextKey, _currentKey];
-            _nodes set [_nextKey, _nextNode];
-            private _heuristic = _nextPosition distance2D _goalPosition;
-            [_open, _newCost + (_weight * _heuristic), [_nextKey, _newCost]] call PRIORITY_QUEUE_ENQUEUE;
-        } forEach _offsets;
-    };
-    [_search get "status", _used]
-};
-
-BATTLESPACE_PATHFIND_STEP_ROAD = {
-    params ["_search", "_budget", "_deadline"];
-    private _used = 0;
-    private _open = _search get "open";
-    private _gScore = _search get "gScore";
-    private _cameFrom = _search get "cameFrom";
-    private _closed = _search get "closed";
-    private _nodes = _search get "nodes";
-    private _goalKey = _search get "goalKey";
-    private _goalRoad = _search get "goalRoad";
-    private _costContext = _search get "costContext";
-    private _weight = missionNamespace getVariable ["BATTLESPACE_PATHFIND_WEIGHT", 1.12];
-    private _maxExpansions = missionNamespace getVariable ["BATTLESPACE_PATHFIND_ROAD_MAX_EXPANSIONS", 20000];
-
-    while {_used < _budget && {diag_tickTime < _deadline} && {(_search get "status") == "SEARCHING"}} do {
-        if ([_open] call PRIORITY_QUEUE_IS_EMPTY) exitWith {_search set ["status", "FAILED"]};
-        private _queued = [_open] call PRIORITY_QUEUE_POP;
-        _used = _used + 1;
-        if (isNil "_queued") then {continue};
-        _queued params ["_currentKey", "_queuedCost"];
-        private _bestCost = _gScore getOrDefault [_currentKey, 1e30];
-        if (_queuedCost > _bestCost || {!isNil {_closed get _currentKey}}) then {continue};
-
-        _closed set [_currentKey, true];
-        private _expansions = (_search get "expansions") + 1;
-        _search set ["expansions", _expansions];
-        if (_currentKey == _goalKey) exitWith {
-            _search set ["result", [_search] call BATTLESPACE_PATHFIND_RECONSTRUCT_ROAD];
-            _search set ["status", "FOUND"];
-        };
-        if (_expansions >= _maxExpansions) exitWith {_search set ["status", "FAILED"]};
-
-        private _currentRoad = _nodes get _currentKey;
-        private _neighbors = BATTLESPACE_PATHFIND_ROAD_NEIGHBOR_CACHE get _currentKey;
-        if (isNil "_neighbors") then {
-            _neighbors = roadsConnectedTo [_currentRoad, true];
-            BATTLESPACE_PATHFIND_ROAD_NEIGHBOR_CACHE set [_currentKey, _neighbors];
-        };
-        {
-            if (isNull _x) then {continue};
-            private _nextKey = str _x;
-            if (!isNil {_closed get _nextKey}) then {continue};
-            private _nextPosition = getPos _x;
-            private _gridKey = [[_nextPosition] call BATTLESPACE_PATHFIND_GRID_INDEX] call BATTLESPACE_PATHFIND_GRID_KEY;
-            private _dynamicMultiplier = [_costContext, _gridKey, _nextPosition] call BATTLESPACE_PATHFIND_GET_DYNAMIC_MULTIPLIER;
-            private _newCost = _bestCost + ((_currentRoad distance2D _x) * _dynamicMultiplier);
-            if (_newCost >= (_gScore getOrDefault [_nextKey, 1e30])) then {continue};
-
-            _gScore set [_nextKey, _newCost];
-            _cameFrom set [_nextKey, _currentKey];
-            _nodes set [_nextKey, _x];
-            private _heuristic = _x distance2D _goalRoad;
-            [_open, _newCost + (_weight * _heuristic), [_nextKey, _newCost]] call PRIORITY_QUEUE_ENQUEUE;
-        } forEach _neighbors;
-    };
-    [_search get "status", _used]
-};
-
 BATTLESPACE_PATHFIND_APPEND_SEGMENT = {
     params ["_combined", "_segment"];
     {
@@ -684,7 +361,7 @@ BATTLESPACE_PATHFIND_CREATE_JOB = {
 };
 
 BATTLESPACE_PATHFIND_STEP_JOB = {
-    params ["_job", "_budget", "_deadline"];
+    params ["_job", "_deadline"];
     private _taskForceName = _job get "taskForceName";
     private _generation = _job get "generation";
     if (
@@ -726,21 +403,22 @@ BATTLESPACE_PATHFIND_STEP_JOB = {
     if (isNil "_search") then {
         private _segment = _segments select _segmentIndex;
         _segment params ["_kind", "_start", "_goal"];
-        _search = if (_kind == "ROAD") then {
-            [_start, _goal, _job] call BATTLESPACE_PATHFIND_CREATE_ROAD_SEARCH
+        _search = createHashMapFromArray [["kind", _kind], ["status", "SEARCHING"], ["costContext", _job get "costContext"]];
+        if (_kind == "ROAD") then {
+            if (isNull _start || {isNull _goal}) exitWith {_search set ["status", "FAILED"]};
+            _search set ["startKey", str _start];
+            _search set ["goalKey", str _goal];
         } else {
-            [_start, _goal, _job get "profile", _job] call BATTLESPACE_PATHFIND_CREATE_GRID_SEARCH
+            _search set ["startPos", +_start];
+            _search set ["goalPos", +_goal];
+            _search set ["profile", _job get "profile"];
         };
         _job set ["search", _search];
     };
 
     private _status = _search get "status";
     if (_status == "SEARCHING") then {
-        _status = if ((_search get "kind") == "ROAD") then {
-            ([_search, _budget, _deadline] call BATTLESPACE_PATHFIND_STEP_ROAD) select 0
-        } else {
-            ([_search, _budget, _deadline] call BATTLESPACE_PATHFIND_STEP_GRID) select 0
-        };
+        _status = [_search] call BATTLESPACE_PATHFIND_NATIVE_SEARCH;
     };
 
     // Finish a completed segment on the next tick if searching used the slice.
@@ -818,9 +496,10 @@ QUEUE_PATHFIND_REQUEST = {
 };
 
 FULFILL_PATHFIND_REQUESTS = {
-    if (!isServer) exitWith {};
-    // One soft deadline shared by queue intake, snapshot building and A*.
-    // An individual engine call/expansion and route finalization may overrun it.
+    // Requests wait in the queue until the native backend has its terrain.
+    if (!isServer || {!BATTLESPACE_PATHFIND_NATIVE_READY}) exitWith {};
+    // One soft deadline shared by queue intake, snapshot building and search.
+    // A native search call and route finalization may overrun it.
     private _deadline = diag_tickTime + 0.001 * (missionNamespace getVariable ["BATTLESPACE_PATHFIND_BUDGET_MS", 1]);
     if (isNil "BATTLESPACE_PATHFIND_ACTIVE_JOB") then {
         while {isNil "BATTLESPACE_PATHFIND_ACTIVE_JOB" && {QUEUED_PATHFIND_REQUESTS isNotEqualTo []} && {diag_tickTime < _deadline}} do {
@@ -837,7 +516,7 @@ FULFILL_PATHFIND_REQUESTS = {
 
     if (!isNil "BATTLESPACE_PATHFIND_ACTIVE_JOB") then {
         private _job = BATTLESPACE_PATHFIND_ACTIVE_JOB;
-        private _status = [_job, missionNamespace getVariable ["BATTLESPACE_PATHFIND_EXPANSIONS_PER_TICK", 120], _deadline] call BATTLESPACE_PATHFIND_STEP_JOB;
+        private _status = [_job, _deadline] call BATTLESPACE_PATHFIND_STEP_JOB;
         if (_status in ["FOUND", "FAILED", "CANCELLED"] && {diag_tickTime < _deadline}) then {
             private _taskForceName = _job getOrDefault ["taskForceName", ""];
             private _generation = _job getOrDefault ["generation", -1];

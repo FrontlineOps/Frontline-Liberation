@@ -81,6 +81,7 @@ BATTLESPACE_TASK_FORCE_REGISTER_MODEL = {
 
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\models\index.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\pathfinder.sqf";
+[] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\pathfinder_native.sqf";
 
 BATTLESPACE_TASK_FORCE_PROCESS_SPAWN_QUEUE = {
 	if (!isServer) exitWith {};
