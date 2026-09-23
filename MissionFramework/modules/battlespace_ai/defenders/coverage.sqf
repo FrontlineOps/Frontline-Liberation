@@ -6,7 +6,13 @@ BATTLESPACE_DEFENSE_LAYOUT_SIGNATURE = [];
 
 BATTLESPACE_DEFENSE_POSITION_IS_FRIENDLY = {
     params ["_position"];
-    private _nearest = [sectors_allSectors + ["startbase_marker"], _position] call BIS_fnc_nearestPosition;
+    // Sector markers never move: resolve them once instead of on every query.
+    if (isNil "BATTLESPACE_DEFENSE_FRIENDLY_MARKERS") then {
+        BATTLESPACE_DEFENSE_FRIENDLY_MARKERS = sectors_allSectors + ["startbase_marker"];
+        BATTLESPACE_DEFENSE_FRIENDLY_POSITIONS = BATTLESPACE_DEFENSE_FRIENDLY_MARKERS apply {getMarkerPos _x};
+    };
+    private _distances = BATTLESPACE_DEFENSE_FRIENDLY_POSITIONS apply {_position distance _x};
+    private _nearest = BATTLESPACE_DEFENSE_FRIENDLY_MARKERS select (_distances find selectMin _distances);
     _nearest == "startbase_marker" || {_nearest in blufor_sectors}
 };
 
