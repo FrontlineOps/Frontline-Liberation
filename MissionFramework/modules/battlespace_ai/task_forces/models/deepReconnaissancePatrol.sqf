@@ -149,8 +149,8 @@ BATTLESPACE_DEEP_RECON_ON_DECISION_TICK = {
     };
     if (_finished) exitWith {true};
 
-    // Gunfire its members heard away from its current watch area: move to a
-    // stand-off point and observe it (hold-fire ROE is unchanged).
+    // Gunfire its members heard: move to a stand-off point and observe it
+    // (hold-fire ROE is unchanged).
     if (_phase in ["INFILTRATING", "OBSERVING"] && {CBA_missionTime >= (_operation getOrDefault ["nextSoundRetargetAt", 0])}) then {
         private _registry = localNamespace getVariable ["KPLIB_aiCombat_registry", createHashMap];
         private _estimate = [];
@@ -161,8 +161,8 @@ BATTLESPACE_DEEP_RECON_ON_DECISION_TICK = {
             } forEach units _x;
             if (_estimate isNotEqualTo []) exitWith {};
         } forEach _activeGroups;
-        if (_estimate isEqualTo [] || {_estimate distance2D (_operation getOrDefault ["targetPosition", _currentLocation]) <= 400}) exitWith {};
-        private _standoff = _estimate getPos [300, _estimate getDir _currentLocation];
+        if (_estimate isEqualTo []) exitWith {};
+        private _standoff = _estimate getPos [200, _estimate getDir _currentLocation];
         if (surfaceIsWater _standoff) exitWith {};
         _standoff set [2, 0];
         _phase = "INFILTRATING";
