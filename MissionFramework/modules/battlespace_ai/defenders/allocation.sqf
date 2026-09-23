@@ -81,6 +81,19 @@ BATTLESPACE_DEFENSE_AMBUSH_GROUP = {
     } forEach units _group;
 };
 
+// Creep toward gunfire heard beyond ambush range; LAMBS taskCreep holds fire and
+// tracks enemies within 300 m of the perceived position.
+BATTLESPACE_DEFENSE_CREEP_GROUP = {
+    params ["_group", "_position"];
+    if (isRemoteExecuted && {remoteExecutedOwner != 2}) exitWith {};
+    if (!isRemoteExecuted && {!isServer}) exitWith {};
+    if (isNull _group || {!local _group}) exitWith {};
+    [_group] call BATTLESPACE_DEFENSE_RESET_GROUP;
+    // Always a new script: callers may be the scheduled task-force loop, and
+    // taskCreep runs until the group dies or its tactic is reset.
+    [_group, 300, 30, [], _position] spawn KPLIB_fnc_creep;
+};
+
 BATTLESPACE_DEFENSE_SET_ASSIGNMENT = {
     params ["_id", "_force", "_operation", "_assignmentId", "_assignment"];
     private _field = (_assignment get "kind") == "FIELD";

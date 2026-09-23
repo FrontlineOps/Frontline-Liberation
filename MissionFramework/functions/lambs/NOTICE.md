@@ -7,6 +7,7 @@ The following mission functions contain code adapted from LAMBS Danger.fsm by Ke
 - `fn_taskPatrolWaypointStatement.sqf`, extracted from `addons/wp/functions/fnc_taskPatrol.sqf`
 - `fn_hunt.sqf`, from `addons/wp/functions/fnc_taskHunt.sqf`
 - `fn_rush.sqf`, from `addons/wp/functions/fnc_taskRush.sqf`
+- `fn_creep.sqf`, from `addons/wp/functions/fnc_taskCreep.sqf` (added 2026-09-23 from the same pinned commit; it ends when taskReset clears its tactic and registers its FiredNear failsafe for taskReset cleanup)
 - `fn_taskReset.sqf`, from `addons/wp/functions/fnc_taskReset.sqf`
 - `fn_findClosestTarget.sqf`, from `addons/main/functions/fnc_findClosestTarget.sqf`
 - `fn_findBuildings.sqf`, from `addons/main/functions/fnc_findBuildings.sqf`

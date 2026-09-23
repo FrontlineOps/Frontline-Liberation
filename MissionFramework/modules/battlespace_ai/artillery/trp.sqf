@@ -41,7 +41,7 @@ BATTLESPACE_TRP_SOURCES = {
         if (_phase in ["RETURNING", "COMPLETED", "DESTROYED", "DISBANDED"]) then {continue};
         if ((_op getOrDefault ["outcome", ""]) != "") then {continue};
         if (_kind == "DEFENDER") then {
-            if !(_phase in ["DEPLOYING", "ON_STATION", "ENGAGED", "DISPLACING"]) then {continue};
+            if !(_phase in ["DEPLOYING", "ON_STATION", "CREEPING", "ENGAGED", "DISPLACING"]) then {continue};
             private _sector = _op getOrDefault ["assignedSector", ""];
             if (_sector == "" || {_sector in _sectors}) then {continue};
             private _state = BATTLESPACE_SECTOR_STATES getOrDefault [_sector, createHashMap];
@@ -86,7 +86,7 @@ BATTLESPACE_TRP_INVALID_REASON = {
                 (values BATTLESPACE_STRATEGIC_OPERATIONS) findIf {
                     (_x getOrDefault ["kind", ""]) == "DEFENDER"
                         && {(_x getOrDefault ["assignedSector", ""]) == _sector}
-                        && {(_x getOrDefault ["phase", ""]) in ["DEPLOYING", "ON_STATION", "ENGAGED", "DISPLACING"]}
+                        && {(_x getOrDefault ["phase", ""]) in ["DEPLOYING", "ON_STATION", "CREEPING", "ENGAGED", "DISPLACING"]}
                         && {(_x getOrDefault ["outcome", ""]) == ""}
                 } >= 0
             };

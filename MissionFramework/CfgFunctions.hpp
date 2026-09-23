@@ -395,6 +395,7 @@ class KPLIB {
         class isAlive                       {};
         class hunt                         {}; // [] call KPLIB_fnc_hunt
         class rush                         {}; // [] call KPLIB_fnc_rush
+        class creep                        {}; // [] call KPLIB_fnc_creep
         class garrisonSelect               {};
         class garrisonAssign               {};
         class garrisonMove                 {};

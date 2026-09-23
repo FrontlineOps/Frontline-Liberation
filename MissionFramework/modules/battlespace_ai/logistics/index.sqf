@@ -331,7 +331,7 @@ BATTLESPACE_STRATEGIC_SERIALIZE_OPERATION = {
             _saved set [_x + "Remaining", ((_saved getOrDefault [_x, CBA_missionTime]) - CBA_missionTime) max 0];
             _saved deleteAt _x;
         };
-    } forEach ["expiresAt", "loiterUntil", "contactGraceUntil", "holdUntil", "nextManeuverAt", "legDeadline", "airliftDeadline"];
+    } forEach ["expiresAt", "loiterUntil", "contactGraceUntil", "holdUntil", "nextManeuverAt", "legDeadline", "airliftDeadline", "creepUntil"];
     _saved
 };
 
@@ -355,7 +355,7 @@ BATTLESPACE_STRATEGIC_DESERIALIZE_OPERATION = {
             _operation set [_x, CBA_missionTime + (_operation getOrDefault [_remainingKey, 0])];
             _operation deleteAt _remainingKey;
         };
-    } forEach ["expiresAt", "loiterUntil", "contactGraceUntil", "holdUntil", "nextManeuverAt", "legDeadline", "airliftDeadline"];
+    } forEach ["expiresAt", "loiterUntil", "contactGraceUntil", "holdUntil", "nextManeuverAt", "legDeadline", "airliftDeadline", "creepUntil"];
     _operation
 };
 

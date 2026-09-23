@@ -28,4 +28,8 @@
 #define TASK_RUSH_CYCLETIME 15
 #define TASK_RUSH_SIZE 1000
 
+#define TASK_CREEP_PLAYERSONLY false
+#define TASK_CREEP_CYCLETIME 30
+#define TASK_CREEP_SIZE 1000
+
 #define RND(var) random 1 > var

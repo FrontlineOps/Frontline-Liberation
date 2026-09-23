@@ -114,7 +114,7 @@ BATTLESPACE_DEFENSE_READ_COVERAGE = {
     private _coverage = createHashMap;
     {
         if ((_y getOrDefault ["kind", ""]) != "DEFENDER") then {continue};
-        if !((_y getOrDefault ["phase", ""]) in ["DEPLOYING", "ON_STATION", "ENGAGED", "DISPLACING"]) then {continue};
+        if !((_y getOrDefault ["phase", ""]) in ["DEPLOYING", "ON_STATION", "CREEPING", "ENGAGED", "DISPLACING"]) then {continue};
         private _id = [_y] call BATTLESPACE_DEFENSE_ASSIGNMENT_ID;
         private _assignment = BATTLESPACE_DEFENSE_ASSIGNMENTS get _id;
         private _force = BATTLESPACE_TASK_FORCES get _x;

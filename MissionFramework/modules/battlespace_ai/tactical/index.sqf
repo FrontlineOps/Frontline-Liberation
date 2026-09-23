@@ -684,7 +684,7 @@ BATTLESPACE_STRATEGIC_BUILD_INTEGRITY_AUDIT = {
                 if !(_role in _configuredRoles) then {_errors pushBack format ["Defender operation %1 has invalid purpose %2", _x, _role]};
                 if !(_assignedSector in sectors_allSectors) then {_errors pushBack format ["Defender operation %1 has invalid assignment %2", _x, _assignedSector]};
                 private _validPhases = ["DEPLOYING", "ON_STATION", "RETURNING"];
-                if (_role == "AMBUSH") then {_validPhases append ["ENGAGED", "DISPLACING"]};
+                if (_role == "AMBUSH") then {_validPhases append ["CREEPING", "ENGAGED", "DISPLACING"]};
                 if !(_phase in _validPhases) then {_errors pushBack format ["Defender operation %1 has invalid phase %2", _x, _phase]};
             };
         };
