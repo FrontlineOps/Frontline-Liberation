@@ -14,10 +14,10 @@ private _countedAirClasses = createHashMap;
 while {true} do {
     private _local_heli_count = 0;
     private _local_plane_count = 0;
+    // Engine-side type/alive filter instead of scanning every vehicle and prop.
     {
         if (
-            alive _x
-            && {!(_x getVariable ["KP_liberation_preplaced", false])}
+            !(_x getVariable ["KP_liberation_preplaced", false])
             && {_countedAirClasses getOrDefault [toLower (typeOf _x), false]}
         ) then {
             if (_x isKindOf "Helicopter") then {
@@ -27,7 +27,7 @@ while {true} do {
                 _local_plane_count = _local_plane_count + 1;
             };
         };
-    } forEach vehicles;
+    } forEach (entities [["Helicopter", "Plane"], [], false, true]);
     KP_liberation_heli_count = _local_heli_count;
     KP_liberation_plane_count = _local_plane_count;
     sleep (missionNamespace getVariable ["KP_liberation_aircraft_count_refresh_interval", 5]);
