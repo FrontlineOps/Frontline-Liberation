@@ -409,7 +409,18 @@ BATTLESPACE_LOGISTICS_SAVE = {
             }]
         ]];
     };
-    if (_flush) then {saveProfileNamespace};
+    // One disk write per burst of event saves (~20 ms each); skipped when a
+    // campaign save has flushed the profile since the latest snapshot.
+    if (_flush) then {
+        BATTLESPACE_LOGISTICS_SNAPSHOT_AT = CBA_missionTime;
+        if !(missionNamespace getVariable ["BATTLESPACE_LOGISTICS_FLUSH_QUEUED", false]) then {
+            BATTLESPACE_LOGISTICS_FLUSH_QUEUED = true;
+            [{
+                BATTLESPACE_LOGISTICS_FLUSH_QUEUED = false;
+                if ((missionNamespace getVariable ["KPLIB_lastSaveAt", -1e6]) <= BATTLESPACE_LOGISTICS_SNAPSHOT_AT) then {saveProfileNamespace};
+            }, [], 5] call CBA_fnc_waitAndExecute;
+        };
+    };
     BATTLESPACE_LOGISTICS_SAVING = false;
     true
 };
