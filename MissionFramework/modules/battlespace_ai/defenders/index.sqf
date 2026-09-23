@@ -16,26 +16,33 @@ BATTLESPACE_DEFENSE_GET_FRONT_DEPTH = {
 BATTLESPACE_DEFENSE_GRAPH_DISTANCE = {
     params ["_origin", "_target", ["_maximum", 99]];
     if (_origin == _target) exitWith {0};
-    private _originNode = NETWORKED_SECTORS get _origin;
-    if (isNil "_originNode") exitWith {-1};
-
-    private _open = [[_origin, 0]];
-    private _visited = createHashMapFromArray [[_origin, true]];
-    private _result = -1;
-    while {_open isNotEqualTo [] && {_result < 0}} do {
-        private _entry = _open deleteAt 0;
-        _entry params ["_sector", "_distance"];
-        if (_distance >= _maximum) then {continue};
+    // Hop distances through non-BLUFOR sectors change only with ownership (links
+    // are fixed after network init). Each origin keeps its breadth-first search
+    // and resumes it only as far as a query needs, until blufor_sectors changes.
+    if (isNil "BATTLESPACE_DEFENSE_GRAPH_SEARCHES" || {!(blufor_sectors isEqualTo BATTLESPACE_DEFENSE_GRAPH_OWNERS)}) then {
+        BATTLESPACE_DEFENSE_GRAPH_OWNERS = +blufor_sectors;
+        BATTLESPACE_DEFENSE_GRAPH_BLUFOR = createHashMapFromArray (blufor_sectors apply {[_x, true]});
+        BATTLESPACE_DEFENSE_GRAPH_SEARCHES = createHashMap;
+    };
+    private _search = BATTLESPACE_DEFENSE_GRAPH_SEARCHES getOrDefaultCall [_origin, {[createHashMap, [[_origin, 0]], 0]}, true];
+    _search params ["_distances", "_open", "_index"];
+    private _result = _distances getOrDefault [_target, -1];
+    while {_result < 0 && {_index < count _open}} do {
+        (_open select _index) params ["_sector", "_distance"];
+        // Everything left is at least this far; keep it for deeper queries.
+        if (_distance >= _maximum) exitWith {};
+        _index = _index + 1;
         private _node = NETWORKED_SECTORS get _sector;
         if (isNil "_node") then {continue};
         {
-            if (_x in blufor_sectors || {_visited getOrDefault [_x, false]}) then {continue};
-            if (_x == _target) exitWith {_result = _distance + 1};
-            _visited set [_x, true];
+            if (_x in BATTLESPACE_DEFENSE_GRAPH_BLUFOR || {_x == _origin} || {_x in _distances}) then {continue};
+            _distances set [_x, _distance + 1];
             _open pushBack [_x, _distance + 1];
+            if (_x == _target) then {_result = _distance + 1};
         } forEach (_node getOrDefault ["Links", []]);
     };
-    _result
+    _search set [2, _index];
+    [-1, _result] select (_result <= _maximum)
 };
 
 BATTLESPACE_DEFENSE_SECTOR_COOLDOWN_ELAPSED = {
