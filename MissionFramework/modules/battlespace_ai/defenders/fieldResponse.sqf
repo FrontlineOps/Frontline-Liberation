@@ -5,7 +5,7 @@ BATTLESPACE_RESERVE_FIELD_SEQUENCE = 0;
 
 BATTLESPACE_RESERVE_FIELD_GET_CONTACT = {
     params ["_position"];
-    private _contacts = [_position, BATTLESPACE_STRATEGIC_RESERVE_FIELD_CONTACT_RADIUS, BATTLESPACE_STRATEGIC_RESERVE_FIELD_CONTACT_MAX_AGE, true] call BATTLESPACE_CONTACT_QUERY;
+    private _contacts = [_position, BATTLESPACE_STRATEGIC_RESERVE_FIELD_CONTACT_RADIUS, BATTLESPACE_STRATEGIC_RESERVE_FIELD_CONTACT_MAX_AGE, true, grpNull, true, true] call BATTLESPACE_CONTACT_QUERY;
     _contacts = [_contacts, [], {_x select 1}, "DESCEND"] call BIS_fnc_sortBy;
     if (_contacts isEqualTo []) then {[]} else {(_contacts select 0) select [0, 2]}
 };

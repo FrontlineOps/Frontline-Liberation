@@ -244,7 +244,7 @@ BATTLESPACE_DEFENSE_DECISION_TICK = {
     private _priorities = createHashMap;
     {
         private _position = _y get "position";
-        private _priority = count ([_position, 1200, BATTLESPACE_CONTACT_MEMORY_MAX_AGE] call BATTLESPACE_CONTACT_QUERY);
+        private _priority = count ([_position, 1200, BATTLESPACE_CONTACT_MEMORY_MAX_AGE, false, grpNull, true, true] call BATTLESPACE_CONTACT_QUERY);
         {
             if ((_y get "position") distance2D _position < 1200) then {
                 _priority = _priority + (_y getOrDefault ["pressure", 0]);

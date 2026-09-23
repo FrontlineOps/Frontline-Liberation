@@ -6,6 +6,43 @@ BATTLESPACE_CONTACT_REQUESTS = createHashMap;
 BATTLESPACE_CONTACT_CURSOR = 0;
 // Session grace starts here; expiring a short-lived report must not reset quiet time.
 BATTLESPACE_CONTACT_LAST_PLAYER_SEEN = CBA_missionTime;
+// Heard BLUFOR gunfire, per 200 m cell: shooter key -> [newest shot times (max 3), player, estimate].
+BATTLESPACE_CONTACT_SOUNDS = createHashMap;
+BATTLESPACE_CONTACT_SOUND_CELL = 200;
+BATTLESPACE_CONTACT_SOUND_MIN_CUES = 3;
+
+// A listener's uncertain estimate, never a target. Only sustained fire (several
+// distinct shots in one cell within the memory age) becomes an area contact, and
+// only ground responders that opt in through BATTLESPACE_CONTACT_QUERY see it.
+BATTLESPACE_CONTACT_HEARD = {
+    params ["_position", "_heardAt", "_shooterKey", "_player"];
+    if (!isServer || {isRemoteExecuted}) exitWith {};
+    private _key = format ["SOUND:%1:%2", floor ((_position select 0) / BATTLESPACE_CONTACT_SOUND_CELL), floor ((_position select 1) / BATTLESPACE_CONTACT_SOUND_CELL)];
+    private _cell = BATTLESPACE_CONTACT_SOUNDS getOrDefault [_key, createHashMap, true];
+    private _entry = _cell getOrDefault [_shooterKey, [[], _player, []], true];
+    // Several listeners hearing one shot share its time and count once.
+    if !(_heardAt in (_entry select 0)) then {
+        (_entry select 0) pushBack _heardAt;
+        _entry set [0, (_entry select 0) select [(count (_entry select 0) - 3) max 0]];
+    };
+    _entry set [1, (_entry select 1) || {_player}];
+    _entry set [2, [_position select 0, _position select 1, 0]];
+    private _cues = 0;
+    private _anyPlayer = false;
+    private _latest = [-1e9, []];
+    {
+        _y params ["_times", "_isPlayer", "_estimate"];
+        _times = _times select {CBA_missionTime - _x <= BATTLESPACE_CONTACT_MEMORY_MAX_AGE};
+        _cues = _cues + count _times;
+        _anyPlayer = _anyPlayer || {_isPlayer};
+        if (_times isNotEqualTo [] && {(_times select (count _times - 1)) > (_latest select 0)}) then {_latest = [_times select (count _times - 1), _estimate]};
+    } forEach _cell;
+    if (_cues < BATTLESPACE_CONTACT_SOUND_MIN_CUES) exitWith {};
+    _latest params ["_seenAt", "_where"];
+    private _previous = (BATTLESPACE_CONTACT_MEMORY getOrDefault [_key, [_where]]) select 0;
+    // Position, seen time, strength (distinct shooters), prior position, player, no target, class, no observer evidence.
+    BATTLESPACE_CONTACT_MEMORY set [_key, [+_where, _seenAt, 1 max count _cell min 8, +_previous, _anyPlayer, objNull, "KPLIB_SOUND", createHashMap, _seenAt]];
+};
 
 // Local observation only. Records: target, perceived position, seen time, weight, player, class.
 BATTLESPACE_CONTACT_COLLECT = {
@@ -90,10 +127,12 @@ BATTLESPACE_CONTACT_SAMPLE_GROUP = {
 };
 
 BATTLESPACE_CONTACT_QUERY = {
-    params [["_center", []], ["_radius", 1e9], ["_maxAge", BATTLESPACE_CONTACT_MEMORY_MAX_AGE], ["_playersOnly", false], ["_observerGroup", grpNull], ["_groundOnly", true]];
+    params [["_center", []], ["_radius", 1e9], ["_maxAge", BATTLESPACE_CONTACT_MEMORY_MAX_AGE], ["_playersOnly", false], ["_observerGroup", grpNull], ["_groundOnly", true], ["_includeSound", false]];
     if (!isServer) exitWith {[]};
     private _matches = [];
     {
+        // Heard-gunfire areas have no observer evidence and are opt-in for ground responders.
+        if (!_includeSound && {(_y select 6) == "KPLIB_SOUND"}) then {continue};
         private _record = +_y;
         if (!isNull _observerGroup) then {
             private _evidence = (_record select 7) getOrDefault [str _observerGroup, []];
@@ -116,6 +155,11 @@ BATTLESPACE_CONTACT_TICK = {
         {if (CBA_missionTime - (_y select 1) > BATTLESPACE_CONTACT_MEMORY_MAX_AGE) then {_evidence deleteAt _x}} forEach _evidence;
     } forEach BATTLESPACE_CONTACT_MEMORY;
     {if (isNull (_y select 3) || {CBA_missionTime - (_y select 0) > BATTLESPACE_CONTACT_MEMORY_MAX_AGE}) then {BATTLESPACE_CONTACT_REQUESTS deleteAt _x}} forEach BATTLESPACE_CONTACT_REQUESTS;
+    {
+        private _cell = _y;
+        {if (((_y select 0) findIf {CBA_missionTime - _x <= BATTLESPACE_CONTACT_MEMORY_MAX_AGE}) < 0) then {_cell deleteAt _x}} forEach _cell;
+        if (count _cell == 0) then {BATTLESPACE_CONTACT_SOUNDS deleteAt _x};
+    } forEach BATTLESPACE_CONTACT_SOUNDS;
     if (count BATTLESPACE_CONTACT_MEMORY > 256) then {
         private _oldest = []; {_oldest pushBack [_y select 1, _x]} forEach BATTLESPACE_CONTACT_MEMORY; _oldest sort true;
         {BATTLESPACE_CONTACT_MEMORY deleteAt (_x select 1)} forEach (_oldest select [0, count _oldest - 256]);

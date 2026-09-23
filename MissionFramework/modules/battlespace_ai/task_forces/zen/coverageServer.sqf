@@ -57,6 +57,7 @@ BATTLESPACE_ZEN_BUILD_CONTACTS = {
             _observers pushBack [groupId _group, ceil (CBA_missionTime - _reportedAt)];
         } forEach _evidence;
         private _name = getText (configFile >> "CfgVehicles" >> _class >> "displayName");
+        if (_class == "KPLIB_SOUND") then {_name = "Heard gunfire"};
         if (_name == "") then {_name = _class};
         // _target is deliberately never dereferenced for its current position.
         _rows pushBack [_x, +_position, _seenAt, _name, _weight, _player, _observers, +_previous];

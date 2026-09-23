@@ -11,11 +11,14 @@ BATTLESPACE_OFFENSIVE_COMPOSITION_STRENGTH = {
 
 BATTLESPACE_OFFENSIVE_OBSERVED_STRENGTH = {
     params ["_position"];
-    private _contacts = [_position, BATTLESPACE_OFFENSIVE_CONTACT_RADIUS, BATTLESPACE_OFFENSIVE_CONTACT_MAX_AGE] call BATTLESPACE_CONTACT_QUERY;
+    private _contacts = [_position, BATTLESPACE_OFFENSIVE_CONTACT_RADIUS, BATTLESPACE_OFFENSIVE_CONTACT_MAX_AGE, false, grpNull, true, true] call BATTLESPACE_CONTACT_QUERY;
     private _targets = _contacts apply {_x select 5};
     private _counted = [];
     private _strength = 0;
+    private _heard = 0;
     {
+        // Heard-gunfire areas estimate unseen shooters; the same fight may also be seen.
+        if ((_x select 6) == "KPLIB_SOUND") then {_heard = _heard + ((_x select 2) max 0); continue};
         private _target = _x select 5;
         if (isNull _target || {_target in _counted}) then {continue};
         _counted pushBack _target;
@@ -24,7 +27,7 @@ BATTLESPACE_OFFENSIVE_OBSERVED_STRENGTH = {
         if (_target isKindOf "Man" && {!isNull objectParent _target} && {objectParent _target in _targets}) then {continue};
         _strength = _strength + ((_x select 2) max 0);
     } forEach _contacts;
-    _strength
+    _strength max _heard
 };
 
 BATTLESPACE_OFFENSIVE_COMMITTED_STRENGTH = {

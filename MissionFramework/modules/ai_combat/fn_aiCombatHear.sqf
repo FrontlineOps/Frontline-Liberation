@@ -36,6 +36,10 @@ private _angle = random 360;
 private _offset = 0.4 * _error + random (0.6 * _error);
 private _estimate = _origin vectorAdd [sin _angle * _offset, cos _angle * _offset, 0];
 _state set ["heard", [_estimate, _time, _suppressed, round _error, round _range]];
+// OPFOR listeners also report the uncertain estimate to the Battlespace commander.
+if (!isNil "BATTLESPACE_CONTACT_HEARD" && {side group _unit == GRLIB_side_enemy} && {_side == GRLIB_side_friendly}) then {
+    [_estimate, _time, _best select 6, isPlayer objectFromNetId (_best select 6)] call BATTLESPACE_CONTACT_HEARD;
+};
 if (count (_state get "job") == 0 && {isNull getAttackTarget _unit}
     && {isNull (_state get "target")} && {_unit checkAIFeature "WEAPONAIM"}
     && {!(_unit getVariable ["KPLIB_lambs_forceMove", false])}) then {

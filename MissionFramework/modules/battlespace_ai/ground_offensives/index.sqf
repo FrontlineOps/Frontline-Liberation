@@ -4,7 +4,8 @@ call compile preprocessFileLineNumbers "modules\battlespace_ai\ground_offensives
 
 BATTLESPACE_OFFENSIVE_GET_CONTACT = {
     params ["_position", ["_sourceSector", ""], ["_excludeId", ""], ["_continuing", []], ["_minimumStrength", 0]];
-    private _contacts = [[], 1e9, BATTLESPACE_OFFENSIVE_CONTACT_MAX_AGE] call BATTLESPACE_CONTACT_QUERY;
+    // Sustained heard gunfire is a valid ground objective; air and artillery never see it.
+    private _contacts = [[], 1e9, BATTLESPACE_OFFENSIVE_CONTACT_MAX_AGE, false, grpNull, true, true] call BATTLESPACE_CONTACT_QUERY;
     private _ranked = [];
     {
         if (surfaceIsWater (_x select 0)) then {continue};
