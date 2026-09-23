@@ -21,6 +21,7 @@ private _shots = localNamespace getVariable "KPLIB_blastShots";
     };
 } forEach keys _shots;
 private _jobs = localNamespace getVariable "KPLIB_blastJobs";
+if (_jobs isEqualTo []) exitWith {};
 private _cursor = localNamespace getVariable ["KPLIB_blastJobCursor", 0];
 for "_i" from 1 to KPLIB_munitions_blast_cells_per_tick do {
     if (_jobs isEqualTo [] || {diag_tickTime - _start > 0.003}) exitWith {};

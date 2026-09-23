@@ -5,6 +5,10 @@ if (CBA_missionTime >= (localNamespace getVariable ["KPLIB_munitionsSettingsNext
     localNamespace setVariable ["KPLIB_munitionsSettingsNext", CBA_missionTime + 5];
     [] call KPLIB_fnc_munitionsSettings;
 };
+// Idle frames: nothing queued for this callback or the two it drives.
+if ((localNamespace getVariable ["KPLIB_munitionsParticleQueue", []]) isEqualTo []
+    && {(localNamespace getVariable ["KPLIB_munitionsDebrisQueue", []]) isEqualTo []}
+    && {(localNamespace getVariable ["KPLIB_munitionsBackfaceQueue", []]) isEqualTo []}) exitWith {};
 private _started = diag_tickTime;
 [_started] call KPLIB_fnc_munitionsBackfaceTick;
 [_started] call KPLIB_fnc_munitionsDebrisTick;
