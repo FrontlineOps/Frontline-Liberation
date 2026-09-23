@@ -26,8 +26,6 @@ if (isNil "halojumping") then {halojumping = false;};
 private _uiticks = 0;
 private _active_sectors_hint = false;
 private _nearest_active_sector = "";
-private _zone_size = 0;
-private _colorzone = "ColorGrey";
 private _bar = controlNull;
 private _barwidth = 0;
 
@@ -99,18 +97,6 @@ while {true} do {
 
             _nearest_active_sector = [GRLIB_sector_size] call KPLIB_fnc_getNearestSector;
             if ( _nearest_active_sector != "" && _visibleMap) then {
-                _zone_size = GRLIB_capture_size;
-                if ( _nearest_active_sector in sectors_bigtown ) then {
-                    _zone_size = GRLIB_capture_size * 1.4;
-                };
-
-                "zone_capture" setmarkerposlocal (markerpos _nearest_active_sector);
-                _colorzone = "ColorGrey";
-                if ( [ markerpos _nearest_active_sector, _zone_size ] call KPLIB_fnc_getSectorOwnership == GRLIB_side_friendly ) then { _colorzone = GRLIB_color_friendly };
-                if ( [ markerpos _nearest_active_sector, _zone_size ] call KPLIB_fnc_getSectorOwnership == GRLIB_side_enemy ) then { _colorzone = GRLIB_color_enemy };
-                if ( [ markerpos _nearest_active_sector, _zone_size ] call KPLIB_fnc_getSectorOwnership == GRLIB_side_resistance ) then { _colorzone = "ColorCivilian" };
-                "zone_capture" setmarkercolorlocal _colorzone;
-
                 _ratio = [_nearest_active_sector] call KPLIB_fnc_getBluforRatio;
                 _barwidth = 0.084 * safezoneW * _ratio;
                 _bar = _overlay displayCtrl (244);
@@ -124,11 +110,8 @@ while {true} do {
                 } else {
                     (_overlay displayCtrl (205)) ctrlSetTextColor [0.85,0,0,1];
                 };
-
-                "zone_capture" setMarkerSizeLocal [ _zone_size,_zone_size ];
             } else {
                 {(_overlay displayCtrl (_x)) ctrlShow false;} forEach _sectorcontrols;
-                "zone_capture" setmarkerposlocal markers_reset;
             };
         };
 
