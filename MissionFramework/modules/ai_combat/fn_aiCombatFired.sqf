@@ -2,8 +2,9 @@
    explosive/illumination job; native speed, inventory, flight and damage remain.
    No pursuit, additional projectiles or per-projectile controller. */
 params ["_unit", "_weapon", "_muzzle", "_mode", "_ammo", "_magazine", "_projectile"];
-if (isRemoteExecuted || {!local _unit} || {!isNull objectParent _unit}) exitWith {};
-if (isServer) then {
+if (isRemoteExecuted || {!local _unit}) exitWith {};
+// Job assistance is dismounted-only; mounted shots still report sound evidence below.
+if (isServer && {isNull objectParent _unit}) then {
     private _registry = localNamespace getVariable ["KPLIB_aiCombat_registry", createHashMap];
     private _state = _registry getOrDefault [netId _unit, createHashMap];
     if (count _state > 0) then {

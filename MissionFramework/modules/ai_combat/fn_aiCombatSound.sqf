@@ -7,13 +7,20 @@ params [["_unit", objNull, [objNull]], ["_weapon", "", [""]], ["_muzzle", "", ["
 if (!isServer || {!KPLIB_aiCombat_enabled} || {!KPLIB_aiCombat_hearing}
     || {localNamespace getVariable ["KPLIB_aiCombat_blocked", "Not initialized"] != ""}) exitWith {false};
 if ([_weapon, _muzzle, _ammo, _magazine] findIf {count _x > 160} >= 0) exitWith {false};
-if (isNull _unit || {!alive _unit} || {!(_unit isKindOf "CAManBase")}
-    || {!isNull objectParent _unit} || {!(_weapon in weapons _unit)}) exitWith {false};
+if (isNull _unit || {!alive _unit} || {!(_unit isKindOf "CAManBase")}) exitWith {false};
+// Mounted fire must come from the shooter's own turret; FFV uses carried weapons.
+private _vehicle = objectParent _unit;
+private _turret = if (isNull _vehicle) then {[]} else {_vehicle unitTurret _unit};
+private _mounted = !isNull _vehicle && {!(_weapon in weapons _unit)};
+if (!(_weapon in ([weapons _unit, _vehicle weaponsTurret _turret] select _mounted))) exitWith {false};
 if (isRemoteExecuted && {remoteExecutedOwner != owner _unit}) exitWith {false};
 if (!isRemoteExecuted && {!local _unit}) exitWith {false};
 private _valid = true;
 if (isNull _projectile) then {
-    _valid = isRemoteExecuted && {_weapon == currentWeapon _unit} && {_muzzle == currentMuzzle _unit};
+    _valid = isRemoteExecuted && {
+        if (_mounted) then {((weaponState [_vehicle, _turret]) select [0, 2]) isEqualTo [_weapon, _muzzle]}
+        else {_weapon == currentWeapon _unit && {_muzzle == currentMuzzle _unit}}
+    };
 } else {
     private _parents = getShotParents _projectile;
     _valid = typeOf _projectile == _ammo && {count _parents >= 2} && {(_parents select 1) == _unit}
