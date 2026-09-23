@@ -61,5 +61,7 @@ inline long long cellKey(long long x, long long y) { return (x << 32) ^ (y & 0xf
 
 Result findGrid(const Grid& grid, const Profile& profile, const Context& context, double startX, double startY, double goalX, double goalY);
 Result findRoad(const Roads& roads, double gridSize, const Context& context, double weight, int maxExpansions, int start, int goal);
+// Connected land (grid-search water rules, no slope limit): one label per cell, -1 where blocked.
+std::vector<int> components(const Grid& grid);
 
 } // namespace flpath

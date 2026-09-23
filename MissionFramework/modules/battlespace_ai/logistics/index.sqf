@@ -1284,7 +1284,7 @@ BATTLESPACE_LOGISTICS_GET_REACHABLE_DEEPER_TARGETS = {
     private _candidateRows = [];
     private _sourcePosition = getMarkerPos _sourceSector;
     {
-        if (_x == _sourceSector || {(_y getOrDefault ["owner", ""]) != "OPFOR"}) then {continue};
+        if (_x == _sourceSector || {(_y getOrDefault ["owner", ""]) != "OPFOR"} || {_x in BATTLESPACE_PATHFIND_ISOLATED_SECTORS}) then {continue};
         private _depth = [_x, blufor_sectors + ["startbase_marker"]] call NETWORKED_SECTORS_GET_DISTANCE_FROM_FRONTLINE;
         if (_depth <= _sourceDepth) then {continue};
         private _score = (_depth * 1000000) + (_sourcePosition distance2D (getMarkerPos _x));
@@ -1567,7 +1567,8 @@ BATTLESPACE_LOGISTICS_DISPATCH = {
         false
     };
 
-    private _sourceCandidates = [_targetSector, _request] call BATTLESPACE_LOGISTICS_FIND_SECTOR_SOURCES;
+    // Ground convoys cannot leave an island sector.
+    private _sourceCandidates = ([_targetSector, _request] call BATTLESPACE_LOGISTICS_FIND_SECTOR_SOURCES) select {!((_x select 0) in BATTLESPACE_PATHFIND_ISOLATED_SECTORS)};
     private _selection = [];
     {
         private _convoyDefinition = _x;
@@ -1641,7 +1642,7 @@ BATTLESPACE_LOGISTICS_EVACUATION_DECISION_TICK = {
 
     private _candidates = [];
     {
-        if ((_y getOrDefault ["owner", ""]) != "OPFOR") then {continue};
+        if ((_y getOrDefault ["owner", ""]) != "OPFOR" || {_x in BATTLESPACE_PATHFIND_ISOLATED_SECTORS}) then {continue};
         if ([_x] call BATTLESPACE_LOGISTICS_HAS_ACTIVE_EVACUATION_FROM_SOURCE) then {continue};
         if ([_x] call BATTLESPACE_LOGISTICS_HAS_ACTIVE_CONVOY_FOR_TARGET) then {continue};
         private _excess = [_x] call BATTLESPACE_LOGISTICS_BUILD_FRONT_EXCESS;
@@ -1680,7 +1681,7 @@ BATTLESPACE_LOGISTICS_DECISION_TICK = {
 
     private _candidates = [];
     {
-        if ((_y getOrDefault ["owner", ""]) != "OPFOR") then { continue };
+        if ((_y getOrDefault ["owner", ""]) != "OPFOR" || {_x in BATTLESPACE_PATHFIND_ISOLATED_SECTORS}) then { continue };
         if (CBA_missionTime < (_y getOrDefault ["nextResupplyAt", 0])) then { continue };
         if (["CONVOY", _x] call BATTLESPACE_STRATEGIC_HAS_OPERATION_FOR_TARGET) then { continue };
         if ([_x] call BATTLESPACE_LOGISTICS_HAS_ACTIVE_EVACUATION_FROM_SOURCE) then { continue };

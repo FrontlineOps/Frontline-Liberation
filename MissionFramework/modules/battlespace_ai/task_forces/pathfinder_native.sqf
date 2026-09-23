@@ -9,6 +9,8 @@
 BATTLESPACE_PATHFIND_NATIVE_LIBRARY = "frontline_path_v1";
 BATTLESPACE_PATHFIND_NATIVE_READY = false;
 BATTLESPACE_PATHFIND_NATIVE_ROADS = createHashMap;
+// Sectors off the land mass that holds most sectors (islands); ground logistics skips them.
+BATTLESPACE_PATHFIND_ISOLATED_SECTORS = [];
 
 // Returns the parsed reply, or nil on any extension or command error.
 BATTLESPACE_PATHFIND_NATIVE_CALL = {
@@ -99,6 +101,21 @@ BATTLESPACE_PATHFIND_NATIVE_EXPORT = {
     if (_failed || {isNil {["roadsSeal"] call BATTLESPACE_PATHFIND_NATIVE_CALL}}) exitWith {};
 
     BATTLESPACE_PATHFIND_NATIVE_ROADS = _index;
+    private _labels = sectors_allSectors apply {
+        private _position = markerPos _x;
+        private _reply = ["component", [(_position select 0) toFixed 2, (_position select 1) toFixed 2]] call BATTLESPACE_PATHFIND_NATIVE_CALL;
+        if (isNil "_reply") then {-1} else {_reply select 0}
+    };
+    private _counts = createHashMap;
+    {if (_x >= 0) then {_counts set [_x, (_counts getOrDefault [_x, 0]) + 1]}} forEach _labels;
+    private _main = -1;
+    {if (_y > (_counts getOrDefault [_main, 0])) then {_main = _x}} forEach _counts;
+    {
+        if ((_labels select _forEachIndex) != _main) then {BATTLESPACE_PATHFIND_ISOLATED_SECTORS pushBack _x};
+    } forEach sectors_allSectors;
+    if (BATTLESPACE_PATHFIND_ISOLATED_SECTORS isNotEqualTo []) then {
+        diag_log format ["[BATTLESPACE][PATH] Sectors unreachable by ground, skipped by ground logistics: %1", BATTLESPACE_PATHFIND_ISOLATED_SECTORS];
+    };
     BATTLESPACE_PATHFIND_NATIVE_READY = true;
     diag_log format ["[BATTLESPACE][PATH] Native pathfinder ready: %1x%1 cells, %2 roads, exported in %3 s",
         _cells, count _roads, (diag_tickTime - _started) toFixed 1];

@@ -132,6 +132,16 @@ int main() {
         check(!result.found && result.expansions == 5, "expansion cap fails the search");
     }
     {
+        auto grid = flat(5);
+        for (int y = 0; y < 5; ++y) {
+            flood(grid, 2, y);
+        }
+        const auto labels = flpath::components(grid);
+        check(labels[0] == labels[1] && labels[3] == labels[4] && labels[0] != labels[3] && labels[2] == -1, "water splits connected land");
+        grid.heights[1] = 500; // cliffs do not split land
+        check(flpath::components(grid)[0] == flpath::components(grid)[1], "slope ignored by components");
+    }
+    {
         flpath::Roads roads;
         roads.x = {0, 100, 200, 100};
         roads.y = {0, 0, 0, 100};
@@ -157,6 +167,7 @@ int main() {
         check(call("route", {"0", "150"}) == "[[50.00,50.00],[150.00,150.00]]", "route page");
         call("find", {"0", "\"99.99\"", "\"50.00\"", "\"150.00\"", "\"150.00\"", "0", "0", "1", "2.25", "1.12", "12000", "150", "150", "600", "1600", "1.2", "\"\"", "\"\""}, &code);
         check(code == 0 && call("route", {"0", "1"}) == "[[99.99,50.00]]", "quoted coordinates keep full precision");
+        check(call("component", {"\"50.00\"", "\"50.00\""}) == "[0]" && call("component", {"-5", "50"}) == "[-1]", "component lookup");
         call("find", {"0", "50"}, &code);
         check(code == 1, "wrong argument count rejected");
         call("gridFlags", {"0", "\"0000\""}, &code);

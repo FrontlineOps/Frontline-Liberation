@@ -143,6 +143,45 @@ Result findGrid(const Grid& grid, const Profile& profile, const Context& context
     return result;
 }
 
+std::vector<int> components(const Grid& grid) {
+    const int n = grid.cells;
+    const auto blocked = [&grid](int x, int y) {
+        const unsigned char flag = grid.flag(x, y);
+        return (flag & 1) && !(flag & 2);
+    };
+    std::vector<int> labels(static_cast<std::size_t>(n) * n, -1);
+    std::vector<int> open;
+    int next = 0;
+    for (int seed = 0; seed < n * n; ++seed) {
+        if (labels[seed] >= 0 || blocked(2 * (seed % n) + 1, 2 * (seed / n) + 1)) {
+            continue;
+        }
+        labels[seed] = next;
+        open.assign(1, seed);
+        while (!open.empty()) {
+            const int cell = open.back();
+            open.pop_back();
+            const int cx = cell % n, cy = cell / n;
+            for (int dy = -1; dy <= 1; ++dy) {
+                for (int dx = -1; dx <= 1; ++dx) {
+                    const int nx = cx + dx, ny = cy + dy;
+                    if ((dx == 0 && dy == 0) || nx < 0 || ny < 0 || nx >= n || ny >= n) {
+                        continue;
+                    }
+                    const int neighbour = ny * n + nx;
+                    if (labels[neighbour] >= 0 || blocked(2 * nx + 1, 2 * ny + 1) || blocked(2 * cx + 1 + dx, 2 * cy + 1 + dy)) {
+                        continue;
+                    }
+                    labels[neighbour] = next;
+                    open.push_back(neighbour);
+                }
+            }
+        }
+        ++next;
+    }
+    return labels;
+}
+
 Result findRoad(const Roads& roads, double gridSize, const Context& context, double weight, int maxExpansions, int start, int goal) {
     Result result;
     const int count = static_cast<int>(roads.x.size());

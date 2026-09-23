@@ -30,6 +30,7 @@ flpath::Grid grid;
 std::vector<char> flagRows;
 std::vector<char> heightRows;
 bool gridReady = false;
+std::vector<int> labels; // connected land, built on first use after gridSeal
 flpath::Roads roads;
 std::vector<char> roadSet;
 bool roadsReady = false;
@@ -138,6 +139,7 @@ std::string dispatch(const std::string& command, const Arguments& args) {
         flagRows.clear();
         heightRows.clear();
         gridReady = false;
+        labels.clear();
         roads = {};
         roadSet.clear();
         roadsReady = false;
@@ -161,6 +163,7 @@ std::string dispatch(const std::string& command, const Arguments& args) {
         flagRows.assign(grid.side(), 0);
         heightRows.assign(grid.cells, 0);
         gridReady = false;
+        labels.clear();
         return "[]";
     }
     if (command == "gridFlags") {
@@ -285,6 +288,18 @@ std::string dispatch(const std::string& command, const Arguments& args) {
         }
         const double micros = std::chrono::duration<double, std::micro>(std::chrono::steady_clock::now() - started).count();
         output << std::fixed << std::setprecision(3) << '[' << last.found << ',' << last.expansions << ',' << last.route.size() << ',' << last.cost << ',' << micros << ']';
+        return output.str();
+    }
+    if (command == "component") {
+        args.size(2);
+        require(gridReady, "Grid not ready");
+        if (labels.empty()) {
+            labels = flpath::components(grid);
+        }
+        const auto x = static_cast<long long>(std::floor(args.number(0) / grid.size));
+        const auto y = static_cast<long long>(std::floor(args.number(1) / grid.size));
+        const bool inside = x >= 0 && y >= 0 && x < grid.cells && y < grid.cells;
+        output << '[' << (inside ? labels[static_cast<std::size_t>(y) * grid.cells + x] : -1) << ']';
         return output.str();
     }
     if (command == "route") {
