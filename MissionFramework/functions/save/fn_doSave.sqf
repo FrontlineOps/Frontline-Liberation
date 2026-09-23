@@ -34,6 +34,8 @@ if (missionNamespace getVariable ["kp_liberation_saving", false]) exitWith {
 kp_liberation_saving = true;
 private _saveStartedAt = diag_tickTime;
 
+// Radio state is part of this snapshot; later changes mark it dirty again.
+localNamespace setVariable ["KPLIB_RADIO_DIRTY", false];
 private _saveData = [] call KPLIB_fnc_getSaveData;
 
 // Write data in the server profileNamespace
@@ -44,9 +46,12 @@ if (!isNil "KPLIB_COPS_SERVER_SAVE" && {missionNamespace getVariable ["KPLIB_COP
 };
 // Case rewards and paid guards must share the exact enemy-resource snapshot.
 if (missionNamespace getVariable ["BATTLESPACE_LOGISTICS_READY", false]) then {
+    // Intelligence is exported by the logistics save.
+    localNamespace setVariable ["KPLIB_INTEL_DIRTY", false];
     [false] call BATTLESPACE_LOGISTICS_SAVE;
 };
 saveProfileNamespace;
+KPLIB_lastSaveAt = CBA_missionTime;
 
 KPLIB_lastSaveDuration = diag_tickTime - _saveStartedAt;
 if (KP_liberation_savegame_debug > 0 || {KPLIB_lastSaveDuration >= 2}) then {

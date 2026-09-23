@@ -218,7 +218,8 @@ KPLIB_RADIO_SERVER_TICK = {
         };
     };
     if (localNamespace getVariable ["KPLIB_RADIO_DIRTY", false] && {missionNamespace getVariable ["KPLIB_init", false]}
-        && {!(missionNamespace getVariable ["kp_liberation_saving", false])} && {!(localNamespace getVariable ["KPLIB_RADIO_SAVE_QUEUED", false])}) then {
+        && {!(missionNamespace getVariable ["kp_liberation_saving", false])} && {!(localNamespace getVariable ["KPLIB_RADIO_SAVE_QUEUED", false])}
+        && {CBA_missionTime - (missionNamespace getVariable ["KPLIB_lastSaveAt", -1e6]) >= KP_liberation_save_interval / 2}) then {
         localNamespace setVariable ["KPLIB_RADIO_DIRTY", false];
         localNamespace setVariable ["KPLIB_RADIO_SAVE_QUEUED", true];
         [] spawn {

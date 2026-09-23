@@ -134,7 +134,9 @@ KPLIB_INTEL_SERVER_RECONCILE = {
         KPLIB_INTEL_REVISION = KPLIB_INTEL_REVISION + 1;
         [allPlayers select {isPlayer _x && {side group _x == GRLIB_side_friendly}}] call KPLIB_INTEL_SERVER_SEND_PAYLOAD;
     };
-    if (localNamespace getVariable ["KPLIB_INTEL_DIRTY", false] && {missionNamespace getVariable ["KPLIB_init", false]} && {!(missionNamespace getVariable ["kp_liberation_saving", false])}) then {
+    // Coalesce change-driven saves; every campaign save already includes intelligence.
+    if (localNamespace getVariable ["KPLIB_INTEL_DIRTY", false] && {missionNamespace getVariable ["KPLIB_init", false]} && {!(missionNamespace getVariable ["kp_liberation_saving", false])}
+        && {CBA_missionTime - (missionNamespace getVariable ["KPLIB_lastSaveAt", -1e6]) >= KP_liberation_save_interval / 2}) then {
         localNamespace setVariable ["KPLIB_INTEL_DIRTY", false];
         [] spawn {
             if !(call KPLIB_fnc_doSave) then {localNamespace setVariable ["KPLIB_INTEL_DIRTY", true]};
