@@ -149,6 +149,34 @@ BATTLESPACE_DEEP_RECON_ON_DECISION_TICK = {
     };
     if (_finished) exitWith {true};
 
+    // Gunfire its members heard away from its current watch area: move to a
+    // stand-off point and observe it (hold-fire ROE is unchanged).
+    if (_phase in ["INFILTRATING", "OBSERVING"] && {CBA_missionTime >= (_operation getOrDefault ["nextSoundRetargetAt", 0])}) then {
+        private _registry = localNamespace getVariable ["KPLIB_aiCombat_registry", createHashMap];
+        private _estimate = [];
+        {
+            {
+                private _heard = (_registry getOrDefault [netId _x, createHashMap]) getOrDefault ["heard", []];
+                if (_heard isNotEqualTo [] && {CBA_missionTime - (_heard select 1) <= 45}) exitWith {_estimate = _heard select 0};
+            } forEach units _x;
+            if (_estimate isNotEqualTo []) exitWith {};
+        } forEach _activeGroups;
+        if (_estimate isEqualTo [] || {_estimate distance2D (_operation getOrDefault ["targetPosition", _currentLocation]) <= 400}) exitWith {};
+        private _standoff = _estimate getPos [300, _estimate getDir _currentLocation];
+        if (surfaceIsWater _standoff) exitWith {};
+        _standoff set [2, 0];
+        _phase = "INFILTRATING";
+        _operation set ["phase", _phase];
+        _operation set ["targetPosition", _standoff];
+        _operation set ["nextSoundRetargetAt", CBA_missionTime + 600];
+        _taskForce set [2, _standoff];
+        BATTLESPACE_TASK_FORCE_PATHS deleteAt _taskForceId;
+        BATTLESPACE_STRATEGIC_OPERATIONS set [_taskForceId, _operation];
+        BATTLESPACE_TASK_FORCES set [_taskForceId, _taskForce];
+        [_taskForceId, _currentLocation, _standoff, true] call QUEUE_PATHFIND_REQUEST;
+        [format ["Deep Reconnaissance Patrol %1 moving to observe heard gunfire near %2", _taskForceId, mapGridPosition _estimate]] call BATTLESPACE_STRATEGIC_LOG;
+    };
+
     if (_phase in ["INFILTRATING", "OBSERVING"]) then {
         private _observationPosition = _operation getOrDefault ["targetPosition", []];
         private _positionValid = _observationPosition isEqualType []
