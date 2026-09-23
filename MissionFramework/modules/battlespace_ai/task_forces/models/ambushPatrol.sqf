@@ -36,11 +36,17 @@ BATTLESPACE_TASK_FORCE_AMBUSH_CONCEAL = {
 
 BATTLESPACE_TASK_FORCE_AMBUSH_HAS_CONTACT = {
     params ["_taskForce"];
+    private _registry = localNamespace getVariable ["KPLIB_aiCombat_registry", createHashMap];
     private _contact = false;
     {
         private _leader = leader _x;
         if (isNull _leader) then {continue};
         if ([getPosATL _leader, 350, 45, false, _x] call BATTLESPACE_CONTACT_QUERY isNotEqualTo []) exitWith {_contact = true};
+        // Gunfire its own members heard (perceived position) within the same range and age.
+        if ((units _x) findIf {
+            private _heard = (_registry getOrDefault [netId _x, createHashMap]) getOrDefault ["heard", []];
+            _heard isNotEqualTo [] && {CBA_missionTime - (_heard select 1) <= 45} && {_x distance2D (_heard select 0) <= 350}
+        } >= 0) exitWith {_contact = true};
     } forEach (_taskForce param [4, []]);
     _contact
 };
