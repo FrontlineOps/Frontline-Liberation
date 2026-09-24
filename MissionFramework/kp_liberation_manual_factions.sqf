@@ -410,6 +410,7 @@ private _blufor = createHashMapFromArray [
     ]],
 
     // Player-requested boxes. Copy a block and choose its name, contents and roles.
+    // Names must be unique: a repeated name silently replaces the earlier crate.
     // Cargo rows are ["classname", quantity]. roles=[] permits nobody.
     // Cooldown is seconds; Limit is boxes per group; SpecialtyCost is group tokens.
     ["crates", createHashMapFromArray [
@@ -439,7 +440,7 @@ private _blufor = createHashMapFromArray [
              ["Limit", 1],
              ["Offset", [0, 1, 1]]
          ]],
-         ["General Resupply Crate", createHashMapFromArray [
+         ["UKSF General Resupply Crate", createHashMapFromArray [
              ["Model", "Box_NATO_Equip_F"],
              ["Category", "UKSF"],
              ["roles", ["trp_cmd","trp_sgt","sfm","ptrl_ic","ptrl_op","ptrl_med","ptrl_2ic","uksf_jtac"]],
