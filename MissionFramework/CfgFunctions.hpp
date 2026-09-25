@@ -181,6 +181,7 @@ class KPLIB {
         class aiCombatFired    {};
         class aiCombatSound    {};
         class aiCombatHear     {};
+        class aiCombatHeard {};
         class aiCombatInvestigate {};
         class aiCombatReact {};
         class aiCombatInspect  {};

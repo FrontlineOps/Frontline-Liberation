@@ -34,39 +34,21 @@ BATTLESPACE_TASK_FORCE_AMBUSH_CONCEAL = {
     } forEach (_taskForce param [4, []]);
 };
 
-BATTLESPACE_TASK_FORCE_AMBUSH_HAS_CONTACT = {
+// [contact within ambush range, newest heard estimate beyond it or []].
+BATTLESPACE_TASK_FORCE_AMBUSH_SENSE = {
     params ["_taskForce"];
-    private _registry = localNamespace getVariable ["KPLIB_aiCombat_registry", createHashMap];
     private _contact = false;
+    private _beyond = [];
     {
         private _leader = leader _x;
         if (isNull _leader) then {continue};
         if ([getPosATL _leader, 350, 45, false, _x] call BATTLESPACE_CONTACT_QUERY isNotEqualTo []) exitWith {_contact = true};
-        // Gunfire its own members heard (perceived position) within the same range and age.
-        if ((units _x) findIf {
-            private _heard = (_registry getOrDefault [netId _x, createHashMap]) getOrDefault ["heard", []];
-            _heard isNotEqualTo [] && {CBA_missionTime - (_heard select 1) <= 45} && {_x distance2D (_heard select 0) <= 350}
-        } >= 0) exitWith {_contact = true};
+        private _heard = [_x, 45] call KPLIB_fnc_aiCombatHeard;
+        if (_heard isEqualTo []) then {continue};
+        if ((_heard select 2) distance2D (_heard select 0) <= 350) exitWith {_contact = true};
+        _beyond = _heard select 0;
     } forEach (_taskForce param [4, []]);
-    _contact
-};
-
-// Newest gunfire (<=45 s) a member heard beyond ambush range; [] when none.
-BATTLESPACE_TASK_FORCE_AMBUSH_HEARD_BEYOND = {
-    params ["_taskForce"];
-    private _registry = localNamespace getVariable ["KPLIB_aiCombat_registry", createHashMap];
-    private _estimate = [];
-    private _newest = CBA_missionTime - 45;
-    {
-        {
-            private _heard = (_registry getOrDefault [netId _x, createHashMap]) getOrDefault ["heard", []];
-            if (_heard isNotEqualTo [] && {(_heard select 1) >= _newest} && {_x distance2D (_heard select 0) > 350}) then {
-                _estimate = _heard select 0;
-                _newest = _heard select 1;
-            };
-        } forEach units _x;
-    } forEach (_taskForce param [4, []]);
-    _estimate
+    [_contact, [_beyond, []] select _contact]
 };
 
 BATTLESPACE_TASK_FORCE_AMBUSH_BEGIN_DISPLACE = {
@@ -175,7 +157,7 @@ BATTLESPACE_TASK_FORCE_AMBUSH_BEGIN_DISPLACE = {
                     false
                 };
 
-                private _hasContact = [_taskForce] call BATTLESPACE_TASK_FORCE_AMBUSH_HAS_CONTACT;
+                ([_taskForce] call BATTLESPACE_TASK_FORCE_AMBUSH_SENSE) params ["_hasContact", "_heard"];
                 if (_phase in ["ON_STATION", "CREEPING"]) exitWith {
                     if (_hasContact) exitWith {
                         _operation set ["phase", "ENGAGED"];
@@ -188,7 +170,6 @@ BATTLESPACE_TASK_FORCE_AMBUSH_BEGIN_DISPLACE = {
                     };
                     // Gunfire heard beyond ambush range: creep toward it (LAMBS taskCreep)
                     // and return to the ambush site once it has been quiet for 300 s.
-                    private _heard = [_taskForce] call BATTLESPACE_TASK_FORCE_AMBUSH_HEARD_BEYOND;
                     if (_heard isNotEqualTo []) then {
                         _operation set ["creepUntil", CBA_missionTime + 300];
                         if (_phase == "ON_STATION") then {

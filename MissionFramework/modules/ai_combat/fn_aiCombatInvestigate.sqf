@@ -62,9 +62,8 @@ if (_search isNotEqualTo []) exitWith {
     };
 };
 if (!(_free || {_patrol}) || {!KPLIB_aiCombat_hearing} || {_free && {!(currentCommand _unit in ["", "STOP"])}}) exitWith {};
-private _heard = _state get "heard";
-if (_heard isEqualTo [] || {CBA_missionTime - (_heard select 1) >= KPLIB_aiCombat_soundMemory}
-    || {(_heard select 1) <= (_state getOrDefault ["soundInvestigatedAt", -1000])}
+private _heard = [_group, KPLIB_aiCombat_soundMemory] call KPLIB_fnc_aiCombatHeard;
+if (_heard isEqualTo [] || {(_heard select 1) <= (_state getOrDefault ["soundInvestigatedAt", -1000])}
     || {CBA_missionTime < (_state getOrDefault ["nextSoundSearch", 0])}) exitWith {};
 private _origin = getPosATL _unit;
 private _estimate = ASLToATL (_heard select 0);

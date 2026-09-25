@@ -152,14 +152,10 @@ BATTLESPACE_DEEP_RECON_ON_DECISION_TICK = {
     // Gunfire its members heard: move to a stand-off point and observe it
     // (hold-fire ROE is unchanged).
     if (_phase in ["INFILTRATING", "OBSERVING"] && {CBA_missionTime >= (_operation getOrDefault ["nextSoundRetargetAt", 0])}) then {
-        private _registry = localNamespace getVariable ["KPLIB_aiCombat_registry", createHashMap];
         private _estimate = [];
         {
-            {
-                private _heard = (_registry getOrDefault [netId _x, createHashMap]) getOrDefault ["heard", []];
-                if (_heard isNotEqualTo [] && {CBA_missionTime - (_heard select 1) <= 45}) exitWith {_estimate = _heard select 0};
-            } forEach units _x;
-            if (_estimate isNotEqualTo []) exitWith {};
+            private _heard = [_x, 45] call KPLIB_fnc_aiCombatHeard;
+            if (_heard isNotEqualTo []) exitWith {_estimate = _heard select 0};
         } forEach _activeGroups;
         if (_estimate isEqualTo []) exitWith {};
         private _standoff = _estimate getPos [200, _estimate getDir _currentLocation];
