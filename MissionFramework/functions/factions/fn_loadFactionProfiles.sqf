@@ -11,7 +11,7 @@ private _profiles = createHashMap;
 private _catalogs = createHashMap;
 private _errors = [];
 private _optionalMissing = [];
-private _vehiclePools = ["light", "recon", "medical", "groundLogistics", "artillery", "atgm", "aa", "samTel", "samRadar", "samShorad", "aaGun", "heavy", "rotaryLogistics", "rotaryCas", "fixedWing", "static", "transport", "boat"];
+private _vehiclePools = ["light", "recon", "medical", "groundLogistics", "artillery", "atgm", "aa", "samTel", "samRadar", "samShorad", "aaGun", "heavy", "rotaryLogistics", "rotaryCas", "fixedWing", "uav", "static", "transport", "boat"];
 private _itemCache = createHashMap;
 private _gearKeys = createHashMap;
 private _item = {
@@ -101,7 +101,7 @@ private _item = {
                 continue;
             };
             private _isUnit = _x isKindOf "CAManBase";
-            if ((_poolName == "units") != _isUnit) then {
+            if ((_poolName == "units") != _isUnit || {_poolName == "uav" && {getNumber (configFile >> "CfgVehicles" >> _x >> "isUav") <= 0 || {!(_x isKindOf "Air")}}}) then {
                 _errors pushBack format ["%1/%2 has the wrong object type: %3", _path, _poolName, _x];
             };
             _normalized pushBackUnique configName (configFile >> "CfgVehicles" >> _x);

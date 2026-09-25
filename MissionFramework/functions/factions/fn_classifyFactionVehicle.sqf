@@ -99,7 +99,9 @@ if (_class isKindOf "StaticWeapon") exitWith {
     _categories
 };
 
+private _uav = [[], ["uav"]] select (getNumber (_cfg >> "isUav") > 0);
 if (_class isKindOf "Helicopter") exitWith {
+    _categories append _uav;
     if (_isMedical) then {_categories pushBack "medical"};
     if (_isLogistics || {!_armed} || {getNumber (_cfg >> "transportSoldier") >= 6}) then {
         _categories pushBack "rotaryLogistics";
@@ -109,7 +111,7 @@ if (_class isKindOf "Helicopter") exitWith {
     _categories
 };
 
-if (_class isKindOf "Plane") exitWith {["fixedWing"]};
+if (_class isKindOf "Plane") exitWith {["fixedWing"] + _uav};
 if (_class isKindOf "Ship") exitWith {["boat"]};
 
 if (_class isKindOf "LandVehicle") then {

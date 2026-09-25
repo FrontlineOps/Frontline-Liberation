@@ -477,6 +477,7 @@ private _opfor = createHashMapFromArray [
         ["rotaryLogistics", ["RUS_VKS_mi8amtsh","RUS_VKS_mi8mt","RUS_VKS_mi8mtv2"]], // Transport helicopters.
         ["rotaryCas", ["RUS_VKS_ka52","RUS_VKS_mi24p","RUS_VKS_mi28n"]], // Attack helicopters.
         ["fixedWing", ["RUS_VKS_su25sm","RUS_VKS_mig29s","RUS_VKS_mig29smt","RUS_VKS_su57"]], // Attack/interception planes.
+        ["uav", ["RUS_VKS_forpostru"]], // Reconnaissance UAVs.
         ["static", ["rhs_SPG9M_MSV","rhs_KORD_MSV","RUS_MSV_nsvs","RUS_MSV_ags17"]] // Defensive stationary weapons.
     ]],
 
