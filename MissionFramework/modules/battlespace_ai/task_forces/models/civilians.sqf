@@ -23,6 +23,13 @@
 					["_hpSector", nil] // 12
 				];
 
+				// Alerted theaters empty their streets: no new civilians on high alert, half on alert.
+				private _level = if (_activeGroups isEqualTo [] && {_activeObjects isEqualTo []}) then {[_currentLoc] call BATTLESPACE_THEATER_LEVEL_AT} else {0};
+				private _hash = 0;
+				if (_level == 1) then {{_hash = _hash + _x} forEach toArray _taskForceName};
+				if (_level == 2 || {_level == 1 && {_hash % 2 == 0}}) exitWith {false};
+				// Nobody new wanders into a cell that is being fought over.
+				if (_activeGroups isEqualTo [] && {_activeObjects isEqualTo []} && {[_currentLoc] call BATTLESPACE_CELL_IS_CONTESTED}) exitWith {false};
 				private _meetsReq = false;
 				private _req = [] call BATTLESPACE_TASK_FORCE_GET_NEEDED_PLAYERCOUNT_FOR_PROC;
 				private _procRange = [_taskForceType] call BATTLESPACE_TASK_FORCE_GET_PROC_RANGE;
