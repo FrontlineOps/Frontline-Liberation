@@ -784,5 +784,6 @@ BATTLESPACE_TASK_FORCE_DEFENSE_BEGIN_RETURN = {
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\models\civilians.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\models\minefield.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\models\airResponse.sqf";
+[] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\models\uavRecon.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\models\airborneTransport.sqf";
 [] call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\task_forces\models\antiair.sqf";

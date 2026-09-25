@@ -9,6 +9,7 @@ call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\air_response
 call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\air_response\infantryCombat.sqf";
 call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\air_response\infantryController.sqf";
 call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\air_response\controller.sqf";
+call compileFinal preprocessFileLineNumbers "modules\battlespace_ai\air_response\recon.sqf";
 
 if (isNil "BATTLESPACE_AIR_RESPONSE_NEXT_CLASS_WARNING") then {
     BATTLESPACE_AIR_RESPONSE_NEXT_CLASS_WARNING = 0;
@@ -139,13 +140,13 @@ BATTLESPACE_AIR_RESPONSE_SELECT_CLASS = {
 };
 
 BATTLESPACE_AIR_RESPONSE_FIND_SOURCE = {
-    params ["_targetPosition"];
+    params ["_targetPosition", ["_cooldownKey", "nextAirResponseAt"]];
     private _bestSector = "";
     private _bestDistance = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_AIR_RESPONSE_MAX_RANGE", 18000];
     {
         private _state = _y;
         if ((_state getOrDefault ["owner", ""]) != "OPFOR") then {continue};
-        if (CBA_missionTime < (_state getOrDefault ["nextAirResponseAt", 0])) then {continue};
+        if (CBA_missionTime < (_state getOrDefault [_cooldownKey, 0])) then {continue};
         if (((_state getOrDefault ["resources", createHashMap]) getOrDefault ["aircraft", 0]) < 1) then {continue};
         private _distance = _targetPosition distance2D (getMarkerPos _x);
         if (_distance <= _bestDistance) then {
