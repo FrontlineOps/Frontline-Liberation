@@ -198,7 +198,13 @@ BATTLESPACE_STRATEGIC_ADD_DEPLOYED_ASSETS_TO_SNAPSHOT = {
 BATTLESPACE_STRATEGIC_RECORD_CASUALTY = {
     params ["_taskForceId", "_lossType", ["_unit", objNull]];
     if (!isServer) exitWith {};
-    if (!isNull _unit) exitWith {[_taskForceId, _lossType, _unit] call BATTLESPACE_RESERVE_RECORD_FIELD_LOSS};
+    if (!isNull _unit) exitWith {
+        // OPFOR task forces only (civilians use the same kill handler); a destroyed
+        // structure adds casualty pressure but is not a group that can report.
+        if (((BATTLESPACE_TASK_FORCES getOrDefault [_taskForceId, []]) param [6, sideUnknown]) != GRLIB_side_enemy) exitWith {};
+        if (_lossType == "STRUCTURE") exitWith {[_unit, 4] call BATTLESPACE_RESERVE_RECORD_FIELD_LOSS};
+        [_unit, [4, 1] select (_lossType == "MANPOWER")] call BATTLESPACE_CONTACT_LOSS
+    };
     private _operation = BATTLESPACE_STRATEGIC_OPERATIONS get _taskForceId;
     if (isNil "_operation") exitWith {};
     if !((_operation getOrDefault ["kind", ""]) in ["DEFENDER", "RESERVE", "DEEP RECONNAISSANCE PATROL", "REINFORCEMENT"]) exitWith {};
@@ -433,7 +439,8 @@ BATTLESPACE_TACTICAL_MAINTENANCE_TICK = {
             [format ["Cleared casualty pressure %1 at %2 after the sector threat deactivated", _pressure, _x]] call BATTLESPACE_STRATEGIC_LOG;
             continue;
         };
-        if (_pressure < _threshold) then {continue};
+        private _urgency = [markerPos _x] call BATTLESPACE_THEATER_URGENCY;
+        if (_pressure < _threshold * _urgency) then {continue};
         private _handled = false;
         if (CBA_missionTime >= (_y getOrDefault ["nextReinforcementAt", 0])) then {
             if (!isNil "BATTLESPACE_RESERVE_DISPATCH") then {
@@ -442,8 +449,8 @@ BATTLESPACE_TACTICAL_MAINTENANCE_TICK = {
             if (_handled) then {
                 // Consume one request's losses only when troops actually commit.
                 // A failed request or a supply shipment does not satisfy this need.
-                _y set ["casualtyPressure", ((_y getOrDefault ["casualtyPressure", 0]) - _threshold) max 0];
-                _y set ["nextReinforcementAt", CBA_missionTime + ([(missionNamespace getVariable ["BATTLESPACE_STRATEGIC_RESERVE_RESPONSE_COOLDOWN", 600])] call KPLIB_RADIO_SERVER_COMMAND_DELAY)];
+                _y set ["casualtyPressure", ((_y getOrDefault ["casualtyPressure", 0]) - _threshold * _urgency) max 0];
+                _y set ["nextReinforcementAt", CBA_missionTime + ([_urgency * (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_RESERVE_RESPONSE_COOLDOWN", 600])] call KPLIB_RADIO_SERVER_COMMAND_DELAY)];
             };
         };
         if (!_handled && {CBA_missionTime >= (_y getOrDefault ["nextEmergencyAt", 0])}
@@ -788,7 +795,7 @@ BATTLESPACE_STRATEGIC_BUILD_INTEGRITY_AUDIT = {
     };
     {
         private _type = _y param [0, ""];
-        if (_type in ["Battlegroup", "Deep Reconnaissance Patrol", "Convoy", "Air Response", "Airborne Transport", "Minefield", "Mobile Reserve"] && {isNil {BATTLESPACE_STRATEGIC_OPERATIONS get _x}}) then {
+        if (_type in ["Battlegroup", "Deep Reconnaissance Patrol", "Convoy", "Air Response", "UAV Recon", "Airborne Transport", "Minefield", "Mobile Reserve"] && {isNil {BATTLESPACE_STRATEGIC_OPERATIONS get _x}}) then {
             _warnings pushBack format ["Task force %1 (%2) has no operation", _x, _type];
         };
     } forEach BATTLESPACE_TASK_FORCES;
@@ -880,7 +887,7 @@ BATTLESPACE_ZEN_SERVER_REQUEST = {
     } else {
         if (_action == "OVERVIEW") then {
             private _counts = [];
-            {_counts pushBack [_x, [_x] call BATTLESPACE_STRATEGIC_COUNT_OPERATIONS]} forEach ["CONVOY", "BATTLEGROUP", "DEFENDER", "RESERVE", "AIRBORNE_TRANSPORT", "DEEP RECONNAISSANCE PATROL", "AIR_RESPONSE", "FORTIFICATION", "MINEFIELD"];
+            {_counts pushBack [_x, [_x] call BATTLESPACE_STRATEGIC_COUNT_OPERATIONS]} forEach ["CONVOY", "BATTLEGROUP", "DEFENDER", "RESERVE", "AIRBORNE_TRANSPORT", "DEEP RECONNAISSANCE PATROL", "AIR_RESPONSE", "UAV_RECON", "FORTIFICATION", "MINEFIELD"];
             _payload = [count BATTLESPACE_SECTOR_STATES, count BATTLESPACE_TASK_FORCES, _counts];
         } else {
             if (_action == "OVERLAY") then {
@@ -912,7 +919,8 @@ BATTLESPACE_ZEN_SERVER_REQUEST = {
                         ];
                     };
                 } forEach BATTLESPACE_STRATEGIC_OPERATIONS;
-                _payload = [_sectors, _operations];
+                private _cursor = if (_position isEqualType [] && {(count _position) in [2, 3]} && {_position findIf {!(_x isEqualType 0)} < 0}) then {_position} else {[]};
+                _payload = [_sectors, _operations, [] call BATTLESPACE_THEATER_OVERLAY_ROWS, [_cursor] call BATTLESPACE_CELL_OVERLAY_ROWS];
             } else {
                 _payload = [_nearest] call BATTLESPACE_STRATEGIC_BUILD_SECTOR_SNAPSHOT;
             };

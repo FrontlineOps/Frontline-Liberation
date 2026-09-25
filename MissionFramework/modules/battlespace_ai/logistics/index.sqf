@@ -1778,6 +1778,7 @@ BATTLESPACE_STRATEGIC_HANDLE_TASK_FORCE_EVENT = {
         case "REINFORCEMENT";
         case "AIRBORNE_TRANSPORT";
         case "DEEP RECONNAISSANCE PATROL";
+        case "UAV_RECON";
         case "AIR_RESPONSE": {
             private _destinationSector = switch (_operation getOrDefault ["outcome", ""]) do {
                 case "REINFORCED": {_operation getOrDefault ["targetSector", ""]};
@@ -1861,6 +1862,7 @@ if (isServer) then {
         private _nextDecision = _commandTime + _strategicInitialDelay;
         private _nextLogisticsDecision = _commandTime + _strategicInitialDelay;
         private _nextDefenseDecision = _commandTime + _strategicInitialDelay;
+        private _nextContactDecision = _commandTime + _strategicInitialDelay;
         private _nextAirResponse = _commandTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_AIR_RESPONSE_INITIAL_DELAY", 600]);
         private _nextSave = CBA_missionTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_SAVE_INTERVAL", 300]);
         [format [
@@ -1877,6 +1879,7 @@ if (isServer) then {
             if (!isNil "BATTLESPACE_TACTICAL_MAINTENANCE_TICK") then {
                 [] call BATTLESPACE_TACTICAL_MAINTENANCE_TICK;
             };
+            [] call BATTLESPACE_THEATER_TICK;
 
             if (_commandTime >= _nextLogisticsDecision) then {
                 private _convoyBudget = missionNamespace getVariable ["BATTLESPACE_STRATEGIC_MAX_CONVOYS_PER_TICK", 2];
@@ -1903,11 +1906,24 @@ if (isServer) then {
                     [] call BATTLESPACE_DEFENSE_DECISION_TICK;
                 };
                 _nextDefenseDecision = _commandTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_DEFENDER_DECISION_INTERVAL", 600]);
+                BATTLESPACE_CONTACT_DECISION_DUE = false;
+                BATTLESPACE_THEATER_RAISED = false;
+            } else {
+                // A fresh report brings the battlegroup decision forward; a rise in
+                // theater alert brings defender allocation (larger garrisons) forward.
+                if ((BATTLESPACE_CONTACT_DECISION_DUE || {BATTLESPACE_THEATER_RAISED}) && {_commandTime >= _nextContactDecision}) then {
+                    _nextContactDecision = _commandTime + BATTLESPACE_CONTACT_DECISION_INTERVAL;
+                    if (BATTLESPACE_CONTACT_DECISION_DUE) then {[] call BATTLESPACE_BATTLEGROUP_DECISION_TICK};
+                    if (BATTLESPACE_THEATER_RAISED && {!isNil "BATTLESPACE_DEFENSE_DECISION_TICK"}) then {[] call BATTLESPACE_DEFENSE_DECISION_TICK};
+                    BATTLESPACE_CONTACT_DECISION_DUE = false;
+                    BATTLESPACE_THEATER_RAISED = false;
+                };
             };
 
             if (_commandTime >= _nextAirResponse) then {
                 if (!isNil "BATTLESPACE_AIR_RESPONSE_DECISION_TICK") then {
                     [] call BATTLESPACE_AIR_RESPONSE_DECISION_TICK;
+                    [] call BATTLESPACE_UAV_RECON_DECISION_TICK;
                 };
                 _nextAirResponse = _commandTime + (missionNamespace getVariable ["BATTLESPACE_STRATEGIC_AIR_RESPONSE_DECISION_INTERVAL", 60]);
             };
