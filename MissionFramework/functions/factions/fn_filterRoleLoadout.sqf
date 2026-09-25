@@ -24,7 +24,16 @@ if (isNil "_disposableMagazines") then {
 };
 private _acceptMagazine = {
     params ["_weaponClass", "_magazineClass"];
-    if (toLower _magazineClass in (_disposableMagazines getOrDefault [toLower _weaponClass, []])) exitWith {true};
+    private _internal = _disposableMagazines get toLower _weaponClass;
+    if (isNil "_internal") then {
+        // Non-CBA single-shot launchers (RHS M136/M72/RPG-26, 3CB AT4) accept exactly one
+        // magazine: that loaded round is internal ammunition, not a loose magazine.
+        private _cfg = configFile >> "CfgWeapons" >> _weaponClass;
+        private _magazines = getArray (_cfg >> "magazines");
+        _internal = if (getNumber (_cfg >> "type") == 4 && {count _magazines == 1}) then {[toLower (_magazines select 0)]} else {[]};
+        _disposableMagazines set [toLower _weaponClass, _internal];
+    };
+    if (toLower _magazineClass in _internal) exitWith {true};
     [_magazineClass] call _accept
 };
 {
