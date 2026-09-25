@@ -342,8 +342,8 @@ BATTLESPACE_PATHFIND_CREATE_JOB = {
     private _segments = [];
     if (_profile == "GROUND_VEHICLE") then {
         private _snap = missionNamespace getVariable ["BATTLESPACE_PATHFIND_ROAD_SNAP", 900];
-        private _startRoad = [_origin, _snap] call BIS_fnc_nearestRoad;
-        private _endRoad = [_destination, _snap] call BIS_fnc_nearestRoad;
+        private _startRoad = [_origin, _snap] call BATTLESPACE_PATHFIND_NEAREST_NETWORK_ROAD;
+        private _endRoad = [_destination, _snap] call BATTLESPACE_PATHFIND_NEAREST_NETWORK_ROAD;
         if (!isNull _startRoad && {!isNull _endRoad}) then {
             _segments pushBack ["GRID", +_origin, getPos _startRoad];
             _segments pushBack ["ROAD", _startRoad, _endRoad];

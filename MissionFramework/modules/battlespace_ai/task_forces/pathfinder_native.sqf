@@ -9,6 +9,7 @@
 BATTLESPACE_PATHFIND_NATIVE_LIBRARY = "frontline_path_v1";
 BATTLESPACE_PATHFIND_NATIVE_READY = false;
 BATTLESPACE_PATHFIND_NATIVE_ROADS = createHashMap;
+BATTLESPACE_PATHFIND_NETWORK_ROADS = createHashMap;
 // Sectors off the land mass that holds most sectors (islands); ground logistics skips them.
 BATTLESPACE_PATHFIND_ISOLATED_SECTORS = [];
 
@@ -58,42 +59,112 @@ BATTLESPACE_PATHFIND_NATIVE_EXPORT = {
     };
     if (_failed || {isNil {["gridSeal"] call BATTLESPACE_PATHFIND_NATIVE_CALL}}) exitWith {};
 
-    // Road graph with the SQF search's identities (str road) and neighbour order.
+    // Road graph with str-road identities. Decoration patches (road type HIDE)
+    // have no position or links and are not part of the network.
     private _index = createHashMap;
     private _roads = [];
+    private _add = {
+        params ["_road"];
+        private _id = _index getOrDefault [str _road, -1];
+        if (_id < 0 && {((getRoadInfo _road) param [0, "HIDE"]) != "HIDE"}) then {
+            _id = count _roads;
+            _index set [str _road, _id];
+            _roads pushBack _road;
+        };
+        _id
+    };
     private _tile = 1000;
     for "_tileX" from _tile / 2 to worldSize + _tile / 2 step _tile do {
         for "_tileY" from _tile / 2 to worldSize + _tile / 2 step _tile do {
-            {
-                private _key = str _x;
-                if !(_key in _index) then {
-                    _index set [_key, count _roads];
-                    _roads pushBack _x;
-                };
-            } forEach ([_tileX, _tileY] nearRoads (_tile * 0.75));
+            {[_x] call _add} forEach ([_tileX, _tileY] nearRoads (_tile * 0.75));
         };
     };
-    private _entries = [];
+    private _links = [];
     private _next = 0;
     // Neighbours outside every tile query are appended and exported too.
     while {_next < count _roads} do {
         private _road = _roads select _next;
         _next = _next + 1;
-        private _links = [];
+        private _own = [];
         {
             if (isNull _x) then {continue};
-            private _key = str _x;
-            private _id = _index getOrDefault [_key, -1];
-            if (_id < 0) then {
-                _id = count _roads;
-                _index set [_key, _id];
-                _roads pushBack _x;
-            };
-            _links pushBack (_id toFixed 0);
+            private _id = [_x] call _add;
+            if (_id >= 0) then {_own pushBackUnique _id};
         } forEach (roadsConnectedTo [_road, true]);
-        private _position = getPos _road;
-        _entries pushBack (([(round (100 * (_position select 0))) toFixed 0, (round (100 * (_position select 1))) toFixed 0] + _links) joinString ",");
+        _links pushBack _own;
     };
+
+    // roadsConnectedTo misses links at bridges and some junctions: also join
+    // segments whose ends touch (getRoadInfo begin/end points within 6 m).
+    private _join = 6;
+    private _ends = _roads apply {
+        private _info = getRoadInfo _x;
+        [_info param [6, getPos _x], _info param [7, getPos _x], _info param [8, false]]
+    };
+    private _endCells = createHashMap;
+    {
+        private _id = _forEachIndex;
+        {
+            private _key = format ["%1:%2", floor ((_x select 0) / _join), floor ((_x select 1) / _join)];
+            private _list = _endCells getOrDefault [_key, []];
+            _list pushBack [_id, _x];
+            _endCells set [_key, _list];
+        } forEach (_x select [0, 2]);
+    } forEach _ends;
+    private _joined = 0;
+    {
+        private _id = _forEachIndex;
+        {
+            private _end = _x;
+            private _cellX = floor ((_end select 0) / _join);
+            private _cellY = floor ((_end select 1) / _join);
+            for "_dx" from -1 to 1 do {
+                for "_dy" from -1 to 1 do {
+                    {
+                        _x params ["_other", "_otherEnd"];
+                        if (_other != _id && {_end distance2D _otherEnd <= _join} && {!(_other in (_links select _id))}) then {
+                            (_links select _id) pushBack _other;
+                            (_links select _other) pushBackUnique _id;
+                            _joined = _joined + 1;
+                        };
+                    } forEach (_endCells getOrDefault [format ["%1:%2", _cellX + _dx, _cellY + _dy], []]);
+                };
+            };
+        } forEach (_x select [0, 2]);
+    } forEach _ends;
+
+    // Routes snap only onto the largest connected network, never onto a bridge
+    // (its grid cell is water) or a detached fragment the road search cannot leave.
+    private _component = _roads apply {-1};
+    private _main = -1;
+    private _mainSize = 0;
+    private _label = 0;
+    {
+        if ((_component select _forEachIndex) >= 0) then {continue};
+        _component set [_forEachIndex, _label];
+        private _open = [_forEachIndex];
+        private _size = 0;
+        while {_open isNotEqualTo []} do {
+            private _id = _open deleteAt (count _open - 1);
+            _size = _size + 1;
+            {
+                if ((_component select _x) < 0) then {_component set [_x, _label]; _open pushBack _x};
+            } forEach (_links select _id);
+        };
+        if (_size > _mainSize) then {_main = _label; _mainSize = _size};
+        _label = _label + 1;
+    } forEach _roads;
+    private _network = createHashMap;
+    {
+        if ((_component select _forEachIndex) == _main && {!((_ends select _forEachIndex) select 2)}) then {_network set [str _x, true]};
+    } forEach _roads;
+
+    private _entries = [];
+    {
+        private _position = getPos _x;
+        _entries pushBack (([(round (100 * (_position select 0))) toFixed 0, (round (100 * (_position select 1))) toFixed 0]
+            + ((_links select _forEachIndex) apply {_x toFixed 0})) joinString ",");
+    } forEach _roads;
     if (isNil {["roadsBegin", [count _entries]] call BATTLESPACE_PATHFIND_NATIVE_CALL}) exitWith {};
     for "_first" from 0 to count _entries - 1 step 200 do {
         if (isNil {["roadsChunk", [_first, (_entries select [_first, 200]) joinString ";"]] call BATTLESPACE_PATHFIND_NATIVE_CALL}) exitWith {_failed = true};
@@ -101,6 +172,9 @@ BATTLESPACE_PATHFIND_NATIVE_EXPORT = {
     if (_failed || {isNil {["roadsSeal"] call BATTLESPACE_PATHFIND_NATIVE_CALL}}) exitWith {};
 
     BATTLESPACE_PATHFIND_NATIVE_ROADS = _index;
+    BATTLESPACE_PATHFIND_NETWORK_ROADS = _network;
+    diag_log format ["[BATTLESPACE][PATH] Road network: %1 segments, %2 end-point joins, main network %3 segments across %4 components",
+        count _roads, _joined, _mainSize, _label];
     private _labels = sectors_allSectors apply {
         private _position = markerPos _x;
         private _reply = ["component", [(_position select 0) toFixed 2, (_position select 1) toFixed 2]] call BATTLESPACE_PATHFIND_NATIVE_CALL;
@@ -119,6 +193,21 @@ BATTLESPACE_PATHFIND_NATIVE_EXPORT = {
     BATTLESPACE_PATHFIND_NATIVE_READY = true;
     diag_log format ["[BATTLESPACE][PATH] Native pathfinder ready: %1x%1 cells, %2 roads, exported in %3 s",
         _cells, count _roads, (diag_tickTime - _started) toFixed 1];
+};
+
+// Nearest main-network road within the radius, or objNull.
+BATTLESPACE_PATHFIND_NEAREST_NETWORK_ROAD = {
+    params ["_position", "_radius"];
+    private _best = objNull;
+    private _bestDistance = _radius;
+    {
+        private _distance = _position distance2D _x;
+        if (_distance < _bestDistance && {str _x in BATTLESPACE_PATHFIND_NETWORK_ROADS}) then {
+            _best = _x;
+            _bestDistance = _distance;
+        };
+    } forEach (_position nearRoads _radius);
+    _best
 };
 
 // Searches one segment to completion; returns and records "FOUND" or "FAILED".
