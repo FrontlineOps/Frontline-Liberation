@@ -1,12 +1,14 @@
 BATTLESPACE_DEFENSE_FIND_SOURCE_RESULT = {
-    params ["_targetSector", "_manpowerCost"];
+    params ["_targetSector", "_manpowerCost", ["_local", false]];
     private _depth = [_targetSector] call BATTLESPACE_DEFENSE_GET_FRONT_DEPTH;
     private _candidates = [];
     private _reachable = false;
     private _quiet = false;
     {
-        if (_x == _targetSector || {(_y getOrDefault ["owner", ""]) != "OPFOR"}) then {continue};
-        if ([_x] call BATTLESPACE_DEFENSE_GET_FRONT_DEPTH <= _depth) then {continue};
+        // Garrison relief comes from deeper sectors; a dead-space squad may also be raised
+        // by its own anchor sector or one at the same depth (the rearmost theaters have no deeper one).
+        if ((_x == _targetSector && {!_local}) || {(_y getOrDefault ["owner", ""]) != "OPFOR"}) then {continue};
+        if ([_x] call BATTLESPACE_DEFENSE_GET_FRONT_DEPTH < _depth + ([1, 0] select _local)) then {continue};
         private _distance = [_x, _targetSector, 12] call BATTLESPACE_DEFENSE_GRAPH_DISTANCE;
         if (_distance < 0) then {continue};
         _reachable = true;
@@ -96,7 +98,7 @@ BATTLESPACE_DEFENSE_CREEP_GROUP = {
 
 BATTLESPACE_DEFENSE_SET_ASSIGNMENT = {
     params ["_id", "_force", "_operation", "_assignmentId", "_assignment"];
-    private _field = (_assignment get "kind") == "FIELD";
+    private _cell = (_assignment get "kind") == "CELL";
     private _role = _assignment get "role";
     private _definition = (BATTLESPACE_STRATEGIC_DEFENDER_ROLES select {(_x select 0) == _role}) select 0;
     private _position = +(_assignment get "position");
@@ -105,7 +107,7 @@ BATTLESPACE_DEFENSE_SET_ASSIGNMENT = {
     _force set [10, getMarkerPos (_assignment get "sector")];
     _force set [12, _assignment get "sector"];
     _operation set ["coverageId", _assignmentId];
-    _operation set ["coveragePosition", [[], _position] select _field];
+    _operation set ["coveragePosition", [[], _position] select _cell];
     _operation set ["coverageBearing", _assignment getOrDefault ["bearing", 0]];
     _operation set ["coverageLeg", 0];
     _operation set ["defenseRole", _role];
@@ -168,8 +170,9 @@ BATTLESPACE_DEFENSE_DISPATCH_ASSIGNMENT = {
     if (_block != "") exitWith {[false, _block]};
     private _role = _assignment get "role";
     private _definition = (BATTLESPACE_STRATEGIC_DEFENDER_ROLES select {(_x select 0) == _role}) select 0;
-    private _manpower = if ((_assignment get "kind") == "FIELD") then {_definition select 2} else {3 max (_missing min (_definition select 2))};
-    private _sourceResult = [_assignment get "sector", _manpower] call BATTLESPACE_DEFENSE_FIND_SOURCE_RESULT;
+    private _cell = (_assignment get "kind") == "CELL";
+    private _manpower = if (_cell) then {_definition select 2} else {3 max (_missing min (_definition select 2))};
+    private _sourceResult = [_assignment get "sector", _manpower, _cell] call BATTLESPACE_DEFENSE_FIND_SOURCE_RESULT;
     _sourceResult params ["_source", "_reason"];
     if (_source == "") exitWith {[false, format ["Needs %1 infantry: %2", _manpower, _reason]]};
     private _vehicles = [];
@@ -206,6 +209,8 @@ BATTLESPACE_DEFENSE_PATH_FAILED = {
 BATTLESPACE_DEFENSE_MAINTAIN = {
     if (!isServer) exitWith {};
     [] call BATTLESPACE_DEFENSE_REBUILD_LAYOUT;
+    // Restore cell assignments before the first allocation so saved cell squads keep their cells.
+    if (!BATTLESPACE_DEFENSE_CELLS_READY) then {[] call BATTLESPACE_DEFENSE_SELECT_CELLS};
     {
         if ((_y getOrDefault ["kind", ""]) != "DEFENDER") then {continue};
         private _force = BATTLESPACE_TASK_FORCES get _x;
@@ -222,8 +227,8 @@ BATTLESPACE_DEFENSE_MAINTAIN = {
             [_x, _force, _operation, "the frontline no longer needs its assignment"] call BATTLESPACE_TASK_FORCE_DEFENSE_BEGIN_RETURN;
             continue;
         };
-        if (_phase == "ON_STATION" && {(_assignment get "kind") == "FIELD"}
-            && {(_force select 1) distance2D (_assignment get "position") > BATTLESPACE_FIELD_COVERAGE_RADIUS + 100}
+        if (_phase == "ON_STATION" && {(_assignment get "kind") == "CELL"}
+            && {(_force select 1) distance2D (_assignment get "position") > BATTLESPACE_CELL_SIZE + 100}
             && {(_force param [4, []]) findIf {behaviour leader _x == "COMBAT"} < 0}) then {
             [_x, _force, _operation, _id, _assignment] call BATTLESPACE_DEFENSE_SET_ASSIGNMENT;
             _phase = "DEPLOYING";
@@ -246,12 +251,19 @@ BATTLESPACE_DEFENSE_MAINTAIN = {
 BATTLESPACE_DEFENSE_DECISION_TICK = {
     if !([] call BATTLESPACE_STRATEGIC_SERVER_CALL_ALLOWED) exitWith {};
     [] call BATTLESPACE_GROUND_ALLOCATION_BLOCK;
+    [] call BATTLESPACE_DEFENSE_SELECT_CELLS;
     [] call BATTLESPACE_DEFENSE_MAINTAIN;
     [] call BATTLESPACE_RESERVE_RESTAGE_READY;
     private _changed = false;
     if (["RESERVE"] call BATTLESPACE_STRATEGIC_COUNT_OPERATIONS < BATTLESPACE_STRATEGIC_RESERVE_TARGET) then {
         _changed = [] call BATTLESPACE_RESERVE_FORM;
     };
+    // Alerted theaters hold larger garrisons; the extra squads become surplus again as alert decays.
+    {
+        if ((_y get "kind") == "OBJECTIVE") then {
+            _y set ["target", ceil ((_y get "baseTarget") * ([_y get "position"] call BATTLESPACE_THEATER_GARRISON_SCALE))];
+        };
+    } forEach BATTLESPACE_DEFENSE_ASSIGNMENTS;
     private _coverage = [] call BATTLESPACE_DEFENSE_READ_COVERAGE;
     private _attempted = createHashMap;
     private _priorities = createHashMap;
@@ -273,11 +285,13 @@ BATTLESPACE_DEFENSE_DECISION_TICK = {
             if (_attempted getOrDefault [_x, false]) then {continue};
             private _counts = _coverage getOrDefault [_x, [0, 0, []]];
             _counts params ["_present", "_incoming", "_ids"];
-            private _field = (_y get "kind") == "FIELD";
-            if ((_field && {_ids isNotEqualTo []}) || {!_field && {_present + _incoming >= (_y get "target")}}) then {continue};
+            private _cell = (_y get "kind") == "CELL";
+            if ((_cell && {_ids isNotEqualTo []}) || {!_cell && {_present + _incoming >= (_y get "target")}}) then {continue};
             private _blocked = BATTLESPACE_DEFENSE_BLOCKED_ASSIGNMENTS getOrDefault [_x, [0, ""]];
-            if (CBA_missionTime < (_blocked select 0)) then {_y set ["reason", _blocked select 1]; continue};
-            private _tier = if (_field) then {1} else {if ((_y get "depth") == 0) then {[2, 0] select (_present + _incoming == 0)} else {3}};
+            if (CBA_missionTime < (_blocked select 0)) then {continue};
+            private _tier = if (_cell) then {1} else {if ((_y get "depth") == 0) then {[2, 0] select (_present + _incoming == 0)} else {3}};
+            // An alerted theater's enlarged garrisons are filled first.
+            if (!_cell && {(_y get "target") > (_y get "baseTarget")}) then {_tier = 0};
             private _priority = _priorities getOrDefault [_x, 0];
             _candidates pushBack [_tier, -_priority, -(((_y get "target") - _present - _incoming) / ((_y get "target") max 1)), _x];
         } forEach BATTLESPACE_DEFENSE_ASSIGNMENTS;
@@ -288,8 +302,6 @@ BATTLESPACE_DEFENSE_DECISION_TICK = {
         private _counts = _coverage getOrDefault [_id, [0, 0, []]];
         private _missing = (_assignment get "target") - (_counts select 0) - (_counts select 1);
         private _result = [_id, _assignment, _missing, _coverage] call BATTLESPACE_DEFENSE_DISPATCH_ASSIGNMENT;
-        _assignment set ["reason", _result select 1];
-        _assignment set ["evaluatedAt", CBA_missionTime];
         if (_result select 0) then {
             _changed = true;
             _coverage = [] call BATTLESPACE_DEFENSE_READ_COVERAGE;
@@ -297,6 +309,5 @@ BATTLESPACE_DEFENSE_DECISION_TICK = {
             _attempted set [_id, true];
         };
     };
-    BATTLESPACE_DEFENSE_LAST_EVALUATION = CBA_missionTime;
     if (_changed) then {[] call BATTLESPACE_LOGISTICS_SAVE};
 };

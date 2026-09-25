@@ -1,6 +1,10 @@
-// Derived assignments are rebuilt from ownership and terrain, never saved as a second campaign.
-// A saved operation owns one assignment ID and its last destination.
+// Derived assignments are rebuilt from ownership, terrain and control cells, never saved as a
+// second campaign. A saved operation owns one assignment ID and its last destination.
+// OBJECTIVE: sector garrisons. CELL: dead-space squads on control cells ("CELL:cx:cy").
 BATTLESPACE_DEFENSE_ASSIGNMENTS = createHashMap;
+BATTLESPACE_DEFENSE_CELLS_READY = false;
+// A cell squad keeps its cell this long before the cell competes with the rest of dead space.
+BATTLESPACE_DEAD_SPACE_DWELL = 900;
 BATTLESPACE_DEFENSE_BLOCKED_ASSIGNMENTS = createHashMap;
 BATTLESPACE_DEFENSE_LAYOUT_SIGNATURE = [];
 
@@ -16,8 +20,8 @@ BATTLESPACE_DEFENSE_POSITION_IS_FRIENDLY = {
     _nearest == "startbase_marker" || {_nearest in blufor_sectors}
 };
 
-BATTLESPACE_DEFENSE_ADD_FIELD_ASSIGNMENT = {
-    params ["_id", "_sector", "_other", "_point", "_bearing"];
+BATTLESPACE_DEFENSE_ADD_CELL_ASSIGNMENT = {
+    params ["_id", "_sector", "_point", "_bearing"];
     if (surfaceIsWater _point || {[_point] call BATTLESPACE_DEFENSE_POSITION_IS_FRIENDLY}) exitWith {};
     if (sectors_allSectors findIf {getMarkerPos _x distance2D _point < 450} >= 0) exitWith {};
     private _position = +_point;
@@ -37,13 +41,8 @@ BATTLESPACE_DEFENSE_ADD_FIELD_ASSIGNMENT = {
     if (surfaceIsWater _position || {[_position] call BATTLESPACE_DEFENSE_POSITION_IS_FRIENDLY}) exitWith {};
     if ((surfaceNormal _position select 2) < 0.8) exitWith {};
     if (sectors_allSectors findIf {getMarkerPos _x distance2D _position < 400} >= 0) exitWith {};
-    private _duplicate = false;
-    {
-        if ((_y get "kind") == "FIELD" && {(_y get "position") distance2D _position < BATTLESPACE_FIELD_COVERAGE_MERGE_DISTANCE}) exitWith {_duplicate = true};
-    } forEach BATTLESPACE_DEFENSE_ASSIGNMENTS;
-    if (_duplicate) exitWith {};
     BATTLESPACE_DEFENSE_ASSIGNMENTS set [_id, createHashMapFromArray [
-        ["kind", "FIELD"], ["sector", _sector], ["otherSector", _other],
+        ["kind", "CELL"], ["sector", _sector],
         ["position", _position], ["bearing", _bearing], ["role", _role], ["target", 7], ["depth", 0]
     ]];
 };
@@ -53,52 +52,82 @@ BATTLESPACE_DEFENSE_REBUILD_LAYOUT = {
     private _sectors = keys BATTLESPACE_SECTOR_STATES;
     _sectors sort true;
     private _owners = _sectors apply {[_x, (BATTLESPACE_SECTOR_STATES get _x) getOrDefault ["owner", ""]]};
-    private _signature = [_owners, BATTLESPACE_STRATEGIC_DEFENDER_MANPOWER_BY_DEPTH, BATTLESPACE_STRATEGIC_DEFENDER_FRONT_FORMATIONS, BATTLESPACE_FIELD_COVERAGE_SPACING, BATTLESPACE_FIELD_COVERAGE_MERGE_DISTANCE];
+    private _signature = [_owners, BATTLESPACE_STRATEGIC_DEFENDER_MANPOWER_BY_DEPTH, BATTLESPACE_STRATEGIC_DEFENDER_FRONT_FORMATIONS];
     if (_signature isEqualTo BATTLESPACE_DEFENSE_LAYOUT_SIGNATURE) exitWith {};
     BATTLESPACE_DEFENSE_LAYOUT_SIGNATURE = _signature;
-    BATTLESPACE_DEFENSE_ASSIGNMENTS = createHashMap;
-    private _depths = createHashMap;
+    // Objectives follow ownership; cell assignments are owned by BATTLESPACE_DEFENSE_SELECT_CELLS.
+    private _cells = createHashMap;
+    {if ((_y get "kind") == "CELL") then {_cells set [_x, _y]}} forEach BATTLESPACE_DEFENSE_ASSIGNMENTS;
+    BATTLESPACE_DEFENSE_ASSIGNMENTS = _cells;
     {
         private _state = BATTLESPACE_SECTOR_STATES get _x;
         if ((_state getOrDefault ["owner", ""]) != "OPFOR") then {continue};
         private _depth = [_x] call BATTLESPACE_DEFENSE_GET_FRONT_DEPTH;
-        _depths set [_x, _depth];
         private _target = [_state getOrDefault ["type", ""], _depth] call BATTLESPACE_DEFENSE_GET_MANPOWER_TARGET;
         if (_target <= 0) then {continue};
         BATTLESPACE_DEFENSE_ASSIGNMENTS set ["OBJECTIVE:" + _x, createHashMapFromArray [
             ["kind", "OBJECTIVE"], ["sector", _x], ["position", getMarkerPos _x],
-            ["role", "GARRISON"], ["target", _target], ["depth", _depth]
+            ["role", "GARRISON"], ["target", _target], ["baseTarget", _target], ["depth", _depth]
         ]];
     } forEach _sectors;
-    private _edges = createHashMap;
+};
+
+// Dead space: each OPFOR-held theater keeps BATTLESPACE_DEAD_SPACE_SQUADS_PER_THEATER cell
+// assignments on its contested, blue-pushing and longest-unvisited cells. A held cell stays
+// for BATTLESPACE_DEAD_SPACE_DWELL; afterwards it competes, so squads roam the theater.
+// Dropped cells free their squads for reassignment in the same allocation pass.
+BATTLESPACE_DEFENSE_SELECT_CELLS = {
+    if (!isServer || {BATTLESPACE_CELLS isEqualTo []}) exitWith {};
+    [] call BATTLESPACE_CELL_UPDATE_BASELINE;
+    BATTLESPACE_DEFENSE_CELLS_READY = true;
+    private _held = createHashMap;
     {
-        private _sector = _x;
-        if (_depths getOrDefault [_sector, 69] != 0) then {continue};
-        private _origin = getMarkerPos _sector;
-        private _links = +((NETWORKED_SECTORS getOrDefault [_sector, createHashMap]) getOrDefault ["Links", []]);
-        _links sort true;
+        private _id = _y getOrDefault ["coverageId", ""];
+        if ((_y getOrDefault ["kind", ""]) != "DEFENDER" || {(_id find "CELL:") != 0} || {(_y getOrDefault ["phase", ""]) in ["RETURNING", "LOST"]}) then {continue};
+        // A cell restored from a save has no assignment yet and starts a fresh dwell.
+        private _assignment = BATTLESPACE_DEFENSE_ASSIGNMENTS getOrDefault [_id, createHashMap];
+        if (CBA_missionTime - (_assignment getOrDefault ["createdAt", CBA_missionTime]) < BATTLESPACE_DEAD_SPACE_DWELL) then {_held set [_id, true]};
+    } forEach BATTLESPACE_STRATEGIC_OPERATIONS;
+    private _picked = createHashMap;
+    {
+        private _theater = _forEachIndex;
+        private _sectors = (_x get "sectors") select {((BATTLESPACE_SECTOR_STATES getOrDefault [_x, createHashMap]) getOrDefault ["owner", ""]) == "OPFOR"};
+        if (_sectors isEqualTo []) then {continue};
+        private _candidates = [];
         {
-            private _other = _x;
-            private _friendly = _other in blufor_sectors || {_other == "startbase_marker"};
-            if (!_friendly && {_depths getOrDefault [_other, 69] > 1}) then {continue};
-            private _pair = [_sector, _other];
-            _pair sort true;
-            private _edge = _pair joinString ":";
-            if (_edges getOrDefault [_edge, false]) then {continue};
-            _edges set [_edge, true];
-            private _end = getMarkerPos _other;
-            private _length = _origin distance2D _end;
-            private _direction = _origin getDir _end;
-            private _available = if (_friendly) then {_length * 0.45} else {_length - 500};
-            private _steps = 1 max ceil (_available / (BATTLESPACE_FIELD_COVERAGE_SPACING max 650));
-            for "_step" from 1 to _steps do {
-                private _distance = if (_friendly) then {_available * _step / _steps} else {_length * _step / (_steps + 1)};
-                if (_distance < 500) then {continue};
-                private _point = _origin getPos [_distance, _direction];
-                [format ["FIELD:%1:%2", _edge, _step], _sector, _other, _point, _direction] call BATTLESPACE_DEFENSE_ADD_FIELD_ASSIGNMENT;
-            };
-        } forEach _links;
-    } forEach _sectors;
+            _x params ["_center", "_cellTheater", "_control", "_contestedUntil", "_observedAt", "_baseline", "_sectorDistance", "_grid"];
+            if (_cellTheater != _theater || {_sectorDistance < BATTLESPACE_CELL_DEAD_SPACE} || {_baseline > 0.5}) then {continue};
+            private _id = format ["CELL:%1:%2", _grid select 0, _grid select 1];
+            _candidates pushBack [
+                ([0, 1000] select (_id in _held))
+                    + ([0, 100] select (CBA_missionTime < _contestedUntil))
+                    + ([0, 60] select (_control - _baseline > 0.2))
+                    + (((CBA_missionTime - _observedAt) / 60) min 30),
+                _id, _center
+            ];
+        } forEach BATTLESPACE_CELLS;
+        _candidates sort false;
+        private _chosen = [];
+        {
+            if (count _chosen >= BATTLESPACE_DEAD_SPACE_SQUADS_PER_THEATER) exitWith {};
+            _x params ["", "_id", "_center"];
+            if (_chosen findIf {_x distance2D _center < 700} >= 0) then {continue};
+            _chosen pushBack _center;
+            _picked set [_id, [_center, _sectors]];
+        } forEach _candidates;
+    } forEach BATTLESPACE_THEATERS;
+    {BATTLESPACE_DEFENSE_ASSIGNMENTS deleteAt _x} forEach ((keys BATTLESPACE_DEFENSE_ASSIGNMENTS) select {
+        ((BATTLESPACE_DEFENSE_ASSIGNMENTS get _x) get "kind") == "CELL" && {!(_x in _picked)}
+    });
+    {
+        if (_x in BATTLESPACE_DEFENSE_ASSIGNMENTS) then {continue};
+        _y params ["_center", "_sectors"];
+        private _sector = [_sectors, _center] call BIS_fnc_nearestPosition;
+        // Terrain picks the role: road -> defensive patrol, forest -> ambush, open -> recon screen.
+        [_x, _sector, _center, (_center getDir getMarkerPos _sector) + 90] call BATTLESPACE_DEFENSE_ADD_CELL_ASSIGNMENT;
+        private _assignment = BATTLESPACE_DEFENSE_ASSIGNMENTS get _x;
+        if (!isNil "_assignment") then {_assignment set ["createdAt", CBA_missionTime]};
+    } forEach _picked;
 };
 
 BATTLESPACE_DEFENSE_ASSIGNMENT_ID = {
@@ -121,9 +150,9 @@ BATTLESPACE_DEFENSE_READ_COVERAGE = {
         if (isNil "_assignment" || {isNil "_force"}) then {continue};
         private _manpower = (_force param [3, createHashMap]) getOrDefault ["manpower", 0];
         if (_manpower <= 0) then {continue};
-        private _field = (_assignment get "kind") == "FIELD";
-        if (_field && {_manpower < BATTLESPACE_STRATEGIC_DEFENDER_RETREAT_MANPOWER}) then {continue};
-        private _radius = if (_field) then {BATTLESPACE_FIELD_COVERAGE_RADIUS + 100} else {350};
+        private _cell = (_assignment get "kind") == "CELL";
+        if (_cell && {_manpower < BATTLESPACE_STRATEGIC_DEFENDER_RETREAT_MANPOWER}) then {continue};
+        private _radius = if (_cell) then {BATTLESPACE_CELL_SIZE + 100} else {350};
         private _position = _force param [1, []];
         private _present = (_y getOrDefault ["phase", ""]) != "DEPLOYING" && {_position distance2D (_assignment get "position") <= _radius};
         private _counts = _coverage getOrDefault [_id, [0, 0, []]];
@@ -135,14 +164,15 @@ BATTLESPACE_DEFENSE_READ_COVERAGE = {
     _coverage
 };
 
-BATTLESPACE_DEFENSE_FIELD_LEG = {
+// Patrol legs cross the squad's cell along its bearing.
+BATTLESPACE_DEFENSE_CELL_LEG = {
     params ["_id", "_force", "_operation"];
     private _center = _operation getOrDefault ["coveragePosition", []];
     if (_center isEqualTo []) exitWith {false};
     private _direction = _operation getOrDefault ["coverageBearing", 0];
     private _leg = 1 + (_operation getOrDefault ["coverageLeg", 0]);
     _operation set ["coverageLeg", _leg];
-    private _destination = _center getPos [BATTLESPACE_FIELD_COVERAGE_RADIUS * 0.65, _direction + ([0, 180] select (_leg mod 2 == 0))];
+    private _destination = _center getPos [BATTLESPACE_CELL_SIZE * 0.65, _direction + ([0, 180] select (_leg mod 2 == 0))];
     if (surfaceIsWater _destination || {[_destination] call BATTLESPACE_DEFENSE_POSITION_IS_FRIENDLY} || {(surfaceNormal _destination select 2) < 0.8}) then {_destination = +_center};
     _destination set [2, 0];
     _force set [2, _destination];

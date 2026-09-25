@@ -13,7 +13,7 @@ BATTLESPACE_TASK_FORCE_DEFENSIVE_PATROL_BUILD_ASSIGNMENT = {
 BATTLESPACE_TASK_FORCE_DEFENSIVE_PATROL_SELECT_LEG = {
     params ["_taskForceName", "_taskForce", ["_operation", createHashMap]];
     if ((_operation getOrDefault ["coveragePosition", []]) isNotEqualTo []) exitWith {
-        [_taskForceName, _taskForce, _operation] call BATTLESPACE_DEFENSE_FIELD_LEG
+        [_taskForceName, _taskForce, _operation] call BATTLESPACE_DEFENSE_CELL_LEG
     };
     private _sector = _operation getOrDefault ["assignedSector", _taskForce param [12, ""]];
     if (_sector == "") then {

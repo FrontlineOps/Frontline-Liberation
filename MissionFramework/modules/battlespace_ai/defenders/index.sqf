@@ -384,5 +384,5 @@ BATTLESPACE_DEFENDERS_CREATE_AMBIENT_CIVILIANS = {
 };
 
 if (isServer) then {
-    [format ["Objective and field coverage share %1 ground formations; up to %2 funded formations per evaluation window", BATTLESPACE_STRATEGIC_GROUND_FORCE_CAP, BATTLESPACE_STRATEGIC_GROUND_FORMATIONS_PER_TICK], "BATTLESPACE"] call KPLIB_fnc_log;
+    [format ["Objective garrisons and dead-space squads share %1 ground formations; up to %2 funded formations per evaluation window", BATTLESPACE_STRATEGIC_GROUND_FORCE_CAP, BATTLESPACE_STRATEGIC_GROUND_FORMATIONS_PER_TICK], "BATTLESPACE"] call KPLIB_fnc_log;
 };

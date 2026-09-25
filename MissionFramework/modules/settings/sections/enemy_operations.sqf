@@ -173,25 +173,17 @@
 [
     "BATTLESPACE_STRATEGIC_DEFENDER_RETREAT_MANPOWER", "SLIDER",
     "Defender retreat manpower",
-    "Remaining troop count below which a defensive group withdraws and a field assignment is considered under strength.",
+    "Remaining troop count below which a defensive group withdraws and a dead-space squad is considered under strength.",
     ["Frontline - Enemy Operations", "Defence"],
     [1, 20, 3, 0], true
 ] call _add;
 
 [
-    "BATTLESPACE_FIELD_COVERAGE_RADIUS", "SLIDER",
-    "Field coverage radius (m)",
-    "Radius in metres within which a field squad operates around its assigned patrol centre.",
+    "BATTLESPACE_DEAD_SPACE_SQUADS_PER_THEATER", "SLIDER",
+    "Dead-space squads per theater",
+    "Squads each OPFOR-held theater keeps in its dead space (control cells away from objectives). They take contested, BLUFOR-pushed and long-unvisited cells first and move on after 15 minutes.",
     ["Frontline - Enemy Operations", "Defence"],
-    [1, 1400, 350, 0], true
-] call _add;
-
-[
-    "BATTLESPACE_FIELD_COVERAGE_SPACING", "SLIDER",
-    "Field coverage spacing (m)",
-    "Desired spacing in metres between field assignments along exposed sector links. Smaller spacing creates more coverage positions.",
-    ["Frontline - Enemy Operations", "Defence"],
-    [1, 4800, 1200, 0], true
+    [0, 10, 3, 0], true
 ] call _add;
 
 [
