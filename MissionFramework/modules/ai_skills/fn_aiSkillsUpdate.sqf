@@ -90,7 +90,8 @@ if (KPLIB_aiSkills_boostEnabled && {(_state get "boostShots") > 0}) then {
 private _factors = [_state get "terrain", _suppression, _weather, _boost];
 _state set ["factors", _factors];
 private _skills = [_base, _factors select 0, _suppression, _weather, _boost] call KPLIB_fnc_aiSkillsCompose;
+// setSkill replicates and is kept in the JIP queue; skip changes too small to notice.
 {
     private _value = _skills select _forEachIndex;
-    if (abs ((_unit skill _x) - _value) > 0.001) then {_unit setSkill [_x, _value]};
+    if (abs ((_unit skill _x) - _value) > 0.05) then {_unit setSkill [_x, _value]};
 } forEach KPLIB_aiSkills_names;
