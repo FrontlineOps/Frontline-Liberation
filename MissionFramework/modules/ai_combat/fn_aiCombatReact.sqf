@@ -28,8 +28,12 @@ if (_close) then {
     private _wasActive = CBA_missionTime < (_unit getVariable ["KPLIB_aiCombat_contactUntil", -1]);
     _unit setVariable ["KPLIB_aiCombat_contactUntil", _until max (_unit getVariable ["KPLIB_aiCombat_contactUntil", -1])];
     _group setVariable ["KPLIB_aiCombat_contactUntil", _until max (_group getVariable ["KPLIB_aiCombat_contactUntil", -1])];
-    if (!_wasActive && {KPLIB_aiCombat_debug}) then {
-        [format ["%1 interrupting assignment for %2", typeOf _unit, ["nearby fire", "visual contact"] select _visible], "AI COMBAT"] call KPLIB_fnc_log;
+    if (!_wasActive) then {
+        if (KPLIB_aiCombat_debug) then {
+            [format ["%1 interrupting assignment for %2", typeOf _unit, ["nearby fire", "visual contact"] select _visible], "AI COMBAT"] call KPLIB_fnc_log;
+        };
+        // Report now rather than waiting for the contact-memory round-robin.
+        if (!isNil "BATTLESPACE_CONTACT_SAMPLE_GROUP") then {[_group] call BATTLESPACE_CONTACT_SAMPLE_GROUP};
     };
 };
 private _engage = _close && {_assigned || {combatMode _group in ["YELLOW", "RED"]}};

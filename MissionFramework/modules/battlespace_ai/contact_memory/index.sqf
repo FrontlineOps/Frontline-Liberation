@@ -10,6 +10,46 @@ BATTLESPACE_CONTACT_LAST_PLAYER_SEEN = CBA_missionTime;
 BATTLESPACE_CONTACT_SOUNDS = createHashMap;
 BATTLESPACE_CONTACT_SOUND_CELL = 200;
 BATTLESPACE_CONTACT_SOUND_MIN_CUES = 3;
+// Area reports without a seen target; only ground responders that opt in see them.
+BATTLESPACE_CONTACT_UNCONFIRMED = ["KPLIB_SOUND", "KPLIB_LOSS", "KPLIB_LOST"];
+// Survivors radio a loss after this many seconds; a group with no survivors is
+// only noticed when it misses its check-in. Both stretch with comms disruption.
+BATTLESPACE_CONTACT_LOSS_DELAY = 20;
+BATTLESPACE_CONTACT_LOST_DELAY = 120;
+BATTLESPACE_CONTACT_PENDING = [];
+// Set by fresh sightings and casualty reports; the strategic loop runs an early
+// battlegroup decision (at most every BATTLESPACE_CONTACT_DECISION_INTERVAL seconds).
+BATTLESPACE_CONTACT_DECISION_DUE = false;
+BATTLESPACE_CONTACT_DECISION_INTERVAL = 120;
+
+// Every OPFOR ground casualty: casualty pressure now, an unconfirmed report later.
+BATTLESPACE_CONTACT_LOSS = {
+    params ["_unit", "_weight"];
+    if (!isServer || {isNull _unit} || {_unit isKindOf "Air"} || {(vehicle _unit) isKindOf "Air"}) exitWith {};
+    [_unit, _weight] call BATTLESPACE_RESERVE_RECORD_FIELD_LOSS;
+    private _group = group _unit;
+    private _survivors = (units _group) findIf {alive _x && {!captive _x}} >= 0;
+    if (_survivors) then {[_group] call BATTLESPACE_CONTACT_SAMPLE_GROUP};
+    if (count BATTLESPACE_CONTACT_PENDING >= 64) exitWith {};
+    private _position = getPosATL _unit;
+    BATTLESPACE_CONTACT_PENDING pushBack [
+        CBA_missionTime + ([[BATTLESPACE_CONTACT_LOST_DELAY, BATTLESPACE_CONTACT_LOSS_DELAY] select _survivors] call KPLIB_RADIO_SERVER_COMMAND_DELAY),
+        [_position select 0, _position select 1, 0],
+        ["KPLIB_LOST", "KPLIB_LOSS"] select _survivors
+    ];
+};
+
+// One area record per report cell and class; strength counts reports in the cell.
+BATTLESPACE_CONTACT_UNCONFIRMED_REPORT = {
+    params ["_position", "_class"];
+    private _key = format ["%1:%2:%3", _class, floor ((_position select 0) / BATTLESPACE_CONTACT_SOUND_CELL), floor ((_position select 1) / BATTLESPACE_CONTACT_SOUND_CELL)];
+    private _record = BATTLESPACE_CONTACT_MEMORY getOrDefault [_key, [_position, -1e9, 0, _position]];
+    private _strength = if (CBA_missionTime - (_record select 1) > BATTLESPACE_CONTACT_MEMORY_MAX_AGE) then {1} else {((_record select 2) + 1) min 8};
+    // BLUFOR is the only side the commander fights; a casualty is assumed player-caused.
+    BATTLESPACE_CONTACT_MEMORY set [_key, [+_position, CBA_missionTime, _strength, +(_record select 0), true, objNull, _class, createHashMap, CBA_missionTime]];
+    if (!isNil "BATTLESPACE_THEATER_NOTE") then {[_position, _class] call BATTLESPACE_THEATER_NOTE};
+    BATTLESPACE_CONTACT_DECISION_DUE = true;
+};
 
 // A listener's uncertain estimate, never a target. Only sustained fire (several
 // distinct shots in one cell within the memory age) becomes an area contact, and
@@ -42,6 +82,7 @@ BATTLESPACE_CONTACT_HEARD = {
     private _previous = (BATTLESPACE_CONTACT_MEMORY getOrDefault [_key, [_where]]) select 0;
     // Position, seen time, strength (distinct shooters), prior position, player, no target, class, no observer evidence.
     BATTLESPACE_CONTACT_MEMORY set [_key, [+_where, _seenAt, 1 max count _cell min 8, +_previous, _anyPlayer, objNull, "KPLIB_SOUND", createHashMap, _seenAt]];
+    if (!isNil "BATTLESPACE_THEATER_NOTE") then {[_where, "KPLIB_SOUND"] call BATTLESPACE_THEATER_NOTE};
 };
 
 // Local observation only. Records: target, perceived position, seen time, weight, player, class.
@@ -99,6 +140,8 @@ BATTLESPACE_CONTACT_RECEIVE = {
                 _motionAt = _record select 1;
             };
             _record = [+_position, _seenAt, _weight max 1 min 8, _motionPosition, _player, _target, _class, _evidence, _motionAt];
+            if (!isNil "BATTLESPACE_THEATER_NOTE") then {[_position, _class] call BATTLESPACE_THEATER_NOTE};
+            if !(_class isKindOf "Air") then {BATTLESPACE_CONTACT_DECISION_DUE = true};
         };
         BATTLESPACE_CONTACT_MEMORY set [_key, _record];
     } forEach (_reports select [0, 12]);
@@ -127,12 +170,13 @@ BATTLESPACE_CONTACT_SAMPLE_GROUP = {
 };
 
 BATTLESPACE_CONTACT_QUERY = {
-    params [["_center", []], ["_radius", 1e9], ["_maxAge", BATTLESPACE_CONTACT_MEMORY_MAX_AGE], ["_playersOnly", false], ["_observerGroup", grpNull], ["_groundOnly", true], ["_includeSound", false]];
+    params [["_center", []], ["_radius", 1e9], ["_maxAge", BATTLESPACE_CONTACT_MEMORY_MAX_AGE], ["_playersOnly", false], ["_observerGroup", grpNull], ["_groundOnly", true], ["_includeUnconfirmed", false]];
     if (!isServer) exitWith {[]};
     private _matches = [];
     {
-        // Heard-gunfire areas have no observer evidence and are opt-in for ground responders.
-        if (!_includeSound && {(_y select 6) == "KPLIB_SOUND"}) then {continue};
+        // Heard-gunfire, casualty and lost-contact areas have no observer evidence
+        // and are opt-in for ground responders.
+        if (!_includeUnconfirmed && {(_y select 6) in BATTLESPACE_CONTACT_UNCONFIRMED}) then {continue};
         private _record = +_y;
         if (!isNull _observerGroup) then {
             private _evidence = (_record select 7) getOrDefault [str _observerGroup, []];
@@ -149,6 +193,11 @@ BATTLESPACE_CONTACT_QUERY = {
 
 BATTLESPACE_CONTACT_TICK = {
     if (!isServer || {isRemoteExecuted} || {isNil "GRLIB_side_enemy"}) exitWith {};
+    if (BATTLESPACE_CONTACT_PENDING isNotEqualTo []) then {
+        private _due = BATTLESPACE_CONTACT_PENDING select {(_x select 0) <= CBA_missionTime};
+        BATTLESPACE_CONTACT_PENDING = BATTLESPACE_CONTACT_PENDING select {(_x select 0) > CBA_missionTime};
+        {[_x select 1, _x select 2] call BATTLESPACE_CONTACT_UNCONFIRMED_REPORT} forEach _due;
+    };
     {
         if (CBA_missionTime - (_y select 1) > BATTLESPACE_CONTACT_MEMORY_MAX_AGE) then {BATTLESPACE_CONTACT_MEMORY deleteAt _x; continue};
         private _evidence = _y select 7;

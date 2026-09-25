@@ -105,6 +105,12 @@ if (isServer) then {
             if (isplayer _killer) then {
                 stats_opfor_killed_by_players = stats_opfor_killed_by_players + 1;
             };
+
+            // Sector garrisons and other untracked OPFOR. Task forces report through
+            // their own kill handler; artillery and SAM crews charge their funding sector.
+            if (!isNil "BATTLESPACE_CONTACT_LOSS" && {(_unit getVariable ["TASKFORCEID", ""]) == ""} && {(_unit getVariable ["BSAFundingSector", ""]) == ""}) then {
+                [_unit, 1] call BATTLESPACE_CONTACT_LOSS;
+            };
         };
 
         // BLUFOR casualty

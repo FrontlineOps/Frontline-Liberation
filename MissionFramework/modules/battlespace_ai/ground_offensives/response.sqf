@@ -18,7 +18,7 @@ BATTLESPACE_OFFENSIVE_OBSERVED_STRENGTH = {
     private _heard = 0;
     {
         // Heard-gunfire areas estimate unseen shooters; the same fight may also be seen.
-        if ((_x select 6) == "KPLIB_SOUND") then {_heard = _heard + ((_x select 2) max 0); continue};
+        if ((_x select 6) in BATTLESPACE_CONTACT_UNCONFIRMED) then {_heard = _heard + ((_x select 2) max 0); continue};
         private _target = _x select 5;
         if (isNull _target || {_target in _counted}) then {continue};
         _counted pushBack _target;

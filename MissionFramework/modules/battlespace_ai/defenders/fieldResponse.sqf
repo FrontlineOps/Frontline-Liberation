@@ -10,13 +10,11 @@ BATTLESPACE_RESERVE_FIELD_GET_CONTACT = {
     if (_contacts isEqualTo []) then {[]} else {(_contacts select 0) select [0, 2]}
 };
 
+// Casualty pressure for any OPFOR ground loss (task force or sector garrison);
+// called only through BATTLESPACE_CONTACT_LOSS.
 BATTLESPACE_RESERVE_RECORD_FIELD_LOSS = {
-    params ["_taskForceId", "_lossType", "_unit"];
-    if (!isServer || {isNull _unit}) exitWith {};
-    private _taskForce = BATTLESPACE_TASK_FORCES getOrDefault [_taskForceId, []];
-    if ((_taskForce param [6, sideUnknown]) != GRLIB_side_enemy || {_unit isKindOf "Air"} || {(vehicle _unit) isKindOf "Air"}) exitWith {};
+    params ["_unit", "_weight"];
     private _position = getPosATL _unit;
-    private _weight = ([4, 1] select (_lossType == "MANPOWER"));
     // A casualty belongs to its physical location, not the patrol's assigned objective.
     private _sector = [_position] call BATTLESPACE_STRATEGIC_FIND_NEAREST_OPFOR_SECTOR;
     if (_sector != "" && {_position distance2D getMarkerPos _sector <= GRLIB_capture_size}) exitWith {
@@ -41,7 +39,6 @@ BATTLESPACE_RESERVE_RECORD_FIELD_LOSS = {
     if (CBA_missionTime - (_incident getOrDefault ["lastLossAt", -1e9]) > BATTLESPACE_STRATEGIC_RESERVE_FIELD_LOSS_WINDOW) then {_incident set ["pressure", 0]};
     _incident set ["pressure", (_incident get "pressure") + _weight];
     _incident set ["lastLossAt", CBA_missionTime];
-    {[_x] call BATTLESPACE_CONTACT_SAMPLE_GROUP} forEach ((_taskForce param [4, []]) select [0, 4]);
 };
 
 BATTLESPACE_RESERVE_FIELD_TICK = {
@@ -67,13 +64,14 @@ BATTLESPACE_RESERVE_FIELD_TICK = {
             continue;
         };
         if (_responding getOrDefault [_id, false]) then {continue};
-        if ((_incident get "pressure") < BATTLESPACE_STRATEGIC_CASUALTY_RESPONSE_THRESHOLD || {CBA_missionTime < (_incident getOrDefault ["nextResponseAt", 0])}) then {continue};
+        private _urgency = [_incident get "position"] call BATTLESPACE_THEATER_URGENCY;
+        if ((_incident get "pressure") < BATTLESPACE_STRATEGIC_CASUALTY_RESPONSE_THRESHOLD * _urgency || {CBA_missionTime < (_incident getOrDefault ["nextResponseAt", 0])}) then {continue};
         private _contact = [_incident get "position"] call BATTLESPACE_RESERVE_FIELD_GET_CONTACT;
         if (_contact isEqualTo []) then {continue};
         private _anchor = [_incident get "position"] call BATTLESPACE_STRATEGIC_FIND_NEAREST_OPFOR_SECTOR;
         if (_anchor != "" && {[_anchor, _id, _incident, _contact] call BATTLESPACE_RESERVE_DISPATCH}) then {
             _incident set ["pressure", 0];
-            _incident set ["nextResponseAt", CBA_missionTime + ([BATTLESPACE_STRATEGIC_RESERVE_RESPONSE_COOLDOWN] call KPLIB_RADIO_SERVER_COMMAND_DELAY)];
+            _incident set ["nextResponseAt", CBA_missionTime + ([_urgency * BATTLESPACE_STRATEGIC_RESERVE_RESPONSE_COOLDOWN] call KPLIB_RADIO_SERVER_COMMAND_DELAY)];
         };
     } forEach BATTLESPACE_RESERVE_FIELD_INCIDENTS;
 };
